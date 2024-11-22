@@ -11,7 +11,7 @@ EXPOSE 8080
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["Link2Stream.Server/Link2Stream.Server.csproj", "Link2Stream.Server/"]
+COPY ["Link2Stream.Server.csproj", "Link2Stream.Server/"]
 RUN dotnet restore "./Link2Stream.Server/Link2Stream.Server.csproj"
 COPY . .
 WORKDIR "/src/Link2Stream.Server"
