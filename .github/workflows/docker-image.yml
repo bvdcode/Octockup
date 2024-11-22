@@ -1,18 +1,23 @@
-name: Docker Image CI
+name: Build and Push Docker Image to Docker Hub
 
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-
+on: push
 jobs:
-
-  build:
-
+  push_to_registry:
+    name: push docker image to hub
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v4
-    - name: Build the Docker image
-      run: cd Sources; docker build . --file Link2Stream.Server/Dockerfile --tag link2stream:$(date +%s)
+      - name: check repository
+        uses: actions/checkout@v4
+
+      - name: login to docker registry
+        uses: docker/login-action@v3
+        with:
+          username: ${{secrets.DOCKERHUB_USERNAME}}
+          password: ${{secrets.DOCKERHUB_TOKEN}}
+
+      - name: build and push docker image to registry
+        uses: docker/build-push-action@v5
+        with:
+          context: Sources/Link2Stream.Server/
+          push: true
+          tags: bvdcode/link2stream:latest
