@@ -11,10 +11,10 @@ EXPOSE 8080
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["Link2Stream.Server.csproj", "Link2Stream.Server/"]
+COPY ["Link2Stream.Server.csproj", "."]
 RUN dotnet restore "./Link2Stream.Server.csproj"
 COPY . .
-WORKDIR "/src/Link2Stream.Server"
+WORKDIR "/src/."
 RUN dotnet build "./Link2Stream.Server.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # This stage is used to publish the service project to be copied to the final stage
