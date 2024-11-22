@@ -15,4 +15,4 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build the Docker image
-      run: cd Sources; docker build . --file Link2File.Server/Dockerfile --tag link2stream:$(date +%s)
+      run: cd Sources; docker build . --file Link2Stream.Server/Dockerfile --tag link2stream:$(date +%s)
