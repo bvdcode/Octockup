@@ -24,5 +24,12 @@ namespace Link2Stream.Server.Controllers
         {
             return Ok("Created");
         }
+
+        [HttpGet("/favicon.ico")]
+        public IActionResult GetFavicon()
+        {
+
+            return Ok();
+        }
     }
 }
