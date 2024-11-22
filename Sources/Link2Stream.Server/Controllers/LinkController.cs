@@ -9,13 +9,13 @@ namespace Link2Stream.Server.Controllers
         [HttpGet("/{linkId}")]
         public IActionResult GetLink([FromRoute][Required] string linkId)
         {
-            return Ok();
+            return Ok(linkId);
         }
 
         [HttpPost("/link")]
         public IActionResult CreateLink([FromBody][Required] string url)
         {
-            return Ok();
+            return Ok("link");
         }
     }
 }
