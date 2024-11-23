@@ -6,11 +6,10 @@ namespace Link2Stream.Server.Controllers
     [ApiController]
     public class LinkController : ControllerBase
     {
-
-        [HttpGet("/link/upload")]
-        public IActionResult GetUploadPage()
+        [HttpGet("/l/{linkId}")]
+        public IActionResult GetShortLink([FromRoute][Required] string linkId)
         {
-            return Ok("<html></html>");
+            return GetLink(linkId);
         }
 
         [HttpGet("/link/{linkId}")]
@@ -20,16 +19,9 @@ namespace Link2Stream.Server.Controllers
         }
 
         [HttpPost("/link")]
-        public IActionResult CreateLink([FromBody][Required] string url)
+        public IActionResult CreateLink()
         {
             return Ok("Created");
-        }
-
-        [HttpGet("/favicon.ico")]
-        public IActionResult GetFavicon()
-        {
-
-            return Ok();
         }
     }
 }

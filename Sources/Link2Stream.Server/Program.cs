@@ -1,3 +1,5 @@
+using Microsoft.Extensions.FileProviders;
+
 namespace Link2Stream.Server
 {
     public class Program
