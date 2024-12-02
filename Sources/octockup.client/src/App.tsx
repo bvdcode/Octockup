@@ -15,13 +15,7 @@ function App() {
   const contents =
     forecasts === undefined ? (
       <p>
-        <em>
-          Loading... Please refresh once the ASP.NET backend has started. See{" "}
-          <a href="https://aka.ms/jspsintegrationreact">
-            https://aka.ms/jspsintegrationreact
-          </a>{" "}
-          for more details.
-        </em>
+        <em>No data</em>
       </p>
     ) : (
       <table className="table table-striped" aria-labelledby="tableLabel">
@@ -49,8 +43,11 @@ function App() {
   );
 
   async function populateWeatherData() {
-    const response = await fetch("api/v1/user/login", {
+    const response = await fetch("http://localhost:5112/api/v1/user/login", {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
     });
     if (response.ok) {
       const data = await response.json();

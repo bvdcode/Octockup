@@ -1,3 +1,4 @@
+
 namespace Octockup.Server
 {
     public class Program
@@ -11,10 +12,7 @@ namespace Octockup.Server
             var app = builder.Build();
             app.UseDefaultFiles();
             app.MapStaticAssets();
-            if (app.Environment.IsDevelopment())
-            {
-                app.MapOpenApi();
-            }
+            app.MapOpenApi();
             app.UseHttpsRedirection();
             app.UseAuthorization();
             app.MapControllers();

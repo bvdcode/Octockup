@@ -4,10 +4,10 @@ using Microsoft.AspNetCore.Mvc;
 namespace Octockup.Server.Controllers
 {
     [ApiController]
-    [Route("api/v1/[controller]")]
+    [Route("api/v1/user")]
     public class UserController(ILogger<UserController> _logger) : ControllerBase
     {
-        [HttpPost(Name = "login")]
+        [HttpPost("login")]
         public IActionResult Login([FromBody] LoginRequest request)
         {
             _logger.LogInformation("Login attempt for {Username}", request.Username);
