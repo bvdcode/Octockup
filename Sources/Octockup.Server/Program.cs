@@ -1,3 +1,4 @@
+using Octockup.Server.Extensions;
 
 namespace Octockup.Server
 {
@@ -7,14 +8,18 @@ namespace Octockup.Server
         {
             var builder = WebApplication.CreateBuilder(args);
             builder.Services.AddControllers();
-            builder.Services.AddOpenApi();
+            builder.Services
+                .AddOpenApi()
+                .SetupCors();
 
             var app = builder.Build();
-            app.UseDefaultFiles();
+            app.UseCors()
+                .UseDefaultFiles();
             app.MapStaticAssets();
             app.MapOpenApi();
-            app.UseHttpsRedirection();
-            app.UseAuthorization();
+            app.UseHttpsRedirection()
+                .UseAuthorization()
+                .UseAuthentication();
             app.MapControllers();
             app.MapFallbackToFile("/index.html");
             app.Run();

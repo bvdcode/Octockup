@@ -6,7 +6,7 @@ interface Forecast {
 }
 
 function App() {
-  const [forecasts, setForecasts] = useState<Forecast[]>();
+  const [forecasts, setForecasts] = useState<Forecast>();
 
   useEffect(() => {
     populateWeatherData();
@@ -25,11 +25,9 @@ function App() {
           </tr>
         </thead>
         <tbody>
-          {forecasts.map((forecast) => (
-            <tr key={forecast.token}>
-              <td>{forecast.token}</td>
-            </tr>
-          ))}
+          <tr key={forecasts.token}>
+            <td>{forecasts.token}</td>
+          </tr>
         </tbody>
       </table>
     );
@@ -43,11 +41,15 @@ function App() {
   );
 
   async function populateWeatherData() {
-    const response = await fetch("http://localhost:5112/api/v1/user/login", {
+    const response = await fetch("/api/v1/user/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        username: "admin",
+        passwordHash: "admin",
+      }),
     });
     if (response.ok) {
       const data = await response.json();
