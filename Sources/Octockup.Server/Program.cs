@@ -1,6 +1,6 @@
 using Microsoft.Extensions.FileProviders;
 
-namespace Link2Stream.Server
+namespace Octockup.Server
 {
     public class Program
     {

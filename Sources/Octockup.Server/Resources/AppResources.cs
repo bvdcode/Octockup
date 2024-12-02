@@ -1,4 +1,4 @@
-﻿namespace Link2Stream.Server.Resources
+﻿namespace Octockup.Server.Resources
 {
     public static class AppResources
     {

@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Link2Stream.Server.Resources;
+using Octockup.Server.Resources;
 
-namespace Link2Stream.Server.Controllers
+namespace Octockup.Server.Controllers
 {
     [ApiController]
     public class StaticFileController : ControllerBase

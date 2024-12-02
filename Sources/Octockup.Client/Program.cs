@@ -1,4 +1,4 @@
-﻿namespace Link2Stream.Client
+﻿namespace Octockup.Client
 {
     internal class Program
     {

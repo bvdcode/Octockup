@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.12.35506.116
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Link2Stream.Server", "Link2Stream.Server\Link2Stream.Server.csproj", "{9B076D62-532F-4B5B-BE41-9875176C7180}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Octockup.Server", "Octockup.Server\Octockup.Server.csproj", "{9B076D62-532F-4B5B-BE41-9875176C7180}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Link2Stream.Client", "Link2Stream.Client\Link2Stream.Client.csproj", "{E59657CC-0061-48EE-9CEB-17FFDC015714}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Octockup.Client", "Octockup.Client\Octockup.Client.csproj", "{E59657CC-0061-48EE-9CEB-17FFDC015714}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

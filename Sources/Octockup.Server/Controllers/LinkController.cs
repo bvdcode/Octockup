@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 
-namespace Link2Stream.Server.Controllers
+namespace Octockup.Server.Controllers
 {
     [ApiController]
     public class LinkController : ControllerBase
