@@ -21,3 +21,4 @@ jobs:
           context: Sources
           push: true
           tags: bvdcode/octockup:latest
+          file: Sources/Octockup.Server/Dockerfile
