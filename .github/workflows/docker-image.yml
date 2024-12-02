@@ -18,6 +18,6 @@ jobs:
       - name: build and push docker image to registry
         uses: docker/build-push-action@v5
         with:
-          context: Sources/Link2Stream.Server/
+          context: Sources/Octockup.Server/
           push: true
-          tags: bvdcode/link2stream:latest
+          tags: bvdcode/octockup:latest
