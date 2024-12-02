@@ -49,7 +49,9 @@ function App() {
   );
 
   async function populateWeatherData() {
-    const response = await fetch("api/v1/user/login");
+    const response = await fetch("api/v1/user/login", {
+      method: "POST",
+    });
     if (response.ok) {
       const data = await response.json();
       setForecasts(data);
