@@ -1,4 +1,6 @@
+using Octockup.Server.Database;
 using Octockup.Server.Extensions;
+using Microsoft.EntityFrameworkCore;
 using EasyExtensions.AspNetCore.Authorization.Extensions;
 
 namespace Octockup.Server
@@ -10,6 +12,7 @@ namespace Octockup.Server
             var builder = WebApplication.CreateBuilder(args);
             builder.Services.AddControllers();
             builder.Services
+                .AddDbContext<AppDbContext>(options => options.UseSqlite("Data Source=octockup.db"))
                 .SetupJwtKey(builder.Configuration)
                 .AddJwt(builder.Configuration)
                 .AddOpenApi()
