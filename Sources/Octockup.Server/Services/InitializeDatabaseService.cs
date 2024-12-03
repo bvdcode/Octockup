@@ -1,6 +1,7 @@
 ﻿using EasyExtensions.Helpers;
 using Octockup.Server.Database;
 using EasyExtensions.Extensions;
+using Octockup.Server.Database.Enums;
 
 namespace Octockup.Server.Services
 {
@@ -29,7 +30,9 @@ namespace Octockup.Server.Services
             context.Users.Add(new User
             {
                 Username = defaultUsername,
-                PasswordHash = hash
+                PasswordHash = hash,
+                Role = UserRole.Admin,
+                Email = defaultUsername + "@octockup.local"
             });
             await context.SaveChangesAsync(cancellationToken);
             logger.LogInformation("Default user '{defaultUsername}' created with password: '{Password}'",
