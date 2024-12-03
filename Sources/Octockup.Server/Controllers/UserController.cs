@@ -13,7 +13,7 @@ namespace Octockup.Server.Controllers
         {
             _logger.LogInformation("Login attempt for {Username}", request.Username);
             string random = StringHelpers.CreateRandomString(32);
-            return Ok(new LoginResponse(random));
+            return Ok(new LoginResponse(random, random));
         }
     }
 }
