@@ -1,4 +1,5 @@
 using Octockup.Server.Extensions;
+using EasyExtensions.AspNetCore.Authorization.Extensions;
 
 namespace Octockup.Server
 {
@@ -9,6 +10,8 @@ namespace Octockup.Server
             var builder = WebApplication.CreateBuilder(args);
             builder.Services.AddControllers();
             builder.Services
+                .SetupJwtKey(builder.Configuration)
+                .AddJwt(builder.Configuration)
                 .AddOpenApi()
                 .SetupCors();
 

@@ -1,9 +1,32 @@
 ﻿using EasyExtensions.AspNetCore.Extensions;
+using EasyExtensions.Helpers;
 
 namespace Octockup.Server.Extensions
 {
     public static class ServiceCollectionExtensions
     {
+        public static IServiceCollection SetupJwtKey(this IServiceCollection services, IConfiguration configuration)
+        {
+            const string filename = "jwt.key";
+            const int keySize = 64;
+            if (!File.Exists(filename))
+            {
+                string newKey = StringHelpers.CreateRandomString(keySize);
+                File.WriteAllText(filename, newKey);
+            }
+            string key = File.ReadAllText(filename);
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                throw new Exception("JWT key is empty");
+            }
+            if (key.Length != keySize)
+            {
+                throw new ArgumentOutOfRangeException($"JWT key is invalid: must be {keySize} characters long, actual length is {key.Length}");
+            }
+            configuration["JwtSettings:Key"] = key;
+            return services;
+        }
+
         public static IServiceCollection SetupCors(this IServiceCollection services)
         {
             string? corsOrigins = Environment.GetEnvironmentVariable("CORS_ORIGINS");
