@@ -13,7 +13,7 @@ namespace Octockup.Server
             var builder = WebApplication.CreateBuilder(args);
             builder.Services.AddControllers();
             builder.Services
-                .AddDbContext<AppDbContext>(options => options.UseSqlite("Data Source=octockup.db"))
+                .AddDbContext<AppDbContext>(options => options.UseSqlite("Data Source=octockup.sqlite"))
                 .SetupJwtKey(builder.Configuration)
                 .AddJwt(builder.Configuration)
                 .AddOpenApi()
