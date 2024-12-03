@@ -33,3 +33,6 @@ msbuild.log
 msbuild.err
 msbuild.wrn
 /Sources/Octockup.Server/jwt.key
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
