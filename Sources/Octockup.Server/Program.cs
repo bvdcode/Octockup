@@ -2,6 +2,7 @@ using Octockup.Server.Database;
 using Octockup.Server.Extensions;
 using Microsoft.EntityFrameworkCore;
 using EasyExtensions.AspNetCore.Authorization.Extensions;
+using EasyExtensions.EntityFrameworkCore.Extensions;
 
 namespace Octockup.Server
 {
@@ -28,6 +29,7 @@ namespace Octockup.Server
                 .UseAuthentication();
             app.MapControllers();
             app.MapFallbackToFile("/index.html");
+            app.ApplyMigrations<AppDbContext>();
             app.Run();
         }
     }
