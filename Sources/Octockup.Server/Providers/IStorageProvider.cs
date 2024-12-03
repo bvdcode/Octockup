@@ -2,5 +2,6 @@
 {
     public interface IStorageProvider
     {
+        IEnumerable<RemoteFileInfo> GetAllFiles();
     }
 }
