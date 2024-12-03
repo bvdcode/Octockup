@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using Octockup.Server.Database.Enums;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Octockup.Server.Database
 {
@@ -11,7 +12,13 @@ namespace Octockup.Server.Database
         [Column("username")]
         public string Username { get; set; } = null!;
 
-        [Column("password_hash")]
+        [Column("email")]
+        public string Email { get; set; } = null!;
+
+        [Column("role")]
+        public UserRole Role { get; set; }
+
+        [Column("password_hash_sha512")]
         public string PasswordHash { get; set; } = null!;
     }
 }
