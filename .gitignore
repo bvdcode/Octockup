@@ -36,3 +36,4 @@ msbuild.wrn
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+*.key
