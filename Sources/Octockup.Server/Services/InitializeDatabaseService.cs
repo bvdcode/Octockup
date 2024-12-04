@@ -1,6 +1,7 @@
 ﻿using EasyExtensions.Helpers;
 using Octockup.Server.Database;
 using EasyExtensions.Extensions;
+using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Database.Enums;
 
 namespace Octockup.Server.Services
@@ -10,6 +11,24 @@ namespace Octockup.Server.Services
         public async Task StartAsync(CancellationToken cancellationToken)
         {
             await CheckDefaultUserAsync(cancellationToken);
+            await SetupConcurrencyAsync(cancellationToken);
+        }
+
+        private async Task SetupConcurrencyAsync(CancellationToken cancellationToken)
+        {
+            const string query = "PRAGMA journal_mode=WAL;";
+            using var scope = _scopeFactory.CreateScope();
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<InitializeDatabaseService>>();
+            using var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync(query, cancellationToken);
+                logger.LogInformation("Database concurrency mode set to WAL.");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to set database concurrency mode to WAL.");
+            }
         }
 
         private async Task CheckDefaultUserAsync(CancellationToken cancellationToken)
