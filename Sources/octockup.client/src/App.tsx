@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import "./App.css";
 
 interface Forecast {
-  token: string;
+  accessToken: string;
+  refreshToken: string;
 }
 
 function App() {
@@ -25,8 +26,8 @@ function App() {
           </tr>
         </thead>
         <tbody>
-          <tr key={forecasts.token}>
-            <td>{forecasts.token}</td>
+          <tr key={forecasts.accessToken}>
+            <td>{forecasts.accessToken}</td>
           </tr>
         </tbody>
       </table>
