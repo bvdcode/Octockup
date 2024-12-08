@@ -5,9 +5,10 @@ EXPOSE 8080
 
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS with-node
 RUN apt-get update
-RUN apt-get install curl
+RUN apt-get install curl git-lfs
 RUN curl -sL https://deb.nodesource.com/setup_20.x | bash
 RUN apt-get -y install nodejs
+RUN git lfs install
 
 FROM with-node AS build
 ARG BUILD_CONFIGURATION=Release
@@ -17,6 +18,7 @@ COPY ["octockup.client/octockup.client.esproj", "octockup.client/"]
 RUN dotnet restore "./Octockup.Server/Octockup.Server.csproj"
 COPY . .
 WORKDIR "/src/Octockup.Server"
+RUN git lfs pull
 RUN dotnet build "./Octockup.Server.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
