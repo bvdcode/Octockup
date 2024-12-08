@@ -5,9 +5,8 @@ EXPOSE 8080
 
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS with-node
 RUN apt-get update
-RUN apt-get install curl git-lfs
 RUN curl -sL https://deb.nodesource.com/setup_20.x | bash
-RUN apt-get -y install nodejs
+RUN apt-get -y install nodejs curl git-lfs
 RUN git lfs install
 
 FROM with-node AS build
