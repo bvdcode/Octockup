@@ -8,7 +8,7 @@ namespace Octockup.Server.Controllers
     [Route("api/v1/[controller]")]
     public class UserController(ILogger<UserController> _logger) : ControllerBase
     {
-        [HttpPost("login")]
+        [HttpPost]
         public IActionResult Login([FromBody] LoginRequest request)
         {
             _logger.LogInformation("Login attempt for {Username}", request.Username);
