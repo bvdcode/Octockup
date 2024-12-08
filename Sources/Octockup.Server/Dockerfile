@@ -12,12 +12,12 @@ RUN git lfs install
 FROM with-node AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
+RUN git lfs pull
 COPY ["Octockup.Server/Octockup.Server.csproj", "Octockup.Server/"]
 COPY ["octockup.client/octockup.client.esproj", "octockup.client/"]
 RUN dotnet restore "./Octockup.Server/Octockup.Server.csproj"
 COPY . .
 WORKDIR "/src/Octockup.Server"
-RUN git lfs pull
 RUN dotnet build "./Octockup.Server.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
