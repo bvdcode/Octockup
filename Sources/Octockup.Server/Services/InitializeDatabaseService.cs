@@ -44,8 +44,8 @@ namespace Octockup.Server.Services
             }
 
             logger.LogWarning("No users found in the database, seeding the database with the default user.");
-            string password = StringHelpers.CreateRandomString(16);
-            string hash = password.SHA512();
+            const string defaultPassword = "admin";
+            string hash = defaultPassword.SHA512();
             context.Users.Add(new User
             {
                 Username = defaultUsername,
@@ -55,7 +55,7 @@ namespace Octockup.Server.Services
             });
             await context.SaveChangesAsync(cancellationToken);
             logger.LogInformation("Default user '{defaultUsername}' created with password: '{Password}'",
-                defaultUsername, password);
+                defaultUsername, defaultPassword);
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
