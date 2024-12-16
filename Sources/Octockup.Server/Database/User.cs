@@ -20,5 +20,7 @@ namespace Octockup.Server.Database
 
         [Column("password_hash_sha512")]
         public string PasswordHash { get; set; } = null!;
+
+        public ICollection<Session> Sessions { get; set; } = [];
     }
 }
