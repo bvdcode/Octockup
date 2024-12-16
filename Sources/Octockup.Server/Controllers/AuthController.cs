@@ -8,10 +8,10 @@ using EasyExtensions.AspNetCore.Authorization.Services;
 namespace Octockup.Server.Controllers
 {
     [ApiController]
-    [Route("api/v1/[controller]")]
-    public class UserController(ILogger<UserController> _logger, ITokenProvider _tokenProvider) : ControllerBase
+    [Route("/api/v1/[controller]")]
+    public class AuthController(ILogger<AuthController> _logger, ITokenProvider _tokenProvider) : ControllerBase
     {
-        [HttpPost]
+        [HttpPost(nameof(Login))]
         public IActionResult Login([FromBody] LoginRequest request)
         {
             _logger.LogInformation("Login attempt for {Username}", request.Username);
