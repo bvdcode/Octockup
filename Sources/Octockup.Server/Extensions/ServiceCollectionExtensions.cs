@@ -1,7 +1,7 @@
-﻿using EasyExtensions.AspNetCore.Extensions;
-using EasyExtensions.Helpers;
-using Microsoft.EntityFrameworkCore;
+﻿using EasyExtensions.Helpers;
 using Octockup.Server.Helpers;
+using Microsoft.EntityFrameworkCore;
+using EasyExtensions.AspNetCore.Extensions;
 
 namespace Octockup.Server.Extensions
 {
