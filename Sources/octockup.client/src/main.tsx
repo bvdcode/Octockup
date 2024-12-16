@@ -1,10 +1,29 @@
 import "./index.css";
-import App from "./App.tsx";
+import {
+  BrowserRouter as Router,
+  Route,
+  Routes,
+  Navigate,
+} from "react-router-dom";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { HomePage, LoginPage } from "./pages";
+
+const isAuthenticated = () => {
+  // Здесь должна быть логика проверки авторизации
+  return localStorage.getItem("authToken") !== null;
+};
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <Router>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/"
+          element={isAuthenticated() ? <HomePage /> : <Navigate to="/login" />}
+        />
+      </Routes>
+    </Router>
   </StrictMode>
 );
