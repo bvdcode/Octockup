@@ -1,30 +1,33 @@
-import { Navigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { login } from "../api/api";
 import { LoginForm } from "../components";
 import useSignIn from "react-auth-kit/hooks/useSignIn";
+import { toast } from "react-toastify";
 
 const LoginPage: React.FC = () => {
   const signIn = useSignIn();
+  const navigate = useNavigate();
 
   const onLogin = (email: string, password: string) => {
     login(email, password).then((response) => {
-      if (
-        signIn({
-          auth: {
-            token: response.accessToken,
-            type: "Bearer",
-          },
-          refresh: response.refreshToken,
-          userState: {
-            name: "React User",
-            uid: 123456,
-          },
-        })
-      ) {
-        // redirect to home page
-        return <Navigate to="/" />;
+      const signedIn = signIn({
+        auth: {
+          token: response.accessToken,
+          type: "Bearer",
+          
+        },
+        refresh: response.refreshToken,
+        
+        userState: {
+          name: "React User",
+          uid: 123456,
+        },
+      });
+      console.log("signedIn :>> ", signedIn);
+      if (signedIn) {
+        navigate("/");
       } else {
-        alert("Login failed");
+        toast.error("Login failed");
       }
     });
   };
