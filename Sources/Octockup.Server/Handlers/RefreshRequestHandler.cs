@@ -1,37 +1,28 @@
 ﻿using MediatR;
+using AutoMapper;
 using Octockup.Server.Models;
 using Octockup.Server.Database;
+using EasyExtensions.EntityFrameworkCore.Exceptions;
+using EasyExtensions.AspNetCore.Authorization.Services;
 
 namespace Octockup.Server.Handlers
 {
-    public class RefreshRequestHandler : IRequestHandler<RefreshRequest, AuthResponse>
+    public class RefreshRequestHandler(ITokenProvider _tokenProvider, IMediator _mediator,
+        AppDbContext _dbContext) : IRequestHandler<RefreshRequest, AuthResponse>
     {
-        public Task<AuthResponse> Handle(RefreshRequest request, CancellationToken cancellationToken)
+        public async Task<AuthResponse> Handle(RefreshRequest request, CancellationToken cancellationToken)
         {
             bool isValid = _tokenProvider.ValidateToken(request.RefreshToken);
             if (!isValid)
             {
-                
-                return Unauthorized();
+                throw new WebApiException(System.Net.HttpStatusCode.Unauthorized, nameof(Session), "Invalid refresh token");
             }
-            var foundToken = _dbContext.Sessions.FirstOrDefault(x => x.RefreshToken == request.RefreshToken);
-            if (foundToken is null)
-            {
-                return NotFound();
-            }
+            var foundToken = _dbContext.Sessions.FirstOrDefault(x => x.RefreshToken == request.RefreshToken)
+                ?? throw new WebApiException(System.Net.HttpStatusCode.NotFound, nameof(Session), "Session not found");
             _dbContext.Sessions.Remove(foundToken);
-            await _dbContext.SaveChangesAsync();
-            // JwtSettingsRefreshLifetimeHours
-            int hours = 720;
-            string token = _tokenProvider.CreateToken(TimeSpan.FromHours(hours));
-            Session session = new()
-            {
-                UserId = foundToken.UserId,
-                RefreshToken = _tokenProvider.CreateToken(x => x.Add(ClaimTypes.Name, "refresh"))
-            };
-            _dbContext.Sessions.Add(session);
-            await _dbContext.SaveChangesAsync();
-            return Ok(new AuthResponse(token, session.RefreshToken));
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            CreateTokenRequest createTokenRequest = new(foundToken.User);
+            return await _mediator.Send(createTokenRequest, cancellationToken);
         }
     }
 }
