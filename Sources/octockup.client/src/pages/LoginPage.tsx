@@ -25,6 +25,7 @@ const LoginPage: React.FC = () => {
           },
         });
         if (signedIn) {
+          toast.success("Login successful");
           navigate("/");
         } else {
           toast.error("Login failed");

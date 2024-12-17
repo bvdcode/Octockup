@@ -11,7 +11,7 @@ namespace Octockup.Server.Handlers
     {
         public async Task<AuthResponse> Handle(LoginRequest request, CancellationToken cancellationToken)
         {
-            var foundUser = _dbContext.Users.FirstOrDefault(x => x.Username.Equals(request.Username, StringComparison.CurrentCultureIgnoreCase)) 
+            var foundUser = _dbContext.Users.FirstOrDefault(x => x.Username.Equals(request.Username)) 
                 ?? throw new WebApiException(HttpStatusCode.NotFound, nameof(User), "User not found");
             if (!foundUser.PasswordHash.Equals(request.PasswordHash))
             {
