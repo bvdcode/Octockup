@@ -1,6 +1,5 @@
 import SHA512 from "crypto-js/sha512";
 import AxiosClient from "./AxiosClient";
-import { API_BASE_URL } from "../config";
 import { LoginRequest, AuthResponse } from "./types";
 
 /**
@@ -20,7 +19,7 @@ export const login = async (
     passwordHash: SHA512(password).toString(),
   } as LoginRequest;
   const response = await AxiosClient.getInstance().post<AuthResponse>(
-    `${API_BASE_URL}/auth/login`,
+    "/auth/login",
     request
   );
   return response.data;
@@ -37,7 +36,7 @@ export const refreshAccessToken = async (
   refreshToken: string
 ): Promise<AuthResponse> => {
   const response = await AxiosClient.getInstance().post<AuthResponse>(
-    `${API_BASE_URL}/auth/refresh`,
+    "/auth/refresh",
     { refreshToken }
   );
   return response.data;
@@ -49,8 +48,6 @@ export const refreshAccessToken = async (
  * @returns A promise that resolves to `true` if the user is authenticated, and `false` otherwise.
  */
 export const checkAuth = async (): Promise<boolean> => {
-  const response = await AxiosClient.getInstance().get(
-    `${API_BASE_URL}/auth/check`
-  );
+  const response = await AxiosClient.getInstance().get("/auth/check");
   return response.status === 200;
 };
