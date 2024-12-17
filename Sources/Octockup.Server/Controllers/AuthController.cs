@@ -60,10 +60,8 @@ namespace Octockup.Server.Controllers
 
         [Authorize]
         [HttpGet(nameof(Check))]
-        public async Task<IActionResult> Check()
+        public IActionResult Check()
         {
-            await Task.Delay(1000);
-            _logger.LogInformation("User {Username} checked in.", User.Identity.Name);
             return Ok();
         }
     }

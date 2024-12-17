@@ -1,7 +1,7 @@
 import axios from "axios";
-import { EventEmitter } from "events";
 import { toast } from "react-toastify";
 import { API_BASE_URL } from "../config";
+import EventEmitter from "../handlers/EventEmitter";
 
 class AxiosClient {
   private static instance = axios.create({
