@@ -27,8 +27,8 @@ namespace Octockup.Server
             app.MapStaticAssets();
             app.MapOpenApi();
             app.UseHttpsRedirection()
-                .UseAuthorization()
-                .UseAuthentication();
+                .UseAuthentication()
+                .UseAuthorization();
             app.MapControllers();
             app.MapFallbackToFile("/index.html");
             app.ApplyMigrations<AppDbContext>();

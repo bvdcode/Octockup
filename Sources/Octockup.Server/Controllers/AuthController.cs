@@ -17,7 +17,6 @@ namespace Octockup.Server.Controllers
         public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
         {
             _logger.LogInformation("Refresh attempt for {RefreshToken}", request.RefreshToken);
-            int userId = User.GetId();
             bool isValid = _tokenProvider.ValidateToken(request.RefreshToken);
             if (!isValid)
             {
@@ -35,7 +34,7 @@ namespace Octockup.Server.Controllers
             string token = _tokenProvider.CreateToken(TimeSpan.FromHours(hours));
             Session session = new()
             {
-                UserId = 1,
+                UserId = foundToken.UserId,
                 RefreshToken = _tokenProvider.CreateToken(x => x.Add(ClaimTypes.Name, "refresh"))
             };
             return Ok(new TokenResponse(token, session.RefreshToken));
