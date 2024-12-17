@@ -1,7 +1,7 @@
 import axios from "axios";
+import { EventEmitter } from "events";
 import { toast } from "react-toastify";
 import { API_BASE_URL } from "../config";
-import useSignOut from "react-auth-kit/hooks/useSignOut";
 
 class AxiosClient {
   private static instance = axios.create({
@@ -10,6 +10,8 @@ class AxiosClient {
       "Content-Type": "application/json",
     },
   });
+
+  static events = new EventEmitter();
 
   static setAuthHeader(header: string | null) {
     if (header) {
@@ -33,8 +35,7 @@ AxiosClient.getInstance().interceptors.response.use(
       AxiosClient.getInstance().defaults.headers.common["Authorization"]
     ) {
       toast.error("Session expired. Please sign in again.");
-      const signOut = useSignOut();
-      signOut();
+      AxiosClient.events.emit("logout");
     }
     return Promise.reject(error);
   }

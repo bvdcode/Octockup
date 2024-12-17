@@ -3,6 +3,7 @@ using Octockup.Server.Extensions;
 using EasyExtensions.EntityFrameworkCore.Extensions;
 using EasyExtensions.AspNetCore.Authorization.Extensions;
 using Octockup.Server.Services;
+using System.Text.Json;
 
 namespace Octockup.Server
 {
@@ -22,7 +23,7 @@ namespace Octockup.Server
 
             var app = builder.Build();
             app.UseCors()
-                .UseDefaultFiles();
+                    .UseDefaultFiles();
             app.MapStaticAssets();
             app.MapOpenApi();
             app.UseHttpsRedirection()

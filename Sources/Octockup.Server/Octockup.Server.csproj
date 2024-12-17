@@ -12,9 +12,9 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="EasyExtensions.AspNetCore" Version="0.1.86" />
-		<PackageReference Include="EasyExtensions.AspNetCore.Authorization" Version="0.1.86" />
-		<PackageReference Include="EasyExtensions.EntityFrameworkCore" Version="0.1.86" />
+		<PackageReference Include="EasyExtensions.AspNetCore" Version="0.1.87" />
+		<PackageReference Include="EasyExtensions.AspNetCore.Authorization" Version="0.1.87" />
+		<PackageReference Include="EasyExtensions.EntityFrameworkCore" Version="0.1.87" />
 		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.0" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.0">

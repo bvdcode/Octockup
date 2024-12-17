@@ -9,27 +9,30 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
 
   const onLogin = (email: string, password: string) => {
-    login(email, password).then((response) => {
-      console.log('response :>> ', response);
-      const signedIn = signIn({
-        auth: {
-          token: response.accessToken,
-          type: "Bearer",
-        },
-        refresh: response.refreshToken,
+    login(email, password)
+      .then((response) => {
+        console.log("response :>> ", response);
+        const signedIn = signIn({
+          auth: {
+            token: response.accessToken,
+            type: "Bearer",
+          },
+          refresh: response.refreshToken,
 
-        userState: {
-          name: "React User",
-          id: 1,
-        },
+          userState: {
+            name: "React User",
+            id: 1,
+          },
+        });
+        if (signedIn) {
+          navigate("/");
+        } else {
+          toast.error("Login failed");
+        }
+      })
+      .catch((error) => {
+        toast.error("Login failed: " + error.message);
       });
-      console.log("signedIn :>> ", signedIn);
-      if (signedIn) {
-        navigate("/");
-      } else {
-        toast.error("Login failed");
-      }
-    });
   };
   return <LoginForm onLogin={onLogin} />;
 };

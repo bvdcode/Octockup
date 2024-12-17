@@ -6,5 +6,6 @@ namespace Octockup.Server.Database
     public class AppDbContext(DbContextOptions options) : AuditedDbContext(options)
     {
         public DbSet<User> Users { get; set; } = null!;
+        public DbSet<Session> Sessions { get; set; } = null!;
     }
 }
