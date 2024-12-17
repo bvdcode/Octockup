@@ -10,7 +10,6 @@ import { createRoot } from "react-dom/client";
 import { HomePage, LoginPage } from "./pages";
 
 const isAuthenticated = () => {
-  // Здесь должна быть логика проверки авторизации
   return localStorage.getItem("authToken") !== null;
 };
 
@@ -20,7 +19,7 @@ createRoot(document.getElementById("root")!).render(
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route
-          path="/"
+          path="/*"
           element={isAuthenticated() ? <HomePage /> : <Navigate to="/login" />}
         />
       </Routes>
