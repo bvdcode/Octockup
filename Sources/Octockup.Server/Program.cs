@@ -1,9 +1,8 @@
 using Octockup.Server.Database;
+using Octockup.Server.Services;
 using Octockup.Server.Extensions;
 using EasyExtensions.EntityFrameworkCore.Extensions;
 using EasyExtensions.AspNetCore.Authorization.Extensions;
-using Octockup.Server.Services;
-using System.Text.Json;
 
 namespace Octockup.Server
 {
@@ -14,6 +13,7 @@ namespace Octockup.Server
             var builder = WebApplication.CreateBuilder(args);
             builder.Services.AddControllers();
             builder.Services
+                .AddMediatR(x => x.RegisterServicesFromAssemblyContaining<Program>())
                 .AddHostedService<InitializeDatabaseService>()
                 .AddDbContext<AppDbContext>(builder.Configuration)
                 .SetupJwtKey(builder.Configuration)

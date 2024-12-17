@@ -1,4 +1,5 @@
-﻿using EasyExtensions;
+﻿using MediatR;
+using EasyExtensions;
 using Octockup.Server.Models;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
@@ -11,7 +12,7 @@ namespace Octockup.Server.Controllers
     [ApiController]
     [Route("/api/v1/[controller]")]
     public class AuthController(ILogger<AuthController> _logger, ITokenProvider _tokenProvider,
-        AppDbContext _dbContext) : ControllerBase
+        AppDbContext _dbContext, IMediator _mediator) : ControllerBase
     {
         [HttpPost(nameof(Refresh))]
         public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
@@ -54,6 +55,8 @@ namespace Octockup.Server.Controllers
                 UserId = 1,
                 RefreshToken = _tokenProvider.CreateToken(x => x.Add(ClaimTypes.Name, "refresh"))
             };
+            _dbContext.Sessions.Add(session);
+            await _dbContext.SaveChangesAsync();
             return Ok(new TokenResponse(token, session.RefreshToken));
         }
 
