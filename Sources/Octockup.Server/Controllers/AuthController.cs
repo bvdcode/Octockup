@@ -38,6 +38,8 @@ namespace Octockup.Server.Controllers
                 UserId = foundToken.UserId,
                 RefreshToken = _tokenProvider.CreateToken(x => x.Add(ClaimTypes.Name, "refresh"))
             };
+            _dbContext.Sessions.Add(session);
+            await _dbContext.SaveChangesAsync();
             return Ok(new TokenResponse(token, session.RefreshToken));
         }
 
