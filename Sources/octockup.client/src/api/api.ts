@@ -1,4 +1,4 @@
-import ApiClient from "./apiClient";
+import AxiosClient from "./AxiosClient";
 import SHA512 from "crypto-js/sha512";
 import { API_BASE_URL } from "../config";
 import { LoginRequest, TokenResponse } from "./types";
@@ -11,7 +11,7 @@ import { LoginRequest, TokenResponse } from "./types";
  * @returns A promise that resolves to a `LoginResponse` object if the login is successful.
  * @throws An error if the login fails.
  */
-export const getTokens = async (
+export const login = async (
   username: string,
   password: string
 ): Promise<TokenResponse> => {
@@ -19,7 +19,7 @@ export const getTokens = async (
     username: username,
     passwordHash: SHA512(password).toString(),
   } as LoginRequest;
-  const response = await ApiClient.getInstance().post<TokenResponse>(
+  const response = await AxiosClient.getInstance().post<TokenResponse>(
     `${API_BASE_URL}/auth/login`,
     request
   );
@@ -36,7 +36,7 @@ export const getTokens = async (
 export const refreshAccessToken = async (
   refreshToken: string
 ): Promise<TokenResponse> => {
-  const response = await ApiClient.getInstance().post<TokenResponse>(
+  const response = await AxiosClient.getInstance().post<TokenResponse>(
     `${API_BASE_URL}/auth/refresh`,
     { refreshToken }
   );
@@ -49,7 +49,7 @@ export const refreshAccessToken = async (
  * @returns A promise that resolves to `true` if the user is authenticated, and `false` otherwise.
  */
 export const checkAuth = async (): Promise<boolean> => {
-  const response = await ApiClient.getInstance().get(
+  const response = await AxiosClient.getInstance().get(
     `${API_BASE_URL}/auth/check`
   );
   return response.status === 200;

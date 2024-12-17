@@ -1,7 +1,7 @@
 import axios from "axios";
 import { API_BASE_URL } from "../config";
 
-class ApiClient {
+class AxiosClient {
   private static instance = axios.create({
     baseURL: API_BASE_URL,
     headers: {
@@ -24,4 +24,4 @@ class ApiClient {
   }
 }
 
-export default ApiClient;
+export default AxiosClient;
