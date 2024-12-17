@@ -1,8 +1,8 @@
-import { useNavigate } from "react-router-dom";
 import { login } from "../api/api";
-import { LoginForm } from "../components";
-import useSignIn from "react-auth-kit/hooks/useSignIn";
 import { toast } from "react-toastify";
+import { LoginForm } from "../components";
+import { useNavigate } from "react-router-dom";
+import useSignIn from "react-auth-kit/hooks/useSignIn";
 
 const LoginPage: React.FC = () => {
   const signIn = useSignIn();
@@ -11,7 +11,6 @@ const LoginPage: React.FC = () => {
   const onLogin = (email: string, password: string) => {
     login(email, password)
       .then((response) => {
-        console.log("response :>> ", response);
         const signedIn = signIn({
           auth: {
             token: response.accessToken,
