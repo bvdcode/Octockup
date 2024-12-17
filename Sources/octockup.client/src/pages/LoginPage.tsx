@@ -10,17 +10,17 @@ const LoginPage: React.FC = () => {
 
   const onLogin = (email: string, password: string) => {
     login(email, password).then((response) => {
+      console.log('response :>> ', response);
       const signedIn = signIn({
         auth: {
           token: response.accessToken,
           type: "Bearer",
-          
         },
         refresh: response.refreshToken,
-        
+
         userState: {
           name: "React User",
-          uid: 123456,
+          id: 1,
         },
       });
       console.log("signedIn :>> ", signedIn);

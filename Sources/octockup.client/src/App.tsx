@@ -1,31 +1,22 @@
 import "./App.css";
+import RoutesComponent from "./Routes";
 import IUserData from "./auth/IUserData";
 import AuthProvider from "react-auth-kit";
-import { HomePage, LoginPage } from "./pages";
-import { ToastContainer } from "react-toastify";
 import { refresh } from "./auth/AuthKitMethods";
+import { ToastContainer } from "react-toastify";
 import createStore from "react-auth-kit/createStore";
-import AuthOutlet from "@auth-kit/react-router/AuthOutlet";
-import { Route, Routes, BrowserRouter } from "react-router-dom";
-
-const store = createStore<IUserData>({
-  authName: "OCTOCKUP_AUTH",
-  authType: "localstorage",
-  refresh: refresh,
-});
 
 function App() {
+  const store = createStore<IUserData>({
+    authName: "_octockup_auth",
+    authType: "localstorage",
+    refresh: refresh,
+  });
+
   return (
     <AuthProvider store={store}>
       <ToastContainer />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route element={<AuthOutlet fallbackPath="/login" />}>
-            <Route path="/*" element={<HomePage />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+      <RoutesComponent />
     </AuthProvider>
   );
 }

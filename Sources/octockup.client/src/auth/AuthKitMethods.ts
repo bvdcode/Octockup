@@ -4,6 +4,7 @@ import createRefresh from "react-auth-kit/createRefresh";
 
 export const refresh = createRefresh<IUserData>({
   refreshApiCallback: async (token) => {
+    console.log("calling refresh token");
     if (!token.refreshToken) {
       return {
         isSuccess: false,
@@ -14,11 +15,9 @@ export const refresh = createRefresh<IUserData>({
     const tokens = await refreshAccessToken(token.refreshToken);
     return {
       isSuccess: true,
-      newAuthTokenExpireIn: 10,
-      newRefreshTokenExpiresIn: 60,
       newAuthToken: tokens.accessToken,
       newRefreshToken: tokens.refreshToken,
     };
   },
-  interval: 60,
+  interval: 5,
 });
