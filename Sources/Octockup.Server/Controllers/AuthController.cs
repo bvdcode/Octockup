@@ -17,7 +17,7 @@ namespace Octockup.Server.Controllers
         {
             await Task.Delay(1000);
             _logger.LogInformation("Refresh attempt for {RefreshToken}", request.RefreshToken);
-            string token = _tokenProvider.CreateToken(x => x.Add(ClaimTypes.Name, "refresg"));
+            string token = _tokenProvider.CreateToken(x => x.Add(ClaimTypes.Name, "refresh"));
             Session session = new()
             {
                 UserId = 1,

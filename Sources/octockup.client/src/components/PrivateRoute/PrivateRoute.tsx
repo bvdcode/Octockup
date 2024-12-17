@@ -1,28 +1,19 @@
+import React from "react";
 import { Navigate } from "react-router-dom";
-import React, { useEffect, useState } from "react";
-import { isAuthenticated } from "../../services/authService";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface PrivateRouteProps {
   children: JSX.Element;
 }
 
 const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
-  const [auth, setAuth] = useState<boolean | null>(null);
+  const { isAuth } = useAuth();
 
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      const authStatus = await isAuthenticated();
-      setAuth(authStatus);
-    };
-
-    checkAuthStatus();
-  }, []);
-
-  if (auth === null) {
+  if (isAuth === null) {
     return <div>Loading...</div>;
   }
 
-  return auth ? children : <Navigate to="/login" />;
+  return isAuth ? children : <Navigate to="/login" />;
 };
 
 export default PrivateRoute;
