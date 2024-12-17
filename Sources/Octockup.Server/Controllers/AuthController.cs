@@ -17,7 +17,6 @@ namespace Octockup.Server.Controllers
         [HttpPost(nameof(Refresh))]
         public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
         {
-            _logger.LogInformation("Refresh attempt for {RefreshToken}", request.RefreshToken);
             bool isValid = _tokenProvider.ValidateToken(request.RefreshToken);
             if (!isValid)
             {
