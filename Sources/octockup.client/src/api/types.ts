@@ -3,7 +3,7 @@ export interface LoginRequest {
   passwordHash: string;
 }
 
-export interface LoginResponse {
+export interface TokenResponse {
   accessToken: string;
   refreshToken: string;
 }
