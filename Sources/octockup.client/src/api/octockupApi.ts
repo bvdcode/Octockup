@@ -11,7 +11,7 @@ import { LoginRequest, TokenResponse } from "./types";
  * @returns A promise that resolves to a `LoginResponse` object if the login is successful.
  * @throws An error if the login fails.
  */
-export const login = async (
+export const getTokens = async (
   username: string,
   password: string
 ): Promise<TokenResponse> => {

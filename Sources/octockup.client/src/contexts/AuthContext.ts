@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { handleLogin, refreshToken, isAuthenticated } from "../services/authService";
+import ApiClient from "../api/apiClient";
+import { getTokens } from "../api/octockupApi";
+import { LOCAL_STORAGE_REFRESH_TOKEN_KEY } from "../config";
+import { createContext, useContext, useState, ReactNode } from "react";
 
 interface AuthContextProps {
   isAuth: boolean;
@@ -9,26 +11,38 @@ interface AuthContextProps {
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAuth, setIsAuth] = useState<boolean>(false);
+export const useAuth = (): AuthContextProps => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const success = await refreshToken();
-      setIsAuth(success);
-    };
+interface AuthProviderProps {
+  children: ReactNode;
+}
 
-    checkAuth();
-  }, []);
+export const AuthProvider = ({ children }: AuthProviderProps) => {
+  const [isAuth, setIsAuth] = useState(false);
 
-  const login = async (username: string, password: string): Promise<boolean> => {
-    const success = await handleLogin(username, password);
-    setIsAuth(success);
-    return success;
+  const login = async (
+    username: string,
+    password: string
+  ): Promise<boolean> => {
+    const tokens = await getTokens(username, password);
+    if (!tokens.accessToken) {
+      return false;
+    }
+    localStorage.setItem(LOCAL_STORAGE_REFRESH_TOKEN_KEY, tokens.refreshToken);
+    ApiClient.setAccessToken(tokens.accessToken);
+    setIsAuth(true);
+    return true;
   };
 
   const logout = () => {
-    localStorage.removeItem("refreshToken");
+    localStorage.setItem(LOCAL_STORAGE_REFRESH_TOKEN_KEY, "");
+    ApiClient.setAccessToken("");
     setIsAuth(false);
   };
 
@@ -37,12 +51,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = (): AuthContextProps => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
 };
