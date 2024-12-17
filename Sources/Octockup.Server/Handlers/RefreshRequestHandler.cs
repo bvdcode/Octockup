@@ -1,5 +1,4 @@
 ﻿using MediatR;
-using AutoMapper;
 using Octockup.Server.Models;
 using Octockup.Server.Database;
 using EasyExtensions.EntityFrameworkCore.Exceptions;

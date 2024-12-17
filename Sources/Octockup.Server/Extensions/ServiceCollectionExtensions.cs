@@ -13,7 +13,10 @@ namespace Octockup.Server.Extensions
             string databaseFile = configuration["DatabaseFile"]
                 ?? throw new ArgumentNullException(nameof(configuration), "DatabaseFile is not set in configuration");
             string filename = FileSystemHelpers.GetFilePath(databaseFile);
-            return services.AddDbContext<TContext>(options => options.UseSqlite("Data Source=" + databaseFile));
+            return services
+                .AddDbContext<TContext>(options => options
+                .UseSqlite("Data Source=" + databaseFile)
+                .UseLazyLoadingProxies());
         }
 
         public static IServiceCollection SetupJwtKey(this IServiceCollection services, IConfiguration configuration)
