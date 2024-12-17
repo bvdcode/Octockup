@@ -16,7 +16,7 @@ const HomePage: React.FC = () => {
   ];
 
   return (
-    <div className={styles.container}>
+    <div className={styles.homePageContainer}>
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/profile" element={<Profile />} />
