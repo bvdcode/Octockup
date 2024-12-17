@@ -6,7 +6,7 @@ import { ToastContainer } from "react-toastify";
 import { refresh } from "./auth/AuthKitMethods";
 import createStore from "react-auth-kit/createStore";
 import AuthOutlet from "@auth-kit/react-router/AuthOutlet";
-import { Route, Routes, BrowserRouter as Router } from "react-router-dom";
+import { Route, Routes, BrowserRouter } from "react-router-dom";
 
 const store = createStore<IUserData>({
   authName: "OCTOCKUP_AUTH",
@@ -17,15 +17,15 @@ const store = createStore<IUserData>({
 function App() {
   return (
     <AuthProvider store={store}>
-      <Router>
-        <ToastContainer />
+      <ToastContainer />
+      <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route element={<AuthOutlet fallbackPath="/login" />}>
             <Route path="/*" element={<HomePage />} />
           </Route>
         </Routes>
-      </Router>
+      </BrowserRouter>
     </AuthProvider>
   );
 }
