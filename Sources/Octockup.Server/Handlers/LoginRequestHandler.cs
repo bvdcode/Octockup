@@ -1,10 +1,11 @@
-﻿using MediatR;
+﻿using EasyExtensions.AspNetCore.Authorization.Services;
+using MediatR;
 using Octockup.Server.Database;
 using Octockup.Server.Models;
 
 namespace Octockup.Server.Handlers
 {
-    public class LoginRequestHandler(ILogger<LoginRequestHandler> _logger) : IRequestHandler<LoginRequest, AuthResponse>
+    public class LoginRequestHandler(ILogger<LoginRequestHandler> _logger, ITokenProvider _tokenProvider) : IRequestHandler<LoginRequest, AuthResponse>
     {
         public Task<AuthResponse> Handle(LoginRequest request, CancellationToken cancellationToken)
         {

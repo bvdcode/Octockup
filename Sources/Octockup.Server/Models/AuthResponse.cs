@@ -1,4 +1,6 @@
-﻿namespace Octockup.Server.Models
+﻿using Octockup.Server.Models.Dto;
+
+namespace Octockup.Server.Models
 {
-    public record AuthResponse(string AccessToken, string RefreshToken);
+    public record AuthResponse(string AccessToken, string RefreshToken, UserDto User);
 }

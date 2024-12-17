@@ -1,7 +1,7 @@
 import AxiosClient from "./AxiosClient";
 import SHA512 from "crypto-js/sha512";
 import { API_BASE_URL } from "../config";
-import { LoginRequest, TokenResponse } from "./types";
+import { LoginRequest, AuthResponse } from "./types";
 
 /**
  * Logs in a user with the provided username and password.
@@ -14,12 +14,12 @@ import { LoginRequest, TokenResponse } from "./types";
 export const login = async (
   username: string,
   password: string
-): Promise<TokenResponse> => {
+): Promise<AuthResponse> => {
   const request = {
     username: username,
     passwordHash: SHA512(password).toString(),
   } as LoginRequest;
-  const response = await AxiosClient.getInstance().post<TokenResponse>(
+  const response = await AxiosClient.getInstance().post<AuthResponse>(
     `${API_BASE_URL}/auth/login`,
     request
   );
@@ -35,8 +35,8 @@ export const login = async (
  */
 export const refreshAccessToken = async (
   refreshToken: string
-): Promise<TokenResponse> => {
-  const response = await AxiosClient.getInstance().post<TokenResponse>(
+): Promise<AuthResponse> => {
+  const response = await AxiosClient.getInstance().post<AuthResponse>(
     `${API_BASE_URL}/auth/refresh`,
     { refreshToken }
   );
