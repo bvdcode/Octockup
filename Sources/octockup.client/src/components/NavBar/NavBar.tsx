@@ -1,9 +1,20 @@
+interface NavButton {
+  path: string;
+  icon: JSX.Element;
+}
+
 interface NavBarProps {
-  iLikeTypeScript: boolean;
+  buttons: NavButton[];
 }
 
 const NavBar: React.FC<NavBarProps> = (props) => {
-  return <>I like TypeScript: {props.iLikeTypeScript.toString()}</>;
+  return (
+    <>
+      {props.buttons.map((button, index) => (
+        <button key={index}>{button.icon}</button>
+      ))}
+    </>
+  );
 };
 
 export default NavBar;
