@@ -1,14 +1,5 @@
 import SHA512 from "crypto-js/sha512";
-
-interface LoginRequest {
-  username: string;
-  passwordHash: string;
-}
-
-interface LoginResponse {
-  accessToken: string;
-  refreshToken: string;
-}
+import { LoginRequest, LoginResponse } from "./types";
 
 export const login = async (
   username: string,
