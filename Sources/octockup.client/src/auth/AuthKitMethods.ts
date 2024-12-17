@@ -18,5 +18,5 @@ export const refresh = createRefresh<IUserData>({
       newRefreshToken: tokens.refreshToken,
     };
   },
-  interval: 1,
+  interval: 5,
 });
