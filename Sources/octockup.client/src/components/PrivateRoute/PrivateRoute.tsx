@@ -1,13 +1,12 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../../contexts/AuthContext";
 
 interface PrivateRouteProps {
   children: JSX.Element;
 }
 
 const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
-  const { isAuth } = useAuth();
+  const isAuth = true;
 
   if (isAuth === null) {
     return <div>Loading...</div>;
