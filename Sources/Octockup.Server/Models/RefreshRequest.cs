@@ -1,4 +1,6 @@
-﻿namespace Octockup.Server.Models
+﻿using MediatR;
+
+namespace Octockup.Server.Models
 {
-    public record RefreshRequest(string RefreshToken);
+    public record RefreshRequest(string RefreshToken) : IRequest<AuthResponse>;
 }

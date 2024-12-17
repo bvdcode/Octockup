@@ -39,7 +39,7 @@ namespace Octockup.Server.Controllers
             };
             _dbContext.Sessions.Add(session);
             await _dbContext.SaveChangesAsync();
-            return Ok(new TokenResponse(token, session.RefreshToken));
+            return Ok(new AuthResponse(token, session.RefreshToken));
         }
 
         [HttpPost(nameof(Login))]
@@ -58,7 +58,7 @@ namespace Octockup.Server.Controllers
             };
             _dbContext.Sessions.Add(session);
             await _dbContext.SaveChangesAsync();
-            return Ok(new TokenResponse(token, session.RefreshToken));
+            return Ok(new AuthResponse(token, session.RefreshToken));
         }
 
         [Authorize]
