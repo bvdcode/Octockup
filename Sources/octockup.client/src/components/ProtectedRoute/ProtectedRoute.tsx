@@ -23,13 +23,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   useEffect(() => {
     const handleLogout = () => {
       signOut();
+      navigate("/login");
     };
     if (isAuthenticated && authHeader) {
       AxiosClient.setAuthHeader(authHeader);
       checkAuth();
-    } else {
-      handleLogout();
-      navigate("/login");
     }
     AxiosClient.events.on("logout", handleLogout);
     return () => {
