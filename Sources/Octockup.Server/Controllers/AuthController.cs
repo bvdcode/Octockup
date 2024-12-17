@@ -4,6 +4,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Octockup.Server.Database;
 using EasyExtensions.AspNetCore.Authorization.Services;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Octockup.Server.Controllers
 {
@@ -22,6 +23,13 @@ namespace Octockup.Server.Controllers
                 RefreshToken = StringHelpers.CreateRandomString(32)
             };
             return Ok(new LoginResponse(token, session.RefreshToken));
+        }
+
+        [Authorize]
+        [HttpGet(nameof(Check))]
+        public IActionResult Check()
+        {
+            return Ok();
         }
     }
 }
