@@ -1,4 +1,5 @@
 import SHA512 from "crypto-js/sha512";
+import { API_BASE_URL } from "../config";
 import { LoginRequest, LoginResponse } from "./types";
 
 export const login = async (
@@ -9,7 +10,7 @@ export const login = async (
     username: username,
     passwordHash: SHA512(password).toString(),
   } as LoginRequest;
-  const response = await fetch("http://localhost:5112/api/v1/auth/login", {
+  const response = await fetch(`${API_BASE_URL}/auth/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
