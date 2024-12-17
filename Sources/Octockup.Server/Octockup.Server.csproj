@@ -12,6 +12,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<PackageReference Include="AutoMapper" Version="13.0.1" />
 		<PackageReference Include="EasyExtensions.AspNetCore" Version="0.1.87" />
 		<PackageReference Include="EasyExtensions.AspNetCore.Authorization" Version="0.1.87" />
 		<PackageReference Include="EasyExtensions.EntityFrameworkCore" Version="0.1.87" />

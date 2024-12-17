@@ -13,6 +13,7 @@ namespace Octockup.Server
             var builder = WebApplication.CreateBuilder(args);
             builder.Services.AddControllers();
             builder.Services
+                .AddAutoMapper(typeof(Program))
                 .AddMediatR(x => x.RegisterServicesFromAssemblyContaining<Program>())
                 .AddHostedService<InitializeDatabaseService>()
                 .AddDbContext<AppDbContext>(builder.Configuration)
