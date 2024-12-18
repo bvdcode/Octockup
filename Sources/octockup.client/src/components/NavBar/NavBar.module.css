@@ -1,8 +1,0 @@
-.navBarContainer {
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  color: white;
-  width: 100%;
-  gap: 20px;
-}

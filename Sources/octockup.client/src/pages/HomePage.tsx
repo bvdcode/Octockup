@@ -7,11 +7,11 @@ const HomePage: React.FC = () => {
   const navButtons = [
     {
       path: "/dashboard",
-      icon: <DashIcon />,
+      icon: <DashIcon sx={{ fontSize: 45 }} />,
     },
     {
       path: "/profile",
-      icon: <Person />,
+      icon: <Person sx={{ fontSize: 45 }} />,
     },
   ];
 

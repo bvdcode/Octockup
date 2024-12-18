@@ -1,4 +1,4 @@
-import styles from "./NavBar.module.css";
+import { Button } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
 interface NavButton {
@@ -14,11 +14,15 @@ const NavBar: React.FC<NavBarProps> = (props) => {
   const navigate = useNavigate();
 
   return (
-    <div className={styles.navBarContainer}>
+    <div>
       {props.buttons.map((button, index) => (
-        <button key={index} onClick={() => navigate(button.path)}>
+        <Button
+          key={index}
+          sx={{ justifyContent: "center" }}
+          onClick={() => navigate(button.path)}
+        >
           {button.icon}
-        </button>
+        </Button>
       ))}
     </div>
   );

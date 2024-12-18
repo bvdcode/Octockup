@@ -16,5 +16,9 @@
   },
   "loader": {
     "loading": "Загрузка..."
+  },
+  "dashboard": {
+    "title": "Панель управления",
+    "welcome": "Привет, {{name}}!"
   }
 }
