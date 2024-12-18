@@ -5,5 +5,13 @@
     "changePassword": "Change Password",
     "logout": "Logout",
     "language": "Language"
+  },
+  "login": {
+    "username": "Username",
+    "password": "Password",
+    "login": "Login",
+    "success": "Login successful",
+    "error": "Login error: {{error}}",
+    "failed": "Login failed"
   }
 }

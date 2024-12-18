@@ -46,10 +46,16 @@ const Profile: React.FC = () => {
       </Card>
       <Card sx={{ my: 2, p: 2 }}>
         <CardContent>
-          <Typography variant="h2" component="h2">
-            {t("profile.language")}
-          </Typography>
-          <LanguageSwitcher />
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+          >
+            <Typography variant="h6" component="h6">
+              {t("profile.language")}
+            </Typography>
+            <LanguageSwitcher />
+          </Box>
         </CardContent>
       </Card>
     </Box>
