@@ -1,6 +1,6 @@
 import { useState } from "react";
 import styles from "./LoginForm.module.css";
-import { Input } from "@mui/material";
+import { Button, Input } from "@mui/material";
 
 interface LoginFormProps {
   onLogin: (username: string, password: string) => void;
@@ -34,7 +34,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
         required
         onChange={(e) => setPassword(e.target.value)}
       />
-      <button type="submit">Login</button>
+      <Button type="submit">Login</Button>
     </form>
   );
 };
