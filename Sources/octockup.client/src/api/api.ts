@@ -51,3 +51,9 @@ export const checkAuth = async (): Promise<boolean> => {
   const response = await AxiosClient.getInstance().get("/auth/check");
   return response.status === 200;
 };
+
+export const changePassword = async (newPassword: string): Promise<void> => {
+  await AxiosClient.getInstance().post("/auth/password", {
+    newPassword: newPassword,
+  });
+};
