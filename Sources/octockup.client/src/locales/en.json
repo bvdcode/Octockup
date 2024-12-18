@@ -13,5 +13,8 @@
     "success": "Login successful",
     "error": "Login error: {{error}}",
     "failed": "Login failed"
+  },
+  "loader": {
+    "loading": "Loading..."
   }
 }
