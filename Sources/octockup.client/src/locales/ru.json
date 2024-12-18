@@ -1,0 +1,9 @@
+{
+  "profile": {
+    "title": "Профиль",
+    "newPassword": "Новый пароль",
+    "changePassword": "Изменить пароль",
+    "logout": "Выйти",
+    "language": "Язык"
+  }
+}

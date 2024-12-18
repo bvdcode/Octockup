@@ -1,0 +1,9 @@
+{
+  "profile": {
+    "title": "Profile",
+    "newPassword": "New Password",
+    "changePassword": "Change Password",
+    "logout": "Logout",
+    "language": "Language"
+  }
+}

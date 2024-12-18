@@ -3,4 +3,4 @@ export const API_BASE_URL =
   window.location.href.includes("localhost")
     ? "http://localhost:5112/api/v1"
     : "/api/v1";
-export const LOCAL_STORAGE_REFRESH_TOKEN_KEY = "OCTOCKUP_REFRESH_TOKEN";
+export const LOCAL_STORAGE_LANGUAGE_KEY = "_octockup_language";

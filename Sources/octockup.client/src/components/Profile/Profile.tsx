@@ -1,4 +1,3 @@
-import AxiosClient from "../../api/AxiosClient";
 import {
   Box,
   Button,
@@ -7,17 +6,21 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { LanguageSwitcher } from "..";
+import { useTranslation } from "react-i18next";
+import AxiosClient from "../../api/AxiosClient";
 
 const Profile: React.FC = () => {
+  const { t } = useTranslation();
   return (
     <Box sx={{ p: 2 }}>
       <Typography variant="h1" component="h1">
-        Profile
+        {t("profile.title")}
       </Typography>
       <Card sx={{ my: 2, p: 2 }}>
         <CardContent>
           <TextField
-            label="New Password"
+            label={t("profile.newPassword")}
             type="password"
             variant="outlined"
             color="primary"
@@ -25,7 +28,7 @@ const Profile: React.FC = () => {
             sx={{ mb: 2 }}
           />
           <Button variant="contained" color="primary" fullWidth sx={{ mt: 2 }}>
-            Change Password
+            {t("profile.changePassword")}
           </Button>
         </CardContent>
       </Card>
@@ -37,8 +40,16 @@ const Profile: React.FC = () => {
             fullWidth
             onClick={() => AxiosClient.events.emit("logout")}
           >
-            Logout
+            {t("profile.logout")}
           </Button>
+        </CardContent>
+      </Card>
+      <Card sx={{ my: 2, p: 2 }}>
+        <CardContent>
+          <Typography variant="h2" component="h2">
+            {t("profile.language")}
+          </Typography>
+          <LanguageSwitcher />
         </CardContent>
       </Card>
     </Box>
