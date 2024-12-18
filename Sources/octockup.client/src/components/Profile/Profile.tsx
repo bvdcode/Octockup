@@ -14,7 +14,7 @@ const Profile: React.FC = () => {
   const { t } = useTranslation();
   return (
     <Box sx={{ p: 2 }}>
-      <Typography variant="h1" component="h1">
+      <Typography variant="h3" component="h3" sx={{ textAlign: "center" }}>
         {t("profile.title")}
       </Typography>
       <Card sx={{ my: 2, p: 2 }}>
