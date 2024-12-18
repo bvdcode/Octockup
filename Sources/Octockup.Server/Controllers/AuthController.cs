@@ -9,6 +9,13 @@ namespace Octockup.Server.Controllers
     [Route("/api/v1/[controller]")]
     public class AuthController(IMediator _mediator) : ControllerBase
     {
+        [HttpPost(nameof(Password))]
+        public async Task<IActionResult> Password([FromBody] ChangePasswordRequest request)
+        {
+            await _mediator.Send(request);
+            return Ok();
+        }
+
         [HttpPost(nameof(Refresh))]
         public async Task<AuthResponse> Refresh([FromBody] RefreshRequest request)
         {

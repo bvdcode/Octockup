@@ -1,6 +1,7 @@
 using Octockup.Server.Database;
 using Octockup.Server.Services;
 using Octockup.Server.Extensions;
+using FluentValidation.AspNetCore;
 using EasyExtensions.AspNetCore.Extensions;
 using EasyExtensions.EntityFrameworkCore.Extensions;
 using EasyExtensions.AspNetCore.Authorization.Extensions;
@@ -14,6 +15,7 @@ namespace Octockup.Server
             var builder = WebApplication.CreateBuilder(args);
             builder.Services.AddControllers();
             builder.Services
+                .AddFluentValidationAutoValidation()
                 .AddExceptionHandler()
                 .AddAutoMapper(typeof(Program))
                 .AddMediatR(x => x.RegisterServicesFromAssemblyContaining<Program>())
@@ -25,8 +27,7 @@ namespace Octockup.Server
                 .SetupCors();
 
             var app = builder.Build();
-            app.UseCors()
-                    .UseDefaultFiles();
+            app.UseCors().UseDefaultFiles();
             app.MapStaticAssets();
             app.MapOpenApi();
             app.UseHttpsRedirection()
