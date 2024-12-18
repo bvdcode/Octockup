@@ -17,8 +17,20 @@
   transition: bottom 0.3s ease; /* Добавляем плавный переход */
 }
 
+.navbar::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50px;
+  height: 4px;
+  background-color: #c6c6c6;
+  border-radius: 2px;
+}
+
 .navbar:hover {
-  bottom: 0; /* Поднимаем панель при наведении */
+  bottom: 0;
 }
 
 .navbar button {
