@@ -1,5 +1,5 @@
+import { User } from "./api/types";
 import RoutesComponent from "./Routes";
-import IUserData from "./auth/IUserData";
 import { useSystemTheme } from "./theme";
 import AuthProvider from "react-auth-kit";
 import { useEffect, useState } from "react";
@@ -12,7 +12,7 @@ import { ThemeProvider } from "@mui/material/styles";
 function App() {
   const systemTheme = useSystemTheme();
   const [theme, setTheme] = useState(systemTheme);
-  const store = createStore<IUserData>({
+  const store = createStore<User>({
     authName: "_octockup_auth",
     authType: "localstorage",
     refresh: refresh,

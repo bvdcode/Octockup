@@ -16,5 +16,9 @@
   },
   "loader": {
     "loading": "Loading..."
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome, {{name}}!"
   }
 }
