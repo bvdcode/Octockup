@@ -1,4 +1,5 @@
-import { Button } from "@mui/material";
+import { Box, Button } from "@mui/material";
+import styles from "./NavBar.module.css";
 import { useNavigate } from "react-router-dom";
 
 interface NavButton {
@@ -14,7 +15,7 @@ const NavBar: React.FC<NavBarProps> = (props) => {
   const navigate = useNavigate();
 
   return (
-    <div>
+    <Box className={styles.navbar}>
       {props.buttons.map((button, index) => (
         <Button
           key={index}
@@ -24,7 +25,7 @@ const NavBar: React.FC<NavBarProps> = (props) => {
           {button.icon}
         </Button>
       ))}
-    </div>
+    </Box>
   );
 };
 

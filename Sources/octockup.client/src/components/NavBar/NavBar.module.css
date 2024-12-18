@@ -1,0 +1,25 @@
+.navbar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 300px;
+  height: 80px;
+  background-color: #333;
+  border-top-left-radius: 40px;
+  border-top-right-radius: 40px;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+}
+
+.navbar:hover {
+  height: 100px;
+}
+
+.navbar button {
+  color: #fff;
+}
