@@ -8,11 +8,12 @@ using EasyExtensions.EntityFrameworkCore.Exceptions;
 
 namespace Octockup.Server.Handlers
 {
-    public class ChangePasswordRequestHandler(IHttpContextAccessor _accessor, AppDbContext _dbContext) 
+    public class ChangePasswordRequestHandler(AppDbContext _dbContext) 
         : IRequestHandler<ChangePasswordRequest>
     {
         public Task Handle(ChangePasswordRequest request, CancellationToken cancellationToken)
         {
+            HttpContextAccessor _accessor = null!;
             string hash = request.NewPassword.SHA512();
             ArgumentNullException.ThrowIfNull(_accessor.HttpContext);
             int userId = _accessor.HttpContext.User.GetId();
