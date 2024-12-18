@@ -14,10 +14,11 @@
   align-items: center;
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
   z-index: 1000;
+  transition: bottom 0.3s ease;
 }
 
 .navbar:hover {
-  height: 100px;
+  bottom: 20px;
 }
 
 .navbar button {
