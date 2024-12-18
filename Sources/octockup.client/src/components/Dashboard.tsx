@@ -1,4 +1,4 @@
-import { User } from "../../api/types";
+import { User } from "../api/types";
 import { useTranslation } from "react-i18next";
 import { Box, Typography } from "@mui/material";
 import useAuthUser from "react-auth-kit/hooks/useAuthUser";

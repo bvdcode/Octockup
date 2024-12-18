@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
-import { checkAuth } from "../../api/api";
+import { checkAuth } from "../api/api";
 import { Navigate, useNavigate } from "react-router-dom";
-import AxiosClient from "../../api/AxiosClient";
+import AxiosClient from "../api/AxiosClient";
 import useSignOut from "react-auth-kit/hooks/useSignOut";
 import useAuthHeader from "react-auth-kit/hooks/useAuthHeader";
 import useIsAuthenticated from "react-auth-kit/hooks/useIsAuthenticated";

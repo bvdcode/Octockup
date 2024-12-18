@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { LOCAL_STORAGE_LANGUAGE_KEY } from "../../config";
+import { LOCAL_STORAGE_LANGUAGE_KEY } from "../config";
 import { Select, MenuItem, SelectChangeEvent } from "@mui/material";
 
 const LanguageSwitcher: React.FC = () => {
