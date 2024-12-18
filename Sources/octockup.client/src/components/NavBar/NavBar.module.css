@@ -1,6 +1,6 @@
 .navbar {
   position: fixed;
-  bottom: 0;
+  bottom: -60px; /* Скрываем панель, оставляя 20px видимыми */
   left: 50%;
   transform: translateX(-50%);
   width: 90%;
@@ -14,11 +14,11 @@
   align-items: center;
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
   z-index: 1000;
-  transition: bottom 0.3s ease;
+  transition: bottom 0.3s ease; /* Добавляем плавный переход */
 }
 
 .navbar:hover {
-  bottom: 20px;
+  bottom: 0; /* Поднимаем панель при наведении */
 }
 
 .navbar button {
