@@ -1,13 +1,17 @@
 import styles from "./HomePage.module.css";
 import { Routes, Route } from "react-router-dom";
 import { Dashboard, NavBar, Profile } from "../components";
-import { Dashboard as DashIcon, Person } from "@mui/icons-material";
+import { Add, Dashboard as DashIcon, Person } from "@mui/icons-material";
 
 const HomePage: React.FC = () => {
   const navButtons = [
     {
       path: "/dashboard",
       icon: <DashIcon sx={{ fontSize: 45 }} />,
+    },
+    {
+      path: "/create",
+      icon: <Add sx={{ fontSize: 45 }} />,
     },
     {
       path: "/profile",

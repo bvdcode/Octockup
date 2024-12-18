@@ -6,9 +6,9 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { LanguageSwitcher } from "..";
+import { LanguageSwitcher } from ".";
 import { useTranslation } from "react-i18next";
-import AxiosClient from "../../api/AxiosClient";
+import AxiosClient from "../api/AxiosClient";
 
 const Profile: React.FC = () => {
   const { t } = useTranslation();
