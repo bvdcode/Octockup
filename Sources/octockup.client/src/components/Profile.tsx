@@ -27,6 +27,14 @@ const Profile: React.FC = () => {
             fullWidth
             sx={{ mb: 2 }}
           />
+          <TextField
+            label={t("profile.confirmPassword")}
+            type="password"
+            variant="outlined"
+            color="primary"
+            fullWidth
+            sx={{ mb: 2 }}
+          />
           <Button variant="contained" color="primary" fullWidth sx={{ mt: 2 }}>
             {t("profile.changePassword")}
           </Button>

@@ -2,6 +2,7 @@
   "profile": {
     "title": "Профиль",
     "newPassword": "Новый пароль",
+    "confirmPassword": "Подтвердить пароль",
     "changePassword": "Изменить пароль",
     "logout": "Выйти",
     "language": "Язык"

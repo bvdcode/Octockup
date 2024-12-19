@@ -19,7 +19,12 @@ const NavBar: React.FC<NavBarProps> = (props) => {
       {props.buttons.map((button, index) => (
         <Button
           key={index}
-          sx={{ justifyContent: "center" }}
+          sx={{
+            justifyContent: "center",
+            borderRadius: "50%",
+            width: "64px",
+            height: "64px",
+          }}
           onClick={() => navigate(button.path)}
         >
           {button.icon}

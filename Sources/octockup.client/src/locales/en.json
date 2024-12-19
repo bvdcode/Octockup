@@ -2,6 +2,7 @@
   "profile": {
     "title": "Profile",
     "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
     "changePassword": "Change Password",
     "logout": "Logout",
     "language": "Language"
