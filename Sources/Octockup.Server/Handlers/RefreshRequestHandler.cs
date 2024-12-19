@@ -1,9 +1,9 @@
 ﻿using MediatR;
 using Octockup.Server.Models;
 using Octockup.Server.Database;
+using Microsoft.EntityFrameworkCore;
 using EasyExtensions.EntityFrameworkCore.Exceptions;
 using EasyExtensions.AspNetCore.Authorization.Services;
-using Microsoft.EntityFrameworkCore;
 
 namespace Octockup.Server.Handlers
 {

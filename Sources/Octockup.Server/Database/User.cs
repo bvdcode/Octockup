@@ -1,14 +1,12 @@
 ﻿using Octockup.Server.Database.Enums;
 using System.ComponentModel.DataAnnotations.Schema;
+using EasyExtensions.EntityFrameworkCore.Abstractions;
 
 namespace Octockup.Server.Database
 {
     [Table("users")]
-    public record User
+    public class User : BaseEntity
     {
-        [Column("id")]
-        public int Id { get; set; }
-
         [Column("username")]
         public string Username { get; set; } = null!;
 

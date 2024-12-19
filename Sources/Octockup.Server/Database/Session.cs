@@ -1,13 +1,11 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
+using EasyExtensions.EntityFrameworkCore.Abstractions;
 
 namespace Octockup.Server.Database
 {
     [Table("sessions")]
-    public record Session
+    public class Session : BaseEntity
     {
-        [Column("id")]
-        public int Id { get; set; }
-
         [Column("user_id")]
         public int UserId { get; set; }
 
