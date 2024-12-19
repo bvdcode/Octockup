@@ -22,5 +22,10 @@ namespace Octockup.Server.Database
         public string PasswordHash { get; set; } = null!;
 
         public virtual ICollection<Session> Sessions { get; set; } = [];
+
+        public override string ToString()
+        {
+            return $"#{Id} {Username} ({Email})";
+        }
     }
 }

@@ -15,6 +15,7 @@ namespace Octockup.Server
             var builder = WebApplication.CreateBuilder(args);
             builder.Services.AddControllers();
             builder.Services
+                .AddHttpContextAccessor()
                 .AddFluentValidationAutoValidation()
                 .AddExceptionHandler()
                 .AddAutoMapper(typeof(Program))

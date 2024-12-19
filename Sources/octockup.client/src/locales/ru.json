@@ -5,7 +5,11 @@
     "confirmPassword": "Подтвердить пароль",
     "changePassword": "Изменить пароль",
     "logout": "Выйти",
-    "language": "Язык"
+    "language": "Язык",
+    "passwordMismatch": "Пароли не совпадают",
+    "passwordLength": "Пароль должен быть не менее {{minPasswordLength}} символов длиной",
+    "passwordChanged": "Пароль успешно изменен",
+    "passwordChangeError": "Ошибка изменения пароля: {{error}}"
   },
   "login": {
     "username": "Имя пользователя",

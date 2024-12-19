@@ -5,7 +5,11 @@
     "confirmPassword": "Confirm Password",
     "changePassword": "Change Password",
     "logout": "Logout",
-    "language": "Language"
+    "language": "Language",
+    "passwordMismatch": "Passwords do not match",
+    "passwordLength": "Password must be at least {{minPasswordLength}} characters long",
+    "passwordChanged": "Password changed successfully",
+    "passwordChangeError": "Password change error: {{error}}"
   },
   "login": {
     "username": "Username",

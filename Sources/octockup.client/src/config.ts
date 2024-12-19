@@ -4,3 +4,4 @@ export const API_BASE_URL =
     ? "http://localhost:5112/api/v1"
     : "/api/v1";
 export const LOCAL_STORAGE_LANGUAGE_KEY = "_octockup_language";
+export const MIN_PASSWORD_LENGTH = 6;
