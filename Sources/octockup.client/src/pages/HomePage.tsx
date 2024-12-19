@@ -1,6 +1,6 @@
 import styles from "./HomePage.module.css";
 import { Routes, Route } from "react-router-dom";
-import { Dashboard, NavBar, Profile } from "../components";
+import { CreateJob, Dashboard, NavBar, Profile } from "../components";
 import { Add, Dashboard as DashIcon, Person } from "@mui/icons-material";
 
 const HomePage: React.FC = () => {
@@ -24,6 +24,7 @@ const HomePage: React.FC = () => {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/create" element={<CreateJob />} />
         <Route path="/dashboard" element={<Dashboard />} />
       </Routes>
       <NavBar buttons={navButtons} />
