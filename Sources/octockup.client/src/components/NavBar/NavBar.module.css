@@ -26,8 +26,8 @@
   transition: bottom 0.3s ease; /* Добавляем плавный переход */
 }
 
-.navbarContainer:hover .navbar {
-  bottom: 0; /* Поднимаем панель при наведении на контейнер */
+.navbar.visible {
+  bottom: 0; /* Поднимаем панель при наведении */
 }
 
 .navbar::before {

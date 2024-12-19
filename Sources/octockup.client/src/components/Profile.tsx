@@ -81,18 +81,6 @@ const Profile: React.FC = () => {
       </Card>
       <Card sx={{ my: 2, p: 2 }}>
         <CardContent>
-          <Button
-            variant="contained"
-            color="secondary"
-            fullWidth
-            onClick={() => AxiosClient.events.emit("logout")}
-          >
-            {t("profile.logout")}
-          </Button>
-        </CardContent>
-      </Card>
-      <Card sx={{ my: 2, p: 2 }}>
-        <CardContent>
           <Box
             display="flex"
             alignItems="center"
@@ -103,6 +91,18 @@ const Profile: React.FC = () => {
             </Typography>
             <LanguageSwitcher />
           </Box>
+        </CardContent>
+      </Card>
+      <Card sx={{ my: 2, p: 2 }}>
+        <CardContent>
+          <Button
+            variant="contained"
+            color="secondary"
+            fullWidth
+            onClick={() => AxiosClient.events.emit("logout")}
+          >
+            {t("profile.logout")}
+          </Button>
         </CardContent>
       </Card>
     </Box>
