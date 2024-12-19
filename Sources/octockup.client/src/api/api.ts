@@ -1,6 +1,6 @@
 import SHA512 from "crypto-js/sha512";
 import AxiosClient from "./AxiosClient";
-import { LoginRequest, AuthResponse } from "./types";
+import { LoginRequest, AuthResponse, BackupStatus } from "./types";
 
 /**
  * Logs in a user with the provided username and password.
@@ -56,4 +56,11 @@ export const changePassword = async (newPassword: string): Promise<void> => {
   await AxiosClient.getInstance().post("/auth/password", {
     newPassword: newPassword,
   });
+};
+
+export const getBackupStatus = async (): Promise<BackupStatus[]> => {
+  const response = await AxiosClient.getInstance().get<BackupStatus[]>(
+    "/backup/status"
+  );
+  return response.data;
 };

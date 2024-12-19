@@ -21,3 +21,17 @@ export enum UserRole {
   Regular = 1,
   Admin = 2,
 }
+
+export interface BackupStatus {
+  jobName: string;
+  lastRun: string;
+  duration: string;
+  status: BackupStatusType;
+}
+
+export enum BackupStatusType {
+  Created = 0,
+  Running = 1,
+  Failed = 2,
+  Completed = 3,
+}
