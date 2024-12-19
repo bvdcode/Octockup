@@ -19,6 +19,9 @@ namespace Octockup.Server.Database
         [Column("password_hash_sha512")]
         public string PasswordHash { get; set; } = null!;
 
+        [Column("storage_limit_bytes")]
+        public long? StorageLimitBytes { get; set; }
+
         public virtual ICollection<Session> Sessions { get; set; } = [];
 
         public override string ToString()
