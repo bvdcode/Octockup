@@ -3,6 +3,7 @@ using Octockup.Server.Models;
 using Octockup.Server.Database;
 using EasyExtensions.EntityFrameworkCore.Exceptions;
 using EasyExtensions.AspNetCore.Authorization.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace Octockup.Server.Handlers
 {
@@ -16,7 +17,9 @@ namespace Octockup.Server.Handlers
             {
                 throw new WebApiException(System.Net.HttpStatusCode.Unauthorized, nameof(Session), "Invalid refresh token");
             }
-            var foundToken = _dbContext.Sessions.FirstOrDefault(x => x.RefreshToken == request.RefreshToken)
+            var foundToken = _dbContext.Sessions
+                .Include(x => x.User)
+                .FirstOrDefault(x => x.RefreshToken == request.RefreshToken)
                 ?? throw new WebApiException(System.Net.HttpStatusCode.NotFound, nameof(Session), "Session not found");
             _dbContext.Sessions.Remove(foundToken);
             await _dbContext.SaveChangesAsync(cancellationToken);
