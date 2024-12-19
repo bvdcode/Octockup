@@ -1,8 +1,8 @@
-import IUserData from "./IUserData";
+import { User } from "../api/types";
 import { refreshAccessToken } from "../api/api";
 import createRefresh from "react-auth-kit/createRefresh";
 
-export const refresh = createRefresh<IUserData>({
+export const refresh = createRefresh<User>({
   refreshApiCallback: async (token) => {
     if (!token.refreshToken) {
       return {
