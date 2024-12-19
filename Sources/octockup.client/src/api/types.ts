@@ -27,6 +27,8 @@ export interface BackupStatus {
   jobName: string;
   lastRun: string;
   duration: string;
+  progress: number;
+  lastRunDate: Date;
   status: BackupStatusType;
 }
 

@@ -14,9 +14,12 @@ namespace Octockup.Server.Controllers
             // mock data
             return new List<BackupStatus>
             {
-                new BackupStatus(51, "Job1", DateTime.UtcNow, TimeSpan.FromMinutes(10), BackupStatusType.Completed),
-                new BackupStatus(52, "Job2", DateTime.UtcNow.AddDays(-1), TimeSpan.FromMinutes(5), BackupStatusType.Running),
-                new BackupStatus(53, "Job3", DateTime.Now, TimeSpan.FromMinutes(15), BackupStatusType.Failed),
+                new BackupStatus(51, "Job1", DateTime.UtcNow, TimeSpan.FromMinutes(10), 
+                BackupStatusType.Completed, Random.Shared.NextDouble()),
+                new BackupStatus(52, "Job2", DateTime.UtcNow.AddDays(-1), TimeSpan.FromMinutes(5), 
+                BackupStatusType.Running, Random.Shared.NextDouble()),
+                new BackupStatus(53, "Job3", DateTime.Now, TimeSpan.FromMinutes(15), 
+                BackupStatusType.Failed, Random.Shared.NextDouble()),
             };
         }
     }

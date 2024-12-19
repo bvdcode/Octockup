@@ -62,5 +62,8 @@ export const getBackupStatus = async (): Promise<BackupStatus[]> => {
   const response = await AxiosClient.getInstance().get<BackupStatus[]>(
     "/backup/status"
   );
+  response.data.forEach((backup) => {
+    backup.lastRunDate = new Date(backup.lastRun);
+  });
   return response.data;
 };

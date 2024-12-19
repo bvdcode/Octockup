@@ -1,10 +1,19 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Box, Typography } from "@mui/material";
+import {
+  Box,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Typography,
+} from "@mui/material";
 import { BackupStatus, User } from "../api/types";
 import useAuthUser from "react-auth-kit/hooks/useAuthUser";
 import { getBackupStatus } from "../api/api";
 import { toast } from "react-toastify";
+import { ProgressBar } from ".";
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -36,15 +45,35 @@ const Dashboard: React.FC = () => {
         </Typography>
       </Box>
       <Box mt={2} flexGrow={1}>
-        {status.map((backup, index) => (
-          <Box key={index} display="flex" justifyContent="space-between">
-            <Typography>{backup.id}</Typography>
-            <Typography>{backup.jobName}</Typography>
-            <Typography>{backup.lastRun}</Typography>
-            <Typography>{backup.duration}</Typography>
-            <Typography>{backup.status}</Typography>
-          </Box>
-        ))}
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>{t("backup.id")}</TableCell>
+              <TableCell>{t("backup.jobName")}</TableCell>
+              <TableCell>{t("backup.lastRun")}</TableCell>
+              <TableCell>{t("backup.duration")}</TableCell>
+              <TableCell>{t("backup.progress")}</TableCell>
+              <TableCell>{t("backup.status")}</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {status.map((backup, index) => (
+              <TableRow key={index}>
+                <TableCell>{backup.id}</TableCell>
+                <TableCell>{backup.jobName}</TableCell>
+                <TableCell>{backup.lastRunDate.toLocaleString()}</TableCell>
+                <TableCell>{backup.duration}</TableCell>
+                <TableCell>
+                  <ProgressBar
+                    value={backup.progress}
+                    error={backup.id === 52}
+                  />
+                </TableCell>
+                <TableCell>{backup.status}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </Box>
     </Box>
   );
