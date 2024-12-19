@@ -1,11 +1,25 @@
-import { User } from "../api/types";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Box, Typography } from "@mui/material";
+import { BackupStatus, User } from "../api/types";
 import useAuthUser from "react-auth-kit/hooks/useAuthUser";
+import { getBackupStatus } from "../api/api";
+import { toast } from "react-toastify";
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
   const authUser = useAuthUser<User>();
+  const [status, setStatus] = useState<BackupStatus[]>([]);
+
+  useEffect(() => {
+    getBackupStatus()
+      .then((response) => {
+        setStatus(response);
+      })
+      .catch((error) => {
+        toast.error(t("dataLoadError", { error: error.message }));
+      });
+  }, [t]);
 
   return (
     <Box
@@ -22,7 +36,15 @@ const Dashboard: React.FC = () => {
         </Typography>
       </Box>
       <Box mt={2} flexGrow={1}>
-        {/* Main content goes here */}
+        {status.map((backup, index) => (
+          <Box key={index} display="flex" justifyContent="space-between">
+            <Typography>{backup.id}</Typography>
+            <Typography>{backup.jobName}</Typography>
+            <Typography>{backup.lastRun}</Typography>
+            <Typography>{backup.duration}</Typography>
+            <Typography>{backup.status}</Typography>
+          </Box>
+        ))}
       </Box>
     </Box>
   );

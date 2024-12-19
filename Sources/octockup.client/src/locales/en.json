@@ -1,4 +1,5 @@
 {
+  "dataLoadError": "Error loading data: {{error}}",
   "profile": {
     "title": "Profile",
     "newPassword": "New Password",

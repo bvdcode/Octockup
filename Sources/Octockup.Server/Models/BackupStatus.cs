@@ -2,5 +2,5 @@
 
 namespace Octockup.Server.Models
 {
-    public record BackupStatus(string JobName, DateTime LastRun, TimeSpan Duration, BackupStatusType Status);
+    public record BackupStatus(int Id, string JobName, DateTime LastRun, TimeSpan Duration, BackupStatusType Status);
 }

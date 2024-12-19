@@ -2,7 +2,6 @@
 using Octockup.Server.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using EasyExtensions;
 
 namespace Octockup.Server.Controllers
 {

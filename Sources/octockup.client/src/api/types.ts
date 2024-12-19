@@ -23,6 +23,7 @@ export enum UserRole {
 }
 
 export interface BackupStatus {
+  id: number;
   jobName: string;
   lastRun: string;
   duration: string;
