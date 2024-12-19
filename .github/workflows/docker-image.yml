@@ -1,6 +1,13 @@
 name: Build and Push Docker Image to Docker Hub
 
-on: push
+on:
+  push:
+    paths:
+      - "Sources/**"
+      - ".github/workflows/docker-image.yaml"
+    branches:
+      - main
+      
 jobs:
   push_to_registry:
     name: push docker image to hub
