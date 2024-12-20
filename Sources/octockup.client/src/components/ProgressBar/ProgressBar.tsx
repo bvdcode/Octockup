@@ -1,10 +1,10 @@
 import styles from "./ProgressBar.module.css";
 
 export enum ProgressBarColor {
-  Neutral = "#bfbfbf8a",
-  Red = "#ff657c8a",
-  Green = "#5aff748a",
-  Yellow = "#feff668a",
+  Neutral = "#bfbfbfaa",
+  Red = "#ff657caa",
+  Green = "#5aff74aa",
+  Yellow = "#feff66aa",
 }
 
 interface ProgressBarProps {
