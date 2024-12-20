@@ -16,6 +16,8 @@ import IntervalInput from "./IntervalInput";
 import { useEffect, useState } from "react";
 import { BackupProvider } from "../api/types";
 import { useTranslation } from "react-i18next";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { dark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 export interface CreateJobRequest {
   provider: string;
@@ -67,6 +69,10 @@ const CreateJob: React.FC = () => {
                     (p) => p.name === event.target.value
                   );
                   setSelectedProvider(provider || null);
+                  setRequest((prev) => ({
+                    ...prev,
+                    provider: provider?.name || "",
+                  }));
                 }}
               >
                 {providers.map((provider) => (
@@ -92,6 +98,15 @@ const CreateJob: React.FC = () => {
                   margin="normal"
                   label={parameter}
                   variant="outlined"
+                  onChange={(event) =>
+                    setRequest((prev) => ({
+                      ...prev,
+                      settings: {
+                        ...prev.settings,
+                        [parameter]: event.target.value,
+                      },
+                    }))
+                  }
                 />
               ))
             ) : (
@@ -114,9 +129,15 @@ const CreateJob: React.FC = () => {
               margin="normal"
               label={t("createJob.jobName")}
               variant="outlined"
+              onChange={(event) =>
+                setRequest((prev) => ({
+                  ...prev,
+                  jobName: event.target.value,
+                }))
+              }
             />
             <IntervalInput
-              label={t("createJob.interval") + ` (${request.interval} s)`}
+              label={t("createJob.interval")}
               defaultValue={0}
               onChange={(seconds) =>
                 setRequest((prev) => ({ ...prev, interval: seconds }))
@@ -147,7 +168,17 @@ const CreateJob: React.FC = () => {
         <Card>
           <CardContent>
             <Typography variant="h6">{t("createJob.confirmation")}</Typography>
-            <pre>{JSON.stringify(request, null, 2)}</pre>
+            <SyntaxHighlighter
+              language="json"
+              style={dark}
+              customStyle={{
+                backgroundColor: "transparent",
+                textShadow: "0",
+                border: "none",
+              }}
+            >
+              {JSON.stringify(request, null, 2)}
+            </SyntaxHighlighter>
           </CardContent>
         </Card>
 
