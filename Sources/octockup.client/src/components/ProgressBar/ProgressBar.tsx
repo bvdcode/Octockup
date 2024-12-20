@@ -1,15 +1,19 @@
 import styles from "./ProgressBar.module.css";
 
-interface ProgressBarProps {
-  value: number;
-  error?: boolean;
+export enum ProgressBarColor {
+  Neutral = "#bfbfbf8a",
+  Red = "#ff657c8a",
+  Green = "#5aff748a",
+  Yellow = "#feff668a",
 }
 
-const ProgressBar: React.FC<ProgressBarProps> = ({
-  value: progress,
-  error,
-}) => {
-  const percentage = progress * 100;
+interface ProgressBarProps {
+  value: number;
+  color?: ProgressBarColor;
+}
+
+const ProgressBar: React.FC<ProgressBarProps> = (props) => {
+  const percentage = props.value * 100;
   return (
     <div className={styles.progressBarContainer}>
       <div
@@ -17,7 +21,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
         role="progressbar"
         style={{
           width: `${percentage}%`,
-          backgroundColor: error ? "#ff5959" : "#2fad2f",
+          backgroundColor: props.color ?? ProgressBarColor.Neutral,
         }}
         aria-valuenow={percentage}
         aria-valuemin={0}

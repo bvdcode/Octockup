@@ -15,8 +15,9 @@ import styles from "./Dashboard.module.css";
 import { useEffect, useState } from "react";
 import { getBackupStatus } from "../api/api";
 import { useTranslation } from "react-i18next";
-import { BackupStatus, User } from "../api/types";
+import { BackupStatus, BackupStatusType, User } from "../api/types";
 import useAuthUser from "react-auth-kit/hooks/useAuthUser";
+import { ProgressBarColor } from "./ProgressBar/ProgressBar";
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -32,6 +33,20 @@ const Dashboard: React.FC = () => {
         toast.error(t("dataLoadError", { error: error.message }));
       });
   }, [t]);
+
+  const getColorByStatus = (status: BackupStatusType): ProgressBarColor => {
+    switch (status) {
+      case BackupStatusType.Completed:
+        return ProgressBarColor.Green;
+      case BackupStatusType.Failed:
+        return ProgressBarColor.Red;
+      case BackupStatusType.Running:
+        return ProgressBarColor.Yellow;
+      case BackupStatusType.Created:
+      default:
+        return ProgressBarColor.Neutral;
+    }
+  };
 
   return (
     <Box className={styles.dashboardContainer}>
@@ -64,7 +79,7 @@ const Dashboard: React.FC = () => {
                   <TableCell>
                     <ProgressBar
                       value={backup.progress}
-                      error={backup.progress > 0.5}
+                      color={getColorByStatus(backup.status)}
                     />
                   </TableCell>
                   <TableCell>{backup.status}</TableCell>
