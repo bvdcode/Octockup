@@ -1,5 +1,5 @@
-import { Box, Paper, TextField, Typography } from "@mui/material";
 import { FC, useEffect, useState } from "react";
+import { Box, Paper, TextField, Typography } from "@mui/material";
 
 interface IntervalInputProps {
   label?: string;
