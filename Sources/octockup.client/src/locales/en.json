@@ -26,5 +26,8 @@
   "dashboard": {
     "title": "Dashboard",
     "welcome": "Welcome, {{name}}!"
+  },
+  "backup": {
+    "id": "ID"
   }
 }

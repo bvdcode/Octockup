@@ -11,10 +11,14 @@ import { AxiosError } from "axios";
 import { LanguageSwitcher } from ".";
 import { toast } from "react-toastify";
 import { changePassword } from "../api/api";
-import AxiosClient from "../api/AxiosClient";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { MIN_PASSWORD_LENGTH } from "../config";
+import useSignOut from "react-auth-kit/hooks/useSignOut";
+
 const Profile: React.FC = () => {
+  const signOut = useSignOut();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -39,6 +43,11 @@ const Profile: React.FC = () => {
       .catch((error: AxiosError) => {
         toast.error(t("profile.passwordChangeError", { error: error.message }));
       });
+  };
+
+  const handleLogout = () => {
+    signOut();
+    navigate("/login");
   };
 
   return (
@@ -99,7 +108,7 @@ const Profile: React.FC = () => {
             variant="contained"
             color="secondary"
             fullWidth
-            onClick={() => AxiosClient.events.emit("logout")}
+            onClick={handleLogout}
           >
             {t("profile.logout")}
           </Button>

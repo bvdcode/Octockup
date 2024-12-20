@@ -1,6 +1,6 @@
+import { ProtectedRoute } from "./components";
 import { HomePage, LoginPage } from "./pages";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { ProtectedRoute } from "./components";
 
 const RoutesComponent = () => {
   return (

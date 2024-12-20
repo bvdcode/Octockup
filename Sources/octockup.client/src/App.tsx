@@ -24,8 +24,8 @@ function App() {
 
   return (
     <ThemeProvider theme={theme}>
-      <CssBaseline />
       <AuthProvider store={store}>
+        <CssBaseline />
         <ToastContainer />
         <RoutesComponent />
       </AuthProvider>

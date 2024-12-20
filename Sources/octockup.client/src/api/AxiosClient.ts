@@ -1,5 +1,4 @@
 import axios from "axios";
-import { toast } from "react-toastify";
 import { API_BASE_URL } from "../config";
 import EventEmitter from "../handlers/EventEmitter";
 
@@ -34,7 +33,6 @@ AxiosClient.getInstance().interceptors.response.use(
       error.response.status === 401 &&
       AxiosClient.getInstance().defaults.headers.common["Authorization"]
     ) {
-      toast.error("Session expired. Please sign in again.");
       AxiosClient.events.emit("logout");
     }
     return Promise.reject(error);

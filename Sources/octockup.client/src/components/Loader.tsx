@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 
 interface LoaderProps {
-  text: string;
+  text?: string;
 }
 
 const Loader: React.FC<LoaderProps> = ({ text }) => {

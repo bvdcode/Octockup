@@ -1,7 +1,8 @@
-import React, { useEffect } from "react";
+import Loader from "./Loader";
 import { checkAuth } from "../api/api";
-import { Navigate, useNavigate } from "react-router-dom";
+import React, { useEffect } from "react";
 import AxiosClient from "../api/AxiosClient";
+import { Navigate, useNavigate } from "react-router-dom";
 import useSignOut from "react-auth-kit/hooks/useSignOut";
 import useAuthHeader from "react-auth-kit/hooks/useAuthHeader";
 import useIsAuthenticated from "react-auth-kit/hooks/useIsAuthenticated";
@@ -19,6 +20,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const navigate = useNavigate();
   const authHeader = useAuthHeader();
   const isAuthenticated = useIsAuthenticated();
+  const [isHeaderSet, setIsHeaderSet] = React.useState(false);
 
   useEffect(() => {
     const handleLogout = () => {
@@ -27,15 +29,24 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     };
     if (isAuthenticated && authHeader) {
       AxiosClient.setAuthHeader(authHeader);
-      checkAuth();
+      setIsHeaderSet(true);
     }
+    checkAuth();
     AxiosClient.events.on("logout", handleLogout);
     return () => {
       AxiosClient.events.off("logout", handleLogout);
     };
-  }, [authHeader, isAuthenticated, navigate, signOut]);
+  }, [authHeader, isAuthenticated, isHeaderSet, navigate, signOut]);
 
-  return isAuthenticated ? children : <Navigate to={fallbackPath} />;
+  return isAuthenticated && authHeader ? (
+    isHeaderSet ? (
+      children
+    ) : (
+      <Loader />
+    )
+  ) : (
+    <Navigate to={fallbackPath} />
+  );
 };
 
 export default ProtectedRoute;
