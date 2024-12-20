@@ -100,10 +100,9 @@ const CreateJob: React.FC = () => {
               label={t("createJob.jobName")}
               variant="outlined"
             />
-            [{interval}s]
             <IntervalInput
-              label={t("createJob.interval")}
-              defaultValue={600}
+              label={t("createJob.interval") + ` (${interval} s)`}
+              defaultValue={0}
               onChange={(seconds) => setInterval(seconds)}
             />
             <FormControl fullWidth margin="normal">

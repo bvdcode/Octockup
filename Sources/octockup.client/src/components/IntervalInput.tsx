@@ -28,17 +28,18 @@ const IntervalInput: FC<IntervalInputProps> = ({
   }, [days, hours, minutes, seconds, onChange]);
 
   return (
-    <Box>
+    <Box sx={{ display: "flex", gap: 2 }}>
       {label && (
         <Typography variant="subtitle1" mb={1}>
           {label}
         </Typography>
       )}
-      <Box sx={{ display: "flex", gap: 2 }}>
+      <Box>
         <TextField
           label="Days"
           type="number"
           value={days}
+          variant="standard"
           onChange={(e) => setDays(parseInt(e.target.value))}
           InputProps={{ inputProps: { min: 0, max: 365 } }}
         />
@@ -46,6 +47,7 @@ const IntervalInput: FC<IntervalInputProps> = ({
           label="Hours"
           type="number"
           value={hours}
+          variant="standard"
           onChange={(e) => setHours(parseInt(e.target.value))}
           InputProps={{ inputProps: { min: 0, max: 23 } }}
         />
@@ -53,6 +55,7 @@ const IntervalInput: FC<IntervalInputProps> = ({
           label="Minutes"
           type="number"
           value={minutes}
+          variant="standard"
           onChange={(e) => setMinutes(parseInt(e.target.value))}
           InputProps={{ inputProps: { min: 0, max: 59 } }}
         />
@@ -60,6 +63,7 @@ const IntervalInput: FC<IntervalInputProps> = ({
           label="Seconds"
           type="number"
           value={seconds}
+          variant="standard"
           onChange={(e) => setSeconds(parseInt(e.target.value))}
           InputProps={{ inputProps: { min: 0, max: 59 } }}
         />
