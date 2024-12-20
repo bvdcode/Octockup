@@ -1,15 +1,18 @@
 ﻿using Octockup.Server.Models;
 using Microsoft.AspNetCore.Mvc;
 using Octockup.Server.Models.Enums;
+using Microsoft.AspNetCore.Authorization;
+using Octockup.Server.Providers.Storage;
 
 namespace Octockup.Server.Controllers
 {
     [ApiController]
     [Route("/api/v1/[controller]")]
-    public class BackupController : ControllerBase
+    public class BackupController(IEnumerable<IStorageProvider> _storageProviders) : ControllerBase
     {
-        [HttpGet(nameof(Status))]
-        public async Task<IEnumerable<BackupStatus>> Status()
+        [Authorize]
+        [HttpGet("status")]
+        public async Task<IEnumerable<BackupStatus>> GetStatusAsync()
         {
             // mock data
             return new List<BackupStatus>
@@ -22,5 +25,14 @@ namespace Octockup.Server.Controllers
                 BackupStatusType.Failed, Random.Shared.NextDouble()),
             };
         }
+
+        [Authorize]
+        [HttpGet("providers")]
+        public IEnumerable<StorageProviderInfo> GetProviders()
+        {
+            return _storageProviders.Select(p => new StorageProviderInfo(p.Name, p.Parameters));
+        }
     }
+
+    public record StorageProviderInfo(string Name, IEnumerable<string> Parameters);
 }

@@ -36,7 +36,7 @@ export const refreshAccessToken = async (
   refreshToken: string
 ): Promise<AuthResponse> => {
   const response = await AxiosClient.getInstance().post<AuthResponse>(
-    "/auth/refresh",
+    "/auth/refresh-token",
     { refreshToken }
   );
   return response.data;
@@ -48,12 +48,12 @@ export const refreshAccessToken = async (
  * @returns A promise that resolves to `true` if the user is authenticated, and `false` otherwise.
  */
 export const checkAuth = async (): Promise<boolean> => {
-  const response = await AxiosClient.getInstance().get("/auth/check");
+  const response = await AxiosClient.getInstance().get("/auth/check-token");
   return response.status === 200;
 };
 
 export const changePassword = async (newPassword: string): Promise<void> => {
-  await AxiosClient.getInstance().post("/auth/password", {
+  await AxiosClient.getInstance().post("/auth/change-password", {
     newPassword: newPassword,
   });
 };

@@ -5,6 +5,7 @@ using FluentValidation.AspNetCore;
 using EasyExtensions.AspNetCore.Extensions;
 using EasyExtensions.EntityFrameworkCore.Extensions;
 using EasyExtensions.AspNetCore.Authorization.Extensions;
+using Octockup.Server.Providers.Storage;
 
 namespace Octockup.Server
 {
@@ -15,6 +16,7 @@ namespace Octockup.Server
             var builder = WebApplication.CreateBuilder(args);
             builder.Services.AddControllers();
             builder.Services
+                .AddStorageProvider<FtpProvider>()
                 .AddHttpContextAccessor()
                 .AddFluentValidationAutoValidation()
                 .AddExceptionHandler()

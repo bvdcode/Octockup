@@ -9,28 +9,29 @@ namespace Octockup.Server.Controllers
     [Route("/api/v1/[controller]")]
     public class AuthController(IMediator _mediator) : ControllerBase
     {
-        [HttpPost(nameof(Password))]
-        public async Task<IActionResult> Password([FromBody] ChangePasswordRequest request)
+        [Authorize]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePasswordAsync([FromBody] ChangePasswordRequest request)
         {
             await _mediator.Send(request);
             return Ok();
         }
 
-        [HttpPost(nameof(Refresh))]
-        public async Task<AuthResponse> Refresh([FromBody] RefreshRequest request)
+        [HttpPost("refresh-token")]
+        public Task<AuthResponse> RefreshTokenAsync([FromBody] RefreshRequest request)
         {
-            return await _mediator.Send(request);
+            return _mediator.Send(request);
         }
 
-        [HttpPost(nameof(Login))]
-        public async Task<AuthResponse> Login([FromBody] LoginRequest request)
+        [HttpPost("login")]
+        public Task<AuthResponse> LoginAsync([FromBody] LoginRequest request)
         {
-            return await _mediator.Send(request);
+            return _mediator.Send(request);
         }
 
         [Authorize]
-        [HttpGet(nameof(Check))]
-        public IActionResult Check()
+        [HttpGet("check-token")]
+        public IActionResult CheckToken()
         {
             return Ok();
         }

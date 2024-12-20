@@ -1,4 +1,6 @@
-﻿namespace Octockup.Server.Providers
+﻿using Octockup.Server.Models;
+
+namespace Octockup.Server.Providers.Storage
 {
     public interface IStorageProvider
     {

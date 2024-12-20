@@ -1,12 +1,18 @@
 ﻿using EasyExtensions.Helpers;
 using Octockup.Server.Helpers;
 using Microsoft.EntityFrameworkCore;
+using Octockup.Server.Providers.Storage;
 using EasyExtensions.AspNetCore.Extensions;
 
 namespace Octockup.Server.Extensions
 {
     public static class ServiceCollectionExtensions
     {
+        public static IServiceCollection AddStorageProvider<TStorageProvider>(this IServiceCollection services) where TStorageProvider : class, IStorageProvider
+        {
+            return services.AddSingleton<IStorageProvider, TStorageProvider>();
+        }
+
         public static IServiceCollection AddDbContext<TContext>(this IServiceCollection services, IConfiguration configuration)
             where TContext : DbContext
         {

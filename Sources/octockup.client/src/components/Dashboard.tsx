@@ -59,10 +59,13 @@ const Dashboard: React.FC = () => {
                 <TableRow key={index}>
                   <TableCell>{backup.id}</TableCell>
                   <TableCell>{backup.jobName}</TableCell>
-                  <TableCell>{backup.lastRun}</TableCell>
+                  <TableCell>{backup.lastRunDate.toLocaleString()}</TableCell>
                   <TableCell>{backup.duration}</TableCell>
                   <TableCell>
-                    <ProgressBar value={backup.progress} />
+                    <ProgressBar
+                      value={backup.progress}
+                      error={backup.progress > 0.5}
+                    />
                   </TableCell>
                   <TableCell>{backup.status}</TableCell>
                 </TableRow>
