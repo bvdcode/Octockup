@@ -11,10 +11,10 @@ import {
   CardContent,
 } from "@mui/material";
 import { getProviders } from "../api/api";
+import IntervalInput from "./IntervalInput";
 import { useEffect, useState } from "react";
 import { BackupProvider } from "../api/types";
 import { useTranslation } from "react-i18next";
-import IntervalInput from "./IntervalInput";
 
 const CreateJob: React.FC = () => {
   const { t } = useTranslation();
