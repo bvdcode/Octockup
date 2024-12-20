@@ -10,6 +10,7 @@ import {
   FormControl,
   CardContent,
   Button,
+  SelectChangeEvent,
 } from "@mui/material";
 import { getProviders } from "../api/api";
 import IntervalInput from "./IntervalInput";
@@ -31,7 +32,7 @@ const CreateJob: React.FC = () => {
   const { t } = useTranslation();
   const [providers, setProviders] = useState<BackupProvider[]>([]);
   const [selectedProvider, setSelectedProvider] =
-    useState<BackupProvider | null>();
+    useState<BackupProvider | null>(null);
   const [request, setRequest] = useState<CreateJobRequest>({
     provider: "",
     settings: {},
@@ -46,6 +47,17 @@ const CreateJob: React.FC = () => {
     });
   }, []);
 
+  const handleProviderChange = (event: SelectChangeEvent<string>) => {
+    const value = event.target.value;
+    const provider = providers.find((p) => p.name === value);
+    setSelectedProvider(provider || null);
+    setRequest((prev) => ({
+      ...prev,
+      provider: value,
+      settings: {},
+    }));
+  };
+
   return (
     <Box sx={{ height: "100%", width: "100%", overflow: "auto", padding: 5 }}>
       <Stack spacing={2}>
@@ -55,25 +67,12 @@ const CreateJob: React.FC = () => {
             <Typography variant="h6">
               {t("createJob.selectProvider")}
             </Typography>
-            <FormControl fullWidth margin="normal">
-              <InputLabel id="provider-select-label">
-                {t("createJob.provider")}
-              </InputLabel>
+            <FormControl fullWidth>
+              <InputLabel>{t("createJob.provider")}</InputLabel>
               <Select
-                labelId="provider-select-label"
-                id="provider-select"
+                value={request.provider}
                 label={t("createJob.provider")}
-                value={selectedProvider?.name}
-                onChange={(event) => {
-                  const provider = providers.find(
-                    (p) => p.name === event.target.value
-                  );
-                  setSelectedProvider(provider || null);
-                  setRequest((prev) => ({
-                    ...prev,
-                    provider: provider?.name || "",
-                  }));
-                }}
+                onChange={handleProviderChange}
               >
                 {providers.map((provider) => (
                   <MenuItem key={provider.name} value={provider.name}>
