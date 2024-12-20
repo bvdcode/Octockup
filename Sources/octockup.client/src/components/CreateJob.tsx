@@ -164,6 +164,7 @@ const CreateJob: React.FC = () => {
             </FormControl>
           </CardContent>
         </Card>
+
         <Card>
           <CardContent>
             <Typography variant="h6">{t("createJob.confirmation")}</Typography>

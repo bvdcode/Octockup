@@ -1,9 +1,11 @@
 import styles from "./HomePage.module.css";
-import { Routes, Route, Navigate } from "react-router-dom";
 import { CreateJob, Dashboard, NavBar, Profile } from "../components";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Add, Dashboard as DashIcon, Person } from "@mui/icons-material";
 
 const HomePage: React.FC = () => {
+  const location = useLocation();
+
   const navButtons = [
     {
       path: "/dashboard",
@@ -21,7 +23,7 @@ const HomePage: React.FC = () => {
 
   return (
     <div className={styles.homePageContainer}>
-      <Routes>
+      <Routes key={location.pathname}>
         <Route path="/profile" element={<Profile />} />
         <Route path="/create" element={<CreateJob />} />
         <Route path="/dashboard" element={<Dashboard />} />
