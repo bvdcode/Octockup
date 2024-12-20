@@ -17,7 +17,7 @@ import { getBackupStatus } from "../api/api";
 import { useTranslation } from "react-i18next";
 import { BackupStatus, BackupStatusType, User } from "../api/types";
 import useAuthUser from "react-auth-kit/hooks/useAuthUser";
-import { ProgressBarColor } from "./ProgressBar/ProgressBar";
+import { ProgressBarColor } from "./ProgressBar/ProgressBarColor";
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
