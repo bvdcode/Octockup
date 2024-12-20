@@ -1,4 +1,4 @@
-import { Box, TextField, Typography } from "@mui/material";
+import { Box, Paper, TextField, Typography } from "@mui/material";
 import { FC, useEffect, useState } from "react";
 
 interface IntervalInputProps {
@@ -28,18 +28,26 @@ const IntervalInput: FC<IntervalInputProps> = ({
   }, [days, hours, minutes, seconds, onChange]);
 
   return (
-    <Box sx={{ display: "flex", gap: 2 }}>
+    <Paper variant="outlined" sx={{ p: 2, bgcolor: "transparent" }}>
       {label && (
-        <Typography variant="subtitle1" mb={1}>
+        <Typography variant="subtitle1" mb={2} color="text.secondary">
           {label}
         </Typography>
       )}
-      <Box>
+      <Box
+        sx={{
+          display: "flex",
+          gap: 2,
+          "& .MuiTextField-root": {
+            flex: 1,
+          },
+        }}
+      >
         <TextField
           label="Days"
           type="number"
           value={days}
-          variant="standard"
+          variant="outlined"
           onChange={(e) => setDays(parseInt(e.target.value))}
           InputProps={{ inputProps: { min: 0, max: 365 } }}
         />
@@ -47,7 +55,7 @@ const IntervalInput: FC<IntervalInputProps> = ({
           label="Hours"
           type="number"
           value={hours}
-          variant="standard"
+          variant="outlined"
           onChange={(e) => setHours(parseInt(e.target.value))}
           InputProps={{ inputProps: { min: 0, max: 23 } }}
         />
@@ -55,7 +63,7 @@ const IntervalInput: FC<IntervalInputProps> = ({
           label="Minutes"
           type="number"
           value={minutes}
-          variant="standard"
+          variant="outlined"
           onChange={(e) => setMinutes(parseInt(e.target.value))}
           InputProps={{ inputProps: { min: 0, max: 59 } }}
         />
@@ -63,12 +71,12 @@ const IntervalInput: FC<IntervalInputProps> = ({
           label="Seconds"
           type="number"
           value={seconds}
-          variant="standard"
+          variant="outlined"
           onChange={(e) => setSeconds(parseInt(e.target.value))}
           InputProps={{ inputProps: { min: 0, max: 59 } }}
         />
       </Box>
-    </Box>
+    </Paper>
   );
 };
 
