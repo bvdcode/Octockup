@@ -9,6 +9,7 @@ import {
   Typography,
   FormControl,
   CardContent,
+  Button,
 } from "@mui/material";
 import { getProviders } from "../api/api";
 import IntervalInput from "./IntervalInput";
@@ -16,12 +17,26 @@ import { useEffect, useState } from "react";
 import { BackupProvider } from "../api/types";
 import { useTranslation } from "react-i18next";
 
+export interface CreateJobRequest {
+  provider: string;
+  settings: Record<string, string>;
+  jobName: string;
+  interval: number;
+  notifications: boolean;
+}
+
 const CreateJob: React.FC = () => {
   const { t } = useTranslation();
   const [providers, setProviders] = useState<BackupProvider[]>([]);
   const [selectedProvider, setSelectedProvider] =
     useState<BackupProvider | null>();
-  const [interval, setInterval] = useState<number>(0);
+  const [request, setRequest] = useState<CreateJobRequest>({
+    provider: "",
+    settings: {},
+    jobName: "",
+    interval: 0,
+    notifications: false,
+  });
 
   useEffect(() => {
     getProviders().then((response) => {
@@ -101,9 +116,11 @@ const CreateJob: React.FC = () => {
               variant="outlined"
             />
             <IntervalInput
-              label={t("createJob.interval") + ` (${interval} s)`}
+              label={t("createJob.interval") + ` (${request.interval} s)`}
               defaultValue={0}
-              onChange={(seconds) => setInterval(seconds)}
+              onChange={(seconds) =>
+                setRequest((prev) => ({ ...prev, interval: seconds }))
+              }
             />
             <FormControl fullWidth margin="normal">
               <InputLabel id="notifications-select-label">
@@ -113,11 +130,35 @@ const CreateJob: React.FC = () => {
                 labelId="notifications-select-label"
                 id="notifications-select"
                 label={t("notifications")}
+                value={request.notifications ? "yes" : "no"}
+                onChange={(event) => {
+                  setRequest((prev) => ({
+                    ...prev,
+                    notifications: event.target.value === "yes",
+                  }));
+                }}
               >
                 <MenuItem value="yes">{t("yes")}</MenuItem>
                 <MenuItem value="no">{t("no")}</MenuItem>
               </Select>
             </FormControl>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <Typography variant="h6">{t("createJob.confirmation")}</Typography>
+            <pre>{JSON.stringify(request, null, 2)}</pre>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+            }}
+          >
+            <Button>{t("createJob.createJob")}</Button>
           </CardContent>
         </Card>
       </Stack>
