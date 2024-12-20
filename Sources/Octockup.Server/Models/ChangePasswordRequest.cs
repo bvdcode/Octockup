@@ -2,5 +2,9 @@
 
 namespace Octockup.Server.Models
 {
-    public record ChangePasswordRequest(string NewPassword, int UserId) : IRequest;
+    public class ChangePasswordRequest : IRequest
+    {
+        public int UserId { get; set; }
+        public string NewPassword { get; set; } = string.Empty;
+    }
 }

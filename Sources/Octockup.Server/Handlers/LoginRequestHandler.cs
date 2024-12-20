@@ -19,7 +19,7 @@ namespace Octockup.Server.Handlers
                 throw new WebApiException(HttpStatusCode.Unauthorized, nameof(User), "Invalid password");
             }
             _logger.LogInformation("User '{user}' logged in", foundUser);
-            CreateTokenRequest createTokenRequest = new(foundUser);
+            CreateTokenRequest createTokenRequest = new() { User = foundUser };
             return await _mediator.Send(createTokenRequest, cancellationToken);
         }
     }

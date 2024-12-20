@@ -2,5 +2,8 @@
 
 namespace Octockup.Server.Models
 {
-    public record RefreshRequest(string RefreshToken) : IRequest<AuthResponse>;
+    public class RefreshRequest : IRequest<AuthResponse>
+    {
+        public string RefreshToken { get; set; } = string.Empty;
+    }
 }

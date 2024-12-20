@@ -1,4 +1,8 @@
 ﻿namespace Octockup.Server.Models
 {
-    public record StorageProviderInfo(string Name, IEnumerable<string> Parameters);
+    public class StorageProviderInfo
+    {
+        public string Name { get; set; } = string.Empty;
+        public IEnumerable<string> Parameters { get; set; } = [];
+    }
 }

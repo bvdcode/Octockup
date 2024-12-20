@@ -1,6 +1,6 @@
 ﻿namespace Octockup.Server.Models
 {
-    public record RemoteFileInfo
+    public class RemoteFileInfo
     {
         public long Size { get; set; }
         public DateTime LastModified { get; set; }

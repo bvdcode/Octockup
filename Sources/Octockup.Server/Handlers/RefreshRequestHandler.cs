@@ -23,7 +23,7 @@ namespace Octockup.Server.Handlers
                 ?? throw new WebApiException(System.Net.HttpStatusCode.NotFound, nameof(Session), "Session not found");
             _dbContext.Sessions.Remove(foundToken);
             await _dbContext.SaveChangesAsync(cancellationToken);
-            CreateTokenRequest createTokenRequest = new(foundToken.User);
+            CreateTokenRequest createTokenRequest = new() { User = foundToken.User };
             return await _mediator.Send(createTokenRequest, cancellationToken);
         }
     }

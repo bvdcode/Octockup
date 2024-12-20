@@ -31,7 +31,12 @@ namespace Octockup.Server.Handlers
             _dbContext.Sessions.Add(session);
             await _dbContext.SaveChangesAsync(cancellationToken);
             UserDto userDto = _mapper.Map<UserDto>(request.User);
-            return new AuthResponse(accessToken, session.RefreshToken, userDto);
+            return new AuthResponse()
+            {
+                User = userDto,
+                AccessToken = accessToken,
+                RefreshToken = session.RefreshToken
+            };
         }
 
         private static ClaimBuilder GetUserClaims(ClaimBuilder builder, User user)

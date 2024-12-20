@@ -2,5 +2,12 @@
 
 namespace Octockup.Server.Models.Dto
 {
-    public record UserDto(int Id, string Username, string Email, UserRole Role, long? StorageLimitBytes);
+    public class UserDto
+    {
+        public int Id { get; set; }
+        public UserRole Role { get; set; }
+        public long? StorageLimitBytes { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public string Username { get; set; } = string.Empty;
+    }
 }

@@ -2,5 +2,9 @@
 
 namespace Octockup.Server.Models
 {
-    public record LoginRequest(string Username, string PasswordHash) : IRequest<AuthResponse>;
+    public class LoginRequest : IRequest<AuthResponse>
+    {
+        public string Username { get; set; } = string.Empty;
+        public string PasswordHash { get; set; } = string.Empty;
+    }
 }
