@@ -24,7 +24,9 @@ const IntervalInput: FC<IntervalInputProps> = ({
   const [seconds, setSeconds] = useState(defaultValue ? defaultValue % 60 : 0);
 
   useEffect(() => {
-    onChange(days * 24 * 60 * 60 + hours * 60 * 60 + minutes * 60 + seconds);
+    const interval =
+      days * 24 * 60 * 60 + hours * 60 * 60 + minutes * 60 + seconds;
+      onChange(interval);
   }, [days, hours, minutes, seconds, onChange]);
 
   return (
