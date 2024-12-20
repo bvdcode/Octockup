@@ -7,6 +7,19 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  Box,
+  Typography,
+  Button,
+  TextField,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Select,
+  Paper,
+  Card,
+  CardContent,
+  CardActions,
+  Stack,
 } from "@mui/material";
 
 const CreateJob: React.FC = () => {
@@ -19,26 +32,87 @@ const CreateJob: React.FC = () => {
 
   return (
     <>
-      <Table sx={{ minWidth: 650 }}>
-        <TableHead>
-          <TableRow>
-            <TableCell>Provider</TableCell>
-            <TableCell align="right">Params</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {providers.map((provider, index) => (
-            <TableRow key={index}>
-              <TableCell component="th" scope="row">
-                {provider.name}
-              </TableCell>
-              <TableCell align="right">
-                {provider.parameters.join(", ")}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <Card>
+        <CardContent>
+          <Typography variant="h6">Выбор провайдера</Typography>
+          <FormControl fullWidth margin="normal">
+            <InputLabel id="provider-select-label">Провайдер</InputLabel>
+            <Select
+              labelId="provider-select-label"
+              id="provider-select"
+              label="Провайдер"
+            >
+              {providers.map((provider) => (
+                <MenuItem key={provider.id} value={provider.id}>
+                  {provider.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Параметр</TableCell>
+                <TableCell>Значение</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {/* Example data, replace with actual provider parameters */}
+              <TableRow>
+                <TableCell>Пример параметра</TableCell>
+                <TableCell>Пример значения</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent>
+          <Typography variant="h6">Блок параметров</Typography>
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Параметр 1"
+            variant="outlined"
+          />
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Параметр 2"
+            variant="outlined"
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent>
+          <Typography variant="h6">Настройки</Typography>
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Частота бэкапов"
+            variant="outlined"
+          />
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Когда начинать"
+            variant="outlined"
+          />
+          <FormControl fullWidth margin="normal">
+            <InputLabel id="notifications-select-label">Уведомления</InputLabel>
+            <Select
+              labelId="notifications-select-label"
+              id="notifications-select"
+              label="Уведомления"
+            >
+              <MenuItem value="yes">Да</MenuItem>
+              <MenuItem value="no">Нет</MenuItem>
+            </Select>
+          </FormControl>
+        </CardContent>
+      </Card>
     </>
   );
 };
