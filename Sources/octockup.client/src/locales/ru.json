@@ -1,4 +1,7 @@
 {
+  "yes": "Да",
+  "no": "Нет",
+  "notifications": "Уведомления",
   "dataLoadError": "Ошибка загрузки данных: {{error}}",
   "profile": {
     "title": "Профиль",
@@ -26,5 +29,16 @@
   "dashboard": {
     "title": "Панель управления",
     "welcome": "Привет, {{name}}!"
+  },
+  "backup": {
+    "id": "ID"
+  },
+  "createJob": {
+    "title": "Новое резервное копирование",
+    "selectProvider": "Выберите тип источника",
+    "provider": "Поставщик хранилища",
+    "providerSettings": "Настройки поставщика хранилища",
+    "selectProviderFirst": "Пожалуйста, сначала выберите поставщика хранилища",
+    "jobSettings": "Настройки задачи"
   }
 }

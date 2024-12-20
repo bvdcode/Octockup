@@ -1,6 +1,3 @@
-import { useEffect, useState } from "react";
-import { BackupProvider } from "../api/types";
-import { getProviders } from "../api/api";
 import {
   Box,
   Card,
@@ -12,14 +9,20 @@ import {
   Typography,
   FormControl,
   CardContent,
+  Slider,
 } from "@mui/material";
+import { getProviders } from "../api/api";
+import { useEffect, useState } from "react";
+import { BackupProvider } from "../api/types";
 import { useTranslation } from "react-i18next";
+import IntervalInput from "./IntervalInput";
 
 const CreateJob: React.FC = () => {
   const { t } = useTranslation();
   const [providers, setProviders] = useState<BackupProvider[]>([]);
   const [selectedProvider, setSelectedProvider] =
     useState<BackupProvider | null>();
+  const [interval, setInterval] = useState<number>(0);
 
   useEffect(() => {
     getProviders().then((response) => {
@@ -95,86 +98,29 @@ const CreateJob: React.FC = () => {
             <TextField
               fullWidth
               margin="normal"
-              label="Частота бэкапов"
+              label={t("createJob.jobName")}
               variant="outlined"
             />
-            <TextField
+            [{interval}s]
+            <IntervalInput
               fullWidth
               margin="normal"
-              label="Когда начинать"
+              label={t("createJob.interval")}
               variant="outlined"
+              value={0}
+              onChange={(seconds) => setInterval(seconds)}
             />
             <FormControl fullWidth margin="normal">
               <InputLabel id="notifications-select-label">
-                Уведомления
+                {t("notifications")}
               </InputLabel>
               <Select
                 labelId="notifications-select-label"
                 id="notifications-select"
-                label="Уведомления"
+                label={t("notifications")}
               >
-                <MenuItem value="yes">Да</MenuItem>
-                <MenuItem value="no">Нет</MenuItem>
-              </Select>
-            </FormControl>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent>
-            <Typography variant="h6">Настройки</Typography>
-            <TextField
-              fullWidth
-              margin="normal"
-              label="Частота бэкапов"
-              variant="outlined"
-            />
-            <TextField
-              fullWidth
-              margin="normal"
-              label="Когда начинать"
-              variant="outlined"
-            />
-            <FormControl fullWidth margin="normal">
-              <InputLabel id="notifications-select-label">
-                Уведомления
-              </InputLabel>
-              <Select
-                labelId="notifications-select-label"
-                id="notifications-select"
-                label="Уведомления"
-              >
-                <MenuItem value="yes">Да</MenuItem>
-                <MenuItem value="no">Нет</MenuItem>
-              </Select>
-            </FormControl>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent>
-            <Typography variant="h6">Настройки</Typography>
-            <TextField
-              fullWidth
-              margin="normal"
-              label="Частота бэкапов"
-              variant="outlined"
-            />
-            <TextField
-              fullWidth
-              margin="normal"
-              label="Когда начинать"
-              variant="outlined"
-            />
-            <FormControl fullWidth margin="normal">
-              <InputLabel id="notifications-select-label">
-                Уведомления
-              </InputLabel>
-              <Select
-                labelId="notifications-select-label"
-                id="notifications-select"
-                label="Уведомления"
-              >
-                <MenuItem value="yes">Да</MenuItem>
-                <MenuItem value="no">Нет</MenuItem>
+                <MenuItem value="yes">{t("yes")}</MenuItem>
+                <MenuItem value="no">{t("no")}</MenuItem>
               </Select>
             </FormControl>
           </CardContent>

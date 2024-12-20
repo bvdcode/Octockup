@@ -1,4 +1,7 @@
 {
+  "yes": "Yes",
+  "no": "No",
+  "notifications": "Notifications",
   "dataLoadError": "Error loading data: {{error}}",
   "profile": {
     "title": "Profile",
@@ -34,8 +37,10 @@
     "title": "Create new backup job",
     "selectProvider": "Select storage provider",
     "provider": "Storage provider",
-    "providerSettings": "Provider settings",
+    "providerSettings": "Storage provider settings",
     "selectProviderFirst": "Please select a storage provider first",
-    "jobSettings": "Job settings"
+    "jobSettings": "Job settings",
+    "jobName": "Job name",
+    "interval": "Interval"
   }
 }
