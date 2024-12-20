@@ -29,5 +29,13 @@
   },
   "backup": {
     "id": "ID"
+  },
+  "createJob": {
+    "title": "Create new backup job",
+    "selectProvider": "Select storage provider",
+    "provider": "Storage provider",
+    "providerSettings": "Provider settings",
+    "selectProviderFirst": "Please select a storage provider first",
+    "jobSettings": "Job settings"
   }
 }
