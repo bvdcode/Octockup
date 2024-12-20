@@ -26,7 +26,7 @@ const IntervalInput: FC<IntervalInputProps> = ({
   useEffect(() => {
     const interval =
       days * 24 * 60 * 60 + hours * 60 * 60 + minutes * 60 + seconds;
-    if (onChange) {
+    if (!isNaN(interval) && onChange) {
       onChange(interval);
       console.log(interval);
     }

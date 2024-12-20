@@ -1,4 +1,3 @@
-import React, { useEffect, useReducer, useState } from "react";
 import {
   Box,
   Card,
@@ -18,6 +17,7 @@ import IntervalInput from "./IntervalInput";
 import { BackupProvider } from "../api/types";
 import { useTranslation } from "react-i18next";
 import { initialState, reducer } from "./CreateJobReducer";
+import React, { useEffect, useReducer, useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { dark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
@@ -47,9 +47,6 @@ const CreateJob: React.FC = () => {
         <Typography variant="h4">{t("createJob.title")}</Typography>
         <Card>
           <CardContent>
-            <Typography variant="h6">
-              {t("createJob.selectProvider")}
-            </Typography>
             <FormControl fullWidth>
               <InputLabel>{t("createJob.provider")}</InputLabel>
               <Select
@@ -57,9 +54,6 @@ const CreateJob: React.FC = () => {
                 label={t("createJob.provider")}
                 onChange={handleProviderChange}
               >
-                <MenuItem value="">
-                  <em>{t("common.none")}</em>
-                </MenuItem>
                 {providers.map((provider) => (
                   <MenuItem key={provider.name} value={provider.name}>
                     {provider.name}
@@ -72,9 +66,6 @@ const CreateJob: React.FC = () => {
 
         <Card>
           <CardContent>
-            <Typography variant="h6">
-              {t("createJob.providerSettings")}
-            </Typography>
             {selectedProvider ? (
               selectedProvider.parameters.map((parameter) => (
                 <TextField
@@ -92,32 +83,30 @@ const CreateJob: React.FC = () => {
                 />
               ))
             ) : (
-              <Typography>{t("createJob.noProviderSelected")}</Typography>
+              <Typography>{t("createJob.selectProviderFirst")}</Typography>
             )}
           </CardContent>
         </Card>
 
         <Card>
           <CardContent>
-            <Typography variant="h6">{t("createJob.interval")}</Typography>
             <IntervalInput
               label={t("createJob.interval")}
               onChange={(interval) =>
                 dispatch({ type: "SET_INTERVAL", payload: interval })
               }
-              defaultValue={state.interval}
+              defaultValue={0}
             />
           </CardContent>
         </Card>
 
         <Card>
           <CardContent>
-            <Typography variant="h6">{t("createJob.notifications")}</Typography>
             <FormControl fullWidth>
-              <InputLabel>{t("createJob.notifications")}</InputLabel>
+              <InputLabel>{t("notifications")}</InputLabel>
               <Select
                 value={state.notifications ? "yes" : "no"}
-                label={t("createJob.notifications")}
+                label={t("notifications")}
                 onChange={(event) =>
                   dispatch({
                     type: "SET_NOTIFICATIONS",
