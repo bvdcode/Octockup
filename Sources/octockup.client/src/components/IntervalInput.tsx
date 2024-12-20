@@ -1,64 +1,69 @@
-import { Box, TextField } from "@mui/material";
-import { useEffect, useState } from "react";
+import { Box, TextField, Typography } from "@mui/material";
+import { FC, useEffect, useState } from "react";
 
 interface IntervalInputProps {
-  value?: number;
   label?: string;
-  fullWidth?: boolean;
-  margin?: "none" | "dense" | "normal";
-  variant?: "standard" | "outlined" | "filled";
-  onChange?: (seconds: number) => void;
+  onChange: (interval: number) => void;
+  defaultValue?: number;
 }
 
-const IntervalInput: React.FC<IntervalInputProps> = ({
-  value,
+const IntervalInput: FC<IntervalInputProps> = ({
   label,
-  fullWidth,
-  margin,
-  variant,
   onChange,
+  defaultValue,
 }) => {
-  const [days, setDays] = useState<number>(
-    Math.floor(value ? value / (60 * 60 * 24) : 0)
+  const [days, setDays] = useState(
+    defaultValue ? Math.floor(defaultValue / (24 * 60 * 60)) : 0
   );
-  const [hours, setHours] = useState<number>(
-    Math.floor(value ? (value % (60 * 60 * 24)) / (60 * 60) : 0)
+  const [hours, setHours] = useState(
+    defaultValue ? Math.floor((defaultValue % (24 * 60 * 60)) / (60 * 60)) : 0
   );
-  const [minutes, setMinutes] = useState<number>(
-    Math.floor(value ? (value % (60 * 60)) / 60 : 0)
+  const [minutes, setMinutes] = useState(
+    defaultValue ? Math.floor((defaultValue % (60 * 60)) / 60) : 0
   );
-  const [seconds, setSeconds] = useState<number>(
-    Math.floor(value ? value % 60 : 0)
-  );
+  const [seconds, setSeconds] = useState(defaultValue ? defaultValue % 60 : 0);
 
   useEffect(() => {
-    const newTotalSeconds =
-      days * 60 * 60 * 24 + hours * 60 * 60 + minutes * 60 + seconds;
-    onChange?.(newTotalSeconds);
+    onChange(days * 24 * 60 * 60 + hours * 60 * 60 + minutes * 60 + seconds);
   }, [days, hours, minutes, seconds, onChange]);
 
   return (
-    <Box sx={{ display: "flex", gap: 2 }}>
-      <TextField
-        label="Days"
-        value={days}
-        onChange={(e) => setDays(parseInt(e.target.value))}
-      />
-      <TextField
-        label="Hours"
-        value={hours}
-        onChange={(e) => setHours(parseInt(e.target.value))}
-      />
-      <TextField
-        label="Minutes"
-        value={minutes}
-        onChange={(e) => setMinutes(parseInt(e.target.value))}
-      />
-      <TextField
-        label="Seconds"
-        value={seconds}
-        onChange={(e) => setSeconds(parseInt(e.target.value))}
-      />
+    <Box>
+      {label && (
+        <Typography variant="subtitle1" mb={1}>
+          {label}
+        </Typography>
+      )}
+      <Box sx={{ display: "flex", gap: 2 }}>
+        <TextField
+          label="Days"
+          type="number"
+          value={days}
+          onChange={(e) => setDays(parseInt(e.target.value))}
+          InputProps={{ inputProps: { min: 0, max: 365 } }}
+        />
+        <TextField
+          label="Hours"
+          type="number"
+          value={hours}
+          onChange={(e) => setHours(parseInt(e.target.value))}
+          InputProps={{ inputProps: { min: 0, max: 23 } }}
+        />
+        <TextField
+          label="Minutes"
+          type="number"
+          value={minutes}
+          onChange={(e) => setMinutes(parseInt(e.target.value))}
+          InputProps={{ inputProps: { min: 0, max: 59 } }}
+        />
+        <TextField
+          label="Seconds"
+          type="number"
+          value={seconds}
+          onChange={(e) => setSeconds(parseInt(e.target.value))}
+          InputProps={{ inputProps: { min: 0, max: 59 } }}
+        />
+      </Box>
     </Box>
   );
 };

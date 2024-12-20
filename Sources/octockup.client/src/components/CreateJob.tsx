@@ -9,7 +9,6 @@ import {
   Typography,
   FormControl,
   CardContent,
-  Slider,
 } from "@mui/material";
 import { getProviders } from "../api/api";
 import { useEffect, useState } from "react";
@@ -103,11 +102,8 @@ const CreateJob: React.FC = () => {
             />
             [{interval}s]
             <IntervalInput
-              fullWidth
-              margin="normal"
               label={t("createJob.interval")}
-              variant="outlined"
-              value={0}
+              defaultValue={600}
               onChange={(seconds) => setInterval(seconds)}
             />
             <FormControl fullWidth margin="normal">
