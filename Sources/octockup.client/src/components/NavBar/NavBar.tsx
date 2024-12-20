@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Box, Button } from "@mui/material";
 import styles from "./NavBar.module.css";
+import { Box, Button } from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
 
 interface NavButton {
   path: string;
