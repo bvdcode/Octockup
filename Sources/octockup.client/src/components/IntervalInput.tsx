@@ -28,9 +28,8 @@ const IntervalInput: FC<IntervalInputProps> = ({
       days * 24 * 60 * 60 + hours * 60 * 60 + minutes * 60 + seconds;
     if (!isNaN(interval) && onChange) {
       onChange(interval);
-      console.log(interval);
     }
-  }, [days, hours, minutes, seconds, ]);
+  }, [days, hours, minutes, seconds, onChange]);
 
   useEffect(() => {
     calculateInterval();
@@ -42,55 +41,68 @@ const IntervalInput: FC<IntervalInputProps> = ({
   };
 
   return (
-    <Paper variant="outlined" sx={{ p: 2, bgcolor: "transparent" }}>
+    <Box sx={{ position: "relative", display: "inline-block", width: "100%" }}>
       {label && (
-        <Typography variant="subtitle1" mb={2} color="text.secondary">
+        <Typography
+          variant="subtitle1"
+          sx={{
+            position: "absolute",
+            top: -10,
+            left: 6,
+            backgroundColor: "background.paper",
+            padding: "0 4px",
+            color: "text.secondary",
+            fontSize: 12,
+          }}
+        >
           {label}
         </Typography>
       )}
-      <Box
-        sx={{
-          display: "flex",
-          gap: 2,
-          "& .MuiTextField-root": {
-            flex: 1,
-          },
-        }}
-      >
-        <TextField
-          label="Days"
-          type="number"
-          value={days}
-          variant="outlined"
-          onChange={(e) => handleNumberChange(e.target.value, setDays)}
-          InputProps={{ inputProps: { min: 0, max: 365 } }}
-        />
-        <TextField
-          label="Hours"
-          type="number"
-          value={hours}
-          variant="outlined"
-          onChange={(e) => handleNumberChange(e.target.value, setHours)}
-          InputProps={{ inputProps: { min: 0, max: 23 } }}
-        />
-        <TextField
-          label="Minutes"
-          type="number"
-          value={minutes}
-          variant="outlined"
-          onChange={(e) => handleNumberChange(e.target.value, setMinutes)}
-          InputProps={{ inputProps: { min: 0, max: 59 } }}
-        />
-        <TextField
-          label="Seconds"
-          type="number"
-          value={seconds}
-          variant="outlined"
-          onChange={(e) => handleNumberChange(e.target.value, setSeconds)}
-          InputProps={{ inputProps: { min: 0, max: 59 } }}
-        />
-      </Box>
-    </Paper>
+      <Paper variant="outlined" sx={{ p: 2, pt: 4, bgcolor: "transparent" }}>
+        <Box
+          sx={{
+            display: "flex",
+            gap: 2,
+            "& .MuiTextField-root": {
+              flex: 1,
+            },
+          }}
+        >
+          <TextField
+            label="Days"
+            type="number"
+            value={days}
+            variant="outlined"
+            onChange={(e) => handleNumberChange(e.target.value, setDays)}
+            InputProps={{ inputProps: { min: 0, max: 365 } }}
+          />
+          <TextField
+            label="Hours"
+            type="number"
+            value={hours}
+            variant="outlined"
+            onChange={(e) => handleNumberChange(e.target.value, setHours)}
+            InputProps={{ inputProps: { min: 0, max: 23 } }}
+          />
+          <TextField
+            label="Minutes"
+            type="number"
+            value={minutes}
+            variant="outlined"
+            onChange={(e) => handleNumberChange(e.target.value, setMinutes)}
+            InputProps={{ inputProps: { min: 0, max: 59 } }}
+          />
+          <TextField
+            label="Seconds"
+            type="number"
+            value={seconds}
+            variant="outlined"
+            onChange={(e) => handleNumberChange(e.target.value, setSeconds)}
+            InputProps={{ inputProps: { min: 0, max: 59 } }}
+          />
+        </Box>
+      </Paper>
+    </Box>
   );
 };
 
