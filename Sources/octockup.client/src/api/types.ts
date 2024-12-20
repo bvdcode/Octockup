@@ -38,3 +38,8 @@ export enum BackupStatusType {
   Failed = 2,
   Completed = 3,
 }
+
+export interface BackupProvider {
+  name: string;
+  parameters: string[];
+}

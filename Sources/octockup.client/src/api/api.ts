@@ -1,6 +1,11 @@
 import SHA512 from "crypto-js/sha512";
 import AxiosClient from "./AxiosClient";
-import { LoginRequest, AuthResponse, BackupStatus } from "./types";
+import {
+  LoginRequest,
+  AuthResponse,
+  BackupStatus,
+  BackupProvider,
+} from "./types";
 
 /**
  * Logs in a user with the provided username and password.
@@ -65,5 +70,12 @@ export const getBackupStatus = async (): Promise<BackupStatus[]> => {
   response.data.forEach((backup) => {
     backup.lastRunDate = new Date(backup.lastRun);
   });
+  return response.data;
+};
+
+export const getProviders = async (): Promise<BackupProvider[]> => {
+  const response = await AxiosClient.getInstance().get<BackupProvider[]>(
+    "/backup/providers"
+  );
   return response.data;
 };

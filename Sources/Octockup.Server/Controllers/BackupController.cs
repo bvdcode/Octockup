@@ -35,6 +35,4 @@ namespace Octockup.Server.Controllers
             return _storageProviders.Select(p => new StorageProviderInfo(p.Name, p.Parameters));
         }
     }
-
-    public record StorageProviderInfo(string Name, IEnumerable<string> Parameters);
 }
