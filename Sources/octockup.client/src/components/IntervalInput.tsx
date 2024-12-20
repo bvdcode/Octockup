@@ -1,4 +1,4 @@
-import { FC, useEffect, useState } from "react";
+import { FC, useEffect, useState, useCallback } from "react";
 import { Box, Paper, TextField, Typography } from "@mui/material";
 
 interface IntervalInputProps {
@@ -23,14 +23,23 @@ const IntervalInput: FC<IntervalInputProps> = ({
   );
   const [seconds, setSeconds] = useState(defaultValue ? defaultValue % 60 : 0);
 
-  useEffect(() => {
+  const calculateInterval = useCallback(() => {
     const interval =
       days * 24 * 60 * 60 + hours * 60 * 60 + minutes * 60 + seconds;
     if (!isNaN(interval) && onChange) {
       onChange(interval);
       console.log(interval);
     }
-  }, [days, hours, minutes, seconds]);
+  }, [days, hours, minutes, seconds, ]);
+
+  useEffect(() => {
+    calculateInterval();
+  }, [days, hours, minutes, seconds, calculateInterval]);
+
+  const handleNumberChange = (value: string, setter: (val: number) => void) => {
+    const num = parseInt(value);
+    setter(isNaN(num) ? 0 : num);
+  };
 
   return (
     <Paper variant="outlined" sx={{ p: 2, bgcolor: "transparent" }}>
@@ -53,7 +62,7 @@ const IntervalInput: FC<IntervalInputProps> = ({
           type="number"
           value={days}
           variant="outlined"
-          onChange={(e) => setDays(parseInt(e.target.value))}
+          onChange={(e) => handleNumberChange(e.target.value, setDays)}
           InputProps={{ inputProps: { min: 0, max: 365 } }}
         />
         <TextField
@@ -61,7 +70,7 @@ const IntervalInput: FC<IntervalInputProps> = ({
           type="number"
           value={hours}
           variant="outlined"
-          onChange={(e) => setHours(parseInt(e.target.value))}
+          onChange={(e) => handleNumberChange(e.target.value, setHours)}
           InputProps={{ inputProps: { min: 0, max: 23 } }}
         />
         <TextField
@@ -69,7 +78,7 @@ const IntervalInput: FC<IntervalInputProps> = ({
           type="number"
           value={minutes}
           variant="outlined"
-          onChange={(e) => setMinutes(parseInt(e.target.value))}
+          onChange={(e) => handleNumberChange(e.target.value, setMinutes)}
           InputProps={{ inputProps: { min: 0, max: 59 } }}
         />
         <TextField
@@ -77,7 +86,7 @@ const IntervalInput: FC<IntervalInputProps> = ({
           type="number"
           value={seconds}
           variant="outlined"
-          onChange={(e) => setSeconds(parseInt(e.target.value))}
+          onChange={(e) => handleNumberChange(e.target.value, setSeconds)}
           InputProps={{ inputProps: { min: 0, max: 59 } }}
         />
       </Box>
