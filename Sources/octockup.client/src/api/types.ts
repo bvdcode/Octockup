@@ -43,3 +43,11 @@ export interface BackupProvider {
   name: string;
   parameters: string[];
 }
+
+export interface CreateJobRequest {
+  provider: string;
+  settings: Record<string, string>;
+  jobName: string;
+  interval: number;
+  notifications: boolean;
+}

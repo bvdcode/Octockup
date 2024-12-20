@@ -1,45 +1,32 @@
+import React, { useEffect, useReducer, useState } from "react";
 import {
   Box,
   Card,
-  Stack,
-  Select,
-  MenuItem,
-  TextField,
-  InputLabel,
-  Typography,
-  FormControl,
   CardContent,
-  Button,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
   SelectChangeEvent,
+  Stack,
+  TextField,
+  Typography,
+  Button,
 } from "@mui/material";
 import { getProviders } from "../api/api";
 import IntervalInput from "./IntervalInput";
-import { useEffect, useState } from "react";
 import { BackupProvider } from "../api/types";
 import { useTranslation } from "react-i18next";
+import { initialState, reducer } from "./CreateJobReducer";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { dark } from "react-syntax-highlighter/dist/esm/styles/prism";
-
-export interface CreateJobRequest {
-  provider: string;
-  settings: Record<string, string>;
-  jobName: string;
-  interval: number;
-  notifications: boolean;
-}
 
 const CreateJob: React.FC = () => {
   const { t } = useTranslation();
   const [providers, setProviders] = useState<BackupProvider[]>([]);
   const [selectedProvider, setSelectedProvider] =
     useState<BackupProvider | null>(null);
-  const [request, setRequest] = useState<CreateJobRequest>({
-    provider: "",
-    settings: {},
-    jobName: "",
-    interval: 0,
-    notifications: false,
-  });
+  const [state, dispatch] = useReducer(reducer, initialState);
 
   useEffect(() => {
     getProviders().then((response) => {
@@ -51,11 +38,7 @@ const CreateJob: React.FC = () => {
     const value = event.target.value;
     const provider = providers.find((p) => p.name === value);
     setSelectedProvider(provider || null);
-    setRequest((prev) => ({
-      ...prev,
-      provider: value,
-      settings: {},
-    }));
+    dispatch({ type: "SET_PROVIDER", payload: value });
   };
 
   return (
@@ -70,10 +53,13 @@ const CreateJob: React.FC = () => {
             <FormControl fullWidth>
               <InputLabel>{t("createJob.provider")}</InputLabel>
               <Select
-                value={request.provider}
+                value={state.provider}
                 label={t("createJob.provider")}
                 onChange={handleProviderChange}
               >
+                <MenuItem value="">
+                  <em>{t("common.none")}</em>
+                </MenuItem>
                 {providers.map((provider) => (
                   <MenuItem key={provider.name} value={provider.name}>
                     {provider.name}
@@ -90,7 +76,7 @@ const CreateJob: React.FC = () => {
               {t("createJob.providerSettings")}
             </Typography>
             {selectedProvider ? (
-              selectedProvider?.parameters.map((parameter) => (
+              selectedProvider.parameters.map((parameter) => (
                 <TextField
                   key={parameter}
                   fullWidth
@@ -98,65 +84,46 @@ const CreateJob: React.FC = () => {
                   label={parameter}
                   variant="outlined"
                   onChange={(event) =>
-                    setRequest((prev) => ({
-                      ...prev,
-                      settings: {
-                        ...prev.settings,
-                        [parameter]: event.target.value,
-                      },
-                    }))
+                    dispatch({
+                      type: "SET_SETTINGS",
+                      payload: { key: parameter, value: event.target.value },
+                    })
                   }
                 />
               ))
             ) : (
-              <Typography
-                variant="body2"
-                color="textSecondary"
-                sx={{ fontStyle: "italic" }}
-              >
-                {t("createJob.selectProviderFirst")}
-              </Typography>
+              <Typography>{t("createJob.noProviderSelected")}</Typography>
             )}
           </CardContent>
         </Card>
 
         <Card>
           <CardContent>
-            <Typography variant="h6">{t("createJob.jobSettings")}</Typography>
-            <TextField
-              fullWidth
-              margin="normal"
-              label={t("createJob.jobName")}
-              variant="outlined"
-              onChange={(event) =>
-                setRequest((prev) => ({
-                  ...prev,
-                  jobName: event.target.value,
-                }))
-              }
-            />
+            <Typography variant="h6">{t("createJob.interval")}</Typography>
             <IntervalInput
               label={t("createJob.interval")}
-              defaultValue={0}
-              onChange={(seconds) =>
-                setRequest((prev) => ({ ...prev, interval: seconds }))
+              onChange={(interval) =>
+                dispatch({ type: "SET_INTERVAL", payload: interval })
               }
+              defaultValue={state.interval}
             />
-            <FormControl fullWidth margin="normal">
-              <InputLabel id="notifications-select-label">
-                {t("notifications")}
-              </InputLabel>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent>
+            <Typography variant="h6">{t("createJob.notifications")}</Typography>
+            <FormControl fullWidth>
+              <InputLabel>{t("createJob.notifications")}</InputLabel>
               <Select
-                labelId="notifications-select-label"
-                id="notifications-select"
-                label={t("notifications")}
-                value={request.notifications ? "yes" : "no"}
-                onChange={(event) => {
-                  setRequest((prev) => ({
-                    ...prev,
-                    notifications: event.target.value === "yes",
-                  }));
-                }}
+                value={state.notifications ? "yes" : "no"}
+                label={t("createJob.notifications")}
+                onChange={(event) =>
+                  dispatch({
+                    type: "SET_NOTIFICATIONS",
+                    payload: event.target.value === "yes",
+                  })
+                }
               >
                 <MenuItem value="yes">{t("yes")}</MenuItem>
                 <MenuItem value="no">{t("no")}</MenuItem>
@@ -177,7 +144,7 @@ const CreateJob: React.FC = () => {
                 border: "none",
               }}
             >
-              {JSON.stringify(request, null, 2)}
+              {JSON.stringify(state, null, 2)}
             </SyntaxHighlighter>
           </CardContent>
         </Card>

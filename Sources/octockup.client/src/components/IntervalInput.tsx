@@ -3,7 +3,7 @@ import { Box, Paper, TextField, Typography } from "@mui/material";
 
 interface IntervalInputProps {
   label?: string;
-  onChange: (interval: number) => void;
+  onChange?: (interval: number) => void;
   defaultValue?: number;
 }
 
@@ -26,8 +26,11 @@ const IntervalInput: FC<IntervalInputProps> = ({
   useEffect(() => {
     const interval =
       days * 24 * 60 * 60 + hours * 60 * 60 + minutes * 60 + seconds;
+    if (onChange) {
       onChange(interval);
-  }, [days, hours, minutes, seconds, onChange]);
+      console.log(interval);
+    }
+  }, [days, hours, minutes, seconds]);
 
   return (
     <Paper variant="outlined" sx={{ p: 2, bgcolor: "transparent" }}>
