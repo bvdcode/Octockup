@@ -145,6 +145,12 @@ const CreateJob: React.FC = () => {
           <CardContent>
             <FormControl fullWidth>
               <TextField
+                sx={{
+                  "& ::-webkit-calendar-picker-indicator": {
+                    filter: (theme) =>
+                      theme.palette.mode === "dark" ? "invert(1)" : "none",
+                  },
+                }}
                 type="datetime-local"
                 fullWidth
                 label={t("createJob.startAt")}

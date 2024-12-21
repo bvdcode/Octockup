@@ -1,6 +1,6 @@
 :root {
   --navbar-button: #fff;
-  --navbar-background: #61616191;
+  --navbar-background: #616161ce;
   --navbar-background-slider: #b4b4b4;
 }
 
@@ -55,7 +55,7 @@
 @media (prefers-color-scheme: light) {
   :root {
     --navbar-button: #666666;
-    --navbar-background: #bebebe91;
+    --navbar-background: #bebebece;
     --navbar-background-slider: #696969;
   }
 }
