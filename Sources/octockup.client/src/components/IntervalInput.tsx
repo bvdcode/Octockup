@@ -77,7 +77,7 @@ const IntervalInput: FC<IntervalInputProps> = ({
             value={days}
             variant="outlined"
             onChange={(e) => handleNumberChange(e.target.value, setDays)}
-            InputProps={{ inputProps: { min: 0, max: 365 } }}
+            slotProps={{ htmlInput: { min: 0, max: 365 } }}
           />
           <TextField
             label={t("intervalInput.hours")}
@@ -85,7 +85,7 @@ const IntervalInput: FC<IntervalInputProps> = ({
             value={hours}
             variant="outlined"
             onChange={(e) => handleNumberChange(e.target.value, setHours)}
-            InputProps={{ inputProps: { min: 0, max: 23 } }}
+            slotProps={{ htmlInput: { min: 0, max: 23 } }}
           />
           <TextField
             label={t("intervalInput.minutes")}
@@ -93,7 +93,7 @@ const IntervalInput: FC<IntervalInputProps> = ({
             value={minutes}
             variant="outlined"
             onChange={(e) => handleNumberChange(e.target.value, setMinutes)}
-            InputProps={{ inputProps: { min: 0, max: 59 } }}
+            slotProps={{ htmlInput: { min: 0, max: 59 } }}
           />
           <TextField
             label={t("intervalInput.seconds")}
@@ -101,7 +101,7 @@ const IntervalInput: FC<IntervalInputProps> = ({
             value={seconds}
             variant="outlined"
             onChange={(e) => handleNumberChange(e.target.value, setSeconds)}
-            InputProps={{ inputProps: { min: 0, max: 59 } }}
+            slotProps={{ htmlInput: { min: 0, max: 59 } }}
           />
         </Box>
       </Paper>

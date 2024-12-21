@@ -144,6 +144,7 @@ const CreateJob: React.FC = () => {
                 margin="normal"
                 variant="outlined"
                 defaultValue={null}
+                slotProps={{ inputLabel: { shrink: true } }}
                 onChange={(event) =>
                   dispatch({
                     type: "SET_START_AT",
@@ -163,7 +164,7 @@ const CreateJob: React.FC = () => {
               style={getCodeStyle()}
               customStyle={{
                 borderRadius: 15,
-                boxShadow: "0 0 5px rgba(0, 0, 0, 0.3)",
+                boxShadow: "inset 0 0 5px rgba(0, 0, 0, 0.18)",
               }}
             >
               {JSON.stringify(state, null, 2)}
