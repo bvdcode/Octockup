@@ -14,10 +14,14 @@ import {
   Tooltip,
   IconButton,
 } from "@mui/material";
-import { getProviders } from "../api/api";
+import { AxiosError } from "axios";
+import { toast } from "react-toastify";
+import { Info } from "@mui/icons-material";
 import IntervalInput from "./IntervalInput";
 import { BackupProvider } from "../api/types";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
+import { createBackupJob, getProviders } from "../api/api";
 import { initialState, reducer } from "./CreateJobReducer";
 import React, { useEffect, useReducer, useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -25,7 +29,6 @@ import {
   materialDark,
   materialLight,
 } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { Info } from "@mui/icons-material";
 
 const CreateJob: React.FC = () => {
   const { t } = useTranslation();
@@ -33,6 +36,7 @@ const CreateJob: React.FC = () => {
   const [selectedProvider, setSelectedProvider] =
     useState<BackupProvider | null>(null);
   const [state, dispatch] = useReducer(reducer, initialState);
+  const navigate = useNavigate();
 
   useEffect(() => {
     getProviders().then((response) => {
@@ -61,6 +65,17 @@ const CreateJob: React.FC = () => {
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(" ");
     }
+  };
+
+  const handleCreateJobClick = () => {
+    createBackupJob(state)
+      .then(() => {
+        toast.success(t("createJob.success"));
+        navigate("/dashboard");
+      })
+      .catch((error: AxiosError) => {
+        toast.error(t("createJob.error", { error: error.message }));
+      });
   };
 
   return (
@@ -225,7 +240,9 @@ const CreateJob: React.FC = () => {
               justifyContent: "center",
             }}
           >
-            <Button fullWidth={true}>{t("createJob.submitButton")}</Button>
+            <Button fullWidth={true} onClick={handleCreateJobClick}>
+              {t("createJob.submitButton")}
+            </Button>
           </CardContent>
         </Card>
       </Stack>

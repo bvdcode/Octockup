@@ -22,9 +22,6 @@ namespace Octockup.Server.Handlers
 
             BackupTask backupTask = new()
             {
-                Id = default,
-                CreatedAt = default,
-                UpdatedAt = default,
                 StartAt = request.StartAt ?? DateTime.UtcNow,
                 Interval = TimeSpan.FromSeconds(request.Interval),
                 IsDeleted = false,

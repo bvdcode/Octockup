@@ -5,6 +5,7 @@ import {
   AuthResponse,
   BackupTask,
   BackupProvider,
+  CreateJobRequest,
 } from "./types";
 
 /**
@@ -78,4 +79,8 @@ export const getProviders = async (): Promise<BackupProvider[]> => {
     "/backup/providers"
   );
   return response.data;
+};
+
+export const createBackupJob = async (job: CreateJobRequest): Promise<void> => {
+  await AxiosClient.getInstance().post("/backup/create", job);
 };
