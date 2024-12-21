@@ -34,7 +34,7 @@ export const reducer = (
         },
       };
     case "SET_JOB_NAME":
-      return { ...state, name: action.payload };
+      return { ...state, name: action.payload.trim() };
     case "SET_INTERVAL":
       return { ...state, interval: action.payload };
     case "SET_NOTIFICATIONS":

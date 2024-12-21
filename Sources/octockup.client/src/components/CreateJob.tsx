@@ -49,6 +49,14 @@ const CreateJob: React.FC = () => {
     const provider = providers.find((p) => p.name === value);
     setSelectedProvider(provider || null);
     dispatch({ type: "SET_PROVIDER", payload: value });
+    if (provider) {
+      provider.parameters.forEach((parameter) => {
+        dispatch({
+          type: "SET_SETTINGS",
+          payload: { key: parameter, value: "" },
+        });
+      });
+    }
   };
 
   const getCodeStyle = () => {
