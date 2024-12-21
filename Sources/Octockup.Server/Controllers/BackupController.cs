@@ -6,6 +6,7 @@ using Octockup.Server.Models;
 using Gridify.EntityFramework;
 using Microsoft.AspNetCore.Mvc;
 using Octockup.Server.Database;
+using Octockup.Server.Extensions;
 using Octockup.Server.Models.Dto;
 using Octockup.Server.Providers.Storage;
 using Microsoft.AspNetCore.Authorization;
@@ -45,7 +46,7 @@ namespace Octockup.Server.Controllers
             return _storageProviders.Select(p => new StorageProviderInfo()
             {
                 Name = p.Name,
-                Parameters = p.Parameters
+                Parameters = p.GetParametersKeys()
             });
         }
     }

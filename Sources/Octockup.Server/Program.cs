@@ -18,6 +18,7 @@ namespace Octockup.Server
             builder.Services.AddControllers();
             builder.Services
                 .AddStorageProvider<FtpProvider>()
+                .AddStorageProvider<ScpProvider>()
                 .AddHttpContextAccessor()
                 .AddValidatorsFromAssemblyContaining<Program>()
                 .AddFluentValidationAutoValidation()

@@ -21,7 +21,7 @@ namespace Octockup.Server.Extensions
             string filename = FileSystemHelpers.GetFilePath(databaseFile);
             return services
                 .AddDbContext<TContext>(options => options
-                .UseSqlite("Data Source=" + databaseFile)
+                .UseSqlite("Data Source=" + filename)
                 .UseLazyLoadingProxies());
         }
 

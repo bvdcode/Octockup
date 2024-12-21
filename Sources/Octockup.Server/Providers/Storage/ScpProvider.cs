@@ -2,11 +2,10 @@
 
 namespace Octockup.Server.Providers.Storage
 {
-    public class ScpProvider : IStorageProvider
+    public class ScpProvider : IStorageProvider<BaseStorageParameters>
     {
-        public string Name => throw new NotImplementedException();
-
-        public IEnumerable<string> Parameters => throw new NotImplementedException();
+        public string Name => "SCP";
+        public BaseStorageParameters Parameters { get; set; } = null!;
 
         public IEnumerable<RemoteFileInfo> GetAllFiles()
         {
