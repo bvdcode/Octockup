@@ -6,6 +6,7 @@ using Octockup.Server.Database;
 using Octockup.Server.Models.Enums;
 using Octockup.Server.Providers.Storage;
 using EasyExtensions.EntityFrameworkCore.Exceptions;
+using EasyExtensions.Helpers;
 
 namespace Octockup.Server.Handlers
 {
@@ -27,7 +28,7 @@ namespace Octockup.Server.Handlers
                 IsDeleted = false,
                 IsEnabled = true,
                 CompletedAt = null,
-                Name = request.Name,
+                Name = StringHelpers.RemoveSpaces(request.Name),
                 Provider = foundProvider.Name,
                 Status = BackupTaskStatus.Created,
                 Progress = 0,

@@ -72,6 +72,10 @@ const CreateJob: React.FC = () => {
       toast.warning(t("createJob.providerNotSelected"));
       return;
     }
+    if (!state.name || state.name.trim() === "") {
+      toast.warning(t("createJob.jobNameNotProvided"));
+      return;
+    }
 
     createBackupJob(state)
       .then(() => {
@@ -118,6 +122,7 @@ const CreateJob: React.FC = () => {
             <FormControl fullWidth>
               <InputLabel>{t("createJob.provider")}</InputLabel>
               <Select
+                required
                 value={state.provider}
                 label={t("createJob.provider")}
                 onChange={handleProviderChange}

@@ -2,9 +2,8 @@
 
 namespace Octockup.Server.Models.Dto
 {
-    public class BackupTaskDto
+    public class BackupTaskDto : BaseDto
     {
-        public int Id { get; set; }
         public double Progress { get; set; }
         public DateTime? LastRun { get; set; }
         public TimeSpan Duration { get; set; }
