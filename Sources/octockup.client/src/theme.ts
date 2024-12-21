@@ -27,6 +27,7 @@ export const darkTheme = createTheme({
     },
     background: {
       default: "#303030",
+      paper: "#303030",
     },
   },
 });

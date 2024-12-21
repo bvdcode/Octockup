@@ -48,10 +48,11 @@ const IntervalInput: FC<IntervalInputProps> = ({
         <FormLabel
           sx={{
             position: "absolute",
-            top: -10,
+            top: -8,
             left: 6,
-            backgroundColor: "background.paper",
             padding: "0 6px",
+            backgroundColor: "background.paper",
+            backgroundImage: "var(--Paper-overlay)",
             color: "text.secondary",
             fontSize: 12,
           }}
