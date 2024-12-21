@@ -73,7 +73,7 @@ const Dashboard: React.FC = () => {
               {status.map((backup, index) => (
                 <TableRow key={index}>
                   <TableCell>{backup.id}</TableCell>
-                  <TableCell>{backup.jobName}</TableCell>
+                  <TableCell>{backup.name}</TableCell>
                   <TableCell>{backup.lastRunDate.toLocaleString()}</TableCell>
                   <TableCell>{backup.duration}</TableCell>
                   <TableCell>

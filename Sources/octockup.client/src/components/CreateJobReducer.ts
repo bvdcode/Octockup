@@ -12,7 +12,7 @@ export type Action =
 export const initialState: CreateJobRequest = {
   provider: "",
   settings: {},
-  jobName: "",
+  name: "",
   interval: 0,
   notifications: false,
   startAt: null,
@@ -34,7 +34,7 @@ export const reducer = (
         },
       };
     case "SET_JOB_NAME":
-      return { ...state, jobName: action.payload };
+      return { ...state, name: action.payload };
     case "SET_INTERVAL":
       return { ...state, interval: action.payload };
     case "SET_NOTIFICATIONS":

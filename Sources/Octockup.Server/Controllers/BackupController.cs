@@ -1,6 +1,11 @@
-﻿using Octockup.Server.Models;
+﻿using Gridify;
+using AutoMapper;
+using EasyExtensions;
+using Octockup.Server.Models;
+using Gridify.EntityFramework;
 using Microsoft.AspNetCore.Mvc;
-using Octockup.Server.Models.Enums;
+using Octockup.Server.Database;
+using Octockup.Server.Models.Dto;
 using Octockup.Server.Providers.Storage;
 using Microsoft.AspNetCore.Authorization;
 
@@ -8,7 +13,8 @@ namespace Octockup.Server.Controllers
 {
     [ApiController]
     [Route("/api/v1/[controller]")]
-    public class BackupController(IEnumerable<IStorageProvider> _storageProviders) : ControllerBase
+    public class BackupController(IEnumerable<IStorageProvider> _storageProviders,
+        AppDbContext _dbContext, IMapper _mapper) : ControllerBase
     {
         [Authorize]
         [HttpPost("create")]
@@ -20,23 +26,15 @@ namespace Octockup.Server.Controllers
 
         [Authorize]
         [HttpGet("status")]
-        public async Task<IEnumerable<BackupStatus>> GetStatusAsync()
+        public async Task<IEnumerable<BackupTaskDto>> GetStatusAsync(GridifyQuery query)
         {
-            // mock data
-            return
-            [
-                BackupStatus.Create(51, "Job1", DateTime.UtcNow, TimeSpan.FromMinutes(10), 
-                BackupStatusType.Created, Random.Shared.NextDouble()),
-
-                BackupStatus.Create(52, "Job2", DateTime.UtcNow.AddDays(-1), TimeSpan.FromMinutes(5), 
-                BackupStatusType.Running, Random.Shared.NextDouble()),
-
-                BackupStatus.Create(53, "Job3", DateTime.Now, TimeSpan.FromMinutes(15),
-                BackupStatusType.Completed, Random.Shared.NextDouble()),
-
-                BackupStatus.Create(56, "Job3", DateTime.Now, TimeSpan.FromMinutes(5452),
-                BackupStatusType.Failed, Random.Shared.NextDouble()),
-            ];
+            int userId = User.GetId();
+            var result = await _dbContext
+                .BackupTasks
+                .Where(x => x.UserId == userId && !x.IsDeleted)
+                .GridifyAsync(query);
+            Response.Headers.Append("X-Total-Count", result.Count.ToString());
+            return _mapper.Map<IEnumerable<BackupTaskDto>>(result);
         }
 
         [Authorize]

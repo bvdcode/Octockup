@@ -24,7 +24,7 @@ export enum UserRole {
 
 export interface BackupStatus {
   id: number;
-  jobName: string;
+  name: string;
   lastRun: string;
   duration: string;
   progress: number;
@@ -47,7 +47,7 @@ export interface BackupProvider {
 export interface CreateJobRequest {
   provider: string;
   settings: Record<string, string>;
-  jobName: string;
+  name: string;
   interval: number;
   notifications: boolean;
   startAt: Date | null;

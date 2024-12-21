@@ -9,6 +9,7 @@ namespace Octockup.Server.Mappings
         public AppMappingProfile()
         {
             CreateMap<User, UserDto>();
+            CreateMap<BackupTask, BackupTaskDto>();
         }
     }
 }

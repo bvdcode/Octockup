@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using Octockup.Server.Models.Enums;
+using System.ComponentModel.DataAnnotations.Schema;
 using EasyExtensions.EntityFrameworkCore.Abstractions;
 
 namespace Octockup.Server.Database
@@ -9,6 +10,9 @@ namespace Octockup.Server.Database
         [Column("name")]
         public string Name { get; set; } = null!;
 
+        [Column("progress")]
+        public double Progress { get; set; }
+
         [Column("interval")]
         public TimeSpan Interval { get; set; }
 
@@ -18,13 +22,19 @@ namespace Octockup.Server.Database
         [Column("last_run")]
         public DateTime? LastRun { get; set; }
 
-        [Column("is_running")]
-        public bool IsRunning { get; set; }
-
         [Column("is_enabled")]
         public bool IsEnabled { get; set; }
 
         [Column("is_deleted")]
         public bool IsDeleted { get; set; }
+
+        [Column("status")]
+        public BackupStatusType Status { get; set; }
+
+        [Column("user_id")]
+        public int UserId { get; set; }
+
+        public virtual User User { get; set; } = null!;
+
     }
 }
