@@ -54,6 +54,7 @@ const CreateJob: React.FC = () => {
                 label={t("createJob.provider")}
                 onChange={handleProviderChange}
               >
+                <MenuItem value="">{t("notSelected")}</MenuItem>
                 {providers.map((provider) => (
                   <MenuItem key={provider.name} value={provider.name}>
                     {provider.name}
@@ -83,7 +84,9 @@ const CreateJob: React.FC = () => {
                 />
               ))
             ) : (
-              <Typography>{t("createJob.selectProviderFirst")}</Typography>
+              <Typography sx={{ fontStyle: "italic", color: "text.secondary" }}>
+                {t("createJob.selectProviderFirst")}
+              </Typography>
             )}
           </CardContent>
         </Card>

@@ -42,5 +42,11 @@
     "jobSettings": "Настройки задачи",
     "jobName": "Название задачи",
     "interval": "Интервал"
+  },
+  "intervalInput": {
+    "days": "Дни",
+    "hours": "Часы",
+    "minutes": "Минуты",
+    "seconds": "Секунды"
   }
 }

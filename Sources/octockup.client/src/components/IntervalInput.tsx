@@ -1,5 +1,6 @@
+import { useTranslation } from "react-i18next";
 import { FC, useEffect, useState, useCallback } from "react";
-import { Box, Paper, TextField, Typography } from "@mui/material";
+import { Box, FormLabel, Paper, TextField } from "@mui/material";
 
 interface IntervalInputProps {
   label?: string;
@@ -12,6 +13,7 @@ const IntervalInput: FC<IntervalInputProps> = ({
   onChange,
   defaultValue,
 }) => {
+  const { t } = useTranslation();
   const [days, setDays] = useState(
     defaultValue ? Math.floor(defaultValue / (24 * 60 * 60)) : 0
   );
@@ -33,7 +35,7 @@ const IntervalInput: FC<IntervalInputProps> = ({
 
   useEffect(() => {
     calculateInterval();
-  }, [days, hours, minutes, seconds, calculateInterval]);
+  }, [days, hours, minutes, seconds]);
 
   const handleNumberChange = (value: string, setter: (val: number) => void) => {
     const num = parseInt(value);
@@ -43,20 +45,20 @@ const IntervalInput: FC<IntervalInputProps> = ({
   return (
     <Box sx={{ position: "relative", display: "inline-block", width: "100%" }}>
       {label && (
-        <Typography
-          variant="subtitle1"
+        <FormLabel
           sx={{
             position: "absolute",
             top: -10,
             left: 6,
             backgroundColor: "background.paper",
-            padding: "0 4px",
+            padding: "0 6px",
             color: "text.secondary",
             fontSize: 12,
           }}
+          component={"legend"}
         >
           {label}
-        </Typography>
+        </FormLabel>
       )}
       <Paper variant="outlined" sx={{ p: 2, pt: 4, bgcolor: "transparent" }}>
         <Box
@@ -69,7 +71,7 @@ const IntervalInput: FC<IntervalInputProps> = ({
           }}
         >
           <TextField
-            label="Days"
+            label={t("intervalInput.days")}
             type="number"
             value={days}
             variant="outlined"
@@ -77,7 +79,7 @@ const IntervalInput: FC<IntervalInputProps> = ({
             InputProps={{ inputProps: { min: 0, max: 365 } }}
           />
           <TextField
-            label="Hours"
+            label={t("intervalInput.hours")}
             type="number"
             value={hours}
             variant="outlined"
@@ -85,7 +87,7 @@ const IntervalInput: FC<IntervalInputProps> = ({
             InputProps={{ inputProps: { min: 0, max: 23 } }}
           />
           <TextField
-            label="Minutes"
+            label={t("intervalInput.minutes")}
             type="number"
             value={minutes}
             variant="outlined"
@@ -93,7 +95,7 @@ const IntervalInput: FC<IntervalInputProps> = ({
             InputProps={{ inputProps: { min: 0, max: 59 } }}
           />
           <TextField
-            label="Seconds"
+            label={t("intervalInput.seconds")}
             type="number"
             value={seconds}
             variant="outlined"

@@ -41,6 +41,13 @@
     "selectProviderFirst": "Please select a storage provider first",
     "jobSettings": "Job settings",
     "jobName": "Job name",
-    "interval": "Interval"
+    "interval": "Interval",
+    "notSelected": "Not selected"
+  },
+  "intervalInput": {
+    "days": "Days",
+    "hours": "Hours",
+    "minutes": "Minutes",
+    "seconds": "Seconds"
   }
 }
