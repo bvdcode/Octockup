@@ -68,12 +68,29 @@ const CreateJob: React.FC = () => {
   };
 
   const handleCreateJobClick = () => {
+    if (!state.provider) {
+      toast.warning(t("createJob.providerNotSelected"));
+      return;
+    }
+
     createBackupJob(state)
       .then(() => {
         toast.success(t("createJob.success"));
         navigate("/dashboard");
       })
       .catch((error: AxiosError) => {
+        if (error.response?.status === 400) {
+          const errors = (
+            error.response?.data as { errors: Record<string, string[]> }
+          ).errors;
+          const errorMessages = Object.keys(errors).map((key) => {
+            return `${errors[key].join(", ")}`;
+          });
+          toast.error(
+            t("createJob.error", { error: errorMessages.join(", ") })
+          );
+          return;
+        }
         toast.error(t("createJob.error", { error: error.message }));
       });
   };

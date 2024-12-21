@@ -50,7 +50,8 @@
     "submitButton": "Create",
     "help": "If no interval is specified, the job will run only once. If no date and time are specified to start the job, it will start immediately after creation.",
     "success": "Job created successfully",
-    "error": "Job creation error: {{error}}"
+    "error": "Job creation error: {{error}}",
+    "providerNotSelected": "Storage provider is not selected"
   },
   "intervalInput": {
     "days": "Days",
