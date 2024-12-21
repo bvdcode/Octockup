@@ -45,10 +45,10 @@ export interface BackupProvider {
 }
 
 export interface CreateJobRequest {
-  provider: string;
-  settings: Record<string, string>;
   name: string;
+  provider: string;
   interval: number;
-  notifications: boolean;
   startAt: Date | null;
+  isNotificationEnabled: boolean;
+  parameters: Record<string, string>;
 }

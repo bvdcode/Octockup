@@ -11,7 +11,7 @@ using Octockup.Server.Database;
 namespace Octockup.Server.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20241221054843_Initial")]
+    [Migration("20241221055738_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -31,13 +31,13 @@ namespace Octockup.Server.Migrations
                         .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("completed_at");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("created_at");
-
-                    b.Property<DateTime>("FirstRun")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("first_run");
 
                     b.Property<TimeSpan>("Interval")
                         .HasColumnType("TEXT")
@@ -51,14 +51,19 @@ namespace Octockup.Server.Migrations
                         .HasColumnType("INTEGER")
                         .HasColumnName("is_enabled");
 
-                    b.Property<DateTime?>("LastRun")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("last_run");
+                    b.Property<bool>("IsNotificationEnabled")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_notification_enabled");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT")
                         .HasColumnName("name");
+
+                    b.Property<string>("ParametersJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("parameters_json");
 
                     b.Property<double>("Progress")
                         .HasColumnType("REAL")
@@ -68,6 +73,10 @@ namespace Octockup.Server.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT")
                         .HasColumnName("provider");
+
+                    b.Property<DateTime>("StartAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("start_at");
 
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER")

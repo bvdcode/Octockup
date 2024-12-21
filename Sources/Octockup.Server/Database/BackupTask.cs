@@ -1,4 +1,5 @@
-﻿using Octockup.Server.Models.Enums;
+﻿using System.Text.Json;
+using Octockup.Server.Models.Enums;
 using System.ComponentModel.DataAnnotations.Schema;
 using EasyExtensions.EntityFrameworkCore.Abstractions;
 
@@ -16,11 +17,11 @@ namespace Octockup.Server.Database
         [Column("interval")]
         public TimeSpan Interval { get; set; }
 
-        [Column("first_run")]
-        public DateTime FirstRun { get; set; }
+        [Column("start_at")]
+        public DateTime StartAt { get; set; }
 
-        [Column("last_run")]
-        public DateTime? LastRun { get; set; }
+        [Column("completed_at")]
+        public DateTime? CompletedAt { get; set; }
 
         [Column("is_enabled")]
         public bool IsEnabled { get; set; }
@@ -31,13 +32,32 @@ namespace Octockup.Server.Database
         [Column("status")]
         public BackupTaskStatus Status { get; set; }
 
-        [Column("user_id")]
-        public int UserId { get; set; }
-
         [Column("provider")]
         public string Provider { get; set; } = string.Empty;
 
+        [Column("parameters_json")]
+        public string ParametersJson { get; set; } = string.Empty;
+
+        [Column("is_notification_enabled")]
+        public bool IsNotificationEnabled { get; set; }
+
+        [Column("user_id")]
+        public int UserId { get; set; }
+
         public virtual User User { get; set; } = null!;
 
+        public Dictionary<string, string> GetParameters()
+        {
+            if (string.IsNullOrEmpty(ParametersJson))
+            {
+                return [];
+            }
+            return JsonSerializer.Deserialize<Dictionary<string, string>>(ParametersJson) ?? [];
+        }
+
+        public void SetParameters(Dictionary<string, string> parameters)
+        {
+            ParametersJson = JsonSerializer.Serialize(parameters);
+        }
     }
 }

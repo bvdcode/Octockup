@@ -11,10 +11,10 @@ export type Action =
 
 export const initialState: CreateJobRequest = {
   provider: "",
-  settings: {},
+  parameters: {},
   name: "",
   interval: 0,
-  notifications: false,
+  isNotificationEnabled: false,
   startAt: null,
 };
 
@@ -24,12 +24,12 @@ export const reducer = (
 ): CreateJobRequest => {
   switch (action.type) {
     case "SET_PROVIDER":
-      return { ...state, provider: action.payload, settings: {} };
+      return { ...state, provider: action.payload, parameters: {} };
     case "SET_SETTINGS":
       return {
         ...state,
-        settings: {
-          ...state.settings,
+        parameters: {
+          ...state.parameters,
           [action.payload.key]: action.payload.value,
         },
       };
@@ -38,7 +38,7 @@ export const reducer = (
     case "SET_INTERVAL":
       return { ...state, interval: action.payload };
     case "SET_NOTIFICATIONS":
-      return { ...state, notifications: action.payload };
+      return { ...state, isNotificationEnabled: action.payload };
     case "SET_START_AT":
       return { ...state, startAt: action.payload };
     case "RESET":

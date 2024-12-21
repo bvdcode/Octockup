@@ -65,7 +65,7 @@ export const changePassword = async (newPassword: string): Promise<void> => {
 
 export const getBackupStatus = async (): Promise<BackupTask[]> => {
   const response = await AxiosClient.getInstance().get<BackupTask[]>(
-    "/backup/list"
+    "/backup/list?orderBy=createdAt desc"
   );
   response.data.forEach((backup) => {
     backup.lastRunDate = new Date(backup.lastRun);

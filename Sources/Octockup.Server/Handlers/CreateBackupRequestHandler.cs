@@ -25,18 +25,20 @@ namespace Octockup.Server.Handlers
                 Id = default,
                 CreatedAt = default,
                 UpdatedAt = default,
-                FirstRun = request.StartAt,
+                StartAt = request.StartAt ?? DateTime.UtcNow,
                 Interval = TimeSpan.FromSeconds(request.Interval),
                 IsDeleted = false,
                 IsEnabled = true,
-                LastRun = null,
+                CompletedAt = null,
                 Name = request.Name,
                 Provider = foundProvider.Name,
                 Status = BackupTaskStatus.Created,
                 Progress = 0,
                 UserId = foundUser.Id,
-                User = foundUser
+                User = foundUser,
+                IsNotificationEnabled = request.IsNotificationEnabled,
             };
+            backupTask.SetParameters(request.Parameters);
             _dbContext.BackupTasks.Add(backupTask);
             return _dbContext.SaveChangesAsync(cancellationToken);
         }

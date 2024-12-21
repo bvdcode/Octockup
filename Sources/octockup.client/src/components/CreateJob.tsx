@@ -146,7 +146,7 @@ const CreateJob: React.FC = () => {
             <FormControl fullWidth>
               <InputLabel>{t("notifications")}</InputLabel>
               <Select
-                value={state.notifications ? "yes" : "no"}
+                value={state.isNotificationEnabled ? "yes" : "no"}
                 label={t("notifications")}
                 onChange={(event) =>
                   dispatch({
