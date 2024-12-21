@@ -54,7 +54,7 @@ const CreateJob: React.FC = () => {
                 label={t("createJob.provider")}
                 onChange={handleProviderChange}
               >
-                <MenuItem value="">{t("notSelected")}</MenuItem>
+                <MenuItem value="">{t("createJob.notSelected")}</MenuItem>
                 {providers.map((provider) => (
                   <MenuItem key={provider.name} value={provider.name}>
                     {provider.name}

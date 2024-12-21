@@ -41,7 +41,8 @@
     "selectProviderFirst": "Пожалуйста, сначала выберите поставщика хранилища",
     "jobSettings": "Настройки задачи",
     "jobName": "Название задачи",
-    "interval": "Интервал"
+    "interval": "Интервал",
+    "notSelected": "Не выбрано"
   },
   "intervalInput": {
     "days": "Дни",

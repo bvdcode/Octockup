@@ -38,8 +38,8 @@
   transform: translateX(-50%);
   width: 50px;
   height: 4px;
-  background-color: #c6c6c6;
   border-radius: 2px;
+  background-color: #fff;
 }
 
 .navbar button {
