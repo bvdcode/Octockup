@@ -51,6 +51,15 @@ const CreateJob: React.FC = () => {
     return materialLight;
   };
 
+  const formatParameter = (parameter: string) => {
+    if (parameter.match(/[A-Z]/)) {
+      return parameter
+        .split(/(?=[A-Z])/)
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+    }
+  };
+
   return (
     <Box
       sx={{
@@ -90,7 +99,7 @@ const CreateJob: React.FC = () => {
                   key={parameter}
                   fullWidth
                   margin="normal"
-                  label={parameter}
+                  label={formatParameter(parameter)}
                   variant="outlined"
                   onChange={(event) =>
                     dispatch({
@@ -105,6 +114,20 @@ const CreateJob: React.FC = () => {
                 {t("createJob.selectProviderFirst")}
               </Typography>
             )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent>
+            <TextField
+              fullWidth
+              margin="normal"
+              label={t("createJob.jobName")}
+              variant="outlined"
+              onChange={(event) =>
+                dispatch({ type: "SET_JOB_NAME", payload: event.target.value })
+              }
+            />
           </CardContent>
         </Card>
 

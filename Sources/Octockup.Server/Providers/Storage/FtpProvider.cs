@@ -8,7 +8,7 @@ namespace Octockup.Server.Providers.Storage
 
         public IEnumerable<string> Parameters =>
         [
-            "Host", "Username", "Password", "Port"
+            "RemoteHost", "Username", "Password", "RemotePort"
         ];
 
         public IEnumerable<RemoteFileInfo> GetAllFiles()

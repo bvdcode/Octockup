@@ -15,7 +15,7 @@ namespace Octockup.Server.Controllers
         public async Task<IActionResult> CreateBackupAsync([FromBody] CreateBackupRequest request)
         {
 
-
+            return Ok();
         }
 
         [Authorize]

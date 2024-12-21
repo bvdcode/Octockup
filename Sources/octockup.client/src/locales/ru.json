@@ -44,7 +44,7 @@
     "interval": "Интервал",
     "notSelected": "Не выбрано",
     "preview": "Предпросмотр",
-    "startAt": "Начать в",
+    "startAt": "Когда начать задачу",
     "submitButton": "Создать"
   },
   "intervalInput": {
