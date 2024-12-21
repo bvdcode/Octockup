@@ -7,11 +7,11 @@ namespace Octockup.Server.Validators
     {
         public CreateBackupRequestValidator()
         {
-            RuleFor(x => x.BackupName)
+            RuleFor(x => x.Name)
                 .NotEmpty()
                 .MaximumLength(255)
                 .Matches("^[^\\n]*$");
-            RuleFor(x => x.BackupName)
+            RuleFor(x => x.Name)
                 .Matches("^[^\\n]*$");
             RuleFor(x => x.Provider)
                 .NotEmpty();

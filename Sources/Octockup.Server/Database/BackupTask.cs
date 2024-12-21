@@ -8,7 +8,7 @@ namespace Octockup.Server.Database
     public class BackupTask : BaseEntity
     {
         [Column("name")]
-        public string Name { get; set; } = null!;
+        public string Name { get; set; } = string.Empty;
 
         [Column("progress")]
         public double Progress { get; set; }
@@ -33,6 +33,9 @@ namespace Octockup.Server.Database
 
         [Column("user_id")]
         public int UserId { get; set; }
+
+        [Column("provider")]
+        public string Provider { get; set; } = string.Empty;
 
         public virtual User User { get; set; } = null!;
 

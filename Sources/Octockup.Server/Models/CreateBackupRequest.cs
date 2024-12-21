@@ -7,6 +7,6 @@ namespace Octockup.Server.Models
         public int Interval { get; set; }
         public DateTime StartAt { get; set; }
         public string Provider { get; set; } = string.Empty;
-        public string BackupName { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
     }
 }
