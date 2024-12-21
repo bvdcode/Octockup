@@ -15,7 +15,7 @@ export const initialState: CreateJobRequest = {
   jobName: "",
   interval: 0,
   notifications: false,
-  startAt: new Date(),
+  startAt: null,
 };
 
 export const reducer = (

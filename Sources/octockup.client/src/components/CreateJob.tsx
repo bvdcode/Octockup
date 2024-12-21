@@ -143,6 +143,7 @@ const CreateJob: React.FC = () => {
                 label={t("createJob.startAt")}
                 margin="normal"
                 variant="outlined"
+                defaultValue={null}
                 onChange={(event) =>
                   dispatch({
                     type: "SET_START_AT",
