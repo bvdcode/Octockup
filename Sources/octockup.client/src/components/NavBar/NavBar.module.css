@@ -1,3 +1,9 @@
+:root {
+  --navbar-button: #fff;
+  --navbar-background: #61616191;
+  --navbar-background-slider: #b4b4b4;
+}
+
 .navbarContainer {
   position: fixed;
   bottom: 0;
@@ -16,7 +22,7 @@
   transform: translateX(-50%);
   width: 100%;
   height: 80px;
-  background-color: #333;
+  background-color: var(--navbar-background);
   border-top-left-radius: 40px;
   border-top-right-radius: 40px;
   display: flex;
@@ -39,9 +45,17 @@
   width: 50px;
   height: 4px;
   border-radius: 2px;
-  background-color: #ffffff91;
+  background-color: var(--navbar-background-slider);
 }
 
 .navbar button {
-  color: #fff;
+  color: var(--navbar-button);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --navbar-button: #666666;
+    --navbar-background: #bebebe91;
+    --navbar-background-slider: #696969;
+  }
 }
