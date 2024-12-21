@@ -52,7 +52,14 @@ const CreateJob: React.FC = () => {
   };
 
   return (
-    <Box sx={{ height: "100%", width: "100%", overflow: "auto", padding: 5 }}>
+    <Box
+      sx={{
+        height: "100%",
+        width: "100%",
+        overflow: "auto",
+        padding: { xs: 2, md: 5 },
+      }}
+    >
       <Stack spacing={2}>
         <Typography variant="h4">{t("createJob.title")}</Typography>
         <Card>
