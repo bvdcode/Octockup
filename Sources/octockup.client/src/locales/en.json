@@ -44,7 +44,7 @@
     "interval": "Interval",
     "notSelected": "Not selected",
     "preview": "Preview",
-    "startAtTitle": "Start at",
+    "startAt": "Start at",
     "submitButton": "Create"
   },
   "intervalInput": {

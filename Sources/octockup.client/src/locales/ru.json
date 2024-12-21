@@ -44,7 +44,7 @@
     "interval": "Интервал",
     "notSelected": "Не выбрано",
     "preview": "Предпросмотр",
-    "startAtTitle": "Начать в",
+    "startAt": "Начать в",
     "submitButton": "Создать"
   },
   "intervalInput": {
