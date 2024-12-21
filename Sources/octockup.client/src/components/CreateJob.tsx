@@ -11,6 +11,8 @@ import {
   TextField,
   Typography,
   Button,
+  Tooltip,
+  IconButton,
 } from "@mui/material";
 import { getProviders } from "../api/api";
 import IntervalInput from "./IntervalInput";
@@ -23,6 +25,7 @@ import {
   materialDark,
   materialLight,
 } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { Info } from "@mui/icons-material";
 
 const CreateJob: React.FC = () => {
   const { t } = useTranslation();
@@ -70,7 +73,14 @@ const CreateJob: React.FC = () => {
       }}
     >
       <Stack spacing={2}>
-        <Typography variant="h4">{t("createJob.title")}</Typography>
+        <Box display="flex" alignItems="center" justifyContent="space-between">
+          <Typography variant="h4">{t("createJob.title")}</Typography>
+          <Tooltip title={t("createJob.help")}>
+            <IconButton size="small">
+              <Info fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
         <Card>
           <CardContent>
             <FormControl fullWidth>
@@ -133,18 +143,6 @@ const CreateJob: React.FC = () => {
 
         <Card>
           <CardContent>
-            <IntervalInput
-              label={t("createJob.interval")}
-              onChange={(interval) =>
-                dispatch({ type: "SET_INTERVAL", payload: interval })
-              }
-              defaultValue={0}
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent>
             <FormControl fullWidth>
               <InputLabel>{t("notifications")}</InputLabel>
               <Select
@@ -161,6 +159,18 @@ const CreateJob: React.FC = () => {
                 <MenuItem value="no">{t("no")}</MenuItem>
               </Select>
             </FormControl>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent>
+            <IntervalInput
+              label={t("createJob.interval")}
+              onChange={(interval) =>
+                dispatch({ type: "SET_INTERVAL", payload: interval })
+              }
+              defaultValue={0}
+            />
           </CardContent>
         </Card>
 

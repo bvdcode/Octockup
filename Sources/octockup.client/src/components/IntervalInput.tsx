@@ -55,6 +55,7 @@ const IntervalInput: FC<IntervalInputProps> = ({
             backgroundImage: "var(--Paper-overlay)",
             color: "text.secondary",
             fontSize: 12,
+            userSelect: "none",
           }}
           component={"legend"}
         >

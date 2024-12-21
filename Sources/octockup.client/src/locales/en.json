@@ -41,11 +41,12 @@
     "selectProviderFirst": "Please select a storage provider first",
     "jobSettings": "Job settings",
     "jobName": "Job name",
-    "interval": "Interval",
+    "interval": "Interval (optional)",
     "notSelected": "Not selected",
     "preview": "Preview",
-    "startAt": "Start at",
-    "submitButton": "Create"
+    "startAt": "Start at (optional)",
+    "submitButton": "Create",
+    "help": "If no interval is specified, the job will run only once. If no date and time are specified to start the job, it will start immediately after creation."
   },
   "intervalInput": {
     "days": "Days",
