@@ -22,17 +22,17 @@ export enum UserRole {
   Admin = 2,
 }
 
-export interface BackupStatus {
+export interface BackupTask {
   id: number;
   name: string;
   lastRun: string;
   duration: string;
   progress: number;
   lastRunDate: Date;
-  status: BackupStatusType;
+  status: BackupTaskStatus;
 }
 
-export enum BackupStatusType {
+export enum BackupTaskStatus {
   Created = 0,
   Running = 1,
   Failed = 2,

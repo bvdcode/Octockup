@@ -8,7 +8,7 @@ namespace Octockup.Server.Models.Dto
         public double Progress { get; set; }
         public DateTime? LastRun { get; set; }
         public TimeSpan Duration { get; set; }
-        public BackupStatusType Status { get; set; }
+        public BackupTaskStatus Status { get; set; }
         public string JobName { get; set; } = string.Empty;
     }
 }

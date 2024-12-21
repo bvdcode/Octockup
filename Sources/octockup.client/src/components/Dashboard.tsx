@@ -15,34 +15,34 @@ import styles from "./Dashboard.module.css";
 import { useEffect, useState } from "react";
 import { getBackupStatus } from "../api/api";
 import { useTranslation } from "react-i18next";
-import { BackupStatus, BackupStatusType, User } from "../api/types";
+import { BackupTask, BackupTaskStatus, User } from "../api/types";
 import useAuthUser from "react-auth-kit/hooks/useAuthUser";
 import { ProgressBarColor } from "./ProgressBar/ProgressBarColor";
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
   const authUser = useAuthUser<User>();
-  const [status, setStatus] = useState<BackupStatus[]>([]);
+  const [jobs, setJobs] = useState<BackupTask[]>([]);
 
   useEffect(() => {
     getBackupStatus()
       .then((response) => {
-        setStatus(response);
+        setJobs(response);
       })
       .catch((error) => {
         toast.error(t("dataLoadError", { error: error.message }));
       });
   }, [t]);
 
-  const getColorByStatus = (status: BackupStatusType): ProgressBarColor => {
+  const getColorByStatus = (status: BackupTaskStatus): ProgressBarColor => {
     switch (status) {
-      case BackupStatusType.Completed:
+      case BackupTaskStatus.Completed:
         return ProgressBarColor.Green;
-      case BackupStatusType.Failed:
+      case BackupTaskStatus.Failed:
         return ProgressBarColor.Red;
-      case BackupStatusType.Running:
+      case BackupTaskStatus.Running:
         return ProgressBarColor.Yellow;
-      case BackupStatusType.Created:
+      case BackupTaskStatus.Created:
       default:
         return ProgressBarColor.Neutral;
     }
@@ -70,21 +70,29 @@ const Dashboard: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {status.map((backup, index) => (
-                <TableRow key={index}>
-                  <TableCell>{backup.id}</TableCell>
-                  <TableCell>{backup.name}</TableCell>
-                  <TableCell>{backup.lastRunDate.toLocaleString()}</TableCell>
-                  <TableCell>{backup.duration}</TableCell>
-                  <TableCell>
-                    <ProgressBar
-                      value={backup.progress}
-                      color={getColorByStatus(backup.status)}
-                    />
+              {jobs.length > 0 ? (
+                jobs.map((backup, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{backup.id}</TableCell>
+                    <TableCell>{backup.name}</TableCell>
+                    <TableCell>{backup.lastRunDate.toLocaleString()}</TableCell>
+                    <TableCell>{backup.duration}</TableCell>
+                    <TableCell>
+                      <ProgressBar
+                        value={backup.progress}
+                        color={getColorByStatus(backup.status)}
+                      />
+                    </TableCell>
+                    <TableCell>{backup.status}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell sx={{ textAlign: "center" }} colSpan={6}>
+                    {t("backup.noData")}
                   </TableCell>
-                  <TableCell>{backup.status}</TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </TableContainer>

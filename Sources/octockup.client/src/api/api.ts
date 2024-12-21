@@ -3,7 +3,7 @@ import AxiosClient from "./AxiosClient";
 import {
   LoginRequest,
   AuthResponse,
-  BackupStatus,
+  BackupTask,
   BackupProvider,
 } from "./types";
 
@@ -63,9 +63,9 @@ export const changePassword = async (newPassword: string): Promise<void> => {
   });
 };
 
-export const getBackupStatus = async (): Promise<BackupStatus[]> => {
-  const response = await AxiosClient.getInstance().get<BackupStatus[]>(
-    "/backup/status"
+export const getBackupStatus = async (): Promise<BackupTask[]> => {
+  const response = await AxiosClient.getInstance().get<BackupTask[]>(
+    "/backup/list"
   );
   response.data.forEach((backup) => {
     backup.lastRunDate = new Date(backup.lastRun);

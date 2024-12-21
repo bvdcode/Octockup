@@ -29,7 +29,7 @@ namespace Octockup.Server.Database
         public bool IsDeleted { get; set; }
 
         [Column("status")]
-        public BackupStatusType Status { get; set; }
+        public BackupTaskStatus Status { get; set; }
 
         [Column("user_id")]
         public int UserId { get; set; }

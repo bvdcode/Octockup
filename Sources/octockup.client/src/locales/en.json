@@ -31,7 +31,9 @@
     "welcome": "Welcome, {{name}}!"
   },
   "backup": {
-    "id": "ID"
+    "id": "ID",
+    "noData": "No data",
+    "jobName": "Name"
   },
   "createJob": {
     "title": "Create new backup job",

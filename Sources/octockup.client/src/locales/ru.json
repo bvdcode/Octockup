@@ -31,7 +31,9 @@
     "welcome": "Привет, {{name}}!"
   },
   "backup": {
-    "id": "ID"
+    "id": "ID",
+    "noData": "Нет данных",
+    "jobName": "Название"
   },
   "createJob": {
     "title": "Новое резервное копирование",
