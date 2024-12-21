@@ -19,7 +19,10 @@ import { useTranslation } from "react-i18next";
 import { initialState, reducer } from "./CreateJobReducer";
 import React, { useEffect, useReducer, useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { dark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import {
+  materialDark,
+  materialLight,
+} from "react-syntax-highlighter/dist/esm/styles/prism";
 
 const CreateJob: React.FC = () => {
   const { t } = useTranslation();
@@ -39,6 +42,13 @@ const CreateJob: React.FC = () => {
     const provider = providers.find((p) => p.name === value);
     setSelectedProvider(provider || null);
     dispatch({ type: "SET_PROVIDER", payload: value });
+  };
+
+  const getCodeStyle = () => {
+    if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+      return materialDark;
+    }
+    return materialLight;
   };
 
   return (
@@ -126,14 +136,13 @@ const CreateJob: React.FC = () => {
 
         <Card>
           <CardContent>
-            <Typography variant="h6">{t("createJob.confirmation")}</Typography>
+            <Typography variant="h6">{t("createJob.preview")}</Typography>
             <SyntaxHighlighter
               language="json"
-              style={dark}
+              style={getCodeStyle()}
               customStyle={{
-                backgroundColor: "transparent",
-                textShadow: "0",
-                border: "none",
+                textShadow: "none",
+                borderRadius: 15,
               }}
             >
               {JSON.stringify(state, null, 2)}
@@ -148,7 +157,7 @@ const CreateJob: React.FC = () => {
               justifyContent: "center",
             }}
           >
-            <Button>{t("createJob.createJob")}</Button>
+            <Button fullWidth={true}>{t("createJob.submitButton")}</Button>
           </CardContent>
         </Card>
       </Stack>

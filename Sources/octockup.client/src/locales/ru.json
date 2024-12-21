@@ -42,7 +42,9 @@
     "jobSettings": "Настройки задачи",
     "jobName": "Название задачи",
     "interval": "Интервал",
-    "notSelected": "Не выбрано"
+    "notSelected": "Не выбрано",
+    "preview": "Предпросмотр",
+    "submitButton": "Создать"
   },
   "intervalInput": {
     "days": "Дни",

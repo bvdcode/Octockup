@@ -42,7 +42,9 @@
     "jobSettings": "Job settings",
     "jobName": "Job name",
     "interval": "Interval",
-    "notSelected": "Not selected"
+    "notSelected": "Not selected",
+    "preview": "Preview",
+    "submitButton": "Create"
   },
   "intervalInput": {
     "days": "Days",
