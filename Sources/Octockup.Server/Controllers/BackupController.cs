@@ -11,6 +11,14 @@ namespace Octockup.Server.Controllers
     public class BackupController(IEnumerable<IStorageProvider> _storageProviders) : ControllerBase
     {
         [Authorize]
+        [HttpPost("create")]
+        public async Task<IActionResult> CreateBackupAsync([FromBody] CreateBackupRequest request)
+        {
+
+
+        }
+
+        [Authorize]
         [HttpGet("status")]
         public async Task<IEnumerable<BackupStatus>> GetStatusAsync()
         {
