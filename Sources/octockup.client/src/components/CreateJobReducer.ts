@@ -6,6 +6,7 @@ export type Action =
   | { type: "SET_JOB_NAME"; payload: string }
   | { type: "SET_INTERVAL"; payload: number }
   | { type: "SET_NOTIFICATIONS"; payload: boolean }
+  | { type: "SET_START_AT"; payload: Date }
   | { type: "RESET" };
 
 export const initialState: CreateJobRequest = {
@@ -14,6 +15,7 @@ export const initialState: CreateJobRequest = {
   jobName: "",
   interval: 0,
   notifications: false,
+  startAt: new Date(),
 };
 
 export const reducer = (
@@ -37,6 +39,8 @@ export const reducer = (
       return { ...state, interval: action.payload };
     case "SET_NOTIFICATIONS":
       return { ...state, notifications: action.payload };
+    case "SET_START_AT":
+      return { ...state, startAt: action.payload };
     case "RESET":
       return initialState;
     default:

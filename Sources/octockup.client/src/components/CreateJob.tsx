@@ -136,6 +136,26 @@ const CreateJob: React.FC = () => {
 
         <Card>
           <CardContent>
+            <FormControl fullWidth>
+              <TextField
+                type="datetime-local"
+                fullWidth
+                title={t("createJob.startAtTitle")}
+                margin="normal"
+                variant="outlined"
+                onChange={(event) =>
+                  dispatch({
+                    type: "SET_START_AT",
+                    payload: new Date(event.target.value),
+                  })
+                }
+              />
+            </FormControl>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent>
             <Typography variant="h6">{t("createJob.preview")}</Typography>
             <SyntaxHighlighter
               language="json"

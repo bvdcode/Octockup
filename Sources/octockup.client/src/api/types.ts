@@ -50,4 +50,5 @@ export interface CreateJobRequest {
   jobName: string;
   interval: number;
   notifications: boolean;
+  startAt: Date;
 }
