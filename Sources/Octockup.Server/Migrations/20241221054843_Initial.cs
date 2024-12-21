@@ -45,6 +45,7 @@ namespace Octockup.Server.Migrations
                     is_deleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     status = table.Column<int>(type: "INTEGER", nullable: false),
                     user_id = table.Column<int>(type: "INTEGER", nullable: false),
+                    provider = table.Column<string>(type: "TEXT", nullable: false),
                     created_at = table.Column<DateTime>(type: "TEXT", nullable: false),
                     updated_at = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },

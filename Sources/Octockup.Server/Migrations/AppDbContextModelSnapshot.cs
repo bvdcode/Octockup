@@ -61,6 +61,11 @@ namespace Octockup.Server.Migrations
                         .HasColumnType("REAL")
                         .HasColumnName("progress");
 
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("provider");
+
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER")
                         .HasColumnName("status");

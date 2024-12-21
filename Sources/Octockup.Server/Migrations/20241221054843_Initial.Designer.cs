@@ -11,7 +11,7 @@ using Octockup.Server.Database;
 namespace Octockup.Server.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20241221050354_Initial")]
+    [Migration("20241221054843_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -63,6 +63,11 @@ namespace Octockup.Server.Migrations
                     b.Property<double>("Progress")
                         .HasColumnType("REAL")
                         .HasColumnName("progress");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("provider");
 
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER")
