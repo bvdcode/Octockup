@@ -162,8 +162,8 @@ const CreateJob: React.FC = () => {
               language="json"
               style={getCodeStyle()}
               customStyle={{
-                textShadow: "none",
                 borderRadius: 15,
+                boxShadow: "0 0 5px rgba(0, 0, 0, 0.3)",
               }}
             >
               {JSON.stringify(state, null, 2)}
