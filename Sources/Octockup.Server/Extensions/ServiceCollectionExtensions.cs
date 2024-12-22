@@ -3,6 +3,8 @@ using Octockup.Server.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Providers.Storage;
 using EasyExtensions.AspNetCore.Extensions;
+using Microsoft.Extensions.Options;
+using Octockup.Server.Database;
 
 namespace Octockup.Server.Extensions
 {
@@ -16,13 +18,10 @@ namespace Octockup.Server.Extensions
         public static IServiceCollection AddDbContext<TContext>(this IServiceCollection services, IConfiguration configuration)
             where TContext : DbContext
         {
-            string databaseFile = configuration["DatabaseFile"]
-                ?? throw new ArgumentNullException(nameof(configuration), "DatabaseFile is not set in configuration");
-            string filename = FileSystemHelpers.GetFilePath(databaseFile);
-            return services
-                .AddDbContext<TContext>(options => options
-                .UseSqlite("Data Source=" + filename)
-                .UseLazyLoadingProxies());
+            string filename = FileSystemHelpers.GetFilePath("octockup.sqlite");
+            services.AddDbContext<AppDbContext, SqliteDbContext>(x => x.UseSqlite("Data Source=" + filename).UseLazyLoadingProxies());
+
+            return services;
         }
 
         public static IServiceCollection SetupJwtKey(this IServiceCollection services, IConfiguration configuration)

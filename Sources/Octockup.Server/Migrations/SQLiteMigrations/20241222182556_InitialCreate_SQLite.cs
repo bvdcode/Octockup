@@ -3,10 +3,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Octockup.Server.Migrations
+namespace Octockup.Server.Migrations.SQLiteMigrations
 {
     /// <inheritdoc />
-    public partial class Initial : Migration
+    public partial class InitialCreate_SQLite : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
