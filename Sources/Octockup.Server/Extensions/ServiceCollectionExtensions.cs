@@ -1,10 +1,11 @@
-﻿using EasyExtensions.Helpers;
+﻿using Npgsql;
+using Microsoft.Data.Sqlite;
+using EasyExtensions.Helpers;
 using Octockup.Server.Helpers;
+using Octockup.Server.Database;
 using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Providers.Storage;
 using EasyExtensions.AspNetCore.Extensions;
-using Microsoft.Extensions.Options;
-using Octockup.Server.Database;
 
 namespace Octockup.Server.Extensions
 {
@@ -18,8 +19,27 @@ namespace Octockup.Server.Extensions
         public static IServiceCollection AddDbContext<TContext>(this IServiceCollection services, IConfiguration configuration)
             where TContext : DbContext
         {
-            string filename = FileSystemHelpers.GetFilePath("octockup.sqlite");
-            services.AddDbContext<AppDbContext, SqliteDbContext>(x => x.UseSqlite("Data Source=" + filename).UseLazyLoadingProxies());
+            string server = "10.0.0.10";
+            int port = 5432;
+            string database = "octockup";
+            string username = "octockup_server";
+            string password = "password";
+
+            NpgsqlConnectionStringBuilder npgBuilder = new()
+            {
+                Host = server,
+                Port = port,
+                Database = database,
+                Username = username,
+                Password = password,
+            };
+            services.AddDbContext<AppDbContext, PostgresDbContext>(x => x.UseNpgsql(npgBuilder.ConnectionString).UseLazyLoadingProxies());
+
+            SqliteConnectionStringBuilder sqliteBuilder = new()
+            {
+                DataSource = FileSystemHelpers.GetFilePath("octockup.sqlite"),
+            };
+            services.AddDbContext<AppDbContext, SqliteDbContext>(x => x.UseSqlite(sqliteBuilder.ConnectionString).UseLazyLoadingProxies());
 
             return services;
         }

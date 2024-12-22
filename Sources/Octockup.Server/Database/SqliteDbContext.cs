@@ -1,9 +1,8 @@
-﻿using Octockup.Server.Helpers;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 
 namespace Octockup.Server.Database
 {
-    public class SqliteDbContext(DbContextOptions options) : AppDbContext(options)
+    public class SqliteDbContext(DbContextOptions<SqliteDbContext> options) : AppDbContext(options)
     {
 
     }

@@ -2,7 +2,7 @@
 
 namespace Octockup.Server.Database
 {
-    public class PostgresDbContext(DbContextOptions options) : AppDbContext(options)
+    public class PostgresDbContext(DbContextOptions<PostgresDbContext> options) : AppDbContext(options)
     {
 
     }
