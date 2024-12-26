@@ -19,29 +19,60 @@ namespace Octockup.Server.Extensions
         public static IServiceCollection AddDbContext<TContext>(this IServiceCollection services, IConfiguration configuration)
             where TContext : DbContext
         {
-            string server = "10.0.0.10";
-            int port = 5432;
-            string database = "octockup";
-            string username = "octockup_server";
-            string password = "password";
-
-            NpgsqlConnectionStringBuilder npgBuilder = new()
+            DatabaseSettings? postgresSettings = GetPostgresSettings(configuration);
+            if (postgresSettings != null)
             {
-                Host = server,
-                Port = port,
-                Database = database,
-                Username = username,
-                Password = password,
-            };
-            services.AddDbContext<AppDbContext, PostgresDbContext>(x => x.UseNpgsql(npgBuilder.ConnectionString).UseLazyLoadingProxies());
-
-            SqliteConnectionStringBuilder sqliteBuilder = new()
+                NpgsqlConnectionStringBuilder npgBuilder = new()
+                {
+                    Host = postgresSettings.Host,
+                    Port = postgresSettings.Port,
+                    Database = postgresSettings.Database,
+                    Username = postgresSettings.Username,
+                    Password = postgresSettings.Password,
+                };
+                services.AddDbContext<AppDbContext, PostgresDbContext>(x => x.UseNpgsql(npgBuilder.ConnectionString).UseLazyLoadingProxies());
+                return services;
+            }
+            else
             {
-                DataSource = FileSystemHelpers.GetFilePath("octockup.sqlite"),
-            };
-            services.AddDbContext<AppDbContext, SqliteDbContext>(x => x.UseSqlite(sqliteBuilder.ConnectionString).UseLazyLoadingProxies());
+                string filename = FileSystemHelpers.GetFilePath("octockup.sqlite");
+                SqliteConnectionStringBuilder sqliteBuilder = new()
+                {
+                    DataSource = filename,
+                };
+                services.AddDbContext<AppDbContext, SqliteDbContext>(x => x.UseSqlite(sqliteBuilder.ConnectionString).UseLazyLoadingProxies());
+                return services;
+            }
+        }
 
-            return services;
+        private static DatabaseSettings? GetPostgresSettings(IConfiguration configuration)
+        {
+            if (configuration.GetSection("Postgres").Exists())
+            {
+                return configuration.GetSection("Postgres").Get<DatabaseSettings>();
+            }
+            if (Environment.GetEnvironmentVariable("POSTGRES_HOST") != null)
+            {
+                string host = Environment.GetEnvironmentVariable("POSTGRES_HOST")
+                    ?? throw new ArgumentNullException(nameof(configuration), "POSTGRES_HOST");
+                int port = int.Parse(Environment.GetEnvironmentVariable("POSTGRES_PORT")
+                    ?? throw new ArgumentNullException(nameof(configuration), "POSTGRES_PORT"));
+                string database = Environment.GetEnvironmentVariable("POSTGRES_DATABASE")
+                    ?? throw new ArgumentNullException(nameof(configuration), "POSTGRES_DATABASE");
+                string username = Environment.GetEnvironmentVariable("POSTGRES_USERNAME")
+                    ?? throw new ArgumentNullException(nameof(configuration), "POSTGRES_USERNAME");
+                string password = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD")
+                    ?? throw new ArgumentNullException(nameof(configuration), "POSTGRES_PASSWORD");
+                return new DatabaseSettings
+                {
+                    Host = host,
+                    Port = port,
+                    Database = database,
+                    Username = username,
+                    Password = password,
+                };
+            }
+            return null;
         }
 
         public static IServiceCollection SetupJwtKey(this IServiceCollection services, IConfiguration configuration)
