@@ -50,6 +50,9 @@ namespace Octockup.Server.Database
         [Column("elapsed")]
         public TimeSpan Elapsed { get; set; }
 
+        [Column("force_run")]
+        public bool ForceRun { get; set; }
+
         public virtual User User { get; set; } = null!;
 
         public Dictionary<string, string> GetParameters()

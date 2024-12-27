@@ -10,9 +10,11 @@ using Microsoft.AspNetCore.Mvc;
 using Octockup.Server.Database;
 using Octockup.Server.Extensions;
 using Octockup.Server.Models.Dto;
+using Octockup.Server.Models.Enums;
+using Microsoft.EntityFrameworkCore;
+using EasyExtensions.Quartz.Extensions;
 using Octockup.Server.Providers.Storage;
 using Microsoft.AspNetCore.Authorization;
-using EasyExtensions.Quartz.Extensions;
 
 namespace Octockup.Server.Controllers
 {
@@ -21,6 +23,26 @@ namespace Octockup.Server.Controllers
     public class BackupController(IEnumerable<IStorageProvider> _storageProviders,
         AppDbContext _dbContext, IMapper _mapper, IMediator _mediator, ISchedulerFactory _scheduler) : ControllerBase
     {
+        [Authorize]
+        [HttpPatch("{backupTask}/trigger")]
+        public async Task<IActionResult> TriggerBackupAsync([FromRoute] int backupTask)
+        {
+            int userId = User.GetId();
+            var found = await _dbContext.BackupTasks.FirstOrDefaultAsync(x => x.Id == backupTask && x.UserId == userId);
+            if (found == null)
+            {
+                return NotFound();
+            }
+            if (found.Status == BackupTaskStatus.Running)
+            {
+                return Ok();
+            }
+            found.ForceRun = true;
+            await _dbContext.SaveChangesAsync();
+            await _scheduler.TriggerJobAsync<HandleBackupJob>();
+            return Ok();
+        }
+
         [Authorize]
         [HttpPost("create")]
         public async Task<IActionResult> CreateBackupAsync([FromBody] CreateBackupRequest request)

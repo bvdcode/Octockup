@@ -14,6 +14,7 @@ namespace Octockup.Server.Handlers
             BackupTask job = await _dbContext.BackupTasks.FindAsync([request.BackupTaskId], cancellationToken: cancellationToken)
                 ?? throw new InvalidOperationException("Backup task with the specified ID not found: " + request.BackupTaskId);
             job.Status = BackupTaskStatus.Running;
+            job.LastError = null;
 
             for (int i = 0; i < 50; i++)
             {

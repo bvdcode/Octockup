@@ -6,7 +6,7 @@ namespace Octockup.Server.Models.Dto
     {
         public double Progress { get; set; }
         public TimeSpan Elapsed { get; set; }
-        public TimeSpan Duration { get; set; }
+        public TimeSpan Interval { get; set; }
         public string? LastError { get; set; }
         public DateTime? CompletedAt { get; set; }
         public BackupTaskStatus Status { get; set; }

@@ -65,5 +65,11 @@
     "hours": "Hours",
     "minutes": "Minutes",
     "seconds": "Seconds"
+  },
+  "backupStatus": {
+    "Failed": "Failed",
+    "Running": "Running",
+    "Created": "Created",
+    "Completed": "Completed"
   }
 }

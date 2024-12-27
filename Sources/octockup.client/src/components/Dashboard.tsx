@@ -8,16 +8,18 @@ import {
   TableRow,
   Typography,
   Paper,
+  Button,
 } from "@mui/material";
 import { ProgressBar } from ".";
 import styles from "./Dashboard.module.css";
 import { useEffect, useState } from "react";
-import { getBackupStatus } from "../api/api";
+import { forceRunJob, getBackupStatus } from "../api/api";
 import { useTranslation } from "react-i18next";
 import { BackupTask, BackupTaskStatus, User } from "../api/types";
 import useAuthUser from "react-auth-kit/hooks/useAuthUser";
 import { ProgressBarColor } from "./ProgressBar/ProgressBarColor";
 import { Delete, Replay, Visibility } from "@mui/icons-material";
+import { toast } from "react-toastify";
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -93,13 +95,28 @@ const Dashboard: React.FC = () => {
                         color={getColorByStatus(backup.status)}
                       />
                     </TableCell>
-                    <TableCell>{backup.status.toLocaleString()}</TableCell>
+                    <TableCell>
+                      {t("backupStatus." + BackupTaskStatus[backup.status])}
+                    </TableCell>
                     <TableCell>{backup.lastError ?? "-"}</TableCell>
                     <TableCell>
                       <Box display="flex" justifyContent="space-around">
-                        <Visibility sx={{ cursor: "pointer" }} />
-                        <Replay sx={{ cursor: "pointer" }} />
-                        <Delete sx={{ cursor: "pointer" }} />
+                        <Button>
+                          <Visibility sx={{ cursor: "pointer" }} />
+                        </Button>
+                        <Button
+                          disabled={backup.status === BackupTaskStatus.Running}
+                          onClick={() =>
+                            forceRunJob(backup.id).then(() => {
+                              toast.success(t("backup.forceRunSuccess"));
+                            })
+                          }
+                        >
+                          <Replay sx={{ cursor: "pointer" }} />
+                        </Button>
+                        <Button>
+                          <Delete sx={{ cursor: "pointer" }} />
+                        </Button>
                       </Box>
                     </TableCell>
                   </TableRow>

@@ -28,6 +28,7 @@ namespace Octockup.Server.Jobs
                     _logger.LogError(ex, "Failed to execute job {jobId} for user {userId}.", job.Id, job.UserId);
                     job.LastError = ex.Message;
                     job.Status = BackupTaskStatus.Failed;
+                    job.CompletedAt = DateTime.UtcNow;
                     await _dbContext.SaveChangesAsync();
                 }
             }
@@ -39,6 +40,13 @@ namespace Octockup.Server.Jobs
             List<BackupTask> result = [];
             foreach (var job in allJobs)
             {
+                if (job.ForceRun)
+                {
+                    _logger.LogInformation("Job {jobId} is forced to run.", job.Id);
+                    job.ForceRun = false;
+                    result.Add(job);
+                    continue;
+                }
                 DateTime now = DateTime.UtcNow;
                 DateTime nextRun = job.CompletedAt?.Add(job.Interval) ?? job.StartAt;
                 string interval = GetIntervalText(nextRun - now);

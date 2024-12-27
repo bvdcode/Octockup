@@ -73,6 +73,9 @@ export const getBackupStatus = async (): Promise<BackupTask[]> => {
       backup.completedAtDate = new Date(backup.completedAt);
     }
     backup.elapsed = backup.elapsed.split(".")[0];
+    if (backup.interval === "00:00:00") {
+      backup.interval = "-";
+    }
   });
   return response.data;
 };
@@ -86,4 +89,8 @@ export const getProviders = async (): Promise<BackupProvider[]> => {
 
 export const createBackupJob = async (job: CreateJobRequest): Promise<void> => {
   await AxiosClient.getInstance().post("/backup/create", job);
+};
+
+export const forceRunJob = async (id: number): Promise<void> => {
+  await AxiosClient.getInstance().patch(`/backup/${id}/trigger`);
 };
