@@ -52,6 +52,10 @@ namespace Octockup.Server.Migrations.SQLiteMigrations
                         .HasColumnType("INTEGER")
                         .HasColumnName("is_notification_enabled");
 
+                    b.Property<string>("LastError")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_error");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT")

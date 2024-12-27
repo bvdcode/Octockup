@@ -2,99 +2,96 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Octockup.Server.Database;
 
 #nullable disable
 
-namespace Octockup.Server.Migrations.PostgresMigrations
+namespace Octockup.Server.Migrations.SQLiteMigrations
 {
-    [DbContext(typeof(PostgresDbContext))]
-    partial class PostgresDbContextModelSnapshot : ModelSnapshot
+    [DbContext(typeof(SqliteDbContext))]
+    [Migration("20241227064302_AddJobErrorText")]
+    partial class AddJobErrorText
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "9.0.0")
                 .HasAnnotation("Proxies:ChangeTracking", false)
                 .HasAnnotation("Proxies:CheckEquality", false)
-                .HasAnnotation("Proxies:LazyLoading", true)
-                .HasAnnotation("Relational:MaxIdentifierLength", 63);
-
-            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+                .HasAnnotation("Proxies:LazyLoading", true);
 
             modelBuilder.Entity("Octockup.Server.Database.BackupTask", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
                     b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("completed_at");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created_at");
 
                     b.Property<TimeSpan>("Interval")
-                        .HasColumnType("interval")
+                        .HasColumnType("TEXT")
                         .HasColumnName("interval");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("is_deleted");
 
                     b.Property<bool>("IsEnabled")
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("is_enabled");
 
                     b.Property<bool>("IsNotificationEnabled")
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("is_notification_enabled");
 
                     b.Property<string>("LastError")
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_error");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("name");
 
                     b.Property<string>("ParametersJson")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("parameters_json");
 
                     b.Property<double>("Progress")
-                        .HasColumnType("double precision")
+                        .HasColumnType("REAL")
                         .HasColumnName("progress");
 
                     b.Property<string>("Provider")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("provider");
 
                     b.Property<DateTime>("StartAt")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("start_at");
 
                     b.Property<int>("Status")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("status");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("updated_at");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id");
@@ -108,26 +105,24 @@ namespace Octockup.Server.Migrations.PostgresMigrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created_at");
 
                     b.Property<string>("RefreshToken")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("refresh_token");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("updated_at");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id");
@@ -141,40 +136,38 @@ namespace Octockup.Server.Migrations.PostgresMigrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created_at");
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("email");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("password_hash_sha512");
 
                     b.Property<int>("Role")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("role");
 
                     b.Property<long?>("StorageLimitBytes")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("storage_limit_bytes");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("updated_at");
 
                     b.Property<string>("Username")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("username");
 
                     b.HasKey("Id");
