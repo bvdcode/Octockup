@@ -18,7 +18,7 @@ import { useTranslation } from "react-i18next";
 import { BackupTask, BackupTaskStatus, User } from "../api/types";
 import useAuthUser from "react-auth-kit/hooks/useAuthUser";
 import { ProgressBarColor } from "./ProgressBar/ProgressBarColor";
-import { Delete, Replay, Visibility } from "@mui/icons-material";
+import { Delete, Replay, Stop, Visibility } from "@mui/icons-material";
 import { toast } from "react-toastify";
 
 const Dashboard: React.FC = () => {
@@ -99,21 +99,26 @@ const Dashboard: React.FC = () => {
                       {t("backupStatus." + BackupTaskStatus[backup.status])}
                     </TableCell>
                     <TableCell>{backup.lastError ?? "-"}</TableCell>
-                    <TableCell>
+                    <TableCell sx={{ width: "150px" }}>
                       <Box display="flex" justifyContent="space-around">
                         <Button>
                           <Visibility sx={{ cursor: "pointer" }} />
                         </Button>
-                        <Button
-                          disabled={backup.status === BackupTaskStatus.Running}
-                          onClick={() =>
-                            forceRunJob(backup.id).then(() => {
-                              toast.success(t("backup.forceRunSuccess"));
-                            })
-                          }
-                        >
-                          <Replay sx={{ cursor: "pointer" }} />
-                        </Button>
+                        {backup.status !== BackupTaskStatus.Running ? (
+                          <Button
+                            onClick={() =>
+                              forceRunJob(backup.id).then(() => {
+                                toast.success(t("backup.forceRunSuccess"));
+                              })
+                            }
+                          >
+                            <Replay sx={{ cursor: "pointer" }} />
+                          </Button>
+                        ) : (
+                          <Button>
+                            <Stop sx={{ cursor: "pointer" }} />
+                          </Button>
+                        )}
                         <Button>
                           <Delete sx={{ cursor: "pointer" }} />
                         </Button>
