@@ -1,17 +1,36 @@
 ﻿using Quartz;
+using MediatR;
+using Octockup.Server.Models;
 using Octockup.Server.Database;
+using Octockup.Server.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 using EasyExtensions.Quartz.Attributes;
 
 namespace Octockup.Server.Jobs
 {
     [JobTrigger(minutes: 5)]
-    public class HandleBackupJob(AppDbContext _dbContext, ILogger<HandleBackupJob> _logger) : IJob
+    public class HandleBackupJob(AppDbContext _dbContext, ILogger<HandleBackupJob> _logger,
+        IMediator _mediator) : IJob
     {
         public async Task Execute(IJobExecutionContext context)
         {
             var pendingJobs = await GetPendingJobsAsync();
             _logger.LogInformation("Found {count} pending jobs.", pendingJobs.Count());
+            foreach (var job in pendingJobs)
+            {
+                _logger.LogInformation("Executing job {jobId} for user {userId}.", job.Id, job.UserId);
+                try
+                {
+                    await _mediator.Send(new HandleBackupRequest(job.Id));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to execute job {jobId} for user {userId}.", job.Id, job.UserId);
+                    job.LastError = ex.Message;
+                    job.Status = BackupTaskStatus.Failed;
+                    await _dbContext.SaveChangesAsync();
+                }
+            }
         }
 
         private async Task<IEnumerable<BackupTask>> GetPendingJobsAsync()
