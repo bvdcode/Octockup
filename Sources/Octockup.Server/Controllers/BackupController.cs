@@ -26,7 +26,7 @@ namespace Octockup.Server.Controllers
         public async Task<IActionResult> CreateBackupAsync([FromBody] CreateBackupRequest request)
         {
             await _mediator.Send(request);
-            await _scheduler.TriggerJobAsync<BackupJob>();
+            await _scheduler.TriggerJobAsync<HandleBackupJob>();
             return Ok();
         }
 
