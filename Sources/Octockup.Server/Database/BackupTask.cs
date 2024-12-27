@@ -44,6 +44,9 @@ namespace Octockup.Server.Database
         [Column("user_id")]
         public int UserId { get; set; }
 
+        [Column("last_error")]
+        public string? LastError { get; set; }
+
         public virtual User User { get; set; } = null!;
 
         public Dictionary<string, string> GetParameters()

@@ -1,7 +1,9 @@
-﻿using MediatR;
+﻿using Quartz;
+using MediatR;
 using Gridify;
 using AutoMapper;
 using EasyExtensions;
+using Octockup.Server.Jobs;
 using Octockup.Server.Models;
 using Gridify.EntityFramework;
 using Microsoft.AspNetCore.Mvc;
@@ -10,19 +12,21 @@ using Octockup.Server.Extensions;
 using Octockup.Server.Models.Dto;
 using Octockup.Server.Providers.Storage;
 using Microsoft.AspNetCore.Authorization;
+using EasyExtensions.Quartz.Extensions;
 
 namespace Octockup.Server.Controllers
 {
     [ApiController]
     [Route("/api/v1/[controller]")]
     public class BackupController(IEnumerable<IStorageProvider> _storageProviders,
-        AppDbContext _dbContext, IMapper _mapper, IMediator _mediator) : ControllerBase
+        AppDbContext _dbContext, IMapper _mapper, IMediator _mediator, ISchedulerFactory _scheduler) : ControllerBase
     {
         [Authorize]
         [HttpPost("create")]
         public async Task<IActionResult> CreateBackupAsync([FromBody] CreateBackupRequest request)
         {
             await _mediator.Send(request);
+            await _scheduler.TriggerJobAsync<BackupJob>();
             return Ok();
         }
 

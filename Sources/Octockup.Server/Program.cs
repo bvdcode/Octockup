@@ -1,12 +1,13 @@
+using FluentValidation;
 using Octockup.Server.Database;
 using Octockup.Server.Services;
 using Octockup.Server.Extensions;
 using FluentValidation.AspNetCore;
+using EasyExtensions.Quartz.Extensions;
+using Octockup.Server.Providers.Storage;
 using EasyExtensions.AspNetCore.Extensions;
 using EasyExtensions.EntityFrameworkCore.Extensions;
 using EasyExtensions.AspNetCore.Authorization.Extensions;
-using Octockup.Server.Providers.Storage;
-using FluentValidation;
 
 namespace Octockup.Server
 {
@@ -17,6 +18,7 @@ namespace Octockup.Server
             var builder = WebApplication.CreateBuilder(args);
             builder.Services.AddControllers();
             builder.Services
+                .AddQuartzJobs()
                 .AddStorageProvider<FtpProvider>()
                 .AddStorageProvider<ScpProvider>()
                 .AddHttpContextAccessor()
