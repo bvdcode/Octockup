@@ -1,5 +1,6 @@
 ﻿using Quartz;
 using Octockup.Server.Database;
+using Microsoft.EntityFrameworkCore;
 using EasyExtensions.Quartz.Attributes;
 
 namespace Octockup.Server.Jobs
@@ -9,13 +10,15 @@ namespace Octockup.Server.Jobs
     {
         public async Task Execute(IJobExecutionContext context)
         {
-            var pendingJobs = GetPendingJobs();
+            var pendingJobs = await GetPendingJobsAsync();
             _logger.LogInformation("Found {count} pending jobs.", pendingJobs.Count());
         }
 
-        private IEnumerable<BackupTask> GetPendingJobs()
+        private async Task<IEnumerable<BackupTask>> GetPendingJobsAsync()
         {
-            foreach (var job in _dbContext.BackupTasks)
+            var allJobs = await _dbContext.BackupTasks.ToListAsync();
+            List<BackupTask> result = [];
+            foreach (var job in allJobs)
             {
                 DateTime now = DateTime.UtcNow;
                 DateTime nextRun = job.CompletedAt?.Add(job.Interval) ?? job.StartAt;
@@ -24,7 +27,7 @@ namespace Octockup.Server.Jobs
                 {
                     _logger.LogDebug("Job {jobId} is pending, next run at {nextRun} ({interval})",
                         job.Id, nextRun, interval);
-                    yield return job;
+                    result.Add(job);
                 }
                 else
                 {
@@ -32,6 +35,7 @@ namespace Octockup.Server.Jobs
                         job.Id, nextRun, interval);
                 }
             }
+            return result;
         }
 
         private static string GetIntervalText(TimeSpan timeSpan)
