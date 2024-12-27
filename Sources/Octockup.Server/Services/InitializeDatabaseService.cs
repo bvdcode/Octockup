@@ -20,6 +20,13 @@ namespace Octockup.Server.Services
             using var scope = _scopeFactory.CreateScope();
             var logger = scope.ServiceProvider.GetRequiredService<ILogger<InitializeDatabaseService>>();
             using var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            string databaseType = context.Database.ProviderName ?? "unknown";
+            logger.LogInformation("Database type: {databaseType}", databaseType);
+            if (databaseType != "Microsoft.EntityFrameworkCore.Sqlite")
+            {
+                logger.LogInformation("Database is not SQLite, skipping WAL setup.");
+                return;
+            }
             try
             {
                 await context.Database.ExecuteSqlRawAsync(query, cancellationToken);
