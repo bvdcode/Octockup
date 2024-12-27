@@ -6,6 +6,7 @@ using EasyExtensions;
 using Octockup.Server.Jobs;
 using Octockup.Server.Models;
 using Gridify.EntityFramework;
+using Octockup.Server.Services;
 using Microsoft.AspNetCore.Mvc;
 using Octockup.Server.Database;
 using Octockup.Server.Extensions;
@@ -20,9 +21,27 @@ namespace Octockup.Server.Controllers
 {
     [ApiController]
     [Route("/api/v1/[controller]")]
-    public class BackupController(IEnumerable<IStorageProvider> _storageProviders,
+    public class BackupController(IEnumerable<IStorageProvider> _storageProviders, JobCancellationService _jobCancellationService,
         AppDbContext _dbContext, IMapper _mapper, IMediator _mediator, ISchedulerFactory _scheduler) : ControllerBase
     {
+        [Authorize]
+        [HttpPatch("{backupTask}/stop")]
+        public async Task<IActionResult> StopBackupAsync([FromRoute] int backupTask)
+        {
+            int userId = User.GetId();
+            var found = await _dbContext.BackupTasks.FirstOrDefaultAsync(x => x.Id == backupTask && x.UserId == userId);
+            if (found == null)
+            {
+                return NotFound();
+            }
+            if (found.Status != BackupTaskStatus.Running)
+            {
+                return Ok();
+            }
+            _jobCancellationService.Cancel(found.Id);
+            return Ok();
+        }
+
         [Authorize]
         [HttpPatch("{backupTask}/trigger")]
         public async Task<IActionResult> TriggerBackupAsync([FromRoute] int backupTask)

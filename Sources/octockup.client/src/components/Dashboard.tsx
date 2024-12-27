@@ -13,7 +13,7 @@ import {
 import { ProgressBar } from ".";
 import styles from "./Dashboard.module.css";
 import { useEffect, useState } from "react";
-import { forceRunJob, getBackupStatus } from "../api/api";
+import { forceRunJob, getBackupStatus, stopJob } from "../api/api";
 import { useTranslation } from "react-i18next";
 import { BackupTask, BackupTaskStatus, User } from "../api/types";
 import useAuthUser from "react-auth-kit/hooks/useAuthUser";
@@ -108,14 +108,20 @@ const Dashboard: React.FC = () => {
                           <Button
                             onClick={() =>
                               forceRunJob(backup.id).then(() => {
-                                toast.success(t("backup.forceRunSuccess"));
+                                toast.success(t("dashboard.forceRunSuccess"));
                               })
                             }
                           >
                             <Replay sx={{ cursor: "pointer" }} />
                           </Button>
                         ) : (
-                          <Button>
+                          <Button
+                            onClick={() =>
+                              stopJob(backup.id).then(() => {
+                                toast.success(t("dashboard.stopSuccess"));
+                              })
+                            }
+                          >
                             <Stop sx={{ cursor: "pointer" }} />
                           </Button>
                         )}

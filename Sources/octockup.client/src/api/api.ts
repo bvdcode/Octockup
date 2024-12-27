@@ -94,3 +94,7 @@ export const createBackupJob = async (job: CreateJobRequest): Promise<void> => {
 export const forceRunJob = async (id: number): Promise<void> => {
   await AxiosClient.getInstance().patch(`/backup/${id}/trigger`);
 };
+
+export const stopJob = async (id: number): Promise<void> => {
+  await AxiosClient.getInstance().patch(`/backup/${id}/stop`);
+};
