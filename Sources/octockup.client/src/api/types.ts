@@ -25,11 +25,13 @@ export enum UserRole {
 export interface BackupTask {
   id: number;
   name: string;
-  lastRun: string;
-  duration: string;
+  elapsed: string;
+  interval: string;
   progress: number;
-  lastRunDate: Date;
+  completedAt: string;
   status: BackupTaskStatus;
+  lastError: string | null;
+  completedAtDate: Date | null;
 }
 
 export enum BackupTaskStatus {

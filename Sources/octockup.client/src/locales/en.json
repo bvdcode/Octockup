@@ -27,13 +27,19 @@
     "loading": "Loading..."
   },
   "dashboard": {
-    "title": "Dashboard",
-    "welcome": "Welcome, {{name}}!"
-  },
-  "backup": {
     "id": "ID",
+    "jobName": "Name",
+    "completedAt": "Completed at",
+    "interval": "Interval",
+    "elapsed": "Elapsed",
+    "progress": "Progress",
+    "status": "Status",
+    "error": "Error message",
+    "actions": "Actions",
     "noData": "No data",
-    "jobName": "Name"
+    "title": "Dashboard",
+    "welcome": "Welcome, {{name}}!",
+    "dataLoadError": "Error loading dashboard data: {{error}}"
   },
   "createJob": {
     "title": "Create new backup job",

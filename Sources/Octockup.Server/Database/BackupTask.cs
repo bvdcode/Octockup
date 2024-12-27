@@ -47,6 +47,9 @@ namespace Octockup.Server.Database
         [Column("last_error")]
         public string? LastError { get; set; }
 
+        [Column("elapsed")]
+        public TimeSpan Elapsed { get; set; }
+
         public virtual User User { get; set; } = null!;
 
         public Dictionary<string, string> GetParameters()

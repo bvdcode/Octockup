@@ -69,7 +69,10 @@ export const getBackupStatus = async (): Promise<BackupTask[]> => {
     "/backup/list?orderBy=createdAt desc"
   );
   response.data.forEach((backup) => {
-    backup.lastRunDate = new Date(backup.lastRun);
+    if (backup.completedAt) {
+      backup.completedAtDate = new Date(backup.completedAt);
+    }
+    backup.elapsed = backup.elapsed.split(".")[0];
   });
   return response.data;
 };

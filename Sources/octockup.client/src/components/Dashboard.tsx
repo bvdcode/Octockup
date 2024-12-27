@@ -10,7 +10,6 @@ import {
   Paper,
 } from "@mui/material";
 import { ProgressBar } from ".";
-import { toast } from "react-toastify";
 import styles from "./Dashboard.module.css";
 import { useEffect, useState } from "react";
 import { getBackupStatus } from "../api/api";
@@ -18,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import { BackupTask, BackupTaskStatus, User } from "../api/types";
 import useAuthUser from "react-auth-kit/hooks/useAuthUser";
 import { ProgressBarColor } from "./ProgressBar/ProgressBarColor";
+import { Delete, Replay, Visibility } from "@mui/icons-material";
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -25,13 +25,17 @@ const Dashboard: React.FC = () => {
   const [jobs, setJobs] = useState<BackupTask[]>([]);
 
   useEffect(() => {
-    getBackupStatus()
-      .then((response) => {
+    const loadData = async () => {
+      getBackupStatus().then((response) => {
         setJobs(response);
-      })
-      .catch((error) => {
-        toast.error(t("dataLoadError", { error: error.message }));
       });
+    };
+    loadData();
+
+    const interval = setInterval(() => {
+      loadData();
+    }, 2000);
+    return () => clearInterval(interval);
   }, [t]);
 
   const getColorByStatus = (status: BackupTaskStatus): ProgressBarColor => {
@@ -61,12 +65,15 @@ const Dashboard: React.FC = () => {
           <Table className={styles.table}>
             <TableHead>
               <TableRow>
-                <TableCell>{t("backup.id")}</TableCell>
-                <TableCell>{t("backup.jobName")}</TableCell>
-                <TableCell>{t("backup.lastRun")}</TableCell>
-                <TableCell>{t("backup.duration")}</TableCell>
-                <TableCell>{t("backup.progress")}</TableCell>
-                <TableCell>{t("backup.status")}</TableCell>
+                <TableCell>{t("dashboard.id")}</TableCell>
+                <TableCell>{t("dashboard.jobName")}</TableCell>
+                <TableCell>{t("dashboard.completedAt")}</TableCell>
+                <TableCell>{t("dashboard.interval")}</TableCell>
+                <TableCell>{t("dashboard.elapsed")}</TableCell>
+                <TableCell>{t("dashboard.progress")}</TableCell>
+                <TableCell>{t("dashboard.status")}</TableCell>
+                <TableCell>{t("dashboard.error")}</TableCell>
+                <TableCell>{t("dashboard.actions")}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -75,15 +82,26 @@ const Dashboard: React.FC = () => {
                   <TableRow key={index}>
                     <TableCell>{backup.id}</TableCell>
                     <TableCell>{backup.name}</TableCell>
-                    <TableCell>{backup.lastRunDate.toLocaleString()}</TableCell>
-                    <TableCell>{backup.duration}</TableCell>
+                    <TableCell>
+                      {backup.completedAtDate?.toLocaleString() ?? "-"}
+                    </TableCell>
+                    <TableCell>{backup.interval}</TableCell>
+                    <TableCell>{backup.elapsed}</TableCell>
                     <TableCell>
                       <ProgressBar
                         value={backup.progress}
                         color={getColorByStatus(backup.status)}
                       />
                     </TableCell>
-                    <TableCell>{backup.status}</TableCell>
+                    <TableCell>{backup.status.toLocaleString()}</TableCell>
+                    <TableCell>{backup.lastError ?? "-"}</TableCell>
+                    <TableCell>
+                      <Box display="flex" justifyContent="space-around">
+                        <Visibility sx={{ cursor: "pointer" }} />
+                        <Replay sx={{ cursor: "pointer" }} />
+                        <Delete sx={{ cursor: "pointer" }} />
+                      </Box>
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (

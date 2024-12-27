@@ -27,13 +27,19 @@
     "loading": "Загрузка..."
   },
   "dashboard": {
-    "title": "Панель управления",
-    "welcome": "Привет, {{name}}!"
-  },
-  "backup": {
     "id": "ID",
+    "jobName": "Название",
+    "completedAt": "Завершено в",
+    "interval": "Интервал",
+    "elapsed": "Затрачено времени",
+    "progress": "Прогресс",
+    "status": "Статус",
+    "error": "Сообщение об ошибке",
+    "actions": "Действия",
     "noData": "Нет данных",
-    "jobName": "Название"
+    "title": "Панель управления",
+    "welcome": "Привет, {{name}}!",
+    "dataLoadError": "Ошибка загрузки данных: {{error}}"
   },
   "createJob": {
     "title": "Новое резервное копирование",
