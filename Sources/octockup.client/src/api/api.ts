@@ -1,5 +1,3 @@
-import SHA512 from "crypto-js/sha512";
-import AxiosClient from "./AxiosClient";
 import {
   LoginRequest,
   AuthResponse,
@@ -7,6 +5,8 @@ import {
   BackupProvider,
   CreateJobRequest,
 } from "./types";
+import SHA512 from "crypto-js/sha512";
+import AxiosClient from "./AxiosClient";
 
 /**
  * Logs in a user with the provided username and password.

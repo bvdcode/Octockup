@@ -11,7 +11,8 @@ namespace Octockup.Server.Handlers
 {
 
     public class CreateTokenRequestHandler(ITokenProvider _tokenProvider, AppDbContext _dbContext,
-         IConfiguration _configuration, IMapper _mapper) : IRequestHandler<CreateTokenRequest, AuthResponse>
+         IConfiguration _configuration, IMapper _mapper, ILogger<CreateTokenRequestHandler> _logger)
+        : IRequestHandler<CreateTokenRequest, AuthResponse>
     {
         public async Task<AuthResponse> Handle(CreateTokenRequest request, CancellationToken cancellationToken)
         {
@@ -31,6 +32,7 @@ namespace Octockup.Server.Handlers
             _dbContext.Sessions.Add(session);
             await _dbContext.SaveChangesAsync(cancellationToken);
             UserDto userDto = _mapper.Map<UserDto>(request.User);
+            _logger.LogDebug("Created token for user {User}", request.User);
             return new AuthResponse()
             {
                 User = userDto,

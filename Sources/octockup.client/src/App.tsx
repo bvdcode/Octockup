@@ -1,13 +1,13 @@
+import { User } from "./api/types";
+import RoutesComponent from "./Routes";
+import { useSystemTheme } from "./theme";
+import AuthProvider from "react-auth-kit";
+import { refresh } from "./auth/AuthKitMethods";
 import { ToastContainer } from "react-toastify";
 import CssBaseline from "@mui/material/CssBaseline";
 import createStore from "react-auth-kit/createStore";
-import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { useEffect, useMemo, useState } from "react";
-import { useSystemTheme } from "./theme";
-import AuthProvider from "react-auth-kit";
-import RoutesComponent from "./Routes";
-import { refresh } from "./auth/AuthKitMethods";
-import { User } from "./api/types";
+import { ThemeProvider, createTheme } from "@mui/material/styles";
 
 function App() {
   const systemTheme = useSystemTheme();

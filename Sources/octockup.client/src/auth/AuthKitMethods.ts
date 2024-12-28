@@ -16,7 +16,9 @@ export const refresh = createRefresh<User>({
       isSuccess: true,
       newAuthToken: tokens.accessToken,
       newRefreshToken: tokens.refreshToken,
+      newAuthTokenExpireIn: 10,
+      newRefreshTokenExpiresIn: 720,
     };
   },
-  interval: 5,
+  interval: 3,
 });

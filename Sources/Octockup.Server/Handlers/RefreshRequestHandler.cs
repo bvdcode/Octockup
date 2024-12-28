@@ -1,4 +1,5 @@
 ﻿using MediatR;
+using System.Net;
 using Octockup.Server.Models;
 using Octockup.Server.Database;
 using Microsoft.EntityFrameworkCore;
@@ -15,12 +16,12 @@ namespace Octockup.Server.Handlers
             bool isValid = _tokenProvider.ValidateToken(request.RefreshToken);
             if (!isValid)
             {
-                throw new WebApiException(System.Net.HttpStatusCode.Unauthorized, nameof(Session), "Invalid refresh token");
+                throw new WebApiException(HttpStatusCode.Unauthorized, nameof(Session), "Invalid refresh token");
             }
             var foundToken = _dbContext.Sessions
                 .Include(x => x.User)
                 .FirstOrDefault(x => x.RefreshToken == request.RefreshToken)
-                ?? throw new WebApiException(System.Net.HttpStatusCode.NotFound, nameof(Session), "Session not found");
+                ?? throw new WebApiException(HttpStatusCode.NotFound, nameof(Session), "Session not found");
             _dbContext.Sessions.Remove(foundToken);
             await _dbContext.SaveChangesAsync(cancellationToken);
             CreateTokenRequest createTokenRequest = new() { User = foundToken.User };

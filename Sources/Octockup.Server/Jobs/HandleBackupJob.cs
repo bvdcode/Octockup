@@ -8,7 +8,7 @@ using EasyExtensions.Quartz.Attributes;
 
 namespace Octockup.Server.Jobs
 {
-    [JobTrigger(minutes: 5)]
+    [JobTrigger(minutes: 15)]
     public class HandleBackupJob(AppDbContext _dbContext, ILogger<HandleBackupJob> _logger,
         IMediator _mediator) : IJob
     {
