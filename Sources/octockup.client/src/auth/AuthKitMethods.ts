@@ -3,6 +3,7 @@ import { refreshAccessToken } from "../api/api";
 import createRefresh from "react-auth-kit/createRefresh";
 
 export const refresh = createRefresh<User>({
+  interval: 300,
   refreshApiCallback: async (token) => {
     if (!token.refreshToken) {
       return {
@@ -14,11 +15,11 @@ export const refresh = createRefresh<User>({
     const tokens = await refreshAccessToken(token.refreshToken);
     return {
       isSuccess: true,
+      newAuthTokenExpireIn: 10,
+      newRefreshTokenExpiresIn: 60,
+      newAuthUserState: tokens.user,
       newAuthToken: tokens.accessToken,
       newRefreshToken: tokens.refreshToken,
-      newAuthTokenExpireIn: 10,
-      newRefreshTokenExpiresIn: 720,
     };
   },
-  interval: 3,
 });
