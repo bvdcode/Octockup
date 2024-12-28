@@ -34,7 +34,13 @@ namespace Octockup.Server.Handlers
         private async Task CreateBackupAsync(BackupTask job, IStorageProvider storageProvider,
             CancellationToken merged, ProgressTracker progressTracker)
         {
-            throw new NotImplementedException();
+            for (int i = 0; i < 50; i++)
+            {
+                double progress = 0.01 * i;
+                progressTracker.ReportProgress(progress);
+                await Task.Delay(1000, merged);
+            }
+            throw new InvalidOperationException("Backup failed because of Merry Christmas!");
         }
     }
 }
