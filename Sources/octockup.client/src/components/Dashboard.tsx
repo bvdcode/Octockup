@@ -89,7 +89,7 @@ const Dashboard: React.FC = () => {
                     </TableCell>
                     <TableCell>{backup.interval}</TableCell>
                     <TableCell>{backup.elapsed}</TableCell>
-                    <TableCell>
+                    <TableCell title={backup.progress * 100 + "%"}>
                       <ProgressBar
                         value={backup.progress}
                         color={getColorByStatus(backup.status)}
