@@ -1,10 +1,13 @@
 ﻿using System.Diagnostics;
+using Octockup.Server.Hubs;
 using Octockup.Server.Database;
+using Microsoft.AspNetCore.SignalR;
 using Octockup.Server.Models.Enums;
 
 namespace Octockup.Server.Services
 {
-    public class ProgressTracker(AppDbContext _dbContext, ILogger<ProgressTracker> _logger)
+    public class ProgressTracker(AppDbContext _dbContext, ILogger<ProgressTracker> _logger,
+        IHubContext<BackupHub> _hub)
     {
         public double Progress { get; private set; }
         public TimeSpan Elapsed => _stopwatch.Elapsed;
@@ -23,7 +26,7 @@ namespace Octockup.Server.Services
             }
         }
 
-        public void ReportProgress(double progress)
+        public async void ReportProgress(double progress)
         {
             if (_job == null)
             {
@@ -40,6 +43,7 @@ namespace Octockup.Server.Services
             try
             {
                 _dbContext.SaveChanges();
+                await _hub.Clients.User(_job.UserId.ToString()).SendAsync("Progress", _job.Progress);
             }
             catch (Exception ex)
             {
