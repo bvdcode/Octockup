@@ -36,7 +36,7 @@ const Dashboard: React.FC = () => {
 
     const interval = setInterval(() => {
       loadData();
-    }, 2000);
+    }, 1000);
     return () => clearInterval(interval);
   }, [t]);
 
