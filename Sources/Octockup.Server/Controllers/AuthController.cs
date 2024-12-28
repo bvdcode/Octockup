@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace Octockup.Server.Controllers
 {
     [ApiController]
-    [Route("/api/v1/[controller]")]
+    [Route(Routes.Version + "/[controller]")]
     public class AuthController(IMediator _mediator) : ControllerBase
     {
         [Authorize]

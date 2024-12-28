@@ -1,8 +1,10 @@
 using FluentValidation;
+using Octockup.Server.Hubs;
 using Octockup.Server.Database;
 using Octockup.Server.Services;
 using Octockup.Server.Extensions;
 using FluentValidation.AspNetCore;
+using Octockup.Server.Controllers;
 using EasyExtensions.Quartz.Extensions;
 using Octockup.Server.Providers.Storage;
 using EasyExtensions.AspNetCore.Extensions;
@@ -47,6 +49,7 @@ namespace Octockup.Server
             app.MapFallbackToFile("/index.html");
             app.ApplyMigrations<AppDbContext>();
             app.UseExceptionHandler();
+            app.MapHub<BackupHub>(Routes.Version + "/backup/hub");
             app.Run();
         }
     }

@@ -20,7 +20,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace Octockup.Server.Controllers
 {
     [ApiController]
-    [Route("/api/v1/[controller]")]
+    [Route(Routes.Version + "/[controller]")]
     public class BackupController(IEnumerable<IStorageProvider> _storageProviders, JobCancellationService _jobCancellationService,
         AppDbContext _dbContext, IMapper _mapper, IMediator _mediator, ISchedulerFactory _scheduler) : ControllerBase
     {
