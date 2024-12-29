@@ -30,7 +30,7 @@ function App() {
       <AuthProvider
         storageKey="_octockup_auth"
         refresh={refresh}
-        refreshIntervalSeconds={60}
+        refreshIntervalSeconds={"auto"}
       >
         <CssBaseline />
         <ToastContainer />

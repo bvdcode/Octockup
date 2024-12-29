@@ -63,9 +63,26 @@ const AuthProvider: React.FC<AuthProviderProps> = ({
   }, [doRefreshToken]);
 
   useEffect(() => {
+    const decodeTokenRemainingTime = (token: string) => {
+      const defaultInterval = 60 * 1000;
+      try {
+        const [, payload] = token.split(".");
+        const decodedPayload = JSON.parse(atob(payload));
+        const remainingTime = decodedPayload.exp * 1000 - Date.now();
+        return remainingTime;
+      } catch {
+        return defaultInterval;
+      }
+    };
+
+    const intervalMs =
+      refreshIntervalSeconds === "auto"
+        ? decodeTokenRemainingTime(accessToken || "")
+        : refreshIntervalSeconds * 1000;
+
     const interval = setInterval(async () => {
       await doRefreshToken();
-    }, refreshIntervalSeconds * 1000,);
+    }, intervalMs);
 
     return () => clearInterval(interval);
   }, [
@@ -74,6 +91,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({
     storageRefreshKey,
     storageUserKey,
     doRefreshToken,
+    accessToken,
   ]);
 
   return (

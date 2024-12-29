@@ -35,8 +35,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     };
   }, [navigate, signOut]);
 
-  console.log(isLoaded, isAuthenticated, accessToken !== null);
-
   return isLoaded ? (
     isAuthenticated && accessToken ? (
       children

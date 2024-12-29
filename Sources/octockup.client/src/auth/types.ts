@@ -1,6 +1,6 @@
 export interface AuthProviderProps {
   storageKey: string;
-  refreshIntervalSeconds: number;
+  refreshIntervalSeconds: number | "auto";
   refresh: (refreshToken: string) => Promise<{
     newUserState: unknown;
     newAccessToken: string;
