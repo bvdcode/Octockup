@@ -30,7 +30,7 @@ export interface BackupTask {
   progress: number;
   completedAt: string;
   status: BackupTaskStatus;
-  lastError: string | null;
+  lastMessage: string | null;
   completedAtDate: Date | null;
 }
 

@@ -9,7 +9,6 @@ using EasyExtensions.AspNetCore.Authorization.Services;
 
 namespace Octockup.Server.Handlers
 {
-
     public class CreateTokenRequestHandler(ITokenProvider _tokenProvider, AppDbContext _dbContext,
          IConfiguration _configuration, IMapper _mapper, ILogger<CreateTokenRequestHandler> _logger)
         : IRequestHandler<CreateTokenRequest, AuthResponse>

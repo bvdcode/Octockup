@@ -3,24 +3,51 @@ using Octockup.Server.Models;
 
 namespace Octockup.Server.Providers.Storage
 {
-    public class FtpProvider : IStorageProvider<BaseStorageParameters>
+    public class FtpProvider(ILogger<FtpProvider> _logger) : IStorageProvider<BaseStorageParameters>
     {
         public string Name => "FTP";
         public BaseStorageParameters Parameters { get; set; } = null!;
-        
+
         private FtpClient? _client;
 
         public IEnumerable<RemoteFileInfo> GetAllFiles()
         {
+            return GetAllFiles(Parameters.RemotePath);
+        }
+
+        private IEnumerable<RemoteFileInfo> GetAllFiles(string remotePath)
+        {
             _client ??= CreateClient();
-            var items = _client.GetListing(Parameters.RemotePath);
-            return items.Select(i => new RemoteFileInfo
+            var files = _client.GetListing(remotePath);
+            _logger.LogInformation("Got {count} files from {path}", files.Length, remotePath);
+            foreach (var file in files)
             {
-                Name = i.Name,
-                Path = i.FullName,
-                Size = i.Size,
-                LastModified = i.Modified
-            });
+                if (file.FullName == "." 
+                    || file.FullName == ".." 
+                    || file.FullName == remotePath)
+                {
+                    continue;
+                }
+                if (file.Type == FtpObjectType.Directory)
+                {
+                    foreach (var item in GetAllFiles(file.FullName))
+                    {
+                        yield return item;
+                    }
+                    continue;
+                }
+                if (file.Type != FtpObjectType.File)
+                {
+                    continue;
+                }
+                yield return new RemoteFileInfo
+                {
+                    Name = file.Name,
+                    Path = file.FullName,
+                    Size = file.Size,
+                    LastModified = file.Modified
+                };
+            }
         }
 
         private FtpClient CreateClient()

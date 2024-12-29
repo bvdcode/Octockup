@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Octockup.Server.Database;
@@ -11,9 +12,11 @@ using Octockup.Server.Database;
 namespace Octockup.Server.Migrations.PostgresMigrations
 {
     [DbContext(typeof(PostgresDbContext))]
-    partial class PostgresDbContextModelSnapshot : ModelSnapshot
+    [Migration("20241229084656_AddLastMessage")]
+    partial class AddLastMessage
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -46,11 +49,6 @@ namespace Octockup.Server.Migrations.PostgresMigrations
                         .IsRequired()
                         .HasColumnType("text[]")
                         .HasColumnName("files");
-
-                    b.Property<string>("Log")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("log");
 
                     b.Property<long>("Size")
                         .HasColumnType("bigint")

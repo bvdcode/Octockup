@@ -119,23 +119,56 @@ const Dashboard: React.FC = () => {
               {jobs.length > 0 ? (
                 jobs.map((backup, index) => (
                   <TableRow key={index}>
-                    <TableCell>{backup.id}</TableCell>
-                    <TableCell>{backup.name}</TableCell>
-                    <TableCell>
+                    <TableCell
+                      sx={{ width: "50px", textAlign: "center" }}
+                      component="th"
+                      scope="row"
+                    >
+                      {backup.id}
+                    </TableCell>
+                    <TableCell
+                      sx={{ width: "150px" }}
+                      title={backup.name}
+                      style={{ whiteSpace: "nowrap", overflow: "hidden" }}
+                    >
+                      {backup.name}
+                    </TableCell>
+                    <TableCell
+                      sx={{ width: "200px" }}
+                      title={backup.completedAt ?? "-"}
+                    >
                       {backup.completedAtDate?.toLocaleString() ?? "-"}
                     </TableCell>
-                    <TableCell>{backup.interval}</TableCell>
-                    <TableCell>{backup.elapsed}</TableCell>
-                    <TableCell title={backup.progress * 100 + "%"}>
+                    <TableCell
+                      sx={{ width: "100px", textAlign: "center" }}
+                      title={backup.interval}
+                    >
+                      {backup.interval}
+                    </TableCell>
+                    <TableCell
+                      sx={{ width: "100px", textAlign: "center" }}
+                      title={backup.elapsed}
+                    >
+                      {backup.elapsed}
+                    </TableCell>
+                    <TableCell
+                      title={backup.progress * 100 + "%"}
+                      sx={{ width: "200px" }}
+                    >
                       <ProgressBar
                         value={backup.progress}
                         color={getColorByStatus(backup.status)}
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell
+                      sx={{ width: "150px" }}
+                      title={t(
+                        "backupStatus." + BackupTaskStatus[backup.status]
+                      )}
+                    >
                       {t("backupStatus." + BackupTaskStatus[backup.status])}
                     </TableCell>
-                    <TableCell>{backup.lastError ?? "-"}</TableCell>
+                    <TableCell>{backup.lastMessage ?? "-"}</TableCell>
                     <TableCell sx={{ width: "150px" }}>
                       <Box display="flex" justifyContent="space-around">
                         <Button>

@@ -44,8 +44,8 @@ namespace Octockup.Server.Database
         [Column("user_id")]
         public int UserId { get; set; }
 
-        [Column("last_error")]
-        public string? LastError { get; set; }
+        [Column("last_message")]
+        public string? LastMessage { get; set; }
 
         [Column("elapsed")]
         public TimeSpan Elapsed { get; set; }

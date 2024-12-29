@@ -22,6 +22,7 @@ namespace Octockup.Server.Handlers
                 .Include(x => x.User)
                 .FirstOrDefault(x => x.RefreshToken == request.RefreshToken)
                 ?? throw new WebApiException(HttpStatusCode.NotFound, nameof(Session), "Session not found");
+            _dbContext.Sessions.Update(foundToken);
             _dbContext.Sessions.Remove(foundToken);
             await _dbContext.SaveChangesAsync(cancellationToken);
             CreateTokenRequest createTokenRequest = new() { User = foundToken.User };

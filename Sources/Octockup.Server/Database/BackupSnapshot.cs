@@ -1,6 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 using EasyExtensions.EntityFrameworkCore.Abstractions;
-using Octockup.Server.Helpers;
 
 namespace Octockup.Server.Database
 {
@@ -15,6 +14,9 @@ namespace Octockup.Server.Database
 
         [Column("size")]
         public long Size { get; set; }
+
+        [Column("log")]
+        public string Log { get; set; } = string.Empty;
 
         public virtual BackupTask BackupTask { get; set; } = null!;
     }

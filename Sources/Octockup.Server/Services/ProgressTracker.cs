@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Text;
+using System.Diagnostics;
 using Octockup.Server.Hubs;
 using Octockup.Server.Database;
 using Microsoft.AspNetCore.SignalR;
@@ -9,11 +10,13 @@ namespace Octockup.Server.Services
     public class ProgressTracker(AppDbContext _dbContext, ILogger<ProgressTracker> _logger,
         IHubContext<BackupHub> _hub)
     {
+        public string Log => _log.ToString();
         public double Progress { get; private set; }
         public TimeSpan Elapsed => _stopwatch.Elapsed;
 
         private BackupTask? _job;
         private const int UpdateInterval = 1000;
+        private readonly StringBuilder _log = new();
         private readonly Stopwatch _updateSw = Stopwatch.StartNew();
         private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
 
@@ -26,13 +29,13 @@ namespace Octockup.Server.Services
             }
         }
 
-        public async void ReportProgress(double progress)
+        public async void ReportProgress(double progress, string? message = "", bool force = false)
         {
             if (_job == null)
             {
                 throw new InvalidOperationException("Job ID not set.");
             }
-            if (_updateSw.ElapsedMilliseconds < UpdateInterval)
+            if (_updateSw.ElapsedMilliseconds < UpdateInterval && !force)
             {
                 return;
             }
@@ -40,6 +43,10 @@ namespace Octockup.Server.Services
             _job.Elapsed = _stopwatch.Elapsed;
             _job.Status = BackupTaskStatus.Running;
             _job.Progress = Math.Round(progress, 2);
+            if (!string.IsNullOrWhiteSpace(message))
+            {
+                _job.LastMessage = message;
+            }
             try
             {
                 _dbContext.SaveChanges();
@@ -48,6 +55,15 @@ namespace Octockup.Server.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to update job progress.");
+            }
+            _logger.LogInformation("Job {jobId} progress: {progress}%", _job.Id, _job.Progress);
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                _log.AppendLine($"[{DateTime.UtcNow:HH:mm:ss}] Progress: {_job.Progress}%");
+            }
+            else
+            {
+                _log.AppendLine($"[{DateTime.UtcNow:HH:mm:ss}] Progress: {_job.Progress}%, Message: {message}");
             }
         }
     }

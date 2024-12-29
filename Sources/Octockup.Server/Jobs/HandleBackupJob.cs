@@ -26,7 +26,7 @@ namespace Octockup.Server.Jobs
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to execute job {jobId} for user {userId}.", job.Id, job.UserId);
-                    job.LastError = ex.Message;
+                    job.LastMessage = ex.Message;
                     job.Status = BackupTaskStatus.Failed;
                     job.CompletedAt = DateTime.UtcNow;
                     await _dbContext.SaveChangesAsync();
@@ -40,11 +40,24 @@ namespace Octockup.Server.Jobs
             List<BackupTask> result = [];
             foreach (var job in allJobs)
             {
+                if (job.Status == BackupTaskStatus.Running)
+                {
+                    job.Status = BackupTaskStatus.Failed;
+                    job.LastMessage = "Job was interrupted by unexpected shutdown.";
+                    job.CompletedAt = DateTime.UtcNow;
+                    await _dbContext.SaveChangesAsync();
+                    _logger.LogWarning("Job {jobId} was interrupted by unexpected shutdown.", job.Id);
+                }
                 if (job.ForceRun)
                 {
                     _logger.LogInformation("Job {jobId} is forced to run.", job.Id);
                     job.ForceRun = false;
                     result.Add(job);
+                    continue;
+                }
+                if (job.CompletedAt != null && job.Interval == TimeSpan.Zero)
+                {
+                    _logger.LogDebug("Job {jobId} is running only once, skipping.", job.Id);
                     continue;
                 }
                 DateTime now = DateTime.UtcNow;

@@ -43,8 +43,7 @@ namespace Octockup.Server
             app.UseCors().UseDefaultFiles();
             app.MapStaticAssets();
             app.MapOpenApi();
-            app.UseHttpsRedirection()
-                .UseAuthentication()
+            app.UseAuthentication()
                 .UseAuthorization();
             app.MapControllers();
             app.MapFallbackToFile("/index.html");

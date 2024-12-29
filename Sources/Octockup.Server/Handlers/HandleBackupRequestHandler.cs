@@ -17,7 +17,7 @@ namespace Octockup.Server.Handlers
             BackupTask job = await _dbContext.BackupTasks.FindAsync([request.BackupTaskId], cancellationToken: merged)
                 ?? throw new InvalidOperationException("Backup task with the specified ID not found: " + request.BackupTaskId);
             job.Status = BackupTaskStatus.Running;
-            job.LastError = null;
+            job.LastMessage = null;
             var storageProvider = _storageProviders.FirstOrDefault(x => x.Name == job.Provider)
                 ?? throw new InvalidOperationException("Storage provider not found: " + job.Provider);
             await progressTracker.SetJobIdAsync(job.Id);
@@ -50,27 +50,28 @@ namespace Octockup.Server.Handlers
                 {
                     continue;
                 }
-                prop.SetValue(propertyValue, pair.Value);
+                if (prop.PropertyType != typeof(string))
+                {
+                    prop.SetValue(propertyValue, Convert.ChangeType(pair.Value, prop.PropertyType));
+                }
+                else
+                {
+                    prop.SetValue(propertyValue, pair.Value);
+                }
             }
         }
 
         private async Task CreateBackupAsync(BackupTask job, IStorageProvider storageProvider,
             CancellationToken merged, ProgressTracker progressTracker)
         {
-            progressTracker.ReportProgress(0.01);
+            progressTracker.ReportProgress(0.01, "Request files");
             var files = storageProvider.GetAllFiles();
-            BackupSnapshot snapshot = new BackupSnapshot
+            foreach (var item in files)
             {
-                BackupTaskId = job.Id,
-                Files = files.Select(x => x.Name).ToArray(),
-                Size = files.Sum(x => x.Size)
-            };
-            progressTracker.ReportProgress(0.02);
-
-            throw new Exception("Got files: " + snapshot.Files.Length);
-
-            await _dbContext.BackupSnapshots.AddAsync(snapshot, merged);
-            await _dbContext.SaveChangesAsync(merged);
+                merged.ThrowIfCancellationRequested();
+                progressTracker.ReportProgress(0.01, "Copying: " + item.Name);
+            }
+            progressTracker.ReportProgress(0.5, "Processed 123 files, 32 updated, 456 MB total", force: true);
         }
     }
 }
