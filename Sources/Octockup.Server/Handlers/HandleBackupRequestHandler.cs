@@ -62,7 +62,7 @@ namespace Octockup.Server.Handlers
             }
         }
 
-        private static async Task CreateBackupAsync(BackupTask job, IStorageProvider storageProvider,
+        private static Task CreateBackupAsync(BackupTask job, IStorageProvider storageProvider,
             ProgressTracker progressTracker, CancellationToken merged)
         {
             progressTracker.ReportProgress(0.01, "Request files");
@@ -72,9 +72,9 @@ namespace Octockup.Server.Handlers
                 merged.ThrowIfCancellationRequested();
                 progressTracker.ReportProgress(0.01, "Copying: " + item.Name);
             }
-            _ = job;
-            await Task.CompletedTask;
             progressTracker.ReportProgress(0.5, "Processed 123 files, 32 updated, 456 MB total", force: true);
+
+            return Task.FromResult(job);
         }
     }
 }

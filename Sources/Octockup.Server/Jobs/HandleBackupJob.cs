@@ -1,7 +1,9 @@
 ﻿using Quartz;
 using MediatR;
+using Octockup.Server.Hubs;
 using Octockup.Server.Models;
 using Octockup.Server.Database;
+using Microsoft.AspNetCore.SignalR;
 using Octockup.Server.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 using EasyExtensions.Quartz.Attributes;
@@ -10,7 +12,7 @@ namespace Octockup.Server.Jobs
 {
     [JobTrigger(minutes: 15)]
     public class HandleBackupJob(AppDbContext _dbContext, ILogger<HandleBackupJob> _logger,
-        IMediator _mediator) : IJob
+        IMediator _mediator, IHubContext<BackupHub> _hub) : IJob
     {
         public async Task Execute(IJobExecutionContext context)
         {
@@ -31,6 +33,7 @@ namespace Octockup.Server.Jobs
                     job.CompletedAt = DateTime.UtcNow;
                     await _dbContext.SaveChangesAsync();
                 }
+                await _hub.Clients.User(job.UserId.ToString()).SendAsync("Progress", job.Progress);
             }
         }
 
