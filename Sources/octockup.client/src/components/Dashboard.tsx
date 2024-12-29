@@ -60,6 +60,9 @@ const Dashboard: React.FC = () => {
       <Box display="flex" justifyContent="space-between" alignItems="center">
         <Typography variant="h4">{t("dashboard.title")}</Typography>
         <Typography variant="body1">
+          {t("dashboard.updatedAt", { date: new Date().toLocaleString() })}
+        </Typography>
+        <Typography variant="body1">
           {t("dashboard.welcome", { name: user.username })}
         </Typography>
       </Box>

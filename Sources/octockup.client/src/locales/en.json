@@ -40,7 +40,8 @@
     "welcome": "Welcome, {{name}}!",
     "dataLoadError": "Error loading dashboard data: {{error}}",
     "forceRunSuccess": "Job start request sent",
-    "stopSuccess": "Job cancellation request sent"
+    "stopSuccess": "Job cancellation request sent",
+    "updatedAt": "Data is actual as of {{date}}"
   },
   "createJob": {
     "title": "Create new backup job",
