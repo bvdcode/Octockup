@@ -21,7 +21,11 @@ import { BackupTask, BackupTaskStatus, User } from "../api/types";
 import { ProgressBarColor } from "./ProgressBar/ProgressBarColor";
 import { forceRunJob, getBackupStatus, stopJob } from "../api/api";
 import { Delete, Replay, Stop, Visibility } from "@mui/icons-material";
-import { HubConnection, HubConnectionBuilder } from "@microsoft/signalr";
+import {
+  HubConnection,
+  HubConnectionBuilder,
+  LogLevel,
+} from "@microsoft/signalr";
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -37,6 +41,7 @@ const Dashboard: React.FC = () => {
     hubConnection.current = new HubConnectionBuilder()
       .withUrl(API_BASE_URL + "/backup/hub?access_token=" + accessToken)
       .withAutomaticReconnect()
+      .configureLogging(LogLevel.Warning)
       .build();
     hubConnection.current.on("Progress", () => {
       getBackupStatus().then((response) => {

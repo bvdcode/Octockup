@@ -15,11 +15,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   fallbackPath,
 }) => {
   const { signOut, isAuthenticated, accessToken, isLoaded } = useAuth();
+  const [isTokenSet, setIsTokenSet] = React.useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (isLoaded && isAuthenticated && accessToken) {
+    if (accessToken) {
       AxiosClient.setAuthHeader(accessToken);
+      setIsTokenSet(true);
+    }
+    if (isLoaded && isAuthenticated && accessToken) {
       checkAuth();
     }
   }, [accessToken, isAuthenticated, isLoaded]);
@@ -35,7 +39,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     };
   }, [navigate, signOut]);
 
-  return isLoaded ? (
+  console.log(isAuthenticated, accessToken !== null, isLoaded);
+
+  return isLoaded && isTokenSet ? (
     isAuthenticated && accessToken ? (
       children
     ) : (
