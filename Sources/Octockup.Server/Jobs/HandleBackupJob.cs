@@ -45,13 +45,13 @@ namespace Octockup.Server.Jobs
                     job.Status = BackupTaskStatus.Failed;
                     job.LastMessage = "Job was interrupted by unexpected shutdown.";
                     job.CompletedAt = null;
+                    job.ForceRun = true;
                     await _dbContext.SaveChangesAsync();
                     _logger.LogWarning("Job {jobId} was interrupted by unexpected shutdown.", job.Id);
                 }
                 if (job.ForceRun)
                 {
                     _logger.LogInformation("Job {jobId} is forced to run.", job.Id);
-                    job.ForceRun = false;
                     result.Add(job);
                     continue;
                 }

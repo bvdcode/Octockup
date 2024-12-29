@@ -9,7 +9,8 @@ using EasyExtensions.AspNetCore.Authorization.Services;
 namespace Octockup.Server.Handlers
 {
     public class RefreshRequestHandler(ITokenProvider _tokenProvider, IMediator _mediator,
-        AppDbContext _dbContext) : IRequestHandler<RefreshRequest, AuthResponse>
+        AppDbContext _dbContext, ILogger<RefreshRequestHandler> _logger) 
+        : IRequestHandler<RefreshRequest, AuthResponse>
     {
         public async Task<AuthResponse> Handle(RefreshRequest request, CancellationToken cancellationToken)
         {
@@ -22,9 +23,15 @@ namespace Octockup.Server.Handlers
                 .Include(x => x.User)
                 .FirstOrDefault(x => x.RefreshToken == request.RefreshToken)
                 ?? throw new WebApiException(HttpStatusCode.NotFound, nameof(Session), "Session not found");
-            _dbContext.Sessions.Update(foundToken);
-            _dbContext.Sessions.Remove(foundToken);
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            try
+            {
+                _dbContext.Sessions.Remove(foundToken);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception)
+            {
+                _logger.LogError("Failed to remove session {Session}", foundToken.Id);
+            }
             CreateTokenRequest createTokenRequest = new() { User = foundToken.User };
             return await _mediator.Send(createTokenRequest, cancellationToken);
         }

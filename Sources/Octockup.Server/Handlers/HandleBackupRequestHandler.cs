@@ -27,6 +27,7 @@ namespace Octockup.Server.Handlers
             job.CompletedAt = DateTime.UtcNow;
             job.Elapsed = progressTracker.Elapsed;
             job.Status = BackupTaskStatus.Completed;
+            job.ForceRun = false;
             await _dbContext.SaveChangesAsync(merged);
         }
 
