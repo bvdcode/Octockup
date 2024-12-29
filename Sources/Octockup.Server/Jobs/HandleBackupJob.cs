@@ -44,7 +44,7 @@ namespace Octockup.Server.Jobs
                 {
                     job.Status = BackupTaskStatus.Failed;
                     job.LastMessage = "Job was interrupted by unexpected shutdown.";
-                    job.CompletedAt = DateTime.UtcNow;
+                    job.CompletedAt = null;
                     await _dbContext.SaveChangesAsync();
                     _logger.LogWarning("Job {jobId} was interrupted by unexpected shutdown.", job.Id);
                 }

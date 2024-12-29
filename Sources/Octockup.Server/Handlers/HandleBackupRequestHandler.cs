@@ -22,7 +22,7 @@ namespace Octockup.Server.Handlers
                 ?? throw new InvalidOperationException("Storage provider not found: " + job.Provider);
             await progressTracker.SetJobIdAsync(job.Id);
             SetParameters(storageProvider, job.GetParameters());
-            await CreateBackupAsync(job, storageProvider, merged, progressTracker);
+            await CreateBackupAsync(job, storageProvider, progressTracker, merged);
             job.Progress = 1;
             job.CompletedAt = DateTime.UtcNow;
             job.Elapsed = progressTracker.Elapsed;
@@ -61,8 +61,8 @@ namespace Octockup.Server.Handlers
             }
         }
 
-        private async Task CreateBackupAsync(BackupTask job, IStorageProvider storageProvider,
-            CancellationToken merged, ProgressTracker progressTracker)
+        private static async Task CreateBackupAsync(BackupTask job, IStorageProvider storageProvider,
+            ProgressTracker progressTracker, CancellationToken merged)
         {
             progressTracker.ReportProgress(0.01, "Request files");
             var files = storageProvider.GetAllFiles();
@@ -71,6 +71,8 @@ namespace Octockup.Server.Handlers
                 merged.ThrowIfCancellationRequested();
                 progressTracker.ReportProgress(0.01, "Copying: " + item.Name);
             }
+            _ = job;
+            await Task.CompletedTask;
             progressTracker.ReportProgress(0.5, "Processed 123 files, 32 updated, 456 MB total", force: true);
         }
     }
