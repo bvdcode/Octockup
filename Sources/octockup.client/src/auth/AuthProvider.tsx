@@ -41,15 +41,22 @@ const AuthProvider: React.FC<AuthProviderProps> = ({
       setIsLoaded(true);
       return;
     }
-    await refresh(refreshToken || "").then((result) => {
-      setUserState(result.newUserState);
-      setAccessToken(result.newAccessToken);
-      localStorage.setItem(storageUserKey, JSON.stringify(result.newUserState));
-      localStorage.setItem(storageRefreshKey, result.newRefreshToken);
-      setIsAuthenticated(true);
-      setIsLoaded(true);
-    });
-  }, [refresh, storageUserKey, storageRefreshKey]);
+    await refresh(refreshToken || "")
+      .then((result) => {
+        setUserState(result.newUserState);
+        setAccessToken(result.newAccessToken);
+        localStorage.setItem(
+          storageUserKey,
+          JSON.stringify(result.newUserState)
+        );
+        localStorage.setItem(storageRefreshKey, result.newRefreshToken);
+        setIsAuthenticated(true);
+        setIsLoaded(true);
+      })
+      .catch(() => {
+        // do nothing
+      });
+  }, [storageRefreshKey, refresh, storageUserKey]);
 
   useEffect(() => {
     doRefreshToken();
@@ -58,7 +65,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({
   useEffect(() => {
     const interval = setInterval(async () => {
       await doRefreshToken();
-    }, refreshIntervalSeconds * 1000);
+    }, refreshIntervalSeconds * 1000,);
 
     return () => clearInterval(interval);
   }, [
