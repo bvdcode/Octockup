@@ -1,5 +1,5 @@
 // filepath: src/providers/AuthProvider.tsx
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import AuthContext from "./AuthContext";
 import { AuthProviderProps, SignInProps } from "./types";
 
@@ -32,26 +32,37 @@ const AuthProvider: React.FC<AuthProviderProps> = ({
     setIsAuthenticated(true);
   };
 
+  const doRefreshToken = useCallback(async () => {
+    const refreshToken = localStorage.getItem(storageRefreshKey);
+    if (!refreshToken) {
+      return;
+    }
+    await refresh(refreshToken || "").then((result) => {
+      setUserState(result.newUserState);
+      setAccessToken(result.newAccessToken);
+      localStorage.setItem(storageUserKey, JSON.stringify(result.newUserState));
+      localStorage.setItem(storageRefreshKey, result.newRefreshToken);
+      setIsAuthenticated(true);
+    });
+  }, [refresh, storageUserKey, storageRefreshKey]);
+
+  useEffect(() => {
+    doRefreshToken();
+  }, [doRefreshToken]);
+
   useEffect(() => {
     const interval = setInterval(async () => {
-      const refreshToken = localStorage.getItem(storageRefreshKey);
-      if (!refreshToken) {
-        return;
-      }
-      await refresh(refreshToken || "").then((result) => {
-        setUserState(result.newUserState);
-        setAccessToken(result.newAccessToken);
-        setIsAuthenticated(true);
-        localStorage.setItem(
-          storageUserKey,
-          JSON.stringify(result.newUserState)
-        );
-        localStorage.setItem(storageRefreshKey, result.newRefreshToken);
-      });
+      await doRefreshToken();
     }, refreshIntervalSeconds * 1000);
 
     return () => clearInterval(interval);
-  }, [refreshIntervalSeconds, refresh, storageRefreshKey, storageUserKey]);
+  }, [
+    refreshIntervalSeconds,
+    refresh,
+    storageRefreshKey,
+    storageUserKey,
+    doRefreshToken,
+  ]);
 
   return (
     <AuthContext.Provider

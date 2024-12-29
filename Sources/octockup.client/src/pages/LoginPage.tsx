@@ -4,13 +4,14 @@ import useAuth from "../auth/useAuth";
 import { toast } from "react-toastify";
 import { LoginForm } from "../components";
 import Loader from "../components/Loader";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 const LoginPage: React.FC = () => {
   const { signIn } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { isAuthenticated } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const onLogin = (email: string, password: string) => {
@@ -38,6 +39,7 @@ const LoginPage: React.FC = () => {
     <>
       {isLoading && <Loader />}
       <LoginForm onLogin={onLogin} />
+      {isAuthenticated && <Navigate to="/" />}
     </>
   );
 };
