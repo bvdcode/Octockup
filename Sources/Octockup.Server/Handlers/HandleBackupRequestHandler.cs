@@ -21,9 +21,8 @@ namespace Octockup.Server.Handlers
             var storageProvider = _storageProviders.FirstOrDefault(x => x.Name == job.Provider)
                 ?? throw new InvalidOperationException("Storage provider not found: " + job.Provider);
             await progressTracker.SetJobIdAsync(job.Id);
-
+            SetParameters(storageProvider, job.GetParameters());
             await CreateBackupAsync(job, storageProvider, merged, progressTracker);
-
             job.Progress = 1;
             job.CompletedAt = DateTime.UtcNow;
             job.Elapsed = progressTracker.Elapsed;
@@ -31,16 +30,47 @@ namespace Octockup.Server.Handlers
             await _dbContext.SaveChangesAsync(merged);
         }
 
+        private static void SetParameters(IStorageProvider storageProvider, Dictionary<string, string> dictionary)
+        {
+            var property = storageProvider.GetType().GetProperty("Parameters");
+            if (property == null)
+            {
+                return;
+            }
+            object? propertyValue = property.GetValue(storageProvider);
+            if (propertyValue == null)
+            {
+                propertyValue = Activator.CreateInstance(property.PropertyType);
+                property.SetValue(storageProvider, propertyValue);
+            }
+            foreach (var pair in dictionary)
+            {
+                var prop = property.PropertyType.GetProperty(pair.Key);
+                if (prop == null)
+                {
+                    continue;
+                }
+                prop.SetValue(propertyValue, pair.Value);
+            }
+        }
+
         private async Task CreateBackupAsync(BackupTask job, IStorageProvider storageProvider,
             CancellationToken merged, ProgressTracker progressTracker)
         {
-            for (int i = 0; i < 50; i++)
+            progressTracker.ReportProgress(0.01);
+            var files = storageProvider.GetAllFiles();
+            BackupSnapshot snapshot = new BackupSnapshot
             {
-                double progress = 0.01 * i;
-                progressTracker.ReportProgress(progress);
-                await Task.Delay(1000, merged);
-            }
-            throw new InvalidOperationException("Backup failed because of Merry Christmas!");
+                BackupTaskId = job.Id,
+                Files = files.Select(x => x.Name).ToArray(),
+                Size = files.Sum(x => x.Size)
+            };
+            progressTracker.ReportProgress(0.02);
+
+            throw new Exception("Got files: " + snapshot.Files.Length);
+
+            await _dbContext.BackupSnapshots.AddAsync(snapshot, merged);
+            await _dbContext.SaveChangesAsync(merged);
         }
     }
 }

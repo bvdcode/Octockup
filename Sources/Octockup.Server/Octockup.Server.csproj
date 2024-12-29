@@ -13,6 +13,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="EasyExtensions.Quartz" Version="0.1.88" />
+		<PackageReference Include="FluentFTP" Version="52.0.0" />
 		<PackageReference Include="MediatR" Version="12.4.1" />
 		<PackageReference Include="AutoMapper" Version="13.0.1" />
 		<PackageReference Include="FluentValidation" Version="11.11.0" />
