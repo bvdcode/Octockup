@@ -14,7 +14,8 @@ class AxiosClient {
 
   static setAuthHeader(header: string | null) {
     if (header) {
-      this.instance.defaults.headers.common["Authorization"] = header;
+      this.instance.defaults.headers.common["Authorization"] =
+        "Bearer " + header;
     } else {
       delete this.instance.defaults.headers.common["Authorization"];
     }

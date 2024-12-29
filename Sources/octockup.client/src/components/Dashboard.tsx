@@ -11,20 +11,21 @@ import {
   Button,
 } from "@mui/material";
 import { ProgressBar } from ".";
+import { toast } from "react-toastify";
 import styles from "./Dashboard.module.css";
 import { useEffect, useState } from "react";
-import { forceRunJob, getBackupStatus, stopJob } from "../api/api";
 import { useTranslation } from "react-i18next";
 import { BackupTask, BackupTaskStatus, User } from "../api/types";
-import useAuthUser from "react-auth-kit/hooks/useAuthUser";
 import { ProgressBarColor } from "./ProgressBar/ProgressBarColor";
+import { forceRunJob, getBackupStatus, stopJob } from "../api/api";
 import { Delete, Replay, Stop, Visibility } from "@mui/icons-material";
-import { toast } from "react-toastify";
+import useAuth from "../auth/useAuth";
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
-  const authUser = useAuthUser<User>();
+  const { userState } = useAuth();
   const [jobs, setJobs] = useState<BackupTask[]>([]);
+  const user = userState as User;
 
   useEffect(() => {
     const loadData = async () => {
@@ -59,7 +60,7 @@ const Dashboard: React.FC = () => {
       <Box display="flex" justifyContent="space-between" alignItems="center">
         <Typography variant="h4">{t("dashboard.title")}</Typography>
         <Typography variant="body1">
-          {t("dashboard.welcome", { name: authUser?.username })}
+          {t("dashboard.welcome", { name: user.username })}
         </Typography>
       </Box>
       <Box mt={2} flexGrow={1} className={styles.tableContainer}>

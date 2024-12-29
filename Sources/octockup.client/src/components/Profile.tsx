@@ -9,15 +9,15 @@ import {
 import { useState } from "react";
 import { AxiosError } from "axios";
 import { LanguageSwitcher } from ".";
+import useAuth from "../auth/useAuth";
 import { toast } from "react-toastify";
 import { changePassword } from "../api/api";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { MIN_PASSWORD_LENGTH } from "../config";
-import useSignOut from "react-auth-kit/hooks/useSignOut";
 
 const Profile: React.FC = () => {
-  const signOut = useSignOut();
+  const { signOut } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [newPassword, setNewPassword] = useState("");

@@ -20,8 +20,7 @@
     "password": "Password",
     "login": "Login",
     "success": "Login successful",
-    "error": "Login error: {{error}}",
-    "failed": "Login failed"
+    "error": "Login error: {{error}}"
   },
   "loader": {
     "loading": "Loading..."
