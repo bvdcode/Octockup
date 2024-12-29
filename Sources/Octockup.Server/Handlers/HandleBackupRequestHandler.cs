@@ -67,14 +67,21 @@ namespace Octockup.Server.Handlers
         {
             progressTracker.ReportProgress(0.01, "Request files");
             var files = storageProvider.GetAllFiles();
+            int counter = 0;
+            long size = 0;
             foreach (var item in files)
             {
                 merged.ThrowIfCancellationRequested();
                 progressTracker.ReportProgress(0.01, "Copying: " + item.Name);
+                counter++;
+                size += item.Size;
             }
-            progressTracker.ReportProgress(0.5, "Processed 123 files, 32 updated, 456 MB total", force: true);
+            double mb = size / 1024.0 / 1024.0;
+            mb = Math.Round(mb, 2);
+            progressTracker.ReportProgress(0.5, $"Processed {counter} files, {counter / 2} updated, {mb} MB total", force: true);
 
-            return Task.FromResult(job);
+            _ = job;
+            return Task.CompletedTask;
         }
     }
 }

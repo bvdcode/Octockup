@@ -52,6 +52,10 @@ namespace Octockup.Server.Providers.Storage
 
         private FtpClient CreateClient()
         {
+            ArgumentException.ThrowIfNullOrWhiteSpace(Parameters.RemoteHost, nameof(Parameters.RemoteHost));
+            ArgumentException.ThrowIfNullOrWhiteSpace(Parameters.Username, nameof(Parameters.Username));
+            ArgumentException.ThrowIfNullOrWhiteSpace(Parameters.Password, nameof(Parameters.Password));
+            ArgumentOutOfRangeException.ThrowIfLessThan(Parameters.RemotePort, 1, nameof(Parameters.RemotePort));
             var client = new FtpClient(Parameters.RemoteHost, Parameters.Username, Parameters.Password, Parameters.RemotePort);
             client.AutoConnect();
             return client;
