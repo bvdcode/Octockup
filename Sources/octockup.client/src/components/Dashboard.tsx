@@ -11,6 +11,7 @@ import {
   Button,
 } from "@mui/material";
 import { ProgressBar } from ".";
+import useAuth from "../auth/useAuth";
 import { toast } from "react-toastify";
 import styles from "./Dashboard.module.css";
 import { useEffect, useState } from "react";
@@ -19,7 +20,6 @@ import { BackupTask, BackupTaskStatus, User } from "../api/types";
 import { ProgressBarColor } from "./ProgressBar/ProgressBarColor";
 import { forceRunJob, getBackupStatus, stopJob } from "../api/api";
 import { Delete, Replay, Stop, Visibility } from "@mui/icons-material";
-import useAuth from "../auth/useAuth";
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -28,18 +28,27 @@ const Dashboard: React.FC = () => {
   const user = userState as User;
 
   useEffect(() => {
+    let isFetching = false;
+
     const loadData = async () => {
-      getBackupStatus().then((response) => {
+      if (isFetching) return;
+      isFetching = true;
+      try {
+        const response = await getBackupStatus();
         setJobs(response);
-      });
+      } finally {
+        isFetching = false;
+      }
     };
+
     loadData();
 
     const interval = setInterval(() => {
       loadData();
     }, 1000);
+
     return () => clearInterval(interval);
-  }, [t]);
+  }, []);
 
   const getColorByStatus = (status: BackupTaskStatus): ProgressBarColor => {
     switch (status) {
