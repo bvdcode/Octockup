@@ -36,7 +36,7 @@ namespace Octockup.Server
                 .SetupJwtKey(builder.Configuration)
                 .AddJwt(builder.Configuration)
                 .AddOpenApi()
-                .SetupCors()
+                .SetupCors(builder.Configuration)
                 .AddSignalR();
 
             var app = builder.Build();

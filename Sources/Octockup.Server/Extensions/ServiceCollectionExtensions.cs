@@ -67,24 +67,25 @@ namespace Octockup.Server.Extensions
             return services;
         }
 
-        public static IServiceCollection SetupCors(this IServiceCollection services)
+        public static IServiceCollection SetupCors(this IServiceCollection services, IConfiguration configuration)
         {
             string? corsOrigins = Environment.GetEnvironmentVariable("CORS_ORIGINS");
-            if (string.IsNullOrWhiteSpace(corsOrigins))
+            List<string> origins = [];
+            if (!string.IsNullOrWhiteSpace(corsOrigins))
             {
-                services.AddCors(x =>
-                {
-                    x.AddDefaultPolicy(y =>
-                    {
-                        y.AllowAnyOrigin();
-                        y.AllowAnyMethod();
-                        y.AllowAnyHeader();
-                        y.WithExposedHeaders("*");
-                    });
-                });
+                var splitted = corsOrigins.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                origins.AddRange(splitted);
+            }
+            var fromConfig = configuration.GetSection("CorsOrigins").Get<string[]>();
+            if (fromConfig != null)
+            {
+                origins.AddRange(fromConfig);
+            }
+            if (origins.Count == 0)
+            {
                 return services;
             }
-            return services.AddDefaultCorsWithOrigins(corsOrigins);
+            return services.AddDefaultCorsWithOrigins([.. origins]);
         }
     }
 }

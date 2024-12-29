@@ -8,5 +8,6 @@ namespace Octockup.Server.Hubs
     [EnableCors]
     public class BackupHub : Hub
     {
+
     }
 }

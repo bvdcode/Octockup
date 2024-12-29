@@ -50,7 +50,8 @@ namespace Octockup.Server.Handlers
             return builder.Add(ClaimTypes.Name, user.Username)
                     .Add(ClaimTypes.Role, user.Role.ToString())
                     .Add(ClaimTypes.Email, user.Email)
-                    .Add(ClaimTypes.Sid, user.Id.ToString());
+                    .Add(ClaimTypes.Sid, user.Id.ToString())
+                    .Add(ClaimTypes.NameIdentifier, user.Id.ToString());
         }
     }
 }

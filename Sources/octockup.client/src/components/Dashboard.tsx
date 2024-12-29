@@ -13,19 +13,43 @@ import {
 import { ProgressBar } from ".";
 import useAuth from "../auth/useAuth";
 import { toast } from "react-toastify";
+import { API_BASE_URL } from "../config";
 import styles from "./Dashboard.module.css";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { BackupTask, BackupTaskStatus, User } from "../api/types";
 import { ProgressBarColor } from "./ProgressBar/ProgressBarColor";
 import { forceRunJob, getBackupStatus, stopJob } from "../api/api";
 import { Delete, Replay, Stop, Visibility } from "@mui/icons-material";
+import { HubConnection, HubConnectionBuilder } from "@microsoft/signalr";
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
-  const { userState } = useAuth();
-  const [jobs, setJobs] = useState<BackupTask[]>([]);
+  const { userState, accessToken } = useAuth();
   const user = userState as User;
+  const [jobs, setJobs] = useState<BackupTask[]>([]);
+  const hubConnection = useRef<HubConnection | null>(null);
+
+  useEffect(() => {
+    if (!accessToken) {
+      return;
+    }
+    hubConnection.current = new HubConnectionBuilder()
+      .withUrl(API_BASE_URL + "/backup/hub?access_token=" + accessToken)
+      .withAutomaticReconnect()
+      .build();
+    hubConnection.current.on("Progress", () => {
+      getBackupStatus().then((response) => {
+        setJobs(response);
+      });
+    });
+    hubConnection.current.start();
+    return () => {
+      if (hubConnection.current) {
+        hubConnection.current.stop();
+      }
+    };
+  }, [accessToken]);
 
   useEffect(() => {
     let isFetching = false;
@@ -45,7 +69,7 @@ const Dashboard: React.FC = () => {
 
     const interval = setInterval(() => {
       loadData();
-    }, 1000);
+    }, 60000);
 
     return () => clearInterval(interval);
   }, []);
