@@ -5,6 +5,7 @@ interface AuthContextProps {
   isAuthenticated: boolean;
   accessToken: string | null;
   userState: unknown | null;
+  isLoaded: boolean;
   signOut: () => void;
   signIn: (data: SignInProps) => void;
 }

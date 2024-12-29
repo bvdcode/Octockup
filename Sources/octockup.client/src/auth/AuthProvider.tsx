@@ -12,6 +12,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [userState, setUserState] = useState<unknown | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   const storageUserKey = `${storageKey}_user`;
   const storageRefreshKey = `${storageKey}_refresh`;
@@ -22,6 +23,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({
     setAccessToken(null);
     setUserState(null);
     setIsAuthenticated(false);
+    setIsLoaded(true);
   };
 
   const signIn = (data: SignInProps) => {
@@ -30,11 +32,13 @@ const AuthProvider: React.FC<AuthProviderProps> = ({
     setAccessToken(data.auth.token);
     setUserState(data.userState);
     setIsAuthenticated(true);
+    setIsLoaded(true);
   };
 
   const doRefreshToken = useCallback(async () => {
     const refreshToken = localStorage.getItem(storageRefreshKey);
     if (!refreshToken) {
+      setIsLoaded(true);
       return;
     }
     await refresh(refreshToken || "").then((result) => {
@@ -43,6 +47,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({
       localStorage.setItem(storageUserKey, JSON.stringify(result.newUserState));
       localStorage.setItem(storageRefreshKey, result.newRefreshToken);
       setIsAuthenticated(true);
+      setIsLoaded(true);
     });
   }, [refresh, storageUserKey, storageRefreshKey]);
 
@@ -66,7 +71,14 @@ const AuthProvider: React.FC<AuthProviderProps> = ({
 
   return (
     <AuthContext.Provider
-      value={{ isAuthenticated, accessToken, userState, signOut, signIn }}
+      value={{
+        isAuthenticated,
+        accessToken,
+        userState,
+        isLoaded,
+        signOut,
+        signIn,
+      }}
     >
       {children}
     </AuthContext.Provider>

@@ -14,17 +14,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   fallbackPath,
 }) => {
-  const { signOut, isAuthenticated, accessToken } = useAuth();
+  const { signOut, isAuthenticated, accessToken, isLoaded } = useAuth();
   const navigate = useNavigate();
-  const [isHeaderSet, setIsHeaderSet] = React.useState(false);
 
   useEffect(() => {
-    if (isAuthenticated && accessToken) {
+    if (isLoaded && isAuthenticated && accessToken) {
       AxiosClient.setAuthHeader(accessToken);
-      setIsHeaderSet(true);
+      checkAuth();
     }
-    checkAuth();
-  }, [accessToken, isAuthenticated, isHeaderSet]);
+  }, [accessToken, isAuthenticated, isLoaded]);
 
   useEffect(() => {
     const handleLogout = () => {
@@ -37,14 +35,16 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     };
   }, [navigate, signOut]);
 
-  return isAuthenticated && accessToken ? (
-    isHeaderSet ? (
+  console.log(isLoaded, isAuthenticated, accessToken !== null);
+
+  return isLoaded ? (
+    isAuthenticated && accessToken ? (
       children
     ) : (
-      <Loader />
+      <Navigate to={fallbackPath} />
     )
   ) : (
-    <Navigate to={fallbackPath} />
+    <Loader />
   );
 };
 
