@@ -24,7 +24,6 @@ namespace Octockup.Server.Handlers
             TimeSpan refreshLifetimeSpan = TimeSpan.FromHours(refreshLifetime);
             Session session = new()
             {
-                User = request.User,
                 UserId = request.User.Id,
                 RefreshToken = _tokenProvider.CreateToken(refreshLifetimeSpan, x => GetUserClaims(x, request.User)),
             };

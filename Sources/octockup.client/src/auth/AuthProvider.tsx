@@ -56,8 +56,10 @@ const AuthProvider: React.FC<AuthProviderProps> = ({
         setIsAuthenticated(true);
         setIsLoaded(true);
       })
-      .catch(() => {
-        
+      .catch((e) => {
+        if (e.response?.status === 404) {
+          setIsLoaded(true);
+        }
       });
   }, [refresh, storageRefreshKey, storageUserKey]);
 
