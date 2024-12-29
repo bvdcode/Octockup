@@ -17,23 +17,26 @@ const AuthProvider: React.FC<AuthProviderProps> = ({
   const storageUserKey = `${storageKey}_user`;
   const storageRefreshKey = `${storageKey}_refresh`;
 
-  const signOut = () => {
+  const signOut = useCallback(() => {
     localStorage.removeItem(storageUserKey);
     localStorage.removeItem(storageRefreshKey);
     setAccessToken(null);
     setUserState(null);
     setIsAuthenticated(false);
     setIsLoaded(true);
-  };
+  }, [storageRefreshKey, storageUserKey]);
 
-  const signIn = (data: SignInProps) => {
-    localStorage.setItem(storageUserKey, JSON.stringify(data.userState));
-    localStorage.setItem(storageRefreshKey, data.refresh);
-    setAccessToken(data.auth.token);
-    setUserState(data.userState);
-    setIsAuthenticated(true);
-    setIsLoaded(true);
-  };
+  const signIn = useCallback(
+    (data: SignInProps) => {
+      localStorage.setItem(storageUserKey, JSON.stringify(data.userState));
+      localStorage.setItem(storageRefreshKey, data.refresh);
+      setAccessToken(data.auth.token);
+      setUserState(data.userState);
+      setIsAuthenticated(true);
+      setIsLoaded(true);
+    },
+    [storageRefreshKey, storageUserKey]
+  );
 
   const doRefreshToken = useCallback(async () => {
     const refreshToken = localStorage.getItem(storageRefreshKey);
@@ -54,13 +57,13 @@ const AuthProvider: React.FC<AuthProviderProps> = ({
         setIsLoaded(true);
       })
       .catch(() => {
-        // do nothing
+        setIsLoaded(true);
       });
-  }, [storageRefreshKey, refresh, storageUserKey]);
+  }, [refresh, storageRefreshKey, storageUserKey]);
 
   useEffect(() => {
     doRefreshToken();
-  }, [doRefreshToken]);
+  }, []);
 
   useEffect(() => {
     const decodeTokenRemainingTime = (token: string) => {
@@ -85,14 +88,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({
     }, intervalMs);
 
     return () => clearInterval(interval);
-  }, [
-    refreshIntervalSeconds,
-    refresh,
-    storageRefreshKey,
-    storageUserKey,
-    doRefreshToken,
-    accessToken,
-  ]);
+  }, [refreshIntervalSeconds, refresh, doRefreshToken, accessToken]);
 
   return (
     <AuthContext.Provider
