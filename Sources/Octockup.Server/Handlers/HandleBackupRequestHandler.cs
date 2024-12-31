@@ -80,32 +80,35 @@ namespace Octockup.Server.Handlers
                 double progress = (double)counter / files.Count;
                 progressTracker.ReportProgress(progress, "Checking file: " + item.Name);
 
-                // надо попробовать найти этот файл в базе
                 SavedFile? savedFile = await GetSavedFileAsync(item, snapshot);
                 if (savedFile == null)
                 {
-                    // сохраняем
+                    await SaveNewFileAsync(storageProvider, item, snapshot, job, progressTracker, progress, merged);
                     continue;
                 }
                 bool filesEqual = await CompareFilesAsync(storageProvider, item, savedFile, job);
                 if (filesEqual)
                 {
+                    SavedFile clone = new()
+                    {
+                        Size = savedFile.Size,
+                        FileId = savedFile.FileId,
+                        SHA512 = savedFile.SHA512,
+                        BackupSnapshotId = snapshot.Id,
+                        SourcePath = savedFile.SourcePath,
+                        MetadataCreatedAt = savedFile.MetadataCreatedAt,
+                        MetadataUpdatedAt = savedFile.MetadataUpdatedAt,
+                    };
+                    await _dbContext.SavedFiles.AddAsync(clone, merged);
+                    await _dbContext.SaveChangesAsync(merged);
                     progressTracker.ReportProgress(progress, "File is up to date: " + item.Name);
                     continue;
                 }
-
-
-
-
+                await SaveNewFileAsync(storageProvider, item, snapshot, job, progressTracker, progress, merged);
             }
             double mb = 100000000 / 1024.0 / 1024.0;
             mb = Math.Round(mb, 2);
             progressTracker.ReportProgress(0.5, $"Processed {counter} files, {counter / 2} updated, {mb} MB total", force: true);
-        }
-
-        private async Task<bool> CompareFilesAsync(IStorageProvider storageProvider, RemoteFileInfo item, SavedFile savedFile, BackupTask job)
-        {
-            throw new NotImplementedException();
         }
 
         private async Task<SavedFile?> GetSavedFileAsync(RemoteFileInfo remoteFileInfo, BackupSnapshot snapshot)
@@ -115,6 +118,16 @@ namespace Octockup.Server.Handlers
                     && x.SourcePath == remoteFileInfo.Path)
                 .OrderByDescending(x => x.Id)
                 .FirstOrDefaultAsync();
+        }
+
+        private async Task<bool> CompareFilesAsync(IStorageProvider storageProvider, RemoteFileInfo item, SavedFile savedFile, BackupTask job)
+        {
+            throw new NotImplementedException();
+        }
+
+        private async Task SaveNewFileAsync(IStorageProvider storageProvider, RemoteFileInfo item, BackupSnapshot snapshot, BackupTask job, ProgressTracker progressTracker, double progress, CancellationToken merged)
+        {
+            throw new NotImplementedException();
         }
     }
 }
