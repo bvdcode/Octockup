@@ -45,7 +45,8 @@ namespace Octockup.Server.Providers.Storage
                     Name = file.Name,
                     Size = file.Size,
                     Path = file.FullName,
-                    LastModified = file.Modified
+                    LastModified = file.Modified,
+                    FileCreatedAt = file.Created
                 };
             }
         }

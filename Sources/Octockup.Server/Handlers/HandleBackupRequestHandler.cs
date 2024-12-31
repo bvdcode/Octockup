@@ -9,10 +9,12 @@ using Microsoft.EntityFrameworkCore;
 namespace Octockup.Server.Handlers
 {
     public class HandleBackupRequestHandler(AppDbContext _dbContext, JobCancellationService _jobCancellations,
-        IEnumerable<IStorageProvider> _storageProviders, ProgressTracker progressTracker) : IRequestHandler<HandleBackupRequest>
+        IEnumerable<IStorageProvider> _storageProviders, ProgressTracker progressTracker,
+        ILogger<HandleBackupRequestHandler> _logger) : IRequestHandler<HandleBackupRequest>
     {
         public async Task Handle(HandleBackupRequest request, CancellationToken cancellationToken)
         {
+            _logger.LogDebug("Handling backup task: {request}", request.BackupTaskId);
             CancellationToken token = _jobCancellations.GetCancellationToken(request.BackupTaskId);
             CancellationToken merged = CancellationTokenSource.CreateLinkedTokenSource(token, cancellationToken).Token;
             BackupTask job = await _dbContext.BackupTasks.FindAsync([request.BackupTaskId], cancellationToken: merged)
@@ -30,13 +32,17 @@ namespace Octockup.Server.Handlers
             job.Status = BackupTaskStatus.Completed;
             job.ForceRun = false;
             await _dbContext.SaveChangesAsync(merged);
+            _logger.LogInformation("Backup task {id} completed", job.Id);
         }
 
-        private static void SetParameters(IStorageProvider storageProvider, Dictionary<string, string> dictionary)
+        private void SetParameters(IStorageProvider storageProvider, Dictionary<string, string> dictionary)
         {
-            var property = storageProvider.GetType().GetProperty("Parameters");
+            var property = storageProvider
+                .GetType()
+                .GetProperty("Parameters");
             if (property == null)
             {
+                _logger.LogDebug("Storage provider does not have Parameters property: {provider}", storageProvider.Name);
                 return;
             }
             object? propertyValue = property.GetValue(storageProvider);
@@ -44,12 +50,14 @@ namespace Octockup.Server.Handlers
             {
                 propertyValue = Activator.CreateInstance(property.PropertyType);
                 property.SetValue(storageProvider, propertyValue);
+                _logger.LogDebug("Created new Parameters object for storage provider: {provider}", storageProvider.Name);
             }
             foreach (var pair in dictionary)
             {
                 var prop = property.PropertyType.GetProperty(pair.Key);
                 if (prop == null)
                 {
+                    _logger.LogDebug("Property not found: {key}", pair.Key);
                     continue;
                 }
                 if (prop.PropertyType != typeof(string))
@@ -60,6 +68,7 @@ namespace Octockup.Server.Handlers
                 {
                     prop.SetValue(propertyValue, pair.Value);
                 }
+                _logger.LogDebug("Set property {key} to {value}", pair.Key, pair.Value);
             }
         }
 
@@ -73,20 +82,20 @@ namespace Octockup.Server.Handlers
             BackupSnapshot snapshot = new() { BackupTaskId = job.Id };
             await _dbContext.BackupSnapshots.AddAsync(snapshot, merged);
             await _dbContext.SaveChangesAsync(merged);
-            foreach (var item in files)
+            foreach (var remoteFileInfo in files)
             {
                 merged.ThrowIfCancellationRequested();
                 counter++;
                 double progress = (double)counter / files.Count;
-                progressTracker.ReportProgress(progress, "Checking file: " + item.Name);
+                progressTracker.ReportProgress(progress, "Checking file: " + remoteFileInfo.Name);
 
-                SavedFile? savedFile = await GetSavedFileAsync(item, snapshot);
+                SavedFile? savedFile = await GetSavedFileAsync(remoteFileInfo, snapshot);
                 if (savedFile == null)
                 {
-                    await SaveNewFileAsync(storageProvider, item, snapshot, job, progressTracker, progress, merged);
+                    await SaveNewFileAsync(storageProvider, remoteFileInfo, snapshot, job, progressTracker, progress, merged);
                     continue;
                 }
-                bool filesEqual = await CompareFilesAsync(storageProvider, item, savedFile, job);
+                bool filesEqual = CompareFiles(storageProvider, remoteFileInfo, savedFile, job);
                 if (filesEqual)
                 {
                     SavedFile clone = new()
@@ -101,10 +110,10 @@ namespace Octockup.Server.Handlers
                     };
                     await _dbContext.SavedFiles.AddAsync(clone, merged);
                     await _dbContext.SaveChangesAsync(merged);
-                    progressTracker.ReportProgress(progress, "File is up to date: " + item.Name);
+                    progressTracker.ReportProgress(progress, "File is up to date: " + remoteFileInfo.Name);
                     continue;
                 }
-                await SaveNewFileAsync(storageProvider, item, snapshot, job, progressTracker, progress, merged);
+                await SaveNewFileAsync(storageProvider, remoteFileInfo, snapshot, job, progressTracker, progress, merged);
             }
             double mb = 100000000 / 1024.0 / 1024.0;
             mb = Math.Round(mb, 2);
@@ -120,7 +129,36 @@ namespace Octockup.Server.Handlers
                 .FirstOrDefaultAsync();
         }
 
-        private async Task<bool> CompareFilesAsync(IStorageProvider storageProvider, RemoteFileInfo item, SavedFile savedFile, BackupTask job)
+        private bool CompareFiles(IStorageProvider storageProvider, RemoteFileInfo remoteFileInfo, SavedFile savedFile, BackupTask job)
+        {
+            if (remoteFileInfo.Path != savedFile.SourcePath)
+            {
+                return false;
+            }
+            if (remoteFileInfo.Size != savedFile.Size)
+            {
+                return false;
+            }
+            if (remoteFileInfo.FileCreatedAt != savedFile.MetadataCreatedAt)
+            {
+                return false;
+            }
+            if (remoteFileInfo.LastModified != savedFile.MetadataUpdatedAt)
+            {
+                return false;
+            }
+            if (job.StrictMode)
+            {
+                string remoteHash = CalculateSHA512(storageProvider, remoteFileInfo);
+                if (remoteHash != savedFile.SHA512)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private string CalculateSHA512(IStorageProvider storageProvider, RemoteFileInfo item)
         {
             throw new NotImplementedException();
         }
