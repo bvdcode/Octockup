@@ -43,8 +43,8 @@ namespace Octockup.Server.Providers.Storage
                 yield return new RemoteFileInfo
                 {
                     Name = file.Name,
-                    Path = file.FullName,
                     Size = file.Size,
+                    Path = file.FullName,
                     LastModified = file.Modified
                 };
             }

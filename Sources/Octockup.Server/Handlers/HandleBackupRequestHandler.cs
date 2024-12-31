@@ -65,7 +65,7 @@ namespace Octockup.Server.Handlers
         private static Task CreateBackupAsync(BackupTask job, IStorageProvider storageProvider,
             ProgressTracker progressTracker, CancellationToken merged)
         {
-            progressTracker.ReportProgress(0.01, "Request files");
+            progressTracker.ReportProgress(0.01, "Requesting files");
             var files = storageProvider.GetAllFiles();
             int counter = 0;
             long size = 0;

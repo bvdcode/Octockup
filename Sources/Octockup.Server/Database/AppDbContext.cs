@@ -7,6 +7,7 @@ namespace Octockup.Server.Database
     {
         public DbSet<User> Users { get; set; } = null!;
         public DbSet<Session> Sessions { get; set; } = null!;
+        public DbSet<SavedFile> SavedFiles { get; set; } = null!;
         public DbSet<BackupTask> BackupTasks { get; set; } = null!;
         public DbSet<BackupSnapshot> BackupSnapshots { get; set; } = null!;
     }
