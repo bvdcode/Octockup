@@ -53,6 +53,9 @@ namespace Octockup.Server.Database
         [Column("force_run")]
         public bool ForceRun { get; set; }
 
+        [Column("strict_mode")]
+        public bool StrictMode { get; set; }
+
         public virtual User User { get; set; } = null!;
 
         public Dictionary<string, string> GetParameters()

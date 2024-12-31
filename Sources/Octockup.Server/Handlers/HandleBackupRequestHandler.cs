@@ -4,6 +4,7 @@ using Octockup.Server.Database;
 using Octockup.Server.Services;
 using Octockup.Server.Models.Enums;
 using Octockup.Server.Providers.Storage;
+using Microsoft.EntityFrameworkCore;
 
 namespace Octockup.Server.Handlers
 {
@@ -62,26 +63,58 @@ namespace Octockup.Server.Handlers
             }
         }
 
-        private static Task CreateBackupAsync(BackupTask job, IStorageProvider storageProvider,
+        private async Task CreateBackupAsync(BackupTask job, IStorageProvider storageProvider,
             ProgressTracker progressTracker, CancellationToken merged)
         {
-            progressTracker.ReportProgress(0.01, "Requesting files");
-            var files = storageProvider.GetAllFiles();
+            progressTracker.ReportProgress(0.01, "Requesting files", force: true);
+            var files = storageProvider.GetAllFiles().ToList();
+            progressTracker.ReportProgress(0.02, $"Got {files.Count} files", force: true);
             int counter = 0;
-            long size = 0;
+            BackupSnapshot snapshot = new() { BackupTaskId = job.Id };
+            await _dbContext.BackupSnapshots.AddAsync(snapshot, merged);
+            await _dbContext.SaveChangesAsync(merged);
             foreach (var item in files)
             {
                 merged.ThrowIfCancellationRequested();
-                progressTracker.ReportProgress(0.01, "Copying: " + item.Name);
                 counter++;
-                size += item.Size;
+                double progress = (double)counter / files.Count;
+                progressTracker.ReportProgress(progress, "Checking file: " + item.Name);
+
+                // надо попробовать найти этот файл в базе
+                SavedFile? savedFile = await GetSavedFileAsync(item, snapshot);
+                if (savedFile == null)
+                {
+                    // сохраняем
+                    continue;
+                }
+                bool filesEqual = await CompareFilesAsync(storageProvider, item, savedFile, job);
+                if (filesEqual)
+                {
+                    progressTracker.ReportProgress(progress, "File is up to date: " + item.Name);
+                    continue;
+                }
+
+
+
+
             }
-            double mb = size / 1024.0 / 1024.0;
+            double mb = 100000000 / 1024.0 / 1024.0;
             mb = Math.Round(mb, 2);
             progressTracker.ReportProgress(0.5, $"Processed {counter} files, {counter / 2} updated, {mb} MB total", force: true);
+        }
 
-            _ = job;
-            return Task.CompletedTask;
+        private async Task<bool> CompareFilesAsync(IStorageProvider storageProvider, RemoteFileInfo item, SavedFile savedFile, BackupTask job)
+        {
+            throw new NotImplementedException();
+        }
+
+        private async Task<SavedFile?> GetSavedFileAsync(RemoteFileInfo remoteFileInfo, BackupSnapshot snapshot)
+        {
+            return await _dbContext.SavedFiles
+                .Where(x => x.BackupSnapshot.BackupTaskId == snapshot.BackupTaskId
+                    && x.SourcePath == remoteFileInfo.Path)
+                .OrderByDescending(x => x.Id)
+                .FirstOrDefaultAsync();
         }
     }
 }

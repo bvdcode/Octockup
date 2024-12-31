@@ -30,7 +30,9 @@ namespace Octockup.Server.Extensions
                     Username = postgresSettings.Username,
                     Password = postgresSettings.Password,
                 };
-                services.AddDbContext<AppDbContext, PostgresDbContext>(x => x.UseNpgsql(npgBuilder.ConnectionString).UseLazyLoadingProxies());
+                services.AddDbContext<AppDbContext, PostgresDbContext>(x => x
+                    .UseNpgsql(npgBuilder.ConnectionString)
+                    .UseLazyLoadingProxies());
                 return services;
             }
             else
@@ -40,7 +42,9 @@ namespace Octockup.Server.Extensions
                 {
                     DataSource = filename,
                 };
-                services.AddDbContext<AppDbContext, SqliteDbContext>(x => x.UseSqlite(sqliteBuilder.ConnectionString).UseLazyLoadingProxies());
+                services.AddDbContext<AppDbContext, SqliteDbContext>(x => x
+                    .UseSqlite(sqliteBuilder.ConnectionString)
+                    .UseLazyLoadingProxies());
                 return services;
             }
         }
