@@ -29,11 +29,7 @@ class AxiosClient {
 AxiosClient.getInstance().interceptors.response.use(
   (response) => response,
   (error) => {
-    if (
-      error.response &&
-      error.response.status === 401 &&
-      AxiosClient.getInstance().defaults.headers.common["Authorization"]
-    ) {
+    if (error.response && error.response.status === 401) {
       AxiosClient.events.emit("logout");
     }
     return Promise.reject(error);
