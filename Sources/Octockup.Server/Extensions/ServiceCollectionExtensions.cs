@@ -11,9 +11,14 @@ namespace Octockup.Server.Extensions
 {
     public static class ServiceCollectionExtensions
     {
-        public static IServiceCollection AddStorageProvider<TStorageProvider>(this IServiceCollection services) where TStorageProvider : class, IStorageProvider
+        public static IServiceCollection AddStorageProviders(this IServiceCollection services)
         {
-            return services.AddSingleton<IStorageProvider, TStorageProvider>();
+            var types = ReflectionHelpers.GetTypesOfInterface<IStorageProvider>();
+            foreach (var type in types)
+            {
+                services.AddScoped(typeof(IStorageProvider), type);
+            }
+            return services;
         }
 
         public static IServiceCollection AddDbContext<TContext>(this IServiceCollection services, IConfiguration configuration)

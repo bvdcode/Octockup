@@ -5,7 +5,7 @@ namespace Octockup.Server.Providers.Storage
 {
     public class FtpProvider(ILogger<FtpProvider> _logger) : IStorageProvider<BaseStorageParameters>
     {
-        public string Name => "FTP";
+        public string Name => "FTP - File Transfer Protocol";
         public BaseStorageParameters Parameters { get; set; } = null!;
 
         private FtpClient? _client;
