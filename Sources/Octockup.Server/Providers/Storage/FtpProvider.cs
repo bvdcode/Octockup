@@ -12,11 +12,17 @@ namespace Octockup.Server.Providers.Storage
 
         public IEnumerable<RemoteFileInfo> GetAllFiles(Action<int>? progressCallback = null, CancellationToken cancellationToken = default)
         {
-            return GetAllFiles(Parameters.RemotePath, progressCallback, cancellationToken);
+            return GetAllFiles(Parameters.RemotePath, progressCallback, cancellationToken: cancellationToken);
+        }
+
+        public Stream GetFileStream(RemoteFileInfo fileInfo)
+        {
+            _client ??= CreateClient();
+            return _client.OpenRead(fileInfo.Path, FtpDataType.Binary);
         }
 
         private IEnumerable<RemoteFileInfo> GetAllFiles(string remotePath,
-            Action<int>? progressCallback = null, CancellationToken cancellationToken = default, int accumulator = 0)
+            Action<int>? progressCallback = null, int accumulator = 0, CancellationToken cancellationToken = default)
         {
             _client ??= CreateClient();
             var files = _client.GetListing(remotePath);
@@ -33,7 +39,7 @@ namespace Octockup.Server.Providers.Storage
                 }
                 if (file.Type == FtpObjectType.Directory)
                 {
-                    foreach (var item in GetAllFiles(file.FullName, progressCallback, cancellationToken, accumulator))
+                    foreach (var item in GetAllFiles(file.FullName, progressCallback, accumulator, cancellationToken))
                     {
                         yield return item;
                     }

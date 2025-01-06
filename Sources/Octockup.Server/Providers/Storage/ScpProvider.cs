@@ -11,5 +11,10 @@ namespace Octockup.Server.Providers.Storage
         {
             throw new NotImplementedException();
         }
+
+        public Stream GetFileStream(RemoteFileInfo fileInfo)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

@@ -12,6 +12,11 @@ namespace Octockup.Server.Providers.Storage
         {
             return [];
         }
+
+        public Stream GetFileStream(RemoteFileInfo fileInfo)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public class BlinkCameraParameters
