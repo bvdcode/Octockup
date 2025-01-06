@@ -10,27 +10,30 @@ namespace Octockup.Server.Providers.Storage
 
         private FtpClient? _client;
 
-        public IEnumerable<RemoteFileInfo> GetAllFiles()
+        public IEnumerable<RemoteFileInfo> GetAllFiles(Action<int>? progressCallback = null, CancellationToken cancellationToken = default)
         {
-            return GetAllFiles(Parameters.RemotePath);
+            return GetAllFiles(Parameters.RemotePath, progressCallback, cancellationToken);
         }
 
-        private IEnumerable<RemoteFileInfo> GetAllFiles(string remotePath)
+        private IEnumerable<RemoteFileInfo> GetAllFiles(string remotePath,
+            Action<int>? progressCallback = null, CancellationToken cancellationToken = default, int accumulator = 0)
         {
             _client ??= CreateClient();
             var files = _client.GetListing(remotePath);
             _logger.LogInformation("Got {count} files from {path}", files.Length, remotePath);
+            progressCallback?.Invoke(accumulator);
             foreach (var file in files)
             {
-                if (file.FullName == "." 
-                    || file.FullName == ".." 
+                cancellationToken.ThrowIfCancellationRequested();
+                if (file.FullName == "."
+                    || file.FullName == ".."
                     || file.FullName == remotePath)
                 {
                     continue;
                 }
                 if (file.Type == FtpObjectType.Directory)
                 {
-                    foreach (var item in GetAllFiles(file.FullName))
+                    foreach (var item in GetAllFiles(file.FullName, progressCallback, cancellationToken, accumulator))
                     {
                         yield return item;
                     }
@@ -48,6 +51,7 @@ namespace Octockup.Server.Providers.Storage
                     LastModified = file.Modified,
                     FileCreatedAt = file.Created
                 };
+                accumulator++;
             }
         }
 

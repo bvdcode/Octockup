@@ -77,7 +77,7 @@ namespace Octockup.Server.Handlers
             ProgressTracker progressTracker, CancellationToken merged)
         {
             progressTracker.ReportProgress(0.01, "Requesting files", force: true);
-            var files = storageProvider.GetAllFiles().ToList();
+            var files = storageProvider.GetAllFiles(p => progressTracker.ReportProgress(0.01, $"Got files: {p}"), cancellationToken: merged).ToList();
             progressTracker.ReportProgress(0.02, $"Got {files.Count} files", force: true);
             int counter = 0;
             BackupSnapshot snapshot = new() { BackupTaskId = job.Id };

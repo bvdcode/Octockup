@@ -8,7 +8,7 @@ namespace Octockup.Server.Providers.Storage
 
         public string Name => "Blink Camera Storage";
 
-        public IEnumerable<RemoteFileInfo> GetAllFiles()
+        public IEnumerable<RemoteFileInfo> GetAllFiles(Action<int>? progressCallback = null, CancellationToken cancellationToken = default)
         {
             return [];
         }
