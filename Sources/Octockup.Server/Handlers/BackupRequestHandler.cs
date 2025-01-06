@@ -172,14 +172,12 @@ namespace Octockup.Server.Handlers
             BackupSnapshot snapshot, ProgressTracker progressTracker, double progress, CancellationToken merged)
         {
             Guid newFileId = Guid.NewGuid();
-            string fileFolder = newFileId.ToString().Replace('-', Path.DirectorySeparatorChar);
-            string filePath = Path.Combine(fileFolder, item.Name + ".file");
+            string fileFolder = snapshot.Id.ToString();
+            string filePath = Path.Combine(fileFolder, newFileId + ".file");
             string fileInfo = filePath[0..^5] + ".backupinfo";
             filePath = FileSystemHelpers.GetFilePath(filePath);
             fileInfo = FileSystemHelpers.GetFilePath(fileInfo);
-            using var stream = storageProvider.GetFileStream(item);
-            using var fileStream = File.OpenWrite(filePath);
-            await stream.CopyToAsync(fileStream, merged);
+            await CopyFile(storageProvider, item, filePath, merged);
             string hash = FileSystemHelpers.CalculateSHA512(filePath);
             SavedFile savedFile = new()
             {
@@ -196,6 +194,14 @@ namespace Octockup.Server.Handlers
             progressTracker.ReportProgress(progress, "Saved file: " + item.Name);
             string fileInfoJson = JsonSerializer.Serialize(savedFile);
             await File.WriteAllTextAsync(fileInfo, fileInfoJson, merged);
+        }
+
+        private static async Task CopyFile(IStorageProvider storageProvider, RemoteFileInfo item, 
+            string filePath, CancellationToken merged)
+        {
+            using var stream = storageProvider.GetFileStream(item);
+            using var fileStream = File.OpenWrite(filePath);
+            await stream.CopyToAsync(fileStream, merged);
         }
     }
 }
