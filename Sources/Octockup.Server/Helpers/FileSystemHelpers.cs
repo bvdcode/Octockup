@@ -24,7 +24,7 @@ namespace Octockup.Server.Helpers
                 string dirPath = Path.Combine(DataFolder, path);
                 if (!string.IsNullOrEmpty(path) && !Directory.Exists(dirPath))
                 {
-                    Directory.CreateDirectory(path);
+                    Directory.CreateDirectory(dirPath);
                 }
             }
             return Path.Combine(DataFolder, filename);
