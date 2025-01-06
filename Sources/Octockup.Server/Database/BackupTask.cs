@@ -33,7 +33,7 @@ namespace Octockup.Server.Database
         public BackupTaskStatus Status { get; set; }
 
         [Column("provider")]
-        public string Provider { get; set; } = string.Empty;
+        public string ProviderClass { get; set; } = string.Empty;
 
         [Column("parameters_json")]
         public string ParametersJson { get; set; } = string.Empty;

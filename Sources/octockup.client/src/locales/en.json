@@ -3,6 +3,8 @@
   "no": "No",
   "notifications": "Notifications",
   "dataLoadError": "Error loading data: {{error}}",
+  "cancel": "Cancel",
+  "confirm": "Delete",
   "profile": {
     "title": "Profile",
     "newPassword": "New Password",
@@ -42,7 +44,10 @@
     "forceRunSuccess": "Job start request sent",
     "stopSuccess": "Job cancellation request sent",
     "updatedAt": "Data is actual as of {{date}}",
-    "deleteSuccess": "Job deletion request sent"
+    "deleteSuccess": "Job deletion request sent",
+    "deleteTitle": "Delete job",
+    "deleteMessage": "Are you sure you want to delete job '{{jobName}}'?",
+    "noJobs": "No backup jobs found"
   },
   "createJob": {
     "title": "Create new backup job",

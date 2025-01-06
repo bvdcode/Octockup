@@ -213,10 +213,12 @@ const Dashboard: React.FC = () => {
                         )}
 
                         <CustomDialog
-                          title={t("backup.deleteTitle")}
-                          content={t("backup.deleteContent")}
-                          cancelText={t("backup.deleteCancel")}
-                          confirmText={t("backup.deleteConfirm")}
+                          title={t("dashboard.deleteTitle")}
+                          content={t("dashboard.deleteMessage", {
+                            jobName: backup.name,
+                          })}
+                          cancelText={t("cancel")}
+                          confirmText={t("confirm")}
                           onConfirm={() => handleJobDelete(backup.id)}
                         >
                           <Button>
@@ -229,8 +231,8 @@ const Dashboard: React.FC = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell sx={{ textAlign: "center" }} colSpan={6}>
-                    {t("backup.noData")}
+                  <TableCell sx={{ textAlign: "center" }} colSpan={9}>
+                    {t("dashboard.noJobs")}
                   </TableCell>
                 </TableRow>
               )}

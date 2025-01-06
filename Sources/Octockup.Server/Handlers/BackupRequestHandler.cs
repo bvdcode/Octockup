@@ -21,8 +21,8 @@ namespace Octockup.Server.Handlers
                 ?? throw new InvalidOperationException("Backup task with the specified ID not found: " + request.BackupTaskId);
             job.Status = BackupTaskStatus.Running;
             job.LastMessage = null;
-            var storageProvider = _storageProviders.FirstOrDefault(x => x.Name == job.Provider)
-                ?? throw new InvalidOperationException("Storage provider not found: " + job.Provider);
+            var storageProvider = _storageProviders.FirstOrDefault(x => x.Name == job.ProviderClass)
+                ?? throw new InvalidOperationException("Storage provider not found: " + job.ProviderClass);
             await progressTracker.SetJobIdAsync(job.Id);
             SetParameters(storageProvider, job.GetParameters());
             await CreateBackupAsync(job, storageProvider, progressTracker, merged);

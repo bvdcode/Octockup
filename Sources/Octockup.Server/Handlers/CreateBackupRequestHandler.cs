@@ -1,12 +1,13 @@
 ﻿using MediatR;
 using System.Net;
 using EasyExtensions;
+using EasyExtensions.Helpers;
 using Octockup.Server.Models;
 using Octockup.Server.Database;
 using Octockup.Server.Models.Enums;
 using Octockup.Server.Providers.Storage;
 using EasyExtensions.EntityFrameworkCore.Exceptions;
-using EasyExtensions.Helpers;
+using Octockup.Server.Extensions;
 
 namespace Octockup.Server.Handlers
 {
@@ -29,7 +30,7 @@ namespace Octockup.Server.Handlers
                 IsEnabled = true,
                 CompletedAt = null,
                 Name = StringHelpers.RemoveSpaces(request.Name),
-                Provider = foundProvider.Name,
+                ProviderClass = foundProvider.GetClassName(),
                 Status = BackupTaskStatus.Created,
                 Progress = 0,
                 UserId = foundUser.Id,

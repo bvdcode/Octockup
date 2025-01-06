@@ -137,7 +137,7 @@ const CreateJob: React.FC = () => {
               >
                 <MenuItem value="">{t("createJob.notSelected")}</MenuItem>
                 {providers.map((provider) => (
-                  <MenuItem key={provider.name} value={provider.name}>
+                  <MenuItem key={provider.name} value={provider.class}>
                     {provider.name}
                   </MenuItem>
                 ))}

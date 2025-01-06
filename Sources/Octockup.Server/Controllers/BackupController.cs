@@ -106,6 +106,7 @@ namespace Octockup.Server.Controllers
             return _storageProviders.Select(p => new StorageProviderInfo()
             {
                 Name = p.Name,
+                Class = p.GetClassName(),
                 Parameters = p.GetParametersKeys()
             });
         }

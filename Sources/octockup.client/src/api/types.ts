@@ -43,6 +43,7 @@ export enum BackupTaskStatus {
 
 export interface BackupProvider {
   name: string;
+  class: string;
   parameters: string[];
 }
 

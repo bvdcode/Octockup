@@ -4,9 +4,13 @@ namespace Octockup.Server.Extensions
 {
     public static class StorageProviderExtensions
     {
+        public static string GetClassName(this IStorageProvider storageProvider)
+        {
+            return storageProvider.GetType().Name;
+        }
+
         public static IEnumerable<string> GetParametersKeys(this IStorageProvider storageProvider)
         {
-            // storageProvider is IStorageProvider but actually is IStorageProvider<>, get generic type
             var type = storageProvider
                 .GetType()
                 .GetInterfaces()

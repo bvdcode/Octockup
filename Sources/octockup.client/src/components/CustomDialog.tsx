@@ -59,10 +59,10 @@ export default function CustomDialog(props: CustomDialogProps) {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCancel}>
+          <Button onClick={handleCancel} color="primary">
             {props.cancelText ?? "CustomDialog.cancelText"}
           </Button>
-          <Button onClick={handleConfirm} autoFocus>
+          <Button onClick={handleConfirm} autoFocus color="primary">
             {props.confirmText ?? "CustomDialog.confirmText"}
           </Button>
         </DialogActions>
