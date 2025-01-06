@@ -19,7 +19,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { BackupTask, BackupTaskStatus, User } from "../api/types";
 import { ProgressBarColor } from "./ProgressBar/ProgressBarColor";
-import { forceRunJob, getBackupStatus, stopJob } from "../api/api";
+import { deleteJob, forceRunJob, getBackupStatus, stopJob } from "../api/api";
 import { Delete, Replay, Stop, Visibility } from "@mui/icons-material";
 import {
   HubConnection,
@@ -200,7 +200,18 @@ const Dashboard: React.FC = () => {
                             <Stop sx={{ cursor: "pointer" }} />
                           </Button>
                         )}
-                        <Button>
+                        <Button
+                          onClick={() => {
+                            deleteJob(backup.id).then(() => {
+                              toast.success(t("dashboard.deleteSuccess"));
+                              setJobs((prev) => {
+                                return prev.filter(
+                                  (job) => job.id !== backup.id
+                                );
+                              });
+                            });
+                          }}
+                        >
                           <Delete sx={{ cursor: "pointer" }} />
                         </Button>
                       </Box>

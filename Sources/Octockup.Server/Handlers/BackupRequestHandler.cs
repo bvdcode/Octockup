@@ -3,14 +3,14 @@ using Octockup.Server.Models;
 using Octockup.Server.Database;
 using Octockup.Server.Services;
 using Octockup.Server.Models.Enums;
-using Octockup.Server.Providers.Storage;
 using Microsoft.EntityFrameworkCore;
+using Octockup.Server.Providers.Storage;
 
 namespace Octockup.Server.Handlers
 {
-    public class HandleBackupRequestHandler(AppDbContext _dbContext, JobCancellationService _jobCancellations,
+    public class BackupRequestHandler(AppDbContext _dbContext, JobCancellationService _jobCancellations,
         IEnumerable<IStorageProvider> _storageProviders, ProgressTracker progressTracker,
-        ILogger<HandleBackupRequestHandler> _logger) : IRequestHandler<HandleBackupRequest>
+        ILogger<BackupRequestHandler> _logger) : IRequestHandler<HandleBackupRequest>
     {
         public async Task Handle(HandleBackupRequest request, CancellationToken cancellationToken)
         {

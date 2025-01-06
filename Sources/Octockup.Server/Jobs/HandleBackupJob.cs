@@ -39,7 +39,9 @@ namespace Octockup.Server.Jobs
 
         private async Task<IEnumerable<BackupTask>> GetPendingJobsAsync()
         {
-            var allJobs = await _dbContext.BackupTasks.ToListAsync();
+            var allJobs = await _dbContext.BackupTasks
+                .Where(x => x.IsEnabled && !x.IsDeleted)
+                .ToListAsync();
             List<BackupTask> result = [];
             foreach (var job in allJobs)
             {

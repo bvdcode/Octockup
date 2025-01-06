@@ -58,12 +58,30 @@ export const checkAuth = async (): Promise<boolean> => {
   return response.status === 200;
 };
 
+/**
+ * Changes the user's password.
+ *
+ * @param newPassword - The new password to be set for the user.
+ * @returns A promise that resolves when the password has been successfully changed.
+ */
 export const changePassword = async (newPassword: string): Promise<void> => {
   await AxiosClient.getInstance().post("/auth/change-password", {
     newPassword: newPassword,
   });
 };
 
+/**
+ * Fetches the backup status from the server.
+ *
+ * This function sends a GET request to the "/backup/list" endpoint with the query parameter
+ * `orderBy=createdAt desc` to retrieve a list of backup tasks ordered by their creation date
+ * in descending order. It processes the response data to:
+ * - Convert the `completedAt` timestamp to a `Date` object and assign it to `completedAtDate`.
+ * - Remove the milliseconds part from the `elapsed` time string.
+ * - Replace the `interval` value of "00:00:00" with a dash ("-").
+ *
+ * @returns {Promise<BackupTask[]>} A promise that resolves to an array of `BackupTask` objects.
+ */
 export const getBackupStatus = async (): Promise<BackupTask[]> => {
   const response = await AxiosClient.getInstance().get<BackupTask[]>(
     "/backup/list?orderBy=createdAt desc"
@@ -80,6 +98,11 @@ export const getBackupStatus = async (): Promise<BackupTask[]> => {
   return response.data;
 };
 
+/**
+ * Fetches the list of backup providers from the server.
+ *
+ * @returns {Promise<BackupProvider[]>} A promise that resolves to an array of BackupProvider objects.
+ */
 export const getProviders = async (): Promise<BackupProvider[]> => {
   const response = await AxiosClient.getInstance().get<BackupProvider[]>(
     "/backup/providers"
@@ -87,14 +110,45 @@ export const getProviders = async (): Promise<BackupProvider[]> => {
   return response.data;
 };
 
+/**
+ * Creates a backup job by sending a POST request to the "/backup/create" endpoint.
+ *
+ * @param job - The job request object containing the details of the backup job to be created.
+ * @returns A promise that resolves when the backup job is successfully created.
+ */
 export const createBackupJob = async (job: CreateJobRequest): Promise<void> => {
   await AxiosClient.getInstance().post("/backup/create", job);
 };
 
+/**
+ * Triggers a backup job to run immediately.
+ *
+ * @param id - The unique identifier of the backup job to be triggered.
+ * @returns A promise that resolves when the job has been successfully triggered.
+ */
 export const forceRunJob = async (id: number): Promise<void> => {
   await AxiosClient.getInstance().patch(`/backup/${id}/trigger`);
 };
 
+/**
+ * Stops a job with the given ID.
+ *
+ * This function sends a PATCH request to the server to stop the job
+ * identified by the provided ID.
+ *
+ * @param {number} id - The ID of the job to stop.
+ * @returns {Promise<void>} A promise that resolves when the job is stopped.
+ */
 export const stopJob = async (id: number): Promise<void> => {
   await AxiosClient.getInstance().patch(`/backup/${id}/stop`);
+};
+
+/**
+ * Deletes a job with the specified ID.
+ *
+ * @param id - The ID of the job to delete.
+ * @returns A promise that resolves when the job is deleted.
+ */
+export const deleteJob = async (id: number): Promise<void> => {
+  await AxiosClient.getInstance().delete(`/backup/${id}`);
 };

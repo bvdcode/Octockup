@@ -25,6 +25,21 @@ namespace Octockup.Server.Controllers
         AppDbContext _dbContext, IMapper _mapper, IMediator _mediator, ISchedulerFactory _scheduler) : ControllerBase
     {
         [Authorize]
+        [HttpDelete("{backupTask}")]
+        public async Task<IActionResult> DeleteBackupAsync([FromRoute] int backupTask)
+        {
+            int userId = User.GetId();
+            var found = await _dbContext.BackupTasks.FirstOrDefaultAsync(x => x.Id == backupTask && x.UserId == userId);
+            if (found == null)
+            {
+                return NotFound();
+            }
+            found.IsDeleted = true;
+            await _dbContext.SaveChangesAsync();
+            return Ok();
+        }
+
+        [Authorize]
         [HttpPatch("{backupTask}/stop")]
         public async Task<IActionResult> StopBackupAsync([FromRoute] int backupTask)
         {

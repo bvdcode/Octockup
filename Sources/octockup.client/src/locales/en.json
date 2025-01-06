@@ -41,7 +41,8 @@
     "dataLoadError": "Error loading dashboard data: {{error}}",
     "forceRunSuccess": "Job start request sent",
     "stopSuccess": "Job cancellation request sent",
-    "updatedAt": "Data is actual as of {{date}}"
+    "updatedAt": "Data is actual as of {{date}}",
+    "deleteSuccess": "Job deletion request sent"
   },
   "createJob": {
     "title": "Create new backup job",
