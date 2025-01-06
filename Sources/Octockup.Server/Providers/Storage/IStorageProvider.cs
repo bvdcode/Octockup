@@ -10,6 +10,7 @@ namespace Octockup.Server.Providers.Storage
     public interface IStorageProvider
     {
         string Name { get; }
+        Stream GetFileStream(RemoteFileInfo fileInfo);
         IEnumerable<RemoteFileInfo> GetAllFiles(Action<int>? progressCallback = null, CancellationToken cancellationToken = default);
     }
 }

@@ -1,11 +1,14 @@
 ﻿using MediatR;
+using EasyExtensions;
+using System.Text.Json;
 using Octockup.Server.Models;
+using Octockup.Server.Helpers;
 using Octockup.Server.Database;
 using Octockup.Server.Services;
+using Octockup.Server.Extensions;
 using Octockup.Server.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Providers.Storage;
-using Octockup.Server.Extensions;
 
 namespace Octockup.Server.Handlers
 {
@@ -93,7 +96,7 @@ namespace Octockup.Server.Handlers
                 SavedFile? savedFile = await GetSavedFileAsync(remoteFileInfo, snapshot);
                 if (savedFile == null)
                 {
-                    await SaveNewFileAsync(storageProvider, remoteFileInfo, snapshot, job, progressTracker, progress, merged);
+                    await SaveNewFileAsync(storageProvider, remoteFileInfo, snapshot, progressTracker, progress, merged);
                     continue;
                 }
                 bool filesEqual = CompareFiles(storageProvider, remoteFileInfo, savedFile, job);
@@ -114,7 +117,7 @@ namespace Octockup.Server.Handlers
                     progressTracker.ReportProgress(progress, "File is up to date: " + remoteFileInfo.Name);
                     continue;
                 }
-                await SaveNewFileAsync(storageProvider, remoteFileInfo, snapshot, job, progressTracker, progress, merged);
+                await SaveNewFileAsync(storageProvider, remoteFileInfo, snapshot, progressTracker, progress, merged);
             }
             double mb = 100000000 / 1024.0 / 1024.0;
             mb = Math.Round(mb, 2);
@@ -130,7 +133,7 @@ namespace Octockup.Server.Handlers
                 .FirstOrDefaultAsync();
         }
 
-        private bool CompareFiles(IStorageProvider storageProvider, RemoteFileInfo remoteFileInfo, SavedFile savedFile, BackupTask job)
+        private static bool CompareFiles(IStorageProvider storageProvider, RemoteFileInfo remoteFileInfo, SavedFile savedFile, BackupTask job)
         {
             if (remoteFileInfo.Path != savedFile.SourcePath)
             {
@@ -159,14 +162,39 @@ namespace Octockup.Server.Handlers
             return true;
         }
 
-        private string CalculateSHA512(IStorageProvider storageProvider, RemoteFileInfo item)
+        private static string CalculateSHA512(IStorageProvider storageProvider, RemoteFileInfo item)
         {
-            throw new NotImplementedException();
+            using var stream = storageProvider.GetFileStream(item);
+            return stream.SHA512();
         }
 
-        private async Task SaveNewFileAsync(IStorageProvider storageProvider, RemoteFileInfo item, BackupSnapshot snapshot, BackupTask job, ProgressTracker progressTracker, double progress, CancellationToken merged)
+        private async Task SaveNewFileAsync(IStorageProvider storageProvider, RemoteFileInfo item,
+            BackupSnapshot snapshot, ProgressTracker progressTracker, double progress, CancellationToken merged)
         {
-            throw new NotImplementedException();
+            Guid newFileId = Guid.NewGuid();
+            string filePath = newFileId.ToString().Replace('-', Path.DirectorySeparatorChar);
+            string fileInfo = filePath + ".backupinfo";
+            filePath = FileSystemHelpers.GetFilePath(filePath);
+            fileInfo = FileSystemHelpers.GetFilePath(fileInfo);
+            using var stream = storageProvider.GetFileStream(item);
+            using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write);
+            await stream.CopyToAsync(fileStream, merged);
+            string hash = FileSystemHelpers.CalculateSHA512(filePath);
+            SavedFile savedFile = new()
+            {
+                FileId = newFileId,
+                BackupSnapshotId = snapshot.Id,
+                SourcePath = item.Path,
+                Size = item.Size,
+                SHA512 = hash,
+                MetadataCreatedAt = item.FileCreatedAt,
+                MetadataUpdatedAt = item.LastModified
+            };
+            await _dbContext.SavedFiles.AddAsync(savedFile, merged);
+            await _dbContext.SaveChangesAsync(merged);
+            progressTracker.ReportProgress(progress, "Saved file: " + item.Name);
+            string fileInfoJson = JsonSerializer.Serialize(savedFile);
+            await File.WriteAllTextAsync(fileInfo, fileInfoJson, merged);
         }
     }
 }
