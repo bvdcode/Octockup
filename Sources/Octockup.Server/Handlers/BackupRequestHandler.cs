@@ -173,9 +173,7 @@ namespace Octockup.Server.Handlers
         {
             Guid newFileId = Guid.NewGuid();
             string fileFolder = newFileId.ToString().Replace('-', Path.DirectorySeparatorChar);
-            fileFolder = FileSystemHelpers.GetFilePath(fileFolder);
-            Directory.CreateDirectory(fileFolder);
-            string filePath = Path.Combine(fileFolder, item.Name);
+            string filePath = Path.Combine(fileFolder, item.Name) + ".file";
             string fileInfo = filePath + ".backupinfo";
             filePath = FileSystemHelpers.GetFilePath(filePath);
             fileInfo = FileSystemHelpers.GetFilePath(fileInfo);

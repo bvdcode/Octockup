@@ -18,6 +18,14 @@ namespace Octockup.Server.Helpers
             {
                 Directory.CreateDirectory(DataFolder);
             }
+            if (filename.Contains(Path.DirectorySeparatorChar))
+            {
+                var path = Path.GetDirectoryName(filename);
+                if (!string.IsNullOrEmpty(path) && !Directory.Exists(path))
+                {
+                    Directory.CreateDirectory(path);
+                }
+            }
             return Path.Combine(DataFolder, filename);
         }
     }
