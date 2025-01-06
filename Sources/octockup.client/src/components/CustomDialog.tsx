@@ -11,8 +11,9 @@ export interface CustomDialogProps {
   content: string;
   cancelText: string;
   confirmText: string;
-  onCancel: () => void;
-  onConfirm: () => void;
+  onCancel?: () => void;
+  onConfirm?: () => void;
+  children: React.ReactNode;
 }
 
 export default function CustomDialog(props: CustomDialogProps) {
@@ -27,20 +28,22 @@ export default function CustomDialog(props: CustomDialogProps) {
   };
 
   const handleCancel = () => {
-    props.onCancel();
+    if (props.onCancel) {
+      props.onCancel();
+    }
     setOpen(false);
   };
 
   const handleConfirm = () => {
-    props.onConfirm();
+    if (props.onConfirm) {
+      props.onConfirm();
+    }
     setOpen(false);
   };
 
   return (
     <React.Fragment>
-      <Button variant="outlined" onClick={handleClickOpen}>
-        Open alert dialog
-      </Button>
+      <div onClick={handleClickOpen}>{props.children}</div>
       <Dialog
         open={open}
         onClose={handleClose}

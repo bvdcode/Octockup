@@ -10,7 +10,7 @@ import {
   Paper,
   Button,
 } from "@mui/material";
-import { ProgressBar } from ".";
+import { CustomDialog, ProgressBar } from ".";
 import useAuth from "../auth/useAuth";
 import { toast } from "react-toastify";
 import { API_BASE_URL } from "../config";
@@ -211,9 +211,18 @@ const Dashboard: React.FC = () => {
                             <Stop sx={{ cursor: "pointer" }} />
                           </Button>
                         )}
-                        <Button onClick={() => handleJobDelete(backup.id)}>
-                          <Delete sx={{ cursor: "pointer" }} />
-                        </Button>
+
+                        <CustomDialog
+                          title={t("backup.deleteTitle")}
+                          content={t("backup.deleteContent")}
+                          cancelText={t("backup.deleteCancel")}
+                          confirmText={t("backup.deleteConfirm")}
+                          onConfirm={() => handleJobDelete(backup.id)}
+                        >
+                          <Button>
+                            <Delete sx={{ cursor: "pointer" }} />
+                          </Button>
+                        </CustomDialog>
                       </Box>
                     </TableCell>
                   </TableRow>
