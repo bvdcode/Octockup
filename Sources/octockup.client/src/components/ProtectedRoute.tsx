@@ -22,6 +22,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     if (accessToken) {
       AxiosClient.setAuthHeader(accessToken);
       setIsTokenSet(true);
+    } else {
+      if (isLoaded) {
+        setIsTokenSet(true);
+      }
     }
     if (isLoaded && isAuthenticated && accessToken) {
       checkAuth();
