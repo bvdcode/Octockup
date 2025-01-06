@@ -11,7 +11,7 @@ namespace Octockup.Server.Providers.Storage
 
         private FtpClient? _client;
 
-        private static readonly string[] ignored = ["httpcache"];
+        private static readonly string[] ignored = ["httpcache", "inventorymsgcache", "StreamingAssets"];
 
         public IEnumerable<RemoteFileInfo> GetAllFiles(Action<int>? progressCallback = null, CancellationToken cancellationToken = default)
         {
@@ -31,7 +31,6 @@ namespace Octockup.Server.Providers.Storage
             _client ??= CreateClient();
             var files = _client.GetListing(remotePath);
             _logger.LogInformation("Got {count} files from {path}", files.Length, remotePath);
-            progressCallback?.Invoke(counter);
             foreach (var file in files)
             {
                 if (ignored.Any(i => Regex.IsMatch(file.Name, i)))
@@ -52,6 +51,7 @@ namespace Octockup.Server.Providers.Storage
                     {
                         yield return item;
                         counter++;
+                        progressCallback?.Invoke(counter);
                     }
                     continue;
                 }
@@ -68,6 +68,7 @@ namespace Octockup.Server.Providers.Storage
                     FileCreatedAt = file.Created
                 };
                 counter++;
+                progressCallback?.Invoke(counter);
             }
         }
 

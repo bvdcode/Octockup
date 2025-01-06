@@ -172,7 +172,10 @@ namespace Octockup.Server.Handlers
             BackupSnapshot snapshot, ProgressTracker progressTracker, double progress, CancellationToken merged)
         {
             Guid newFileId = Guid.NewGuid();
-            string filePath = newFileId.ToString().Replace('-', Path.DirectorySeparatorChar);
+            string fileFolder = newFileId.ToString().Replace('-', Path.DirectorySeparatorChar);
+            fileFolder = FileSystemHelpers.GetFilePath(fileFolder);
+            Directory.CreateDirectory(fileFolder);
+            string filePath = Path.Combine(fileFolder, item.Name);
             string fileInfo = filePath + ".backupinfo";
             filePath = FileSystemHelpers.GetFilePath(filePath);
             fileInfo = FileSystemHelpers.GetFilePath(fileInfo);
