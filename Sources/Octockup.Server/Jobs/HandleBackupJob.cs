@@ -27,7 +27,14 @@ namespace Octockup.Server.Jobs
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to execute job {jobId} for user {userId}.", job.Id, job.UserId);
+                    if (ex is OperationCanceledException)
+                    {
+                        _logger.LogWarning("Job {jobId} was cancelled.", job.Id);
+                    }
+                    else
+                    {
+                        _logger.LogError(ex, "Job {jobId} failed.", job.Id);
+                    }
                     job.LastMessage = ex.Message;
                     job.Status = BackupTaskStatus.Failed;
                     job.CompletedAt = DateTime.UtcNow;

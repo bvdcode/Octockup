@@ -16,6 +16,8 @@ namespace Octockup.Server.Handlers
         IEnumerable<IStorageProvider> _storageProviders, ProgressTracker progressTracker,
         ILogger<BackupRequestHandler> _logger) : IRequestHandler<HandleBackupRequest>
     {
+        private static readonly JsonSerializerOptions _jsonOptions = new() { WriteIndented = true };
+
         public async Task Handle(HandleBackupRequest request, CancellationToken cancellationToken)
         {
             _logger.LogDebug("Handling backup task: {request}", request.BackupTaskId);
@@ -174,7 +176,7 @@ namespace Octockup.Server.Handlers
             Guid newFileId = Guid.NewGuid();
             string fileFolder = snapshot.Id.ToString();
             string filePath = Path.Combine(fileFolder, newFileId + ".file");
-            string fileInfo = filePath[0..^5] + ".backupinfo";
+            string fileInfo = filePath[0..^5] + ".backupinfo.json";
             filePath = FileSystemHelpers.GetFilePath(filePath);
             fileInfo = FileSystemHelpers.GetFilePath(fileInfo);
             await CopyFile(storageProvider, item, filePath, merged);
@@ -192,7 +194,16 @@ namespace Octockup.Server.Handlers
             await _dbContext.SavedFiles.AddAsync(savedFile, merged);
             await _dbContext.SaveChangesAsync(merged);
             progressTracker.ReportProgress(progress, "Saved file: " + item.Name);
-            string fileInfoJson = JsonSerializer.Serialize(savedFile);
+            string fileInfoJson = JsonSerializer.Serialize(new
+            {
+                savedFile.FileId,
+                savedFile.BackupSnapshotId,
+                savedFile.SourcePath,
+                savedFile.Size,
+                savedFile.SHA512,
+                savedFile.MetadataCreatedAt,
+                savedFile.MetadataUpdatedAt
+            }, _jsonOptions);
             await File.WriteAllTextAsync(fileInfo, fileInfoJson, merged);
         }
 
