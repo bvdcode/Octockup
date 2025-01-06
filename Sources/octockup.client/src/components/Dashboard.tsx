@@ -60,7 +60,9 @@ const Dashboard: React.FC = () => {
     let isFetching = false;
 
     const loadData = async () => {
-      if (isFetching) return;
+      if (isFetching) {
+        return;
+      }
       isFetching = true;
       try {
         const response = await getBackupStatus();
@@ -91,6 +93,15 @@ const Dashboard: React.FC = () => {
       default:
         return ProgressBarColor.Neutral;
     }
+  };
+
+  const handleJobDelete = async (backupId: number) => {
+    deleteJob(backupId).then(() => {
+      toast.success(t("dashboard.deleteSuccess"));
+      setJobs((prev) => {
+        return prev.filter((job) => job.id !== backupId);
+      });
+    });
   };
 
   return (
@@ -200,18 +211,7 @@ const Dashboard: React.FC = () => {
                             <Stop sx={{ cursor: "pointer" }} />
                           </Button>
                         )}
-                        <Button
-                          onClick={() => {
-                            deleteJob(backup.id).then(() => {
-                              toast.success(t("dashboard.deleteSuccess"));
-                              setJobs((prev) => {
-                                return prev.filter(
-                                  (job) => job.id !== backup.id
-                                );
-                              });
-                            });
-                          }}
-                        >
+                        <Button onClick={() => handleJobDelete(backup.id)}>
                           <Delete sx={{ cursor: "pointer" }} />
                         </Button>
                       </Box>
