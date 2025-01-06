@@ -1,5 +1,6 @@
 ﻿using FluentFTP;
 using Octockup.Server.Models;
+using System.Text.RegularExpressions;
 
 namespace Octockup.Server.Providers.Storage
 {
@@ -9,6 +10,8 @@ namespace Octockup.Server.Providers.Storage
         public BaseStorageParameters Parameters { get; set; } = null!;
 
         private FtpClient? _client;
+
+        private static readonly string[] ignored = ["httpcache"];
 
         public IEnumerable<RemoteFileInfo> GetAllFiles(Action<int>? progressCallback = null, CancellationToken cancellationToken = default)
         {
@@ -22,14 +25,20 @@ namespace Octockup.Server.Providers.Storage
         }
 
         private IEnumerable<RemoteFileInfo> GetAllFiles(string remotePath,
-            Action<int>? progressCallback = null, int accumulator = 0, CancellationToken cancellationToken = default)
+            Action<int>? progressCallback = null, CancellationToken cancellationToken = default)
         {
+            int counter = 0;
             _client ??= CreateClient();
             var files = _client.GetListing(remotePath);
             _logger.LogInformation("Got {count} files from {path}", files.Length, remotePath);
-            progressCallback?.Invoke(accumulator);
+            progressCallback?.Invoke(counter);
             foreach (var file in files)
             {
+                if (ignored.Any(i => Regex.IsMatch(file.Name, i)))
+                {
+                    _logger.LogInformation("Ignoring item: {file}", file.Name);
+                    continue;
+                }
                 cancellationToken.ThrowIfCancellationRequested();
                 if (file.FullName == "."
                     || file.FullName == ".."
@@ -39,9 +48,10 @@ namespace Octockup.Server.Providers.Storage
                 }
                 if (file.Type == FtpObjectType.Directory)
                 {
-                    foreach (var item in GetAllFiles(file.FullName, progressCallback, accumulator, cancellationToken))
+                    foreach (var item in GetAllFiles(file.FullName, progressCallback, cancellationToken))
                     {
                         yield return item;
+                        counter++;
                     }
                     continue;
                 }
@@ -57,7 +67,7 @@ namespace Octockup.Server.Providers.Storage
                     LastModified = file.Modified,
                     FileCreatedAt = file.Created
                 };
-                accumulator++;
+                counter++;
             }
         }
 
