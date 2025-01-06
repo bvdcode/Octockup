@@ -173,12 +173,12 @@ namespace Octockup.Server.Handlers
         {
             Guid newFileId = Guid.NewGuid();
             string fileFolder = newFileId.ToString().Replace('-', Path.DirectorySeparatorChar);
-            string filePath = Path.Combine(fileFolder, item.Name) + ".file";
-            string fileInfo = filePath + ".backupinfo";
+            string filePath = Path.Combine(fileFolder, item.Name + ".file");
+            string fileInfo = filePath[0..^5] + ".backupinfo";
             filePath = FileSystemHelpers.GetFilePath(filePath);
             fileInfo = FileSystemHelpers.GetFilePath(fileInfo);
             using var stream = storageProvider.GetFileStream(item);
-            using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write);
+            using var fileStream = File.OpenWrite(filePath);
             await stream.CopyToAsync(fileStream, merged);
             string hash = FileSystemHelpers.CalculateSHA512(filePath);
             SavedFile savedFile = new()

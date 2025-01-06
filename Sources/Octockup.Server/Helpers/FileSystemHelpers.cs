@@ -20,8 +20,9 @@ namespace Octockup.Server.Helpers
             }
             if (filename.Contains(Path.DirectorySeparatorChar))
             {
-                var path = Path.GetDirectoryName(filename);
-                if (!string.IsNullOrEmpty(path) && !Directory.Exists(path))
+                var path = Path.GetDirectoryName(filename) ?? string.Empty;
+                string dirPath = Path.Combine(DataFolder, path);
+                if (!string.IsNullOrEmpty(path) && !Directory.Exists(dirPath))
                 {
                     Directory.CreateDirectory(path);
                 }
