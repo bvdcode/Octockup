@@ -46,7 +46,7 @@ const CreateJob: React.FC = () => {
 
   const handleProviderChange = (event: SelectChangeEvent<string>) => {
     const value = event.target.value;
-    const provider = providers.find((p) => p.name === value);
+    const provider = providers.find((p) => p.class === value);
     setSelectedProvider(provider || null);
     dispatch({ type: "SET_PROVIDER", payload: value });
     if (provider) {

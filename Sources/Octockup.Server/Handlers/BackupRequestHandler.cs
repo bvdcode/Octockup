@@ -5,6 +5,7 @@ using Octockup.Server.Services;
 using Octockup.Server.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Providers.Storage;
+using Octockup.Server.Extensions;
 
 namespace Octockup.Server.Handlers
 {
@@ -21,7 +22,7 @@ namespace Octockup.Server.Handlers
                 ?? throw new InvalidOperationException("Backup task with the specified ID not found: " + request.BackupTaskId);
             job.Status = BackupTaskStatus.Running;
             job.LastMessage = null;
-            var storageProvider = _storageProviders.FirstOrDefault(x => x.Name == job.ProviderClass)
+            var storageProvider = _storageProviders.FirstOrDefault(x => x.GetClassName() == job.ProviderClass)
                 ?? throw new InvalidOperationException("Storage provider not found: " + job.ProviderClass);
             await progressTracker.SetJobIdAsync(job.Id);
             SetParameters(storageProvider, job.GetParameters());

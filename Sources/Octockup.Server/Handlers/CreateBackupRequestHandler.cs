@@ -16,7 +16,7 @@ namespace Octockup.Server.Handlers
     {
         public Task Handle(CreateBackupRequest request, CancellationToken cancellationToken)
         {
-            var foundProvider = _providers.FirstOrDefault(x => x.Name.Equals(request.Provider, StringComparison.InvariantCultureIgnoreCase))
+            var foundProvider = _providers.FirstOrDefault(x => x.GetClassName().Equals(request.Provider, StringComparison.InvariantCultureIgnoreCase))
                 ?? throw new WebApiException(HttpStatusCode.NotFound, nameof(CreateBackupRequest), "Provider not found");
 
             var foundUser = _dbContext.Users.FirstOrDefault(x => x.Id == _contextAccessor.HttpContext!.User.GetId())
