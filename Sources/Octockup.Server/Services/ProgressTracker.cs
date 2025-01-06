@@ -35,6 +35,14 @@ namespace Octockup.Server.Services
             {
                 throw new InvalidOperationException("Job ID not set.");
             }
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                _log.AppendLine($"[{DateTime.UtcNow:HH:mm:ss}] Progress: {_job.Progress}%");
+            }
+            else
+            {
+                _log.AppendLine($"[{DateTime.UtcNow:HH:mm:ss}] Progress: {_job.Progress}%, Message: {message}");
+            }
             if (_updateSw.ElapsedMilliseconds < UpdateInterval && !force)
             {
                 return;
@@ -57,14 +65,7 @@ namespace Octockup.Server.Services
                 _logger.LogError(ex, "Failed to update job progress.");
             }
             _logger.LogInformation("Job {jobId} progress: {progress}%", _job.Id, _job.Progress);
-            if (string.IsNullOrWhiteSpace(message))
-            {
-                _log.AppendLine($"[{DateTime.UtcNow:HH:mm:ss}] Progress: {_job.Progress}%");
-            }
-            else
-            {
-                _log.AppendLine($"[{DateTime.UtcNow:HH:mm:ss}] Progress: {_job.Progress}%, Message: {message}");
-            }
+            _logger.LogDebug("Job {jobId} progress updated for {elapsed}.", _job.Id, _job.Elapsed);
         }
     }
 }

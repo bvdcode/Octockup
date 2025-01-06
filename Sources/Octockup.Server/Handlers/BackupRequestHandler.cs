@@ -95,15 +95,19 @@ namespace Octockup.Server.Handlers
                 double progress = (double)counter / files.Count;
                 progressTracker.ReportProgress(progress, "Checking file: " + remoteFileInfo.Name);
 
+                _logger.LogDebug("Trying to get saved file: {file}", remoteFileInfo.Path);
                 SavedFile? savedFile = await GetSavedFileAsync(remoteFileInfo, snapshot);
+                _logger.LogDebug("Got saved file: {success}", savedFile != null);
                 if (savedFile == null)
                 {
+                    _logger.LogDebug("File not found in database: {file}", remoteFileInfo.Path);
                     await SaveNewFileAsync(storageProvider, remoteFileInfo, snapshot, progressTracker, progress, merged);
                     continue;
                 }
                 bool filesEqual = CompareFiles(storageProvider, remoteFileInfo, savedFile, job);
                 if (filesEqual)
                 {
+                    _logger.LogDebug("Cloning file: {file}", remoteFileInfo.Path);
                     SavedFile clone = new()
                     {
                         Size = savedFile.Size,
@@ -135,32 +139,39 @@ namespace Octockup.Server.Handlers
                 .FirstOrDefaultAsync();
         }
 
-        private static bool CompareFiles(IStorageProvider storageProvider, RemoteFileInfo remoteFileInfo, SavedFile savedFile, BackupTask job)
+        private bool CompareFiles(IStorageProvider storageProvider, RemoteFileInfo remoteFileInfo, SavedFile savedFile, BackupTask job)
         {
             if (remoteFileInfo.Path != savedFile.SourcePath)
             {
+                _logger.LogDebug("Paths do not match: {remote} != {saved}", remoteFileInfo.Path, savedFile.SourcePath);
                 return false;
             }
             if (remoteFileInfo.Size != savedFile.Size)
             {
+                _logger.LogDebug("Sizes do not match: {remote} != {saved}", remoteFileInfo.Size, savedFile.Size);
                 return false;
             }
             if (remoteFileInfo.FileCreatedAt != savedFile.MetadataCreatedAt)
             {
+                _logger.LogDebug("Created dates do not match: {remote} != {saved}", remoteFileInfo.FileCreatedAt, savedFile.MetadataCreatedAt);
                 return false;
             }
             if (remoteFileInfo.LastModified != savedFile.MetadataUpdatedAt)
             {
+                _logger.LogDebug("Updated dates do not match: {remote} != {saved}", remoteFileInfo.LastModified, savedFile.MetadataUpdatedAt);
                 return false;
             }
             if (job.StrictMode)
             {
+                _logger.LogDebug("Strict mode enabled, checking SHA512 hash");
                 string remoteHash = CalculateSHA512(storageProvider, remoteFileInfo);
                 if (remoteHash != savedFile.SHA512)
                 {
+                    _logger.LogDebug("Hashes do not match: {remote} != {saved}", remoteHash, savedFile.SHA512);
                     return false;
                 }
             }
+            _logger.LogDebug("Files are equal: {remote} == {saved}", remoteFileInfo.Path, savedFile.SourcePath);
             return true;
         }
 
@@ -173,6 +184,7 @@ namespace Octockup.Server.Handlers
         private async Task SaveNewFileAsync(IStorageProvider storageProvider, RemoteFileInfo item,
             BackupSnapshot snapshot, ProgressTracker progressTracker, double progress, CancellationToken merged)
         {
+            progressTracker.ReportProgress(progress, "Saving file: " + item.Name);
             Guid newFileId = Guid.NewGuid();
             string fileFolder = snapshot.Id.ToString();
             string filePath = Path.Combine(fileFolder, newFileId + ".file");
