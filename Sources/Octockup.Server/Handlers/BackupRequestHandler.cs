@@ -132,11 +132,22 @@ namespace Octockup.Server.Handlers
 
         private async Task<SavedFile?> GetSavedFileAsync(RemoteFileInfo remoteFileInfo, BackupSnapshot snapshot)
         {
-            return await _dbContext.SavedFiles
+            var saved = await _dbContext.SavedFiles
                 .Where(x => x.BackupSnapshot.BackupTaskId == snapshot.BackupTaskId
                     && x.SourcePath == remoteFileInfo.Path)
                 .OrderByDescending(x => x.Id)
                 .FirstOrDefaultAsync();
+            if (saved == null)
+            {
+                return null;
+            }
+            var paths = FileSystemHelpers.GetSavedFile(snapshot.Id, saved.FileId);
+            if (!paths.SavedFile.Exists || !paths.FileBackupInfo.Exists)
+            {
+                _logger.LogWarning("File not found in local storage: {file}", remoteFileInfo.Name);
+                return null;
+            }
+            return saved;
         }
 
         private bool CompareFiles(IStorageProvider storageProvider, RemoteFileInfo remoteFileInfo, SavedFile savedFile, BackupTask job)
@@ -186,13 +197,9 @@ namespace Octockup.Server.Handlers
         {
             progressTracker.ReportProgress(progress, "Saving file: " + item.Name);
             Guid newFileId = Guid.NewGuid();
-            string fileFolder = snapshot.Id.ToString();
-            string filePath = Path.Combine(fileFolder, newFileId + ".file");
-            string fileInfo = filePath[0..^5] + ".backupinfo.json";
-            filePath = FileSystemHelpers.GetFilePath(filePath);
-            fileInfo = FileSystemHelpers.GetFilePath(fileInfo);
-            await CopyFile(storageProvider, item, filePath, merged);
-            string hash = FileSystemHelpers.CalculateSHA512(filePath);
+            var paths = FileSystemHelpers.GetSavedFile(snapshot.Id, newFileId);
+            await CopyFile(storageProvider, item, paths.SavedFile.FullName, merged);
+            string hash = FileSystemHelpers.CalculateSHA512(paths.SavedFile.FullName);
             SavedFile savedFile = new()
             {
                 FileId = newFileId,
@@ -216,7 +223,7 @@ namespace Octockup.Server.Handlers
                 savedFile.MetadataCreatedAt,
                 savedFile.MetadataUpdatedAt
             }, _jsonOptions);
-            await File.WriteAllTextAsync(fileInfo, fileInfoJson, merged);
+            await File.WriteAllTextAsync(paths.FileBackupInfo.FullName, fileInfoJson, merged);
         }
 
         private static async Task CopyFile(IStorageProvider storageProvider, RemoteFileInfo item, 
