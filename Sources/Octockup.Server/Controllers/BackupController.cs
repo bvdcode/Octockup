@@ -49,6 +49,8 @@ namespace Octockup.Server.Controllers
             {
                 return NotFound();
             }
+            found.IsEnabled = false;
+            await _dbContext.SaveChangesAsync();
             if (found.Status != BackupTaskStatus.Running)
             {
                 return Ok();
@@ -58,7 +60,7 @@ namespace Octockup.Server.Controllers
         }
 
         [Authorize]
-        [HttpPatch("{backupTask}/trigger")]
+        [HttpPatch("{backupTask}/start")]
         public async Task<IActionResult> TriggerBackupAsync([FromRoute] int backupTask)
         {
             int userId = User.GetId();
@@ -67,6 +69,8 @@ namespace Octockup.Server.Controllers
             {
                 return NotFound();
             }
+            found.IsEnabled = true;
+            await _dbContext.SaveChangesAsync();
             if (found.Status == BackupTaskStatus.Running)
             {
                 return Ok();

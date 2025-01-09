@@ -127,7 +127,7 @@ export const createBackupJob = async (job: CreateJobRequest): Promise<void> => {
  * @returns A promise that resolves when the job has been successfully triggered.
  */
 export const forceRunJob = async (id: number): Promise<void> => {
-  await AxiosClient.getInstance().patch(`/backup/${id}/trigger`);
+  await AxiosClient.getInstance().patch(`/backup/${id}/start`);
 };
 
 /**
