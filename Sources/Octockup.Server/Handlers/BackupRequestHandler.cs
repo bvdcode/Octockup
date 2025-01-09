@@ -84,15 +84,16 @@ namespace Octockup.Server.Handlers
             progressTracker.ReportProgress(0.01, "Requesting files", force: true);
             var files = storageProvider.GetAllFiles(p => progressTracker.ReportProgress(0.01, $"Got files: {p}"), cancellationToken: merged).ToList();
             progressTracker.ReportProgress(0.02, $"Got {files.Count} files", force: true);
-            int counter = 0;
+            int processed = 0;
+            int updated = 0;
             BackupSnapshot snapshot = new() { BackupTaskId = job.Id };
             await _dbContext.BackupSnapshots.AddAsync(snapshot, merged);
             await _dbContext.SaveChangesAsync(merged);
             foreach (var remoteFileInfo in files)
             {
                 merged.ThrowIfCancellationRequested();
-                counter++;
-                double progress = (double)counter / files.Count;
+                processed++;
+                double progress = (double)processed / files.Count;
                 progressTracker.ReportProgress(progress, "Checking file: " + remoteFileInfo.Name);
 
                 _logger.LogDebug("Trying to get saved file: {file}", remoteFileInfo.Path);
@@ -124,10 +125,14 @@ namespace Octockup.Server.Handlers
                     continue;
                 }
                 await SaveNewFileAsync(storageProvider, remoteFileInfo, snapshot, progressTracker, progress, merged);
+                updated++;
             }
-            double mb = 100000000 / 1024.0 / 1024.0;
-            mb = Math.Round(mb, 2);
-            progressTracker.ReportProgress(0.5, $"Processed {counter} files, {counter / 2} updated, {mb} MB total", force: true);
+            long totalSize = snapshot.SavedFiles.Sum(x => x.Size);
+            snapshot.TotalSize = totalSize;
+            snapshot.Log = progressTracker.Log;
+            await _dbContext.SaveChangesAsync(merged);
+            double mb = totalSize / 1024.0 / 1024.0;
+            progressTracker.ReportProgress(0.5, $"Processed {processed} files, {updated} updated, {mb} MB total", force: true);
         }
 
         private async Task<SavedFile?> GetSavedFileAsync(RemoteFileInfo remoteFileInfo, BackupSnapshot snapshot)
