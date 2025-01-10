@@ -6,6 +6,18 @@ namespace Octockup.Server.Helpers
     {
         private const string DataFolder = "data";
 
+        internal static string FormatSize(long size)
+        {
+            string[] sizes = ["B", "KB", "MB", "GB", "TB"];
+            int order = 0;
+            while (size >= 1024 && order < sizes.Length - 1)
+            {
+                order++;
+                size /= 1024;
+            }
+            return $"{size:0.##} {sizes[order]}";
+        }
+
         internal static (FileInfo SavedFile, FileInfo FileBackupInfo) GetSavedFile(int snapshotId, Guid fileId)
         {
             string fileFolder = snapshotId.ToString();

@@ -131,8 +131,8 @@ namespace Octockup.Server.Handlers
             snapshot.TotalSize = totalSize;
             snapshot.Log = progressTracker.Log;
             await _dbContext.SaveChangesAsync(merged);
-            double mb = totalSize / 1024.0 / 1024.0;
-            progressTracker.ReportProgress(0.5, $"Processed {processed} files, {updated} updated, {mb} MB total", force: true);
+            string size = FileSystemHelpers.FormatSize(totalSize);
+            progressTracker.ReportProgress(0.5, $"Processed {processed} files, {updated} updated, {size} total", force: true);
         }
 
         private async Task<SavedFile?> GetSavedFileAsync(RemoteFileInfo remoteFileInfo, BackupSnapshot snapshot)
