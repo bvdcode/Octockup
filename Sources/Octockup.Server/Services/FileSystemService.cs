@@ -4,6 +4,22 @@ namespace Octockup.Server.Services
 {
     public class FileSystemService : IFileService
     {
+        public Task DeleteFileAsync(int snapshotId, Guid fileId)
+        {
+            var (savedFile, fileBackupInfo) = FileSystemHelpers.GetSavedFiles(snapshotId, fileId);
+            try
+            {
+                savedFile.Delete();
+            }
+            catch (Exception) { }
+            try
+            {
+                fileBackupInfo.Delete();
+            }
+            catch (Exception) { }
+            return Task.CompletedTask;
+        }
+
         public bool FileBackupInfoExists(int snapshotId, Guid fileId)
         {
             var (_, fileBackupInfo) = FileSystemHelpers.GetSavedFiles(snapshotId, fileId);

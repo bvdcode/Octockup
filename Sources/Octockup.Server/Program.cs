@@ -6,7 +6,6 @@ using Octockup.Server.Extensions;
 using FluentValidation.AspNetCore;
 using Octockup.Server.Controllers;
 using EasyExtensions.Quartz.Extensions;
-using Octockup.Server.Providers.Storage;
 using EasyExtensions.AspNetCore.Extensions;
 using EasyExtensions.EntityFrameworkCore.Extensions;
 using EasyExtensions.AspNetCore.Authorization.Extensions;
