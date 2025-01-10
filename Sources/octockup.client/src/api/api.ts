@@ -4,6 +4,7 @@ import {
   BackupTask,
   BackupProvider,
   CreateJobRequest,
+  DataPage,
 } from "./types";
 import SHA512 from "crypto-js/sha512";
 import AxiosClient from "./AxiosClient";
@@ -82,10 +83,13 @@ export const changePassword = async (newPassword: string): Promise<void> => {
  *
  * @returns {Promise<BackupTask[]>} A promise that resolves to an array of `BackupTask` objects.
  */
-export const getBackupStatus = async (): Promise<BackupTask[]> => {
-  const response = await AxiosClient.getInstance().get<BackupTask[]>(
-    "/backup/list?orderBy=createdAt desc"
-  );
+export const getBackups = async (
+  page: number = 1,
+  pageSize: number = 20,
+  orderBy: "asc" | "desc" = "desc"
+): Promise<DataPage<BackupTask>> => {
+  const url = `/backup/list?orderBy=id ${orderBy}&page=${page}&pageSize=${pageSize}`;
+  const response = await AxiosClient.getInstance().get<BackupTask[]>(url);
   response.data.forEach((backup) => {
     if (backup.completedAt) {
       backup.completedAtDate = new Date(backup.completedAt);
@@ -95,7 +99,10 @@ export const getBackupStatus = async (): Promise<BackupTask[]> => {
       backup.interval = "-";
     }
   });
-  return response.data;
+  return {
+    data: response.data,
+    totalCount: response.headers["x-total-count"],
+  };
 };
 
 /**

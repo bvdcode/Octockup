@@ -55,3 +55,8 @@ export interface CreateJobRequest {
   isNotificationEnabled: boolean;
   parameters: Record<string, string>;
 }
+
+export interface DataPage<T> {
+  data: T[];
+  totalCount: number;
+}

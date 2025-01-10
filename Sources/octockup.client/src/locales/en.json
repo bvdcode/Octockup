@@ -79,5 +79,8 @@
     "Running": "Running",
     "Created": "Created",
     "Completed": "Completed"
+  },
+  "backupInfo": {
+    "back": "Back"
   }
 }

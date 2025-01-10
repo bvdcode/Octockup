@@ -9,18 +9,20 @@ import {
   Typography,
   Paper,
   Button,
+  Pagination,
 } from "@mui/material";
 import { CustomDialog, ProgressBar } from ".";
 import useAuth from "../auth/useAuth";
 import { toast } from "react-toastify";
 import { API_BASE_URL } from "../config";
 import styles from "./Dashboard.module.css";
-import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useEffect, useRef, useState } from "react";
 import { BackupTask, BackupTaskStatus, User } from "../api/types";
 import { ProgressBarColor } from "./ProgressBar/ProgressBarColor";
-import { deleteJob, forceRunJob, getBackupStatus, stopJob } from "../api/api";
 import { Delete, Replay, Stop, Visibility } from "@mui/icons-material";
+import { deleteJob, forceRunJob, getBackups, stopJob } from "../api/api";
 import {
   HubConnection,
   HubConnectionBuilder,
@@ -33,6 +35,10 @@ const Dashboard: React.FC = () => {
   const user = userState as User;
   const [jobs, setJobs] = useState<BackupTask[]>([]);
   const hubConnection = useRef<HubConnection | null>(null);
+  const navigate = useNavigate();
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(1);
 
   useEffect(() => {
     if (!accessToken) {
@@ -44,8 +50,9 @@ const Dashboard: React.FC = () => {
       .configureLogging(LogLevel.Warning)
       .build();
     hubConnection.current.on("Progress", () => {
-      getBackupStatus().then((response) => {
-        setJobs(response);
+      getBackups().then((response) => {
+        setJobs(response.data);
+        setTotalCount(response.totalCount);
       });
     });
     hubConnection.current.start();
@@ -65,8 +72,9 @@ const Dashboard: React.FC = () => {
       }
       isFetching = true;
       try {
-        const response = await getBackupStatus();
-        setJobs(response);
+        const response = await getBackups(page, pageSize);
+        setJobs(response.data);
+        setTotalCount(response.totalCount);
       } finally {
         isFetching = false;
       }
@@ -79,7 +87,7 @@ const Dashboard: React.FC = () => {
     }, 60000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [page, pageSize]);
 
   const getColorByStatus = (status: BackupTaskStatus): ProgressBarColor => {
     switch (status) {
@@ -187,11 +195,17 @@ const Dashboard: React.FC = () => {
                     <TableCell>{backup.lastMessage ?? "-"}</TableCell>
                     <TableCell sx={{ width: "150px" }}>
                       <Box display="flex" justifyContent="space-around">
-                        <Button>
+                        <Button
+                          sx={{ minWidth: "unset" }}
+                          onClick={() => {
+                            navigate(`/backups/${backup.id}`);
+                          }}
+                        >
                           <Visibility sx={{ cursor: "pointer" }} />
                         </Button>
                         {backup.status !== BackupTaskStatus.Running ? (
                           <Button
+                            sx={{ minWidth: "unset" }}
                             onClick={() =>
                               forceRunJob(backup.id).then(() => {
                                 toast.success(t("dashboard.forceRunSuccess"));
@@ -202,6 +216,7 @@ const Dashboard: React.FC = () => {
                           </Button>
                         ) : (
                           <Button
+                            sx={{ minWidth: "unset" }}
                             onClick={() =>
                               stopJob(backup.id).then(() => {
                                 toast.success(t("dashboard.stopSuccess"));
@@ -221,7 +236,7 @@ const Dashboard: React.FC = () => {
                           confirmText={t("confirm")}
                           onConfirm={() => handleJobDelete(backup.id)}
                         >
-                          <Button>
+                          <Button sx={{ minWidth: "unset" }}>
                             <Delete sx={{ cursor: "pointer" }} />
                           </Button>
                         </CustomDialog>
@@ -239,6 +254,18 @@ const Dashboard: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
+        <Pagination
+          count={Math.ceil(totalCount / pageSize)}
+          color="primary"
+          shape="rounded"
+          size="medium"
+          showFirstButton
+          showLastButton
+          sx={{ marginTop: 2, justifyContent: "center", alignItems: "center" }}
+          onChange={(_, page) => {
+            setPage(page);
+          }}
+        />
       </Box>
     </Box>
   );

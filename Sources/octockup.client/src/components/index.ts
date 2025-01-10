@@ -1,7 +1,9 @@
+export { default as Loader } from "./Loader";
 export { default as Profile } from "./Profile";
 export { default as CreateJob } from "./CreateJob";
 export { default as Dashboard } from "./Dashboard";
 export { default as NavBar } from "./NavBar/NavBar";
+export { default as BackupInfo } from "./BackupInfo";
 export { default as CustomDialog } from "./CustomDialog";
 export { default as IntervalInput } from "./IntervalInput";
 export { default as LoginForm } from "./LoginForm/LoginForm";

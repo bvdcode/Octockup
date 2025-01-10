@@ -35,7 +35,9 @@ namespace Octockup.Server.Controllers
                 return NotFound();
             }
             found.IsDeleted = true;
+            found.IsEnabled = false;
             await _dbContext.SaveChangesAsync();
+            _jobCancellationService.Cancel(found.Id);
             return Ok();
         }
 
