@@ -18,6 +18,9 @@ namespace Octockup.Server.Database
         [Column("is_deleted")]
         public bool IsDeleted { get; set; }
 
+        [Column("elapsed")]
+        public TimeSpan Elapsed { get; set; }
+
         public virtual BackupTask BackupTask { get; set; } = null!;
 
         public virtual ICollection<SavedFile> SavedFiles { get; set; } = null!;

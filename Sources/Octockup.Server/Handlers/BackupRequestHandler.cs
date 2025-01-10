@@ -96,6 +96,7 @@ namespace Octockup.Server.Handlers
                 double progress = (double)processed / files.Count;
                 progressTracker.ReportProgress(progress, "Checking file: " + remoteFileInfo.Name);
                 snapshot.TotalSize += remoteFileInfo.Size;
+                snapshot.Elapsed = progressTracker.Elapsed;
                 await _dbContext.SaveChangesAsync(merged);
 
                 _logger.LogDebug("Trying to get saved file: {file}", remoteFileInfo.Path);
@@ -132,6 +133,7 @@ namespace Octockup.Server.Handlers
             long totalSize = snapshot.SavedFiles.Sum(x => x.Size);
             snapshot.TotalSize = totalSize;
             snapshot.Log = progressTracker.Log;
+            snapshot.Elapsed = progressTracker.Elapsed;
             await _dbContext.SaveChangesAsync(merged);
             string size = FileSystemHelpers.FormatSize(totalSize);
             progressTracker.ReportProgress(0.5, $"Processed {processed} files, {updated} updated, {size} total", force: true);
