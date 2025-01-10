@@ -1,3 +1,9 @@
+export interface BaseResponse {
+  id: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface LoginRequest {
   username: string;
   passwordHash: string;
@@ -59,4 +65,11 @@ export interface CreateJobRequest {
 export interface DataPage<T> {
   data: T[];
   totalCount: number;
+}
+
+export interface BackupSnapshot extends BaseResponse {
+  log: string;
+  totalSize: number;
+  backupTaskId: number;
+  totalSizeFormatted: string;
 }

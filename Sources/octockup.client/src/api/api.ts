@@ -5,6 +5,7 @@ import {
   BackupProvider,
   CreateJobRequest,
   DataPage,
+  BackupSnapshot,
 } from "./types";
 import SHA512 from "crypto-js/sha512";
 import AxiosClient from "./AxiosClient";
@@ -158,4 +159,18 @@ export const stopJob = async (id: number): Promise<void> => {
  */
 export const deleteJob = async (id: number): Promise<void> => {
   await AxiosClient.getInstance().delete(`/backup/${id}`);
+};
+
+export const getSnapshots = async (
+  backupId: number,
+  page: number,
+  pageSize: number,
+  orderBy: "asc" | "desc" = "desc"
+): Promise<DataPage<BackupSnapshot>> => {
+  const url = `/snapshots?page=${page}&pageSize=${pageSize}&orderBy=id ${orderBy}&filter=backupId==${backupId}`;
+  const response = await AxiosClient.getInstance().get<BackupSnapshot[]>(url);
+  return {
+    data: response.data,
+    totalCount: response.headers["x-total-count"],
+  };
 };

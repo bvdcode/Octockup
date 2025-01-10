@@ -12,6 +12,11 @@ import {
   Pagination,
   TextField,
 } from "@mui/material";
+import {
+  HubConnection,
+  HubConnectionBuilder,
+  LogLevel,
+} from "@microsoft/signalr";
 import { CustomDialog, ProgressBar } from ".";
 import useAuth from "../auth/useAuth";
 import { toast } from "react-toastify";
@@ -24,11 +29,6 @@ import { BackupTask, BackupTaskStatus, User } from "../api/types";
 import { ProgressBarColor } from "./ProgressBar/ProgressBarColor";
 import { Delete, Replay, Stop, Visibility } from "@mui/icons-material";
 import { deleteJob, forceRunJob, getBackups, stopJob } from "../api/api";
-import {
-  HubConnection,
-  HubConnectionBuilder,
-  LogLevel,
-} from "@microsoft/signalr";
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -272,7 +272,6 @@ const Dashboard: React.FC = () => {
             size="medium"
             showFirstButton
             showLastButton
-            // рендерить только 5 кнопок
             boundaryCount={0}
             page={page}
             onChange={(_, page) => {
