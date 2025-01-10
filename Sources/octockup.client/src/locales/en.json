@@ -85,6 +85,12 @@
     "noData": "No data",
     "title": "Backup task identifier:",
     "deleteTitle": "Delete backup task",
-    "deleteMessage": "Are you sure you want to delete the snapshot #{{id}}? WARNING: This action is irreversible! The snapshot will be permanently deleted from the storage provider and FILES WILL BE LOST FOREVER!"
+    "deleteMessage": "Are you sure you want to delete the snapshot #{{id}}? WARNING: This action is irreversible! The snapshot will be permanently deleted from the storage provider and FILES WILL BE LOST FOREVER!",
+    "id": "ID",
+    "createdAt": "Created at",
+    "fileCount": "File count",
+    "totalSize": "Total size",
+    "actions": "Actions",
+    "deleteSuccess": "Job deletion request sent - when the task is deleted, the record will be removed from the list"
   }
 }

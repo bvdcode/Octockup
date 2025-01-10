@@ -35,6 +35,8 @@ namespace Octockup.Server.Jobs
                 await _dbContext.SaveChangesAsync();
                 _logger.LogInformation("Deleted file {fileId} for snapshot {snapshotId}.", file.FileId, snapshot.Id);
             }
+            _dbContext.BackupSnapshots.Remove(snapshot);
+            await _dbContext.SaveChangesAsync();
         }
     }
 }

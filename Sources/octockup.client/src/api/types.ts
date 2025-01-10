@@ -72,6 +72,7 @@ export interface DataPage<T> {
 export interface BackupSnapshot extends BaseResponse {
   log: string;
   totalSize: number;
+  fileCount: number;
   backupTaskId: number;
   totalSizeFormatted: string;
 }

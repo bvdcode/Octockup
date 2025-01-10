@@ -4,6 +4,8 @@
     {
         public long TotalSize { get; set; }
 
+        public int FileCount { get; set; }
+
         public int BackupTaskId { get; set; }
 
         public string Log { get; set; } = string.Empty;

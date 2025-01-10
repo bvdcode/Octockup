@@ -16,8 +16,9 @@ import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { deleteSnapshot, getSnapshots } from "../api/api";
 import { BackupSnapshot } from "../api/types";
-import { ArrowBack, Delete } from "@mui/icons-material";
+import { ArrowBack, Delete, Refresh } from "@mui/icons-material";
 import CustomDialog from "./CustomDialog";
+import { toast } from "react-toastify";
 
 const BackupInfo: React.FC = () => {
   const [page, setPage] = React.useState(1);
@@ -38,6 +39,7 @@ const BackupInfo: React.FC = () => {
 
   const handleSnapshotDelete = (snapshotId: number) => {
     deleteSnapshot(snapshotId).then(() => {
+      toast.success(t("backupInfo.deleteSuccess"));
       getSnapshots(parseInt(id || ""), page, pageSize).then((response) => {
         setData(response.data);
         setTotalCount(response.totalCount);
@@ -56,14 +58,30 @@ const BackupInfo: React.FC = () => {
         width: "100%",
       }}
     >
-      <Button
-        onClick={() => {
-          window.history.back();
-        }}
-        sx={{ minWidth: "unset", alignSelf: "flex-start" }}
-      >
-        <ArrowBack />
-      </Button>
+      <Box display="flex" justifyContent="space-between">
+        <Button
+          onClick={() => {
+            window.history.back();
+          }}
+          sx={{ minWidth: "unset", alignSelf: "flex-start" }}
+        >
+          <ArrowBack />
+        </Button>
+        <Button
+          onClick={() => {
+            setData([]);
+            getSnapshots(parseInt(id || ""), page, pageSize).then(
+              (response) => {
+                setData(response.data);
+                setTotalCount(response.totalCount);
+              }
+            );
+          }}
+          sx={{ minWidth: "unset", alignSelf: "flex-start" }}
+        >
+          <Refresh />
+        </Button>
+      </Box>
       <Paper
         sx={{
           padding: 2,
@@ -81,10 +99,11 @@ const BackupInfo: React.FC = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Backup ID</TableCell>
-              <TableCell>Created At</TableCell>
-              <TableCell>Size</TableCell>
-              <TableCell>Actions</TableCell>
+              <TableCell>{t("backupInfo.id")}</TableCell>
+              <TableCell>{t("backupInfo.createdAt")}</TableCell>
+              <TableCell>{t("backupInfo.fileCount")}</TableCell>
+              <TableCell>{t("backupInfo.totalSize")}</TableCell>
+              <TableCell>{t("backupInfo.actions")}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -92,6 +111,7 @@ const BackupInfo: React.FC = () => {
               <TableRow key={row.id}>
                 <TableCell>{row.id}</TableCell>
                 <TableCell>{row.createdAtDate.toLocaleString()}</TableCell>
+                <TableCell>{row.fileCount}</TableCell>
                 <TableCell>{row.totalSizeFormatted}</TableCell>
                 <TableCell>
                   <CustomDialog
