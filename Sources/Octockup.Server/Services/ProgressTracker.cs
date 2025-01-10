@@ -57,7 +57,7 @@ namespace Octockup.Server.Services
             }
             try
             {
-                _dbContext.SaveChanges();
+                await _dbContext.SaveChangesAsync();
                 await _hub.Clients.User(_job.UserId.ToString()).SendAsync("Progress", _job.Progress);
             }
             catch (Exception ex)
