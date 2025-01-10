@@ -16,6 +16,7 @@ import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { getSnapshots } from "../api/api";
 import { BackupSnapshot } from "../api/types";
+import { ArrowBack } from "@mui/icons-material";
 
 const BackupInfo: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -35,15 +36,36 @@ const BackupInfo: React.FC = () => {
   }, [id, page, pageSize]);
 
   return (
-    <div>
+    <Box
+      sx={{
+        padding: 2,
+        marginBottom: 2,
+        display: "flex",
+        flexDirection: "column",
+        gap: 2,
+        width: "100%",
+      }}
+    >
       <Button
         onClick={() => {
           window.history.back();
         }}
+        sx={{ minWidth: "unset", alignSelf: "flex-start" }}
       >
-        {t("backupInfo.back")}
+        <ArrowBack />
       </Button>
-      <h1>Backup Information</h1>
+      <Paper
+        sx={{
+          padding: 2,
+          marginBottom: 2,
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 2,
+        }}
+      >
+        <Box>{t("backupInfo.title")}</Box>
+        <Box># {id}</Box>
+      </Paper>
 
       <TableContainer component={Paper}>
         <Table>
@@ -52,16 +74,24 @@ const BackupInfo: React.FC = () => {
               <TableCell>Backup ID</TableCell>
               <TableCell>Created At</TableCell>
               <TableCell>Size</TableCell>
+              <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {data.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>{row.id}</TableCell>
-                <TableCell>{row.createdAt}</TableCell>
+                <TableCell>{row.createdAtDate.toLocaleString()}</TableCell>
                 <TableCell>{row.totalSizeFormatted}</TableCell>
               </TableRow>
             ))}
+            {data.length === 0 && (
+              <TableRow>
+                <TableCell sx={{ textAlign: "center" }} colSpan={3}>
+                  {t("backupInfo.noData")}
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </TableContainer>
@@ -108,7 +138,7 @@ const BackupInfo: React.FC = () => {
           </TextField>
         </Box>
       </Box>
-    </div>
+    </Box>
   );
 };
 

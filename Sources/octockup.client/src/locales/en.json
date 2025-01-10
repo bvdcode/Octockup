@@ -81,6 +81,8 @@
     "Completed": "Completed"
   },
   "backupInfo": {
-    "back": "Back"
+    "back": "Back",
+    "noData": "No data",
+    "title": "Backup task identifier:"
   }
 }

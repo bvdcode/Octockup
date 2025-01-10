@@ -12,7 +12,7 @@ namespace Octockup.Server.Controllers
     public class SnapshotController(AppDbContext _dbContext, IMapper _mapper) : ControllerBase
     {
         [HttpGet]
-        [Route(Routes.Version + "/[controller]")]
+        [Route(Routes.Version + "/snapshots")]
         public async Task<IActionResult> GetSnapshots([FromQuery] GridifyQuery query)
         {
             int userId = User.GetId();

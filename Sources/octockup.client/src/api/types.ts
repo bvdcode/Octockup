@@ -2,6 +2,8 @@ export interface BaseResponse {
   id: number;
   createdAt: string;
   updatedAt: string;
+  createdAtDate: Date;
+  updatedAtDate: Date;
 }
 
 export interface LoginRequest {

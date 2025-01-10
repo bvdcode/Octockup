@@ -89,7 +89,7 @@ export const getBackups = async (
   pageSize: number = 20,
   orderBy: "asc" | "desc" = "desc"
 ): Promise<DataPage<BackupTask>> => {
-  const url = `/backup/list?orderBy=id ${orderBy}&page=${page}&pageSize=${pageSize}`;
+  const url = `/backups/list?orderBy=id ${orderBy}&page=${page}&pageSize=${pageSize}`;
   const response = await AxiosClient.getInstance().get<BackupTask[]>(url);
   response.data.forEach((backup) => {
     if (backup.completedAt) {
@@ -113,7 +113,7 @@ export const getBackups = async (
  */
 export const getProviders = async (): Promise<BackupProvider[]> => {
   const response = await AxiosClient.getInstance().get<BackupProvider[]>(
-    "/backup/providers"
+    "/backups/providers"
   );
   return response.data;
 };
@@ -125,7 +125,7 @@ export const getProviders = async (): Promise<BackupProvider[]> => {
  * @returns A promise that resolves when the backup job is successfully created.
  */
 export const createBackupJob = async (job: CreateJobRequest): Promise<void> => {
-  await AxiosClient.getInstance().post("/backup/create", job);
+  await AxiosClient.getInstance().post("/backups/create", job);
 };
 
 /**
@@ -135,7 +135,7 @@ export const createBackupJob = async (job: CreateJobRequest): Promise<void> => {
  * @returns A promise that resolves when the job has been successfully triggered.
  */
 export const forceRunJob = async (id: number): Promise<void> => {
-  await AxiosClient.getInstance().patch(`/backup/${id}/start`);
+  await AxiosClient.getInstance().patch(`/backups/${id}/start`);
 };
 
 /**
@@ -148,7 +148,7 @@ export const forceRunJob = async (id: number): Promise<void> => {
  * @returns {Promise<void>} A promise that resolves when the job is stopped.
  */
 export const stopJob = async (id: number): Promise<void> => {
-  await AxiosClient.getInstance().patch(`/backup/${id}/stop`);
+  await AxiosClient.getInstance().patch(`/backups/${id}/stop`);
 };
 
 /**
@@ -158,7 +158,7 @@ export const stopJob = async (id: number): Promise<void> => {
  * @returns A promise that resolves when the job is deleted.
  */
 export const deleteJob = async (id: number): Promise<void> => {
-  await AxiosClient.getInstance().delete(`/backup/${id}`);
+  await AxiosClient.getInstance().delete(`/backups/${id}`);
 };
 
 export const getSnapshots = async (
@@ -167,8 +167,12 @@ export const getSnapshots = async (
   pageSize: number,
   orderBy: "asc" | "desc" = "desc"
 ): Promise<DataPage<BackupSnapshot>> => {
-  const url = `/snapshots?page=${page}&pageSize=${pageSize}&orderBy=id ${orderBy}&filter=backupId==${backupId}`;
+  const url = `/snapshots?page=${page}&pageSize=${pageSize}&orderBy=id ${orderBy}&filter=BackupTaskId=${backupId}`;
   const response = await AxiosClient.getInstance().get<BackupSnapshot[]>(url);
+  response.data.forEach((snapshot) => {
+    snapshot.createdAtDate = new Date(snapshot.createdAt);
+    snapshot.updatedAtDate = new Date(snapshot.updatedAt);
+  });
   return {
     data: response.data,
     totalCount: response.headers["x-total-count"],
