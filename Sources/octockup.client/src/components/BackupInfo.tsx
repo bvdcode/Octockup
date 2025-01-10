@@ -1,4 +1,16 @@
-import { Box, Button, Pagination, TextField } from "@mui/material";
+import {
+  Box,
+  Button,
+  Pagination,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+} from "@mui/material";
 import React, { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -32,8 +44,27 @@ const BackupInfo: React.FC = () => {
         {t("backupInfo.back")}
       </Button>
       <h1>Backup Information</h1>
-      <p>Backup ID: {id}</p>
-      {/* Table rendering will be added here */}
+
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Backup ID</TableCell>
+              <TableCell>Created At</TableCell>
+              <TableCell>Size</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {data.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell>{row.id}</TableCell>
+                <TableCell>{row.createdAt}</TableCell>
+                <TableCell>{row.totalSizeFormatted}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
       <Box
         display="flex"
