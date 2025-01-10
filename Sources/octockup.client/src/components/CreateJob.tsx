@@ -114,11 +114,12 @@ const CreateJob: React.FC = () => {
         width: "100%",
         overflow: "auto",
         padding: { xs: 2, md: 5 },
+        paddingBottom: { xs: 5 },
       }}
     >
       <Stack spacing={2}>
         <Box display="flex" alignItems="center" justifyContent="space-between">
-          <Typography variant="h4">{t("createJob.title")}</Typography>
+          <Typography variant="h5">{t("createJob.title")}</Typography>
           <Tooltip title={t("createJob.help")}>
             <IconButton size="small">
               <Info fontSize="small" />

@@ -117,7 +117,10 @@ const Dashboard: React.FC = () => {
     <Box className={styles.dashboardContainer}>
       <Box display="flex" justifyContent="space-between" alignItems="center">
         <Typography variant="h4">{t("dashboard.title")}</Typography>
-        <Typography variant="body1">
+        <Typography
+          variant="body1"
+          sx={{ display: { xs: "none", sm: "block" } }}
+        >
           {t("dashboard.updatedAt", { date: new Date().toLocaleString() })}
         </Typography>
         <Typography variant="body1">
@@ -257,9 +260,10 @@ const Dashboard: React.FC = () => {
         </TableContainer>
         <Box
           display="flex"
-          justifyContent="space-between"
+          justifyContent="center"
           alignItems="center"
           mt={2}
+          sx={{ marginBottom: { xs: 5 } }}
         >
           <Pagination
             count={Math.ceil(totalCount / pageSize)}
@@ -268,17 +272,21 @@ const Dashboard: React.FC = () => {
             size="medium"
             showFirstButton
             showLastButton
+            // рендерить только 5 кнопок
+            boundaryCount={0}
+            page={page}
             onChange={(_, page) => {
               setPage(page);
             }}
           />
-          <Box ml={2}>
+          <Box ml={2} sx={{ display: { xs: "none", sm: "block" } }}>
             <TextField
               select
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
               variant="outlined"
               size="small"
+              sx={{ position: "absolute", right: 15, marginTop: "-20px" }}
               slotProps={{
                 select: {
                   native: true,

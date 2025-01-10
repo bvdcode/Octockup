@@ -52,7 +52,7 @@ const Profile: React.FC = () => {
 
   return (
     <Box sx={{ p: 2, maxWidth: 400, margin: "auto" }}>
-      <Typography variant="h3" component="h3" sx={{ textAlign: "center" }}>
+      <Typography variant="h4" component="h3" sx={{ textAlign: "center" }}>
         {t("profile.title")}
       </Typography>
       <Card sx={{ my: 2, p: 2 }}>
