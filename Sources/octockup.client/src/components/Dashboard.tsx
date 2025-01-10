@@ -10,6 +10,7 @@ import {
   Paper,
   Button,
   Pagination,
+  TextField,
 } from "@mui/material";
 import { CustomDialog, ProgressBar } from ".";
 import useAuth from "../auth/useAuth";
@@ -38,7 +39,7 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [totalCount, setTotalCount] = useState<number>(0);
   const [page, setPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
 
   useEffect(() => {
     if (!accessToken) {
@@ -254,7 +255,12 @@ const Dashboard: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
-        <Box display="flex" justifyContent="center" mt={2}>
+        <Box
+          display="flex"
+          justifyContent="space-between"
+          alignItems="center"
+          mt={2}
+        >
           <Pagination
             count={Math.ceil(totalCount / pageSize)}
             color="primary"
@@ -266,6 +272,26 @@ const Dashboard: React.FC = () => {
               setPage(page);
             }}
           />
+          <Box ml={2}>
+            <TextField
+              select
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              variant="outlined"
+              size="small"
+              slotProps={{
+                select: {
+                  native: true,
+                },
+              }}
+            >
+              {[1, 5, 10, 25, 50, 100].map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </TextField>
+          </Box>
         </Box>
       </Box>
     </Box>
