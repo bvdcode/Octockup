@@ -11,6 +11,7 @@ export interface CustomDialogProps {
   content: string;
   cancelText: string;
   confirmText: string;
+  doubleCheck?: boolean;
   onCancel?: () => void;
   onConfirm?: () => void;
   children: React.ReactNode;
@@ -18,6 +19,7 @@ export interface CustomDialogProps {
 
 export default function CustomDialog(props: CustomDialogProps) {
   const [open, setOpen] = React.useState(false);
+  const [counter, setCounter] = React.useState(0);
 
   const handleClickOpen = () => {
     setOpen(true);
@@ -28,6 +30,7 @@ export default function CustomDialog(props: CustomDialogProps) {
   };
 
   const handleCancel = () => {
+    setCounter(0);
     if (props.onCancel) {
       props.onCancel();
     }
@@ -35,6 +38,12 @@ export default function CustomDialog(props: CustomDialogProps) {
   };
 
   const handleConfirm = () => {
+    if (props.doubleCheck) {
+      setCounter(counter + 1);
+      if (counter === 0) {
+        return;
+      }
+    }
     if (props.onConfirm) {
       props.onConfirm();
     }
@@ -62,7 +71,11 @@ export default function CustomDialog(props: CustomDialogProps) {
           <Button onClick={handleCancel} color="primary">
             {props.cancelText ?? "CustomDialog.cancelText"}
           </Button>
-          <Button onClick={handleConfirm} autoFocus color="primary">
+          <Button
+            onClick={handleConfirm}
+            autoFocus
+            color={counter === 0 ? "primary" : "error"}
+          >
             {props.confirmText ?? "CustomDialog.confirmText"}
           </Button>
         </DialogActions>

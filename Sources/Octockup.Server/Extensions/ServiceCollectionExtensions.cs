@@ -56,7 +56,7 @@ namespace Octockup.Server.Extensions
 
         public static IServiceCollection SetupJwtKey(this IServiceCollection services, IConfiguration configuration)
         {
-            string filename = FileSystemHelpers.GetFilePath("jwt.key");
+            const string filename = "jwt.key";
             const int keySize = 64;
             if (!File.Exists(filename))
             {

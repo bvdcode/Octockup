@@ -16,7 +16,8 @@ import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { getSnapshots } from "../api/api";
 import { BackupSnapshot } from "../api/types";
-import { ArrowBack } from "@mui/icons-material";
+import { ArrowBack, Delete } from "@mui/icons-material";
+import CustomDialog from "./CustomDialog";
 
 const BackupInfo: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -34,6 +35,13 @@ const BackupInfo: React.FC = () => {
       setTotalCount(response.totalCount);
     });
   }, [id, page, pageSize]);
+
+  const handleSnapshotDelete = (snapshotId: number) => {
+    getSnapshots(parseInt(id || ""), page, pageSize).then((response) => {
+      setData(response.data);
+      setTotalCount(response.totalCount);
+    });
+  };
 
   return (
     <Box
@@ -83,6 +91,22 @@ const BackupInfo: React.FC = () => {
                 <TableCell>{row.id}</TableCell>
                 <TableCell>{row.createdAtDate.toLocaleString()}</TableCell>
                 <TableCell>{row.totalSizeFormatted}</TableCell>
+                <TableCell>
+                  <CustomDialog
+                    title={t("backupInfo.deleteTitle")}
+                    content={t("backupInfo.deleteMessage", {
+                      id: row.id,
+                    })}
+                    cancelText={t("cancel")}
+                    confirmText={t("confirm")}
+                    doubleCheck={true}
+                    onConfirm={() => handleSnapshotDelete(row.id)}
+                  >
+                    <Button sx={{ minWidth: "unset" }}>
+                      <Delete sx={{ cursor: "pointer" }} />
+                    </Button>
+                  </CustomDialog>
+                </TableCell>
               </TableRow>
             ))}
             {data.length === 0 && (
