@@ -161,6 +161,15 @@ export const deleteJob = async (id: number): Promise<void> => {
   await AxiosClient.getInstance().delete(`/backups/${id}`);
 };
 
+/**
+ * Fetches a paginated list of backup snapshots for a given backup task.
+ *
+ * @param backupId - The ID of the backup task.
+ * @param page - The page number to retrieve.
+ * @param pageSize - The number of items per page.
+ * @param orderBy - The order in which to sort the snapshots by ID. Can be "asc" for ascending or "desc" for descending. Defaults to "desc".
+ * @returns A promise that resolves to a DataPage containing an array of BackupSnapshot objects and the total count of snapshots.
+ */
 export const getSnapshots = async (
   backupId: number,
   page: number,
@@ -177,4 +186,8 @@ export const getSnapshots = async (
     data: response.data,
     totalCount: response.headers["x-total-count"],
   };
+};
+
+export const deleteSnapshot = async (snapshotId: number): Promise<void> => {
+  await AxiosClient.getInstance().delete(`/snapshots/${snapshotId}`);
 };

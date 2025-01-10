@@ -14,14 +14,14 @@ import {
 import React, { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { getSnapshots } from "../api/api";
+import { deleteSnapshot, getSnapshots } from "../api/api";
 import { BackupSnapshot } from "../api/types";
 import { ArrowBack, Delete } from "@mui/icons-material";
 import CustomDialog from "./CustomDialog";
 
 const BackupInfo: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
   const [page, setPage] = React.useState(1);
+  const { id } = useParams<{ id: string }>();
   const [pageSize, setPageSize] = React.useState(10);
   const [totalCount, setTotalCount] = React.useState(0);
   const [data, setData] = React.useState<BackupSnapshot[]>([]);
@@ -37,9 +37,11 @@ const BackupInfo: React.FC = () => {
   }, [id, page, pageSize]);
 
   const handleSnapshotDelete = (snapshotId: number) => {
-    getSnapshots(parseInt(id || ""), page, pageSize).then((response) => {
-      setData(response.data);
-      setTotalCount(response.totalCount);
+    deleteSnapshot(snapshotId).then(() => {
+      getSnapshots(parseInt(id || ""), page, pageSize).then((response) => {
+        setData(response.data);
+        setTotalCount(response.totalCount);
+      });
     });
   };
 
