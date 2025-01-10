@@ -254,18 +254,19 @@ const Dashboard: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
-        <Pagination
-          count={Math.ceil(totalCount / pageSize)}
-          color="primary"
-          shape="rounded"
-          size="medium"
-          showFirstButton
-          showLastButton
-          sx={{ marginTop: 2, justifyContent: "center", alignItems: "center" }}
-          onChange={(_, page) => {
-            setPage(page);
-          }}
-        />
+        <Box display="flex" justifyContent="center" mt={2}>
+          <Pagination
+            count={Math.ceil(totalCount / pageSize)}
+            color="primary"
+            shape="rounded"
+            size="medium"
+            showFirstButton
+            showLastButton
+            onChange={(_, page) => {
+              setPage(page);
+            }}
+          />
+        </Box>
       </Box>
     </Box>
   );
