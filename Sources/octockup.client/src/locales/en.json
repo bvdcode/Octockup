@@ -85,6 +85,6 @@
     "noData": "No data",
     "title": "Backup task identifier:",
     "deleteTitle": "Delete backup task",
-    "deleteMessage": "Are you sure you want to delete the snapshot #{{id}}? Warning: this action is irreversible."
+    "deleteMessage": "Are you sure you want to delete the snapshot #{{id}}? WARNING: This action is irreversible! The snapshot will be permanently deleted from the storage provider and FILES WILL BE LOST FOREVER!"
   }
 }

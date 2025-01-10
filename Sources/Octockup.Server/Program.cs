@@ -20,6 +20,7 @@ namespace Octockup.Server
             var builder = WebApplication.CreateBuilder(args);
             builder.Services.AddControllers();
             builder.Services
+                .AddScoped<IFileService, FileSystemService>()
                 .AddCpuUsageService()
                 .AddScoped<ProgressTracker>()
                 .AddSingleton<JobCancellationService>()

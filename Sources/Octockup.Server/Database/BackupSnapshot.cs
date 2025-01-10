@@ -15,6 +15,9 @@ namespace Octockup.Server.Database
         [Column("log")]
         public string Log { get; set; } = string.Empty;
 
+        [Column("is_deleted")]
+        public bool IsDeleted { get; set; }
+
         public virtual BackupTask BackupTask { get; set; } = null!;
 
         public virtual ICollection<SavedFile> SavedFiles { get; set; } = null!;

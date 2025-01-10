@@ -18,7 +18,7 @@ namespace Octockup.Server.Helpers
             return $"{size:0.##} {sizes[order]}";
         }
 
-        internal static (FileInfo SavedFile, FileInfo FileBackupInfo) GetSavedFile(int snapshotId, Guid fileId)
+        internal static (FileInfo SavedFile, FileInfo FileBackupInfo) GetSavedFiles(int snapshotId, Guid fileId)
         {
             string fileFolder = snapshotId.ToString();
             string filePath = Path.Combine(fileFolder, fileId + ".file");
