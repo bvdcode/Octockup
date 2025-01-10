@@ -2,9 +2,11 @@
 {
     public class BackupSnapshotDto : BaseDto
     {
+        public int FileCount { get; set; }
+
         public long TotalSize { get; set; }
 
-        public int FileCount { get; set; }
+        public TimeSpan Elapsed { get; set; }
 
         public int BackupTaskId { get; set; }
 

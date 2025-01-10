@@ -88,6 +88,7 @@
     "deleteMessage": "Are you sure you want to delete the snapshot #{{id}}? WARNING: This action is irreversible! The snapshot will be permanently deleted from the storage provider and FILES WILL BE LOST FOREVER!",
     "id": "ID",
     "createdAt": "Created at",
+    "elapsed": "Elapsed",
     "fileCount": "File count",
     "totalSize": "Total size",
     "actions": "Actions",

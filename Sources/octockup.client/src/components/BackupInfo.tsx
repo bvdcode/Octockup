@@ -101,6 +101,7 @@ const BackupInfo: React.FC = () => {
             <TableRow>
               <TableCell>{t("backupInfo.id")}</TableCell>
               <TableCell>{t("backupInfo.createdAt")}</TableCell>
+              <TableCell>{t("backupInfo.elapsed")}</TableCell>
               <TableCell>{t("backupInfo.fileCount")}</TableCell>
               <TableCell>{t("backupInfo.totalSize")}</TableCell>
               <TableCell>{t("backupInfo.actions")}</TableCell>
@@ -111,6 +112,7 @@ const BackupInfo: React.FC = () => {
               <TableRow key={row.id}>
                 <TableCell>{row.id}</TableCell>
                 <TableCell>{row.createdAtDate.toLocaleString()}</TableCell>
+                <TableCell>{row.elapsed}</TableCell>
                 <TableCell>{row.fileCount}</TableCell>
                 <TableCell>{row.totalSizeFormatted}</TableCell>
                 <TableCell>
