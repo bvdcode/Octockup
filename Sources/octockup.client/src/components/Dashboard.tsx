@@ -162,7 +162,7 @@ const Dashboard: React.FC = () => {
                       {backup.name}
                     </TableCell>
                     <TableCell
-                      sx={{ width: "200px" }}
+                      sx={{ width: "180px" }}
                       title={backup.completedAt ?? "-"}
                     >
                       {backup.completedAtDate?.toLocaleString() ?? "-"}
@@ -189,7 +189,7 @@ const Dashboard: React.FC = () => {
                       />
                     </TableCell>
                     <TableCell
-                      sx={{ width: "150px" }}
+                      sx={{ width: "100px" }}
                       title={t(
                         "backupStatus." + BackupTaskStatus[backup.status]
                       )}
