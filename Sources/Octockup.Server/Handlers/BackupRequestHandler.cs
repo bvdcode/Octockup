@@ -209,7 +209,7 @@ namespace Octockup.Server.Handlers
             Guid newFileId = Guid.NewGuid();
             using var sourceStream = storageProvider.GetFileStream(item);
             await _files.SaveFileAsync(snapshot.Id, newFileId, sourceStream,
-                p => progressTracker.ReportProgress(progress, $"Saving file: {item.Name} - {p / item.Size:P0} bytes"), merged);
+                p => progressTracker.ReportProgress(progress, $"Saving file: {item.Name} - {p / item.Size:P0}"), merged);
             using Stream savedFs = _files.GetSavedFileStream(snapshot.Id, newFileId);
             string hash = savedFs.SHA512();
             SavedFile savedFile = new()

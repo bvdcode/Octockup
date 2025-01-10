@@ -89,7 +89,7 @@
     "id": "ID",
     "createdAt": "Created at",
     "elapsed": "Elapsed",
-    "fileCount": "File count",
+    "fileCount": "Files",
     "totalSize": "Total size",
     "actions": "Actions",
     "deleteSuccess": "Job deletion request sent - when the task is deleted, the record will be removed from the list"
