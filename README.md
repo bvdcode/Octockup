@@ -85,7 +85,8 @@ To update to the latest version of the application, follow these steps:
 
 ## Support
 
-If you have any questions or issues, please create a new issue on GitHub or contact me via email: octockup-github-support@belov.us
+If you have any questions or issues, please create a new issue on GitHub or contact me via email:
+octockup-github-support@belov.us
 
 ## License
 
