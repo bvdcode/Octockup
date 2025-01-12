@@ -1,6 +1,12 @@
 # Octockup
 _IN DEVELOPMENT_
 
+[![CC BY-NC-SA 4.0][cc-by-nc-sa-shield]][cc-by-nc-sa]
+![Build&Deploy](https://github.com/bvdcode/Octockup/actions/workflows/docker-image.yml/badge.svg) 
+[![Docker Pulls](https://badgen.net/docker/pulls/bvdcode/octockup?icon=docker&label=pulls)](https://hub.docker.com/r/bvdcode/octockup/)
+[![Docker Image Size](https://badgen.net/docker/size/bvdcode/octockup?icon=docker&label=image%20size)](https://hub.docker.com/r/bvdcode/octockup/)
+![Github last-commit](https://img.shields.io/github/last-commit/bvdcode/Octockup)
+
 >Live: [https://backup.belov.us](https://backup.belov.us)
 
 Octockup is an all-in-one client and server application for autobackup that includes both backend and frontend in a single Docker container. It allows you to gather and manage data from various sources, such as YouTube, SSH, FTP, and more, directly through the browser.
@@ -83,6 +89,13 @@ If you have any questions or issues, please create a new issue on GitHub or cont
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+This work is licensed under a
+[Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License][cc-by-nc-sa].
+
+[![CC BY-NC-SA 4.0][cc-by-nc-sa-image]][cc-by-nc-sa]
+
+[cc-by-nc-sa]: http://creativecommons.org/licenses/by-nc-sa/4.0/
+[cc-by-nc-sa-image]: https://licensebuttons.net/l/by-nc-sa/4.0/88x31.png
+[cc-by-nc-sa-shield]: https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg
 
 ---
