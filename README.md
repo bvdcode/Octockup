@@ -62,7 +62,7 @@ docker compose up -d
 ### Environment variables
 
 ```yaml
-CORS_ORIGINS: allowed origins
+CORS_ORIGINS: allowed origins for backend requests
 POSTGRES_HOST: database address
 POSTGRES_PORT: port, ex. 5432
 POSTGRES_DATABASE: database where data will be stored, ex. octockup
