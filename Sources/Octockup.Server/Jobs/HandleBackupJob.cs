@@ -47,7 +47,7 @@ namespace Octockup.Server.Jobs
         private async Task<IEnumerable<BackupTask>> GetPendingJobsAsync()
         {
             var allJobs = await _dbContext.BackupTasks
-                .Where(x => x.IsEnabled && !x.IsDeleted)
+                .Where(x => !x.IsDeleted)
                 .ToListAsync();
             List<BackupTask> result = [];
             foreach (var job in allJobs)
@@ -65,6 +65,11 @@ namespace Octockup.Server.Jobs
                 {
                     _logger.LogInformation("Job {jobId} is forced to run.", job.Id);
                     result.Add(job);
+                    continue;
+                }
+                if (!job.IsEnabled)
+                {
+                    _logger.LogDebug("Job {jobId} is disabled, skipping.", job.Id);
                     continue;
                 }
                 if (job.CompletedAt != null && job.Interval == TimeSpan.Zero)
