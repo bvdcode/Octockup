@@ -193,5 +193,5 @@ export const deleteSnapshot = async (snapshotId: number): Promise<void> => {
 };
 
 export const triggerJob = async (): Promise<void> => {
-  await AxiosClient.getInstance().post("/backups/trigger-job");
+  await AxiosClient.getInstance().patch("/backups/trigger-job");
 };
