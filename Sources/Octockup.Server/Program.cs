@@ -30,7 +30,7 @@ namespace Octockup.Server
                 .AddCpuUsageService()
                 .AddScoped<ProgressTracker>()
                 .AddSingleton<JobCancellationService>()
-                .AddQuartzJobs()
+                .AddQuartzJobs()    
                 .AddStorageProviders()
                 .AddHttpContextAccessor()
                 .AddValidatorsFromAssemblyContaining<Program>()

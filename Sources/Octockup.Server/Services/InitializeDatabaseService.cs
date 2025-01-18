@@ -24,7 +24,7 @@ namespace Octockup.Server.Services
             logger.LogInformation("Database type: {databaseType}", databaseType);
             if (databaseType != "Microsoft.EntityFrameworkCore.Sqlite")
             {
-                logger.LogInformation("Database is not SQLite, skipping WAL setup.");
+                logger.LogDebug("Database is not SQLite, skipping WAL setup.");
                 return;
             }
             try
