@@ -21,6 +21,8 @@ namespace Octockup.Server.Jobs
                 await DeleteSnapshotAsync(snapshot);
             }
             _logger.LogInformation("Cleanup job completed - deleted {count} snapshots.", snapshots.Count);
+            int deletedFolders = _files.DeleteEmptyFolders();
+            _logger.LogInformation("Deleted {count} empty folders.", deletedFolders);
         }
 
         private async Task DeleteSnapshotAsync(BackupSnapshot snapshot)

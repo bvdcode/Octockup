@@ -2,6 +2,7 @@
 {
     public interface IFileService
     {
+        int DeleteEmptyFolders();
         Task DeleteFileAsync(int id, Guid fileId);
         bool FileBackupInfoExists(int id, Guid fileId);
         Stream GetSavedFileStream(int id, Guid newFileId);

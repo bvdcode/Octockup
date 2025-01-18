@@ -51,5 +51,10 @@ namespace Octockup.Server.Helpers
             }
             return Path.Combine(DataFolder, filename);
         }
+
+        internal static DirectoryInfo GetRootDirectory()
+        {
+            return new DirectoryInfo(DataFolder);
+        }
     }
 }

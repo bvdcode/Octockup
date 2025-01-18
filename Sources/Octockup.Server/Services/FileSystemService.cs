@@ -4,6 +4,26 @@ namespace Octockup.Server.Services
 {
     public class FileSystemService : IFileService
     {
+        public int DeleteEmptyFolders()
+        {
+            var root = FileSystemHelpers.GetRootDirectory();
+            int deletedFolders = 0;
+            var folders = root.GetDirectories("*", SearchOption.TopDirectoryOnly);
+            foreach (var folder in folders)
+            {
+                if (folder.GetFiles().Length == 0 && folder.GetDirectories().Length == 0)
+                {
+                    try
+                    {
+                        folder.Delete();
+                        deletedFolders++;
+                    }
+                    catch (Exception) { }
+                }
+            }
+            return deletedFolders;
+        }
+
         public Task DeleteFileAsync(int snapshotId, Guid fileId)
         {
             var (savedFile, fileBackupInfo) = FileSystemHelpers.GetSavedFiles(snapshotId, fileId);
