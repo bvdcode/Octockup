@@ -37,7 +37,7 @@ namespace Octockup.Server.Extensions
                 };
                 services.AddDbContext<AppDbContext, PostgresDbContext>(x => x
                     .UseNpgsql(npgBuilder.ConnectionString)
-                    .UseLazyLoadingProxies());
+                    .UseLazyLoadingProxies(), contextLifetime: ServiceLifetime.Transient);
                 return services;
             }
             else
