@@ -5,6 +5,7 @@ using Octockup.Server.Services;
 using Octockup.Server.Extensions;
 using FluentValidation.AspNetCore;
 using Octockup.Server.Controllers;
+using Octockup.Server.HealthChecks;
 using EasyExtensions.Quartz.Extensions;
 using EasyExtensions.AspNetCore.Extensions;
 using EasyExtensions.EntityFrameworkCore.Extensions;
@@ -18,6 +19,12 @@ namespace Octockup.Server
         {
             var builder = WebApplication.CreateBuilder(args);
             builder.Services.AddControllers();
+            builder.Services
+                .AddHealthChecks()
+                .AddCheck<DatabaseHealthCheck>("Database")
+                .AddCheck<NetworkHealthCheck>("Network")
+                .AddCheck<StorageHealthCheck>("Storage")
+                .AddCheck<DnsHealthCheck>("DNS");
             builder.Services
                 .AddScoped<IFileService, FileSystemService>()
                 .AddCpuUsageService()
@@ -50,6 +57,7 @@ namespace Octockup.Server
             app.ApplyMigrations<AppDbContext>();
             app.UseExceptionHandler();
             app.MapHub<BackupHub>(Routes.Version + "/backup/hub");
+            app.MapHealthChecks(Routes.Service.Health);
             app.Run();
         }
     }

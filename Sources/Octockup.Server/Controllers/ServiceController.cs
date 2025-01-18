@@ -11,13 +11,6 @@ namespace Octockup.Server.Controllers
     {
         private readonly CpuUsageService service = service;
 
-        [Produces("application/json")]
-        [HttpGet(Routes.Service.Health)]
-        public IActionResult Health()
-        {
-            return Ok();
-        }
-
         [HttpGet(Routes.Service.Time)]
         [Produces("application/json", Type = typeof(CurrentTimeUtc))]
         public IActionResult Time()

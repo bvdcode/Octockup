@@ -85,5 +85,13 @@ namespace Octockup.Server.Services
             }, merged);
             await sourceStream.CopyToAsync(fileStream, merged);
         }
+
+        public bool IsStorageHealthy()
+        {
+            const int threshold = 100 * 1024 * 1024; // 100 MB
+            var root = FileSystemHelpers.GetRootDirectory();
+            var drive = new DriveInfo(root.Root.FullName);
+            return drive.AvailableFreeSpace > threshold;
+        }
     }
 }
