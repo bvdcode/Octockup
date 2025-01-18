@@ -21,10 +21,10 @@ namespace Octockup.Server
             builder.Services.AddControllers();
             builder.Services
                 .AddHealthChecks()
-                .AddCheck<DatabaseHealthCheck>("Database")
+                .AddCheck<DnsHealthCheck>("DNS")
                 .AddCheck<NetworkHealthCheck>("Network")
                 .AddCheck<StorageHealthCheck>("Storage")
-                .AddCheck<DnsHealthCheck>("DNS");
+                .AddCheck<DatabaseHealthCheck>("Database");
             builder.Services
                 .AddScoped<IFileService, FileSystemService>()
                 .AddCpuUsageService()

@@ -25,6 +25,14 @@ namespace Octockup.Server.Controllers
         AppDbContext _dbContext, IMapper _mapper, IMediator _mediator, ISchedulerFactory _scheduler) : ControllerBase
     {
         [Authorize]
+        [HttpPatch("trigger-job")]
+        public async Task<IActionResult> TriggerJobAsync()
+        {
+            await _scheduler.TriggerJobAsync<HandleBackupJob>();
+            return Ok();
+        }
+
+        [Authorize]
         [HttpDelete("{backupTask}")]
         public async Task<IActionResult> DeleteBackupAsync([FromRoute] int backupTask)
         {
