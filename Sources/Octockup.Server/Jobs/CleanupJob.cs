@@ -30,7 +30,17 @@ namespace Octockup.Server.Jobs
                 .ToListAsync();
             foreach (var file in snapshotFiles)
             {
-                await _files.DeleteFileAsync(snapshot.Id, file.FileId);
+                bool existsInOtherSnapshots = await _dbContext.SavedFiles
+                    .AnyAsync(x => x.FileId == file.FileId && x.BackupSnapshotId != snapshot.Id);
+                if (!existsInOtherSnapshots)
+                {
+                    _logger.LogInformation("Deleting file {fileId} for snapshot {snapshotId}.", file.FileId, snapshot.Id);
+                    await _files.DeleteFileAsync(snapshot.Id, file.FileId);
+                }
+                else
+                {
+                    _logger.LogInformation("File {fileId} is used in other snapshots, skipping deletion.", file.FileId);
+                }
                 _dbContext.SavedFiles.Remove(file);
                 await _dbContext.SaveChangesAsync();
                 _logger.LogInformation("Deleted file {fileId} for snapshot {snapshotId}.", file.FileId, snapshot.Id);
