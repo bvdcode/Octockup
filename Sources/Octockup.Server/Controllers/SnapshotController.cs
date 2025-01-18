@@ -1,14 +1,15 @@
-﻿using Gridify;
+﻿using Quartz;
+using Gridify;
 using AutoMapper;
 using EasyExtensions;
+using Octockup.Server.Jobs;
 using Gridify.EntityFramework;
 using Microsoft.AspNetCore.Mvc;
 using Octockup.Server.Database;
 using Octockup.Server.Models.Dto;
 using Microsoft.EntityFrameworkCore;
-using Quartz;
 using EasyExtensions.Quartz.Extensions;
-using Octockup.Server.Jobs;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Octockup.Server.Controllers
 {
@@ -16,6 +17,7 @@ namespace Octockup.Server.Controllers
     public class SnapshotController(AppDbContext _dbContext, IMapper _mapper,
         ISchedulerFactory _scheduler) : ControllerBase
     {
+        [Authorize]
         [HttpDelete]
         [Route(Routes.Version + "/snapshots/{snapshot}")]
         public async Task<IActionResult> DeleteSnapshotAsync([FromRoute] int snapshot)
@@ -33,6 +35,7 @@ namespace Octockup.Server.Controllers
             return Ok();
         }
 
+        [Authorize]
         [HttpGet]
         [Route(Routes.Version + "/snapshots")]
         public async Task<IActionResult> GetSnapshots([FromQuery] GridifyQuery query)
