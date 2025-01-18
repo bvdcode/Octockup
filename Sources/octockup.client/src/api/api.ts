@@ -191,3 +191,7 @@ export const getSnapshots = async (
 export const deleteSnapshot = async (snapshotId: number): Promise<void> => {
   await AxiosClient.getInstance().delete(`/snapshots/${snapshotId}`);
 };
+
+export const triggerJob = async (): Promise<void> => {
+  await AxiosClient.getInstance().post("/backups/trigger-job");
+};

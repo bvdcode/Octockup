@@ -27,8 +27,14 @@ import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
 import { BackupTask, BackupTaskStatus, User } from "../api/types";
 import { ProgressBarColor } from "./ProgressBar/ProgressBarColor";
-import { Delete, Replay, Stop, Visibility } from "@mui/icons-material";
-import { deleteJob, forceRunJob, getBackups, stopJob } from "../api/api";
+import { Delete, Refresh, Replay, Stop, Visibility } from "@mui/icons-material";
+import {
+  deleteJob,
+  forceRunJob,
+  getBackups,
+  stopJob,
+  triggerJob,
+} from "../api/api";
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -123,8 +129,11 @@ const Dashboard: React.FC = () => {
         >
           {t("dashboard.updatedAt", { date: new Date().toLocaleString() })}
         </Typography>
-        <Typography variant="body1">
+        <Typography variant="body1" sx={{ gap: 1 }}>
           {t("dashboard.welcome", { name: user.username })}
+          <Button onClick={triggerJob} sx={{ minWidth: "unset" }}>
+            <Refresh />
+          </Button>
         </Typography>
       </Box>
       <Box mt={2} flexGrow={1} className={styles.tableContainer}>
