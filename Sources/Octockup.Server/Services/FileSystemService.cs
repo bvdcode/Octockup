@@ -24,9 +24,9 @@ namespace Octockup.Server.Services
             return deletedFolders;
         }
 
-        public Task DeleteFileAsync(int backupSnapshotId, Guid fileId)
+        public Task DeleteFileAsync(int backupTaskId, Guid fileId)
         {
-            var (savedFile, fileBackupInfo) = FileSystemHelpers.GetSavedFiles(backupSnapshotId, fileId);
+            var (savedFile, fileBackupInfo) = FileSystemHelpers.GetSavedFiles(backupTaskId, fileId);
             try
             {
                 savedFile.Delete();
@@ -40,34 +40,34 @@ namespace Octockup.Server.Services
             return Task.CompletedTask;
         }
 
-        public bool FileBackupInfoExists(int backupSnapshotId, Guid fileId)
+        public bool FileBackupInfoExists(int backupTaskId, Guid fileId)
         {
-            var (_, fileBackupInfo) = FileSystemHelpers.GetSavedFiles(backupSnapshotId, fileId);
+            var (_, fileBackupInfo) = FileSystemHelpers.GetSavedFiles(backupTaskId, fileId);
             return fileBackupInfo.Exists;
         }
 
-        public Stream GetSavedFileStream(int backupSnapshotId, Guid newFileId)
+        public Stream GetSavedFileStream(int backupTaskId, Guid newFileId)
         {
-            var (savedFile, _) = FileSystemHelpers.GetSavedFiles(backupSnapshotId, newFileId);
+            var (savedFile, _) = FileSystemHelpers.GetSavedFiles(backupTaskId, newFileId);
             return savedFile.OpenRead();
         }
 
-        public Task SaveBackupInfoAsync(int backupSnapshotId, Guid newFileId, string fileInfoJson, CancellationToken merged)
+        public Task SaveBackupInfoAsync(int backupTaskId, Guid newFileId, string fileInfoJson, CancellationToken merged)
         {
-            var (_, fileBackupInfo) = FileSystemHelpers.GetSavedFiles(backupSnapshotId, newFileId);
+            var (_, fileBackupInfo) = FileSystemHelpers.GetSavedFiles(backupTaskId, newFileId);
             return File.WriteAllTextAsync(fileBackupInfo.FullName, fileInfoJson, merged);
         }
 
-        public bool SavedFileExists(int backupSnapshotId, Guid fileId)
+        public bool SavedFileExists(int backupTaskId, Guid fileId)
         {
-            var (savedFile, _) = FileSystemHelpers.GetSavedFiles(backupSnapshotId, fileId);
+            var (savedFile, _) = FileSystemHelpers.GetSavedFiles(backupTaskId, fileId);
             return savedFile.Exists;
         }
 
-        public async Task SaveFileAsync(int backupSnapshotId, Guid newFileId, Stream sourceStream,
+        public async Task SaveFileAsync(int backupTaskId, Guid newFileId, Stream sourceStream,
             Action<long>? readBytesCount = null, CancellationToken merged = default)
         {
-            var (savedFile, fileBackupInfo) = FileSystemHelpers.GetSavedFiles(backupSnapshotId, newFileId);
+            var (savedFile, fileBackupInfo) = FileSystemHelpers.GetSavedFiles(backupTaskId, newFileId);
             using var fileStream = File.OpenWrite(savedFile.FullName);
             _ = Task.Run(() =>
             {
