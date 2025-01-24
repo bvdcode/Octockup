@@ -4,11 +4,11 @@
     {
         bool IsStorageHealthy();
         int DeleteEmptyFolders();
-        Task DeleteFileAsync(int backupSnapshotId, Guid fileId);
-        bool SavedFileExists(int backupSnapshotId, Guid fileId);
-        bool FileBackupInfoExists(int backupSnapshotId, Guid fileId);
-        Stream GetSavedFileStream(int backupSnapshotId, Guid fileId);
-        Task SaveBackupInfoAsync(int backupSnapshotId, Guid fileId, string fileInfoJson, CancellationToken merged);
-        Task SaveFileAsync(int backupSnapshotId, Guid fileId, Stream sourceStream, Action<long>? readBytesCount = null, CancellationToken merged = default);
+        Task DeleteFileAsync(int backupTaskId, Guid fileId);
+        bool SavedFileExists(int backupTaskId, Guid fileId);
+        bool FileBackupInfoExists(int backupTaskId, Guid fileId);
+        Stream GetSavedFileStream(int backupTaskId, Guid fileId);
+        Task SaveBackupInfoAsync(int backupTaskId, Guid fileId, string fileInfoJson, CancellationToken merged);
+        Task SaveFileAsync(int backupTaskId, Guid fileId, Stream sourceStream, Action<long>? readBytesCount = null, CancellationToken merged = default);
     }
 }

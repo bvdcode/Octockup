@@ -150,8 +150,8 @@ namespace Octockup.Server.Handlers
             {
                 return null;
             }
-            bool isSavedFileExists = _files.SavedFileExists(saved.BackupSnapshotId, saved.FileId);
-            bool isFileBackupInfoExists = _files.FileBackupInfoExists(saved.BackupSnapshotId, saved.FileId);
+            bool isSavedFileExists = _files.SavedFileExists(saved.BackupSnapshot.BackupTaskId, saved.FileId);
+            bool isFileBackupInfoExists = _files.FileBackupInfoExists(saved.BackupSnapshot.BackupTaskId, saved.FileId);
             if (!isSavedFileExists || !isFileBackupInfoExists)
             {
                 _logger.LogWarning("File not found in local storage: {file}", remoteFileInfo.Name);
@@ -208,9 +208,9 @@ namespace Octockup.Server.Handlers
             progressTracker.ReportProgress(progress, "Saving file: " + item.Name);
             Guid newFileId = Guid.NewGuid();
             using var sourceStream = storageProvider.GetFileStream(item);
-            await _files.SaveFileAsync(snapshot.Id, newFileId, sourceStream,
+            await _files.SaveFileAsync(snapshot.BackupTaskId, newFileId, sourceStream,
                 p => progressTracker.ReportProgress(progress, $"Saving file: {item.Name} - {p / item.Size:P0}"), merged);
-            using Stream savedFs = _files.GetSavedFileStream(snapshot.Id, newFileId);
+            using Stream savedFs = _files.GetSavedFileStream(snapshot.BackupTaskId, newFileId);
             string hash = savedFs.SHA512();
             SavedFile savedFile = new()
             {
@@ -235,7 +235,7 @@ namespace Octockup.Server.Handlers
                 savedFile.MetadataCreatedAt,
                 savedFile.MetadataUpdatedAt
             }, _jsonOptions);
-            await _files.SaveBackupInfoAsync(snapshot.Id, newFileId, fileInfoJson, merged);
+            await _files.SaveBackupInfoAsync(snapshot.BackupTaskId, newFileId, fileInfoJson, merged);
         }
     }
 }
