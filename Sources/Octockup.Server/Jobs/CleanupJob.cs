@@ -37,7 +37,7 @@ namespace Octockup.Server.Jobs
                 if (!existsInOtherSnapshots)
                 {
                     _logger.LogInformation("Deleting file {fileId} for snapshot {snapshotId}.", file.FileId, snapshot.Id);
-                    await _files.DeleteFileAsync(snapshot.BackupTaskId, file.FileId); backupTaskId
+                    await _files.DeleteFileAsync(snapshot.BackupTaskId, file.FileId);
                 }
                 else
                 {
