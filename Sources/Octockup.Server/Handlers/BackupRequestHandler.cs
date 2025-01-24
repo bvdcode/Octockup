@@ -78,7 +78,7 @@ namespace Octockup.Server.Handlers
             }
         }
 
-        private async Task CreateBackupAsync(BackupTask job, IStorageProvider storageProvider,
+        private async Task CreateBackupAsync(BackupTask backupTask, IStorageProvider storageProvider,
             ProgressTracker progressTracker, CancellationToken merged)
         {
             progressTracker.ReportProgress(0.01, "Requesting files", force: true);
@@ -86,7 +86,7 @@ namespace Octockup.Server.Handlers
             progressTracker.ReportProgress(0.02, $"Got {files.Count} files", force: true);
             int processed = 0;
             int updated = 0;
-            BackupSnapshot snapshot = new() { BackupTaskId = job.Id };
+            BackupSnapshot snapshot = new() { BackupTaskId = backupTask.Id };
             await _dbContext.BackupSnapshots.AddAsync(snapshot, merged);
             await _dbContext.SaveChangesAsync(merged);
             foreach (var remoteFileInfo in files)
@@ -108,7 +108,7 @@ namespace Octockup.Server.Handlers
                     await SaveNewFileAsync(storageProvider, remoteFileInfo, snapshot, progressTracker, progress, merged);
                     continue;
                 }
-                bool filesEqual = CompareFiles(storageProvider, remoteFileInfo, savedFile, job);
+                bool filesEqual = CompareFiles(storageProvider, remoteFileInfo, savedFile, backupTask);
                 if (filesEqual)
                 {
                     _logger.LogDebug("Cloning file: {file}", remoteFileInfo.Path);
@@ -150,8 +150,8 @@ namespace Octockup.Server.Handlers
             {
                 return null;
             }
-            bool isSavedFileExists = _files.SavedFileExists(snapshot.Id, saved.FileId);
-            bool isFileBackupInfoExists = _files.FileBackupInfoExists(snapshot.Id, saved.FileId);
+            bool isSavedFileExists = _files.SavedFileExists(saved.BackupSnapshotId, saved.FileId);
+            bool isFileBackupInfoExists = _files.FileBackupInfoExists(saved.BackupSnapshotId, saved.FileId);
             if (!isSavedFileExists || !isFileBackupInfoExists)
             {
                 _logger.LogWarning("File not found in local storage: {file}", remoteFileInfo.Name);

@@ -37,11 +37,12 @@ namespace Octockup.Server.Services
             }
             if (string.IsNullOrWhiteSpace(message))
             {
-                _log.AppendLine($"[{DateTime.UtcNow:HH:mm:ss}] Progress: {_job.Progress}%");
+                // progress is 0 to 1, Progress to percentage
+                _log.AppendLine($"[{DateTime.UtcNow:HH:mm:ss}] Progress: {_job.Progress:P2}");
             }
             else
             {
-                _log.AppendLine($"[{DateTime.UtcNow:HH:mm:ss}] Progress: {_job.Progress}%, Message: {message}");
+                _log.AppendLine($"[{DateTime.UtcNow:HH:mm:ss}] Progress: {_job.Progress:P2}, Message: {message}");
             }
             if (_updateSw.ElapsedMilliseconds < UpdateInterval && !force)
             {
@@ -64,7 +65,7 @@ namespace Octockup.Server.Services
             {
                 _logger.LogError(ex, "Failed to update job progress.");
             }
-            _logger.LogInformation("Job {jobId} progress: {progress}%", _job.Id, _job.Progress);
+            _logger.LogInformation("Job {jobId} progress: {progress}%", _job.Id, _job.Progress.ToString("P2"));
             _logger.LogDebug("Job {jobId} progress updated for {elapsed}.", _job.Id, _job.Elapsed);
         }
     }
