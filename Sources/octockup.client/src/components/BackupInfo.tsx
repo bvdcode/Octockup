@@ -11,14 +11,14 @@ import {
   TableRow,
   TextField,
 } from "@mui/material";
+import { toast } from "react-toastify";
 import React, { useEffect } from "react";
+import CustomDialog from "./CustomDialog";
 import { useParams } from "react-router-dom";
+import { BackupSnapshot } from "../api/types";
 import { useTranslation } from "react-i18next";
 import { deleteSnapshot, getSnapshots } from "../api/api";
-import { BackupSnapshot } from "../api/types";
 import { ArrowBack, Delete, Refresh } from "@mui/icons-material";
-import CustomDialog from "./CustomDialog";
-import { toast } from "react-toastify";
 
 const BackupInfo: React.FC = () => {
   const [page, setPage] = React.useState(1);

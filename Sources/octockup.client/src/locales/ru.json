@@ -15,14 +15,16 @@
     "passwordMismatch": "Пароли не совпадают",
     "passwordLength": "Пароль должен быть не менее {{minPasswordLength}} символов длиной",
     "passwordChanged": "Пароль успешно изменен",
-    "passwordChangeError": "Ошибка изменения пароля: {{error}}"
+    "passwordChangeError": "Ошибка изменения пароля: {{error}}",
+    "theme": "Тема"
   },
   "login": {
     "username": "Имя пользователя",
     "password": "Пароль",
     "login": "Войти",
     "success": "Вход выполнен успешно",
-    "error": "Ошибка входа: {{error}}"
+    "error": "Ошибка входа: {{error}}",
+    "loader": "Вход в систему..."
   },
   "loader": {
     "loading": "Загрузка..."

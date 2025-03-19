@@ -1,4 +1,11 @@
 import {
+  deleteJob,
+  forceRunJob,
+  getBackups,
+  stopJob,
+  triggerJob,
+} from "../api/api";
+import {
   Box,
   Table,
   TableBody,
@@ -17,24 +24,16 @@ import {
   HubConnectionBuilder,
   LogLevel,
 } from "@microsoft/signalr";
-import { CustomDialog, ProgressBar } from ".";
 import useAuth from "../auth/useAuth";
 import { toast } from "react-toastify";
 import { API_BASE_URL } from "../config";
-import styles from "./Dashboard.module.css";
+import { CustomDialog, ProgressBar } from ".";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
 import { BackupTask, BackupTaskStatus, User } from "../api/types";
-import { ProgressBarColor } from "./ProgressBar/ProgressBarColor";
+import { ProgressBarColor } from "./ProgressBarColor";
 import { Delete, Refresh, Replay, Stop, Visibility } from "@mui/icons-material";
-import {
-  deleteJob,
-  forceRunJob,
-  getBackups,
-  stopJob,
-  triggerJob,
-} from "../api/api";
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -120,7 +119,7 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <Box className={styles.dashboardContainer}>
+    <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center">
         <Typography variant="h4">{t("dashboard.title")}</Typography>
         <Typography
@@ -136,9 +135,9 @@ const Dashboard: React.FC = () => {
           </Button>
         </Typography>
       </Box>
-      <Box mt={2} flexGrow={1} className={styles.tableContainer}>
+      <Box mt={2} flexGrow={1}>
         <TableContainer component={Paper}>
-          <Table className={styles.table}>
+          <Table>
             <TableHead>
               <TableRow>
                 <TableCell>{t("dashboard.id")}</TableCell>

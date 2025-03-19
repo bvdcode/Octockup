@@ -21,14 +21,14 @@ import IntervalInput from "./IntervalInput";
 import { BackupProvider } from "../api/types";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { createBackupJob, getProviders } from "../api/api";
-import { initialState, reducer } from "./CreateJobReducer";
-import React, { useEffect, useReducer, useState } from "react";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import {
   materialDark,
   materialLight,
 } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { createBackupJob, getProviders } from "../api/api";
+import { initialState, reducer } from "./CreateJobReducer";
+import React, { useEffect, useReducer, useState } from "react";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 
 const CreateJob: React.FC = () => {
   const { t } = useTranslation();

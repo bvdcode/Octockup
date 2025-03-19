@@ -15,11 +15,13 @@ import { changePassword } from "../api/api";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { MIN_PASSWORD_LENGTH } from "../config";
+import { useAppTheme } from "../hooks/useAppTheme";
 
 const Profile: React.FC = () => {
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { isDarkMode, toggleTheme } = useAppTheme();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -99,6 +101,22 @@ const Profile: React.FC = () => {
               {t("profile.language")}
             </Typography>
             <LanguageSwitcher />
+          </Box>
+        </CardContent>
+      </Card>
+      <Card sx={{ my: 2, p: 2 }}>
+        <CardContent>
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+          >
+            <Typography variant="h6" component="h6">
+              {t("profile.theme")}
+            </Typography>
+            <Button variant="text" onClick={toggleTheme}>
+              {isDarkMode ? "🌙" : "☀️"}
+            </Button>
           </Box>
         </CardContent>
       </Card>

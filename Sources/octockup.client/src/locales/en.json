@@ -5,6 +5,7 @@
   "dataLoadError": "Error loading data: {{error}}",
   "cancel": "Cancel",
   "confirm": "Delete",
+  "loading": "Loading...",
   "profile": {
     "title": "Profile",
     "newPassword": "New Password",
@@ -15,14 +16,16 @@
     "passwordMismatch": "Passwords do not match",
     "passwordLength": "Password must be at least {{minPasswordLength}} characters long",
     "passwordChanged": "Password changed successfully",
-    "passwordChangeError": "Password change error: {{error}}"
+    "passwordChangeError": "Password change error: {{error}}",
+    "theme": "Theme"
   },
   "login": {
     "username": "Username",
     "password": "Password",
     "login": "Login",
     "success": "Login successful",
-    "error": "Login error: {{error}}"
+    "error": "Login error: {{error}}",
+    "loader": "Logging in..."
   },
   "loader": {
     "loading": "Loading..."

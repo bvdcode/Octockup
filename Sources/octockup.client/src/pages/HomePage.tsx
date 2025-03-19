@@ -1,4 +1,3 @@
-import styles from "./HomePage.module.css";
 import {
   BackupInfo,
   CreateJob,
@@ -6,6 +5,7 @@ import {
   NavBar,
   Profile,
 } from "../components";
+import { Paper } from "@mui/material";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Add, Dashboard as DashIcon, Person } from "@mui/icons-material";
 
@@ -28,7 +28,14 @@ const HomePage: React.FC = () => {
   ];
 
   return (
-    <div className={styles.homePageContainer}>
+    <Paper
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        width: "100%",
+        height: "100%",
+      }}
+    >
       <Routes key={location.pathname}>
         <Route path="/profile" element={<Profile />} />
         <Route path="/create" element={<CreateJob />} />
@@ -37,7 +44,7 @@ const HomePage: React.FC = () => {
         <Route path="/" element={<Navigate to="/dashboard" />} />
       </Routes>
       <NavBar buttons={navButtons} />
-    </div>
+    </Paper>
   );
 };
 

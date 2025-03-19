@@ -1,4 +1,4 @@
-import Loader from "./Loader";
+import { OpacityLoader } from ".";
 import useAuth from "../auth/useAuth";
 import { checkAuth } from "../api/api";
 import React, { useEffect } from "react";
@@ -50,7 +50,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       <Navigate to={fallbackPath} />
     )
   ) : (
-    <Loader />
+    <OpacityLoader />
   );
 };
 

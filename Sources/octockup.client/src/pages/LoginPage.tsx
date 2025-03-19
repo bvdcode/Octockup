@@ -2,10 +2,9 @@ import { useState } from "react";
 import { login } from "../api/api";
 import useAuth from "../auth/useAuth";
 import { toast } from "react-toastify";
-import { LoginForm } from "../components";
-import Loader from "../components/Loader";
-import { Navigate, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { LoginForm, OpacityLoader } from "../components";
+import { Navigate, useNavigate } from "react-router-dom";
 
 const LoginPage: React.FC = () => {
   const { signIn } = useAuth();
@@ -37,7 +36,7 @@ const LoginPage: React.FC = () => {
   };
   return (
     <>
-      {isLoading && <Loader />}
+      {isLoading && <OpacityLoader text={t("login.loader")} />}
       <LoginForm onLogin={onLogin} />
       {isAuthenticated && <Navigate to="/" />}
     </>
