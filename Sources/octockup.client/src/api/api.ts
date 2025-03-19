@@ -87,9 +87,10 @@ export const changePassword = async (newPassword: string): Promise<void> => {
 export const getBackups = async (
   page: number = 1,
   pageSize: number = 20,
-  orderBy: "asc" | "desc" = "desc"
+  orderByDesc: boolean = true
 ): Promise<DataPage<BackupTask>> => {
-  const url = `/backups/list?orderBy=id ${orderBy}&page=${page}&pageSize=${pageSize}`;
+  const orderDirection = orderByDesc ? "desc" : "asc";
+  const url = `/backups/list?orderBy=id ${orderDirection}&page=${page}&pageSize=${pageSize}`;
   const response = await AxiosClient.getInstance().get<BackupTask[]>(url);
   response.data.forEach((backup) => {
     if (backup.completedAt) {

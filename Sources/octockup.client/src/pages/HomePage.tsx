@@ -34,6 +34,7 @@ const HomePage: React.FC = () => {
         flexDirection: "column",
         width: "100%",
         height: "100%",
+        borderRadius: 0,
       }}
     >
       <Routes key={location.pathname}>
