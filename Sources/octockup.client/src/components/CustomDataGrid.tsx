@@ -7,10 +7,10 @@ import {
   GridToolbar,
   GridValidRowModel,
 } from "@mui/x-data-grid";
-import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { forwardRef, useImperativeHandle } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Paper, SxProps, Theme, Typography } from "@mui/material";
-
 interface LoadRowsResult<T> {
   data: T[];
   totalCount: number;
@@ -30,14 +30,14 @@ interface CustomDataGridProps<T extends GridValidRowModel> {
   ) => Promise<LoadRowsResult<T>>;
 }
 
-const CustomDataGrid: React.FC<CustomDataGridProps<GridValidRowModel>> = ({
-  sx,
-  title,
-  columns,
-  loadRows,
-  titleAlign,
-  showToolbar,
-}) => {
+export interface CustomDataGridRef {
+  reloadData: () => void;
+}
+
+const CustomDataGrid = forwardRef<
+  CustomDataGridRef,
+  CustomDataGridProps<GridValidRowModel>
+>(({ sx, title, columns, loadRows, titleAlign, showToolbar }, ref) => {
   const defaultPageSize = 10;
   const { t } = useTranslation();
   const [page, setPage] = useState(0);
@@ -48,19 +48,25 @@ const CustomDataGrid: React.FC<CustomDataGridProps<GridValidRowModel>> = ({
   const [order, setOrder] = useState<GridSortModel | null>(null);
   const [filter, setFilter] = useState<GridFilterModel | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (loadRows) {
-        setLoading(true);
-        const data = await loadRows(page + 1, pageSize, order, filter);
-        setRows(data.data);
-        setTotalCount(data.totalCount);
-        setLoading(false);
-      }
-    };
+  const fetchData = useCallback(async () => {
+    if (loadRows) {
+      setLoading(true);
+      const data = await loadRows(page + 1, pageSize, order, filter);
+      setRows(data.data);
+      setTotalCount(data.totalCount);
+      setLoading(false);
+    }
+  }, [loadRows, page, pageSize, order, filter]);
 
+  useEffect(() => {
     fetchData();
-  }, [page, pageSize, filter, order, columns, loadRows]);
+  }, [page, pageSize, filter, order, columns, loadRows, fetchData]);
+
+  useImperativeHandle(ref, () => ({
+    reloadData: () => {
+      fetchData();
+    },
+  }));
 
   const localeText: Partial<GridLocaleText> = {
     MuiTablePagination: {
@@ -238,6 +244,6 @@ const CustomDataGrid: React.FC<CustomDataGridProps<GridValidRowModel>> = ({
       />
     </Paper>
   );
-};
+});
 
 export default CustomDataGrid;

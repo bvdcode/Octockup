@@ -15,12 +15,12 @@ import { toast } from "react-toastify";
 import { API_BASE_URL } from "../config";
 import { useEffect, useRef } from "react";
 import { CustomDialog, ProgressBar } from ".";
-import CustomDataGrid from "./CustomDataGrid";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ProgressBarColor } from "./ProgressBarColor";
 import { BackupTaskStatus, User } from "../api/types";
-import { Box, Typography, Button } from "@mui/material";
+import { Box, Typography, Button, IconButton } from "@mui/material";
+import CustomDataGrid, { CustomDataGridRef } from "./CustomDataGrid";
 import { Delete, Refresh, Replay, Stop, Visibility } from "@mui/icons-material";
 
 const Dashboard: React.FC = () => {
@@ -28,6 +28,7 @@ const Dashboard: React.FC = () => {
   const user = userState as User;
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const gridRef = useRef<CustomDataGridRef>(null);
   const hubConnection = useRef<HubConnection | null>(null);
 
   useEffect(() => {
@@ -39,9 +40,9 @@ const Dashboard: React.FC = () => {
       .withAutomaticReconnect()
       .configureLogging(LogLevel.Warning)
       .build();
-    // hubConnection.current.on("Progress", () => {
-    //   getBackups().then((response) => {});
-    // });
+    hubConnection.current.on("Progress", () => {
+      gridRef.current?.reloadData();
+    });
     hubConnection.current.start();
     return () => {
       if (hubConnection.current) {
@@ -67,13 +68,30 @@ const Dashboard: React.FC = () => {
   const handleJobDelete = async (backupId: number) => {
     deleteJob(backupId).then(() => {
       toast.success(t("dashboard.deleteSuccess"));
+      gridRef.current?.reloadData();
     });
   };
 
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Typography variant="h4">{t("dashboard.title")}</Typography>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        p={2}
+      >
+        <Box display="flex" flexDirection="row">
+          <Typography variant="h4">{t("dashboard.title")}</Typography>
+          <IconButton
+            onClick={() => {
+              gridRef.current?.reloadData();
+              triggerJob();
+            }}
+            sx={{ minWidth: "unset" }}
+          >
+            <Refresh />
+          </IconButton>
+        </Box>
         <Typography
           variant="body1"
           sx={{ display: { xs: "none", sm: "block" } }}
@@ -82,13 +100,11 @@ const Dashboard: React.FC = () => {
         </Typography>
         <Typography variant="body1" sx={{ gap: 1 }}>
           {t("dashboard.welcome", { name: user.username })}
-          <Button onClick={triggerJob} sx={{ minWidth: "unset" }}>
-            <Refresh />
-          </Button>
         </Typography>
       </Box>
       <Box>
         <CustomDataGrid
+          ref={gridRef}
           title={t("dashboard.tasks")}
           loadRows={async (page, pageSize, order) => {
             const orderByDesc =
