@@ -1,6 +1,6 @@
 import {
   BackupInfo,
-  CreateJob,
+  CreateBackup,
   Dashboard,
   NavBar,
   Profile,
@@ -39,7 +39,7 @@ const HomePage: React.FC = () => {
     >
       <Routes key={location.pathname}>
         <Route path="/profile" element={<Profile />} />
-        <Route path="/create" element={<CreateJob />} />
+        <Route path="/create" element={<CreateBackup />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/backups/:id" element={<BackupInfo />} />
         <Route path="/" element={<Navigate to="/dashboard" />} />
