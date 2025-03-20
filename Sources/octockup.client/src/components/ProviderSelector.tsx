@@ -31,7 +31,6 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
       <Select
         labelId="select-label"
         sx={{
-          width: "100%",
           marginTop: 1,
         }}
         variant="outlined"
