@@ -1,12 +1,14 @@
 import { useState } from "react";
+import OpacityLoader from "./OpacityLoader";
 import { useTranslation } from "react-i18next";
 import { Box, Button, TextField, Typography } from "@mui/material";
 
 interface LoginFormProps {
+  isLoading: boolean;
   onLogin: (username: string, password: string) => void;
 }
 
-const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
+const LoginForm: React.FC<LoginFormProps> = ({ onLogin, isLoading }) => {
   const { t } = useTranslation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -15,6 +17,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
     e.preventDefault();
     onLogin(username, password);
   };
+
+  if (isLoading) {
+    return <OpacityLoader text={t("login.loader")} />;
+  }
 
   return (
     <Box
