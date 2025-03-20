@@ -166,5 +166,11 @@
     "GroupColumn": "Группировать по {{column}}",
     "UnGroupColumn": "Разгруппировать по {{column}}",
     "DetailPanelToggle": "Переключить панель деталей"
+  },
+  "createBackup": {
+    "title": "Создать резервную копию",
+    "name": "Название бэкапа",
+    "source": "Источник",
+    "destination": "Куда бэкапить"
   }
 }

@@ -187,5 +187,11 @@
     "GroupColumn": "Group by {{column}}",
     "UnGroupColumn": "Ungroup by {{column}}",
     "DetailPanelToggle": "Toggle detail panel"
+  },
+  "createBackup": {
+    "title": "Create Backup",
+    "name": "Backup Name",
+    "source": "Source",
+    "destination": "Destination"
   }
 }

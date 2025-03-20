@@ -1,5 +1,7 @@
 import {
-  ArrowRightAlt,
+  ArrowDownward,
+  ArrowForward,
+  Cloud,
   Folder,
   GitHub,
   Web,
@@ -8,7 +10,7 @@ import {
 import { Selector } from ".";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
-import { Box, Paper, TextField, Typography } from "@mui/material";
+import { Box, Button, Paper, TextField, Typography } from "@mui/material";
 
 const CreateBackup: React.FC = () => {
   const { t } = useTranslation();
@@ -29,6 +31,16 @@ const CreateBackup: React.FC = () => {
       name: "SCP",
       icon: <Web />,
     },
+    {
+      id: 4,
+      name: "Local",
+      icon: <Folder />,
+    },
+    {
+      id: 5,
+      name: "OneDrive",
+      icon: <Cloud />,
+    },
   ];
 
   const destinations = [
@@ -36,6 +48,16 @@ const CreateBackup: React.FC = () => {
       id: 1,
       name: "Local",
       icon: <Folder />,
+    },
+    {
+      id: 2,
+      name: "OneDrive",
+      icon: <Cloud />,
+    },
+    {
+      id: 3,
+      name: "Nextcloud",
+      icon: <Cloud />,
     },
   ];
 
@@ -48,6 +70,8 @@ const CreateBackup: React.FC = () => {
         height: "100%",
         alignItems: "center",
         borderRadius: 0,
+        padding: 2,
+        gap: 2,
       }}
     >
       <Typography variant="h6">{t("createBackup.title")}</Typography>
@@ -76,7 +100,24 @@ const CreateBackup: React.FC = () => {
             onSelected={(value) => toast.info(value.name)}
           />
           <Box>
-            <ArrowRightAlt fontSize="large" />
+            <ArrowForward
+              fontSize="large"
+              sx={{
+                display: {
+                  xs: "none",
+                  md: "block",
+                },
+              }}
+            />
+            <ArrowDownward
+              fontSize="large"
+              sx={{
+                display: {
+                  xs: "block",
+                  md: "none",
+                },
+              }}
+            />
           </Box>
           <Selector
             title={t("createBackup.destination")}
@@ -84,6 +125,9 @@ const CreateBackup: React.FC = () => {
             onSelected={(value) => toast.info(value.name)}
           />
         </Box>
+        <Button variant="contained" fullWidth color="primary">
+          {t("createBackup.create")}
+        </Button>
       </Box>
     </Paper>
   );

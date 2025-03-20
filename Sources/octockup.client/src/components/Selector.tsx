@@ -23,13 +23,14 @@ interface SelectorProps {
 const Selector: React.FC<SelectorProps> = ({ title, values, onSelected }) => {
   return (
     <FormControl fullWidth>
-      <InputLabel id="select-label">{title}</InputLabel>
+      <InputLabel id="select-label">
+        {title}
+      </InputLabel>
       <Select
         labelId="select-label"
         sx={{
           width: "100%",
           marginTop: 1,
-          height: "100px",
         }}
         variant="outlined"
         value={undefined}
