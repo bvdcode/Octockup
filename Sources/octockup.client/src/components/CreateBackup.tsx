@@ -73,7 +73,7 @@ const CreateBackup: React.FC = () => {
         width="100%"
         maxWidth="600px"
         justifyContent="space-around"
-        gap={2}
+        gap={1}
       >
         <TextField label={t("createBackup.name")} />
         <Box
@@ -84,7 +84,7 @@ const CreateBackup: React.FC = () => {
           }}
           alignItems="center"
           justifyContent="space-around"
-          gap={2}
+          gap={1}
         >
           <ProviderSelector
             title={t("createBackup.source")}
