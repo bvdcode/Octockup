@@ -1,6 +1,5 @@
 export { default as NavBar } from "./NavBar";
 export { default as Profile } from "./Profile";
-export { default as Selector } from "./Selector";
 export { default as LoginForm } from "./LoginForm";
 export { default as CreateJob } from "./CreateJob";
 export { default as Dashboard } from "./Dashboard";
@@ -10,5 +9,8 @@ export { default as CreateBackup } from "./CreateBackup";
 export { default as CustomDialog } from "./CustomDialog";
 export { default as IntervalInput } from "./IntervalInput";
 export { default as OpacityLoader } from "./OpacityLoader";
+export { default as PeriodSelector } from "./PeriodSelector";
+export { default as DirectionArrow } from "./DirectionArrow";
 export { default as ProtectedRoute } from "./ProtectedRoute";
+export { default as ProviderSelector } from "./ProviderSelector";
 export { default as LanguageSwitcher } from "./LanguageSwitcher";

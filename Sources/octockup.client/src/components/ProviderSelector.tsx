@@ -8,24 +8,26 @@ import {
   Typography,
 } from "@mui/material";
 
-interface SelectorOption {
+interface ProviderSelectorOption {
   id: number;
   name: string;
   icon: React.ReactNode;
 }
 
-interface SelectorProps {
+interface ProviderSelectorProps {
   title: string;
-  values: SelectorOption[];
-  onSelected?: (value: SelectorOption) => void;
+  values: ProviderSelectorOption[];
+  onSelected?: (value: ProviderSelectorOption) => void;
 }
 
-const Selector: React.FC<SelectorProps> = ({ title, values, onSelected }) => {
+const ProviderSelector: React.FC<ProviderSelectorProps> = ({
+  title,
+  values,
+  onSelected,
+}) => {
   return (
     <FormControl fullWidth>
-      <InputLabel id="select-label">
-        {title}
-      </InputLabel>
+      <InputLabel id="select-label">{title}</InputLabel>
       <Select
         labelId="select-label"
         sx={{
@@ -75,4 +77,4 @@ const Selector: React.FC<SelectorProps> = ({ title, values, onSelected }) => {
   );
 };
 
-export default Selector;
+export default ProviderSelector;

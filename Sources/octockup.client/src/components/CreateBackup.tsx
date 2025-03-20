@@ -1,15 +1,7 @@
-import {
-  ArrowDownward,
-  ArrowForward,
-  Cloud,
-  Folder,
-  GitHub,
-  Web,
-  YouTube,
-} from "@mui/icons-material";
-import { Selector } from ".";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
+import { DirectionArrow, PeriodSelector, ProviderSelector } from ".";
+import { Cloud, Folder, GitHub, Web, YouTube } from "@mui/icons-material";
 import { Box, Button, Paper, TextField, Typography } from "@mui/material";
 
 const CreateBackup: React.FC = () => {
@@ -94,37 +86,19 @@ const CreateBackup: React.FC = () => {
           justifyContent="space-around"
           gap={2}
         >
-          <Selector
+          <ProviderSelector
             title={t("createBackup.source")}
             values={sources}
             onSelected={(value) => toast.info(value.name)}
           />
-          <Box>
-            <ArrowForward
-              fontSize="large"
-              sx={{
-                display: {
-                  xs: "none",
-                  md: "block",
-                },
-              }}
-            />
-            <ArrowDownward
-              fontSize="large"
-              sx={{
-                display: {
-                  xs: "block",
-                  md: "none",
-                },
-              }}
-            />
-          </Box>
-          <Selector
+          <DirectionArrow />
+          <ProviderSelector
             title={t("createBackup.destination")}
             values={destinations}
             onSelected={(value) => toast.info(value.name)}
           />
         </Box>
+        <PeriodSelector onSelectPeriod={(result) => toast.info(result)} />
         <Button variant="contained" fullWidth color="primary">
           {t("createBackup.create")}
         </Button>
