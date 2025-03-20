@@ -190,9 +190,12 @@ const CustomDataGrid = forwardRef<
   return (
     <Paper
       sx={{
+        borderRadius: 0,
         overflowX: "auto",
         width: "100%",
         maxWidth: "100vw",
+        display: "flex",
+        flexDirection: "column",
         ...sx,
       }}
     >

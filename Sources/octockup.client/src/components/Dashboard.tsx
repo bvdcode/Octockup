@@ -73,7 +73,7 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <Box>
+    <Box height="100%" display="flex" flexDirection="column">
       <Box
         display="flex"
         justifyContent="space-between"
@@ -102,8 +102,11 @@ const Dashboard: React.FC = () => {
           {t("dashboard.welcome", { name: user.username })}
         </Typography>
       </Box>
-      <Box>
+      <Box height="100%">
         <CustomDataGrid
+          sx={{
+            height: "100%",
+          }}
           ref={gridRef}
           title={t("dashboard.tasks")}
           loadRows={async (page, pageSize, order) => {
@@ -119,7 +122,7 @@ const Dashboard: React.FC = () => {
             {
               field: "name",
               headerName: t("dashboard.jobName"),
-              minWidth: 100,
+              minWidth: 120,
             },
             {
               field: "completedAt",
@@ -130,12 +133,12 @@ const Dashboard: React.FC = () => {
             {
               field: "interval",
               headerName: t("dashboard.interval"),
-              width: 100,
+              width: 130,
             },
             {
               field: "elapsed",
               headerName: t("dashboard.elapsed"),
-              width: 100,
+              width: 130,
             },
             {
               field: "progress",
