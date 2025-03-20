@@ -192,6 +192,7 @@
     "title": "Create Backup",
     "name": "Backup Name",
     "source": "Source",
-    "destination": "Destination"
+    "destination": "Destination",
+    "create": "Create"
   }
 }

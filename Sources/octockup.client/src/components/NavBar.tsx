@@ -37,7 +37,7 @@ const NavBar: React.FC<NavBarProps> = (props) => {
         transform: "translateX(-50%)",
         width: "100%",
         maxWidth: "300px",
-        height: "30px",
+        height: "50px",
         zIndex: 1000,
       }}
       onMouseEnter={() => setIsHovered(true)}
