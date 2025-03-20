@@ -1,5 +1,6 @@
 export { default as NavBar } from "./NavBar";
 export { default as Profile } from "./Profile";
+export { default as Selector } from "./Selector";
 export { default as LoginForm } from "./LoginForm";
 export { default as CreateJob } from "./CreateJob";
 export { default as Dashboard } from "./Dashboard";

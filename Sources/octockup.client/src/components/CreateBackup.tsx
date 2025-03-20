@@ -5,15 +5,10 @@ import {
   Web,
   YouTube,
 } from "@mui/icons-material";
-import {
-  Box,
-  MenuItem,
-  Paper,
-  Select,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { Selector } from ".";
+import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
+import { Box, Paper, TextField, Typography } from "@mui/material";
 
 const CreateBackup: React.FC = () => {
   const { t } = useTranslation();
@@ -31,7 +26,7 @@ const CreateBackup: React.FC = () => {
     },
     {
       id: 3,
-      name: "SSH",
+      name: "SCP",
       icon: <Web />,
     },
   ];
@@ -75,49 +70,19 @@ const CreateBackup: React.FC = () => {
           justifyContent="space-around"
           gap={2}
         >
-          <Box>
-            <Typography variant="body1">{t("createBackup.source")}</Typography>
-            <Select label={t("createBackup.source")} title="Select a source">
-              {sources.map((source) => (
-                <MenuItem
-                  key={source.id}
-                  value={source.id}
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                  }}
-                >
-                  {source.icon}
-                  {source.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </Box>
+          <Selector
+            title={t("createBackup.source")}
+            values={sources}
+            onSelected={(value) => toast.info(value.name)}
+          />
           <Box>
             <ArrowRightAlt fontSize="large" />
           </Box>
-          <Box>
-            <Typography variant="body1">
-              {t("createBackup.destination")}
-            </Typography>
-            <Select label={t("createBackup.source")} title="Select a source">
-              {destinations.map((source) => (
-                <MenuItem
-                  key={source.id}
-                  value={source.id}
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                  }}
-                >
-                  {source.icon}
-                  {source.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </Box>
+          <Selector
+            title={t("createBackup.destination")}
+            values={destinations}
+            onSelected={(value) => toast.info(value.name)}
+          />
         </Box>
       </Box>
     </Paper>
