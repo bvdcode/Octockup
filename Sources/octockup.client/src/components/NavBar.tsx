@@ -1,5 +1,4 @@
-import styles from "./NavBar.module.css";
-import { Box, Button } from "@mui/material";
+import { Box, Button, Paper } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import React, { useState, useEffect } from "react";
 
@@ -31,11 +30,46 @@ const NavBar: React.FC<NavBarProps> = (props) => {
 
   return (
     <Box
-      className={styles.navbarContainer}
+      sx={{
+        position: "fixed",
+        bottom: 0,
+        left: "50%",
+        transform: "translateX(-50%)",
+        width: "100%",
+        maxWidth: "300px",
+        height: "30px",
+        zIndex: 1000,
+      }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <Box className={`${styles.navbar} ${isVisible ? styles.visible : ""}`}>
+      <Paper
+        sx={{
+          position: "absolute",
+          bottom: isVisible ? 0 : "-70px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "100%",
+          height: "80px",
+          borderTopLeftRadius: "40px",
+          borderTopRightRadius: "40px",
+          display: "flex",
+          justifyContent: "space-around",
+          alignItems: "center",
+          boxShadow: "0 -2px 10px rgba(0, 0, 0, 0.2)",
+          transition: "bottom 0.3s ease",
+          "&::before": {
+            content: '""',
+            position: "absolute",
+            top: 0,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "50px",
+            height: "4px",
+            borderRadius: "2px",
+          },
+        }}
+      >
         {props.buttons.map((button, index) => (
           <Button
             key={index}
@@ -45,7 +79,7 @@ const NavBar: React.FC<NavBarProps> = (props) => {
             {button.icon}
           </Button>
         ))}
-      </Box>
+      </Paper>
     </Box>
   );
 };

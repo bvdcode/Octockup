@@ -80,7 +80,7 @@ const Dashboard: React.FC = () => {
         alignItems="center"
         p={2}
       >
-        <Box display="flex" flexDirection="row">
+        <Box display="flex" flexDirection="row" gap={1}>
           <Typography variant="h4">{t("dashboard.title")}</Typography>
           <IconButton
             onClick={() => {
