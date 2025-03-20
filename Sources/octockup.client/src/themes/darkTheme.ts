@@ -10,8 +10,8 @@ export const darkTheme = createTheme({
       main: "rgb(244, 143, 177)",
     },
     background: {
-      default: "rgba(42, 42, 42, 0.9)",
-      paper: "rgba(54, 54, 54, 0.9)",
+      default: "rgba(42, 42, 42, 0.98)",
+      paper: "rgba(54, 54, 54, 0.98)",
     },
     text: {
       primary: "rgb(210, 210, 210)",

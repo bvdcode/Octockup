@@ -79,7 +79,7 @@ const CreateBackup: React.FC = () => {
         display="flex"
         flexDirection="column"
         width="100%"
-        maxWidth="800px"
+        maxWidth="600px"
         justifyContent="space-around"
         gap={2}
       >

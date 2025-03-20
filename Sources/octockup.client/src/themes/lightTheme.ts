@@ -10,8 +10,8 @@ export const lightTheme = createTheme({
       main: "rgb(255, 255, 255)",
     },
     background: {
-      default: "rgba(255, 255, 255, 0.95)",
-      paper: "rgba(255, 255, 255, 0.95)",
+      default: "rgba(255, 255, 255, 0.98)",
+      paper: "rgba(255, 255, 255, 0.98)",
     },
     text: {
       primary: "rgb(48, 48, 48)",
