@@ -3,6 +3,7 @@ _IN DEVELOPMENT_
 
 [![CC BY-NC-SA 4.0][cc-by-nc-sa-shield]][cc-by-nc-sa]
 ![Build&Deploy](https://github.com/bvdcode/Octockup/actions/workflows/docker-image.yml/badge.svg) 
+[![CodeFactor](https://www.codefactor.io/repository/github/bvdcode/Octockup/badge)](https://www.codefactor.io/repository/github/bvdcode/Octockup)
 [![Docker Pulls](https://badgen.net/docker/pulls/bvdcode/octockup?icon=docker&label=pulls)](https://hub.docker.com/r/bvdcode/octockup/)
 [![Docker Image Size](https://badgen.net/docker/size/bvdcode/octockup?icon=docker&label=image%20size)](https://hub.docker.com/r/bvdcode/octockup/)
 ![Github last-commit](https://img.shields.io/github/last-commit/bvdcode/Octockup)
