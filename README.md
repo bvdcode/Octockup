@@ -1,7 +1,7 @@
 # Octockup
 _IN DEVELOPMENT_
 
-[![CC BY-NC-SA 4.0][cc-by-nc-sa-shield]][cc-by-nc-sa]
+[![License](https://img.shields.io/github/license/bvdcode/octockup)](LICENSE)
 ![Build&Deploy](https://github.com/bvdcode/Octockup/actions/workflows/docker-image.yml/badge.svg) 
 [![CodeFactor](https://www.codefactor.io/repository/github/bvdcode/Octockup/badge)](https://www.codefactor.io/repository/github/bvdcode/Octockup)
 [![Docker Pulls](https://badgen.net/docker/pulls/bvdcode/octockup?icon=docker&label=pulls)](https://hub.docker.com/r/bvdcode/octockup/)
