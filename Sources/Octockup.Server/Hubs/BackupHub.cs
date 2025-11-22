@@ -6,7 +6,7 @@ namespace Octockup.Server.Hubs
 {
     [Authorize]
     [EnableCors]
-    public class BackupHub : Hub
+    public class EventHub : Hub
     {
 
     }

@@ -4,7 +4,7 @@ using EasyExtensions.EntityFrameworkCore.Abstractions;
 namespace Octockup.Server.Database
 {
     [Table("sessions")]
-    public class Session : BaseEntity
+    public class Session : BaseEntity<Guid>
     {
         [Column("user_id")]
         public int UserId { get; set; }

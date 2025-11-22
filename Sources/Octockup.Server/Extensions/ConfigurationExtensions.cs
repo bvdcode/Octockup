@@ -1,37 +1,21 @@
-﻿using Octockup.Server.Database;
-
-namespace Octockup.Server.Extensions
+﻿namespace Octockup.Server.Extensions
 {
     public static class ConfigurationExtensions
     {
-        public static DatabaseSettings? GetPostgresSettings(this IConfiguration configuration)
+        public static string GetMasterKey(this IConfiguration configuration)
         {
-            if (configuration.GetSection("Postgres").Exists())
+            // chheck if configuration has a value for "MasterKey"
+            string? masterKey = configuration["MasterKey"];
+            if (!string.IsNullOrEmpty(masterKey))
             {
-                return configuration.GetSection("Postgres").Get<DatabaseSettings>();
+                return masterKey;
             }
-            if (Environment.GetEnvironmentVariable("POSTGRES_HOST") != null)
+            masterKey = Environment.GetEnvironmentVariable("MASTER_KEY");
+            if (!string.IsNullOrEmpty(masterKey))
             {
-                string host = Environment.GetEnvironmentVariable("POSTGRES_HOST")
-                    ?? throw new ArgumentNullException(nameof(configuration), "POSTGRES_HOST");
-                int port = int.Parse(Environment.GetEnvironmentVariable("POSTGRES_PORT")
-                    ?? throw new ArgumentNullException(nameof(configuration), "POSTGRES_PORT"));
-                string database = Environment.GetEnvironmentVariable("POSTGRES_DATABASE")
-                    ?? throw new ArgumentNullException(nameof(configuration), "POSTGRES_DATABASE");
-                string username = Environment.GetEnvironmentVariable("POSTGRES_USERNAME")
-                    ?? throw new ArgumentNullException(nameof(configuration), "POSTGRES_USERNAME");
-                string password = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD")
-                    ?? throw new ArgumentNullException(nameof(configuration), "POSTGRES_PASSWORD");
-                return new DatabaseSettings
-                {
-                    Host = host,
-                    Port = port,
-                    Database = database,
-                    Username = username,
-                    Password = password,
-                };
+                return masterKey;
             }
-            return null;
+            throw new InvalidOperationException("Master key not found in configuration 'MasterKey' or environment variable 'MASTER_KEY'.");
         }
     }
 }
