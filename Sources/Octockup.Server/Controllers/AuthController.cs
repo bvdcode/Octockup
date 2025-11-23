@@ -1,20 +1,26 @@
 ﻿using MediatR;
 using Octockup.Server.Models;
 using Microsoft.AspNetCore.Mvc;
+using Octockup.Server.Abstractions;
 using Microsoft.AspNetCore.Authorization;
+using EasyExtensions.AspNetCore.Extensions;
 
 namespace Octockup.Server.Controllers
 {
     [ApiController]
     [Route("/api/v1/auth")]
-    public class AuthController(IMediator _mediator) : ControllerBase
+    public class AuthController(IMediator _mediator, IUserDataStorage _userDataStorage) : ControllerBase
     {
         [Authorize]
         [HttpPost("change-password")]
         public async Task<IActionResult> ChangePasswordAsync([FromBody] ChangePasswordRequest request)
         {
-            await _mediator.Send(request);
-            return Ok();
+            bool success = _userDataStorage.ChangePassword(request);
+            if (!success)
+            {
+                return BadRequest("Password change failed.");
+            }
+            return Ok("Password changed successfully.");
         }
 
         [HttpPost("refresh-token")]
@@ -24,16 +30,14 @@ namespace Octockup.Server.Controllers
         }
 
         [HttpPost("login")]
-        public Task<AuthResponse> LoginAsync([FromBody] LoginRequest request)
+        public IActionResult LoginAsync([FromBody] LoginRequest request)
         {
-            return _mediator.Send(request);
-        }
-
-        [Authorize]
-        [HttpGet("check-token")]
-        public IActionResult CheckToken()
-        {
-            return Ok();
+            var result = _mediator.Send(request);
+            if (result == null)
+            {
+                return this.ApiUnauthorized("Invalid username or password.");
+            }
+            return Ok(result);
         }
     }
 }

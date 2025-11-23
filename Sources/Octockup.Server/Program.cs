@@ -1,13 +1,12 @@
-using FluentValidation;
+using System.Text;
 using Octockup.Server.Hubs;
-using Microsoft.Data.Sqlite;
-using Octockup.Server.Database;
+using EasyExtensions.Crypto;
 using Octockup.Server.Extensions;
-using FluentValidation.AspNetCore;
+using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using EasyExtensions.Quartz.Extensions;
+using EasyExtensions.Crypto.Abstractions;
 using EasyExtensions.AspNetCore.Extensions;
-using EasyExtensions.EntityFrameworkCore.Extensions;
 using EasyExtensions.AspNetCore.Authorization.Extensions;
 
 namespace Octockup.Server
@@ -19,27 +18,15 @@ namespace Octockup.Server
             var builder = WebApplication.CreateBuilder(args);
             string masterKey = builder.Configuration.GetMasterKey();
 
-            SqliteConnectionStringBuilder sqliteConnectionStringBuilder = new()
-            {
-                Pooling = true,
-                Cache = SqliteCacheMode.Shared,
-                Mode = SqliteOpenMode.ReadWriteCreate,
-                DataSource = Path.Combine(AppContext.BaseDirectory, "octockup.sqlite"),
-            };
-
             builder.Services.AddControllers();
             builder.Services
+                .AddScoped<IStreamCipher>(sp => new AesGcmStreamCipher(SHA256.HashData(Encoding.UTF8.GetBytes(masterKey))))
                 .AddPbkdf2PasswordHashService()
                 .AddCpuUsageService()
                 .AddQuartzJobs()
                 .AddHttpContextAccessor()
-                .AddValidatorsFromAssemblyContaining<Program>()
-                .AddFluentValidationAutoValidation()
-                .AddExceptionHandler()
                 .AddMediatR(x => x.RegisterServicesFromAssemblyContaining<Program>())
-                .AddSqlite<AppDbContext>(sqliteConnectionStringBuilder.ConnectionString)
                 .AddJwt()
-                .AddOpenApi()
                 .AddSignalR();
 
             var app = builder.Build();
@@ -51,7 +38,6 @@ namespace Octockup.Server
             app.MapFallbackToFile("/index.html");
             app.UseExceptionHandler();
             app.MapHub<EventHub>("/api/v1/event-hub");
-            app.ApplyMigrations<AppDbContext>();
             app.Run();
         }
     }

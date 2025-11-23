@@ -1,50 +1,44 @@
-﻿using Mapster;
-using MediatR;
-using System.Net;
+﻿using MediatR;
 using EasyExtensions.Helpers;
 using Octockup.Server.Models;
-using Octockup.Server.Database;
 using Octockup.Server.Models.Dto;
 using Microsoft.EntityFrameworkCore;
-using EasyExtensions.EntityFrameworkCore.Exceptions;
+using System.Collections.Concurrent;
 using EasyExtensions.AspNetCore.Authorization.Abstractions;
 
 namespace Octockup.Server.Handlers
 {
     public class RefreshRequestHandler(
         ITokenProvider _tokens,
-        AppDbContext _dbContext,
-        ITokenProvider _tokenProvider,
         ILogger<RefreshRequestHandler> _logger)
         : IRequestHandler<RefreshRequest, AuthResponse>
     {
+        private static readonly ConcurrentBag<RefreshToken> _refreshTokens = [];
+
+        public static string CreateRefreshToken(string username)
+        {
+            string refreshToken = StringHelpers.CreateRandomString(64);
+            var newSession = new RefreshToken(username, refreshToken);
+            _refreshTokens.Add(newSession);
+            return refreshToken;
+        }
+
         public async Task<AuthResponse> Handle(RefreshRequest request, CancellationToken cancellationToken)
         {
-            bool isValid = _tokenProvider.ValidateToken(request.RefreshToken);
-            if (!isValid)
+            var foundToken = _refreshTokens.FirstOrDefault(x => x.Token == request.RefreshToken);
+            if (foundToken == null)
             {
-                throw new WebApiException(HttpStatusCode.Unauthorized, nameof(RefreshToken), "Invalid refresh token");
+                return new();
             }
-            var foundToken = _dbContext.RefreshTokens
-                .Include(x => x.User)
-                .FirstOrDefault(x => x.Token == request.RefreshToken && !x.RevokedAt.HasValue)
-                ?? throw new WebApiException(HttpStatusCode.NotFound, nameof(RefreshToken), "Session not found");
-            string accessToken = _tokens.CreateToken(x => x.Add("sub", foundToken.UserId.ToString()));
+            string accessToken = _tokens.CreateToken(x => x.Add("sub", foundToken.Username));
             string refreshToken = StringHelpers.CreateRandomString(64);
-            foundToken.RevokedAt = DateTime.UtcNow;
-            var newSession = new RefreshToken
-            {
-                Token = refreshToken,
-                UserId = foundToken.UserId,
-            };
-            await _dbContext.RefreshTokens.AddAsync(newSession, cancellationToken);
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            _logger.LogInformation("Refresh token rotated for user {UserId}", foundToken.UserId);
+            var newSession = new RefreshToken(foundToken.Username, refreshToken);
+            _logger.LogInformation("Refresh token rotated for user {UserId}", foundToken.Username);
             return new()
             {
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
-                User = foundToken.User.Adapt<UserDto>(),
+                User = new UserDto { Username = foundToken.Username }
             };
         }
     }

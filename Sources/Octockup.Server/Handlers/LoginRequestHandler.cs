@@ -1,51 +1,33 @@
-﻿using Mapster;
-using MediatR;
-using System.Net;
+﻿using MediatR;
 using Octockup.Server.Models;
-using EasyExtensions.Helpers;
-using Octockup.Server.Database;
 using Octockup.Server.Models.Dto;
-using EasyExtensions.Abstractions;
-using EasyExtensions.EntityFrameworkCore.Exceptions;
+using Octockup.Server.Abstractions;
 using EasyExtensions.AspNetCore.Authorization.Abstractions;
 
 namespace Octockup.Server.Handlers
 {
     public class LoginRequestHandler(
         ITokenProvider _tokens,
-        AppDbContext _dbContext,
-        IPasswordHashService _passwords,
-        ILogger<LoginRequestHandler> _logger) : IRequestHandler<LoginRequest, AuthResponse>
+        IUserDataStorage _userDataStorage,
+        ILogger<LoginRequestHandler> _logger) : IRequestHandler<LoginRequest, AuthResponse?>
     {
-        public async Task<AuthResponse> Handle(LoginRequest request, CancellationToken cancellationToken)
+        public async Task<AuthResponse?> Handle(LoginRequest request, CancellationToken cancellationToken)
         {
-            var foundUser = _dbContext.Users.FirstOrDefault(x => x.Username.Equals(request.Username))
-                ?? throw new WebApiException(HttpStatusCode.NotFound, nameof(User), "User not found");
-            bool isValid = _passwords.Verify(request.Password, foundUser.PasswordPhc, out bool needsUpgrade);
+            bool isValid = _userDataStorage.ValidateUserCredentials(request.Username, request.Password);
             if (!isValid)
             {
-                _logger.LogWarning("Login attempt for '{user}' failed", foundUser);
-                throw new WebApiException(HttpStatusCode.Unauthorized, nameof(User), "Invalid password");
+                _logger.LogWarning("Invalid login attempt for user '{user}'", request.Username);
+                return null;
             }
-            if (needsUpgrade)
-            {
-                foundUser.PasswordPhc = _passwords.Hash(request.Password);
-                _logger.LogWarning("Upgrading password hash for user '{user}'", foundUser);
-            }
-            RefreshToken refreshToken = new()
-            {
-                UserId = foundUser.Id,
-                Token = StringHelpers.CreateRandomString(64)
-            };
-            await _dbContext.AddAsync(refreshToken, cancellationToken);
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            string accessToken = _tokens.CreateToken(x => x.Add("sub", foundUser.Id.ToString()));
-            _logger.LogInformation("User '{user}' logged in", foundUser);
+
+            string refreshToken = RefreshRequestHandler.CreateRefreshToken(request.Username);
+            string accessToken = _tokens.CreateToken(x => x.Add("sub", request.Username));
+            _logger.LogInformation("User '{user}' logged in", request.Username);
             return new()
             {
                 AccessToken = accessToken,
-                RefreshToken = refreshToken.Token,
-                User = foundUser.Adapt<UserDto>(),
+                RefreshToken = refreshToken,
+                User = new UserDto() { Username = request.Username }
             };
         }
     }
