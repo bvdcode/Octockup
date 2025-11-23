@@ -7,6 +7,7 @@ import {
 } from "@mui/icons-material";
 import { AppShell, type TokenPair, type UserInfo } from "@bvdcode/react-kit";
 import SourcesPage from "./pages/Sources";
+import SourceWizard from "./pages/SourceWizard";
 
 function App() {
   return (
@@ -47,6 +48,13 @@ function App() {
           name: "Sources",
           route: "/sources",
           component: <SourcesPage />,
+        },
+        {
+          // Не показываем иконку создания и используем минимальный вид.
+          icon: <div style={{ display: "none" }} />,
+          name: "New Source", // Можно переименовать/скрыть, если AppShell поддерживает.
+          route: "/sources/new",
+          component: <SourceWizard />,
         },
         {
           icon: <CloudDownload />,

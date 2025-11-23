@@ -1,15 +1,14 @@
 import type { AxiosInstance } from "axios";
 import { useAxios } from "@bvdcode/react-kit";
 import { useMemo } from "react";
-
-export interface BackupSource {
-  id: string;
-  name: string;
-  parameters: string[];
-}
+import type { BackupSource } from "../types/api";
 
 class BackupSourcesApiClient {
-  constructor(private axiosFactory: () => AxiosInstance) {}
+  private axiosFactory: () => AxiosInstance;
+
+  constructor(axiosFactory: () => AxiosInstance) {
+    this.axiosFactory = axiosFactory;
+  }
 
   private axios(): AxiosInstance {
     return this.axiosFactory();
