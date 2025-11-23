@@ -22,7 +22,6 @@ namespace Octockup.Server
             SqliteConnectionStringBuilder sqliteConnectionStringBuilder = new()
             {
                 Pooling = true,
-                Password = masterKey,
                 Cache = SqliteCacheMode.Shared,
                 Mode = SqliteOpenMode.ReadWriteCreate,
                 DataSource = Path.Combine(AppContext.BaseDirectory, "octockup.sqlite"),
