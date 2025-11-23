@@ -12,7 +12,6 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="EasyExtensions.Crypto" Version="2.0.34" />
 		<PackageReference Include="Mapster" Version="7.4.0" />
 		<PackageReference Include="MediatR" Version="13.1.0" />
 		<PackageReference Include="FluentFTP" Version="53.0.2" />
