@@ -23,7 +23,7 @@ namespace Octockup.Server
 
             builder.Services.AddControllers();
             builder.Services
-                .AddSingleton<IUserDataStorage, UserDataStorage>()
+                .AddScoped<IUserDataStorage, UserDataStorage>()
                 .AddScoped<IStreamCipher>(sp => new AesGcmStreamCipher(cryptoKey))
                 .AddPbkdf2PasswordHashService()
                 .AddCpuUsageService()
@@ -40,7 +40,6 @@ namespace Octockup.Server
                 .UseAuthorization();
             app.MapControllers();
             app.MapFallbackToFile("/index.html");
-            app.UseExceptionHandler();
             app.MapHub<EventHub>("/api/v1/event-hub");
             app.Run();
         }

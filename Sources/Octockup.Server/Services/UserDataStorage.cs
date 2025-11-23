@@ -10,7 +10,7 @@ namespace Octockup.Server.Services
     public class UserDataStorage(IStreamCipher _crypto, IPasswordHashService _passwords) : IUserDataStorage
     {
         private readonly string _userDataFilePath = Path.Combine(AppContext.BaseDirectory, "data");
-        private readonly ConcurrentDictionary<string, UserData> _cache = new();
+        private static readonly ConcurrentDictionary<string, UserData> _cache = new();
 
         public bool ChangePassword(string username, string oldPassword, string newPassword)
         {
