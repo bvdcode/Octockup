@@ -6,6 +6,7 @@ import {
   CloudDownload,
 } from "@mui/icons-material";
 import { AppShell, type TokenPair, type UserInfo } from "@bvdcode/react-kit";
+import SourcesPage from "./pages/Sources";
 
 function App() {
   return (
@@ -45,7 +46,7 @@ function App() {
           icon: <Backup />,
           name: "Sources",
           route: "/sources",
-          component: <div>Sources Page</div>,
+          component: <SourcesPage />,
         },
         {
           icon: <CloudDownload />,

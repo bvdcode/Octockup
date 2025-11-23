@@ -4,6 +4,7 @@ using Octockup.Server.Services;
 using Octockup.Server.Extensions;
 using EasyExtensions.Abstractions;
 using Octockup.Server.Abstractions;
+using Octockup.Server.BackupSources;
 using Microsoft.EntityFrameworkCore;
 using EasyExtensions.Quartz.Extensions;
 using EasyExtensions.AspNetCore.Extensions;
@@ -23,6 +24,7 @@ namespace Octockup.Server
 
             builder.Services.AddControllers();
             builder.Services
+                .AddScoped<IBackupSource, FileSystemBackupSource>()
                 .AddScoped<IUserDataStorage, UserDataStorage>()
                 .AddScoped<IStreamCipher>(sp => new AesGcmStreamCipher(cryptoKey))
                 .AddPbkdf2PasswordHashService()
