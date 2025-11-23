@@ -1,15 +1,21 @@
-﻿using MediatR;
+﻿using Mapster;
+using MediatR;
 using System.Net;
+using EasyExtensions.Helpers;
 using Octockup.Server.Models;
 using Octockup.Server.Database;
+using Octockup.Server.Models.Dto;
 using Microsoft.EntityFrameworkCore;
 using EasyExtensions.EntityFrameworkCore.Exceptions;
-using EasyExtensions.AspNetCore.Authorization.Services;
+using EasyExtensions.AspNetCore.Authorization.Abstractions;
 
 namespace Octockup.Server.Handlers
 {
-    public class RefreshRequestHandler(ITokenProvider _tokenProvider, IMediator _mediator,
-        AppDbContext _dbContext, ILogger<RefreshRequestHandler> _logger) 
+    public class RefreshRequestHandler(
+        ITokenProvider _tokens,
+        AppDbContext _dbContext,
+        ITokenProvider _tokenProvider,
+        ILogger<RefreshRequestHandler> _logger)
         : IRequestHandler<RefreshRequest, AuthResponse>
     {
         public async Task<AuthResponse> Handle(RefreshRequest request, CancellationToken cancellationToken)
@@ -17,23 +23,29 @@ namespace Octockup.Server.Handlers
             bool isValid = _tokenProvider.ValidateToken(request.RefreshToken);
             if (!isValid)
             {
-                throw new WebApiException(HttpStatusCode.Unauthorized, nameof(Session), "Invalid refresh token");
+                throw new WebApiException(HttpStatusCode.Unauthorized, nameof(RefreshToken), "Invalid refresh token");
             }
-            var foundToken = _dbContext.Sessions
+            var foundToken = _dbContext.RefreshTokens
                 .Include(x => x.User)
-                .FirstOrDefault(x => x.RefreshToken == request.RefreshToken)
-                ?? throw new WebApiException(HttpStatusCode.NotFound, nameof(Session), "Session not found");
-            try
+                .FirstOrDefault(x => x.Token == request.RefreshToken && !x.RevokedAt.HasValue)
+                ?? throw new WebApiException(HttpStatusCode.NotFound, nameof(RefreshToken), "Session not found");
+            string accessToken = _tokens.CreateToken(x => x.Add("sub", foundToken.UserId.ToString()));
+            string refreshToken = StringHelpers.CreateRandomString(64);
+            foundToken.RevokedAt = DateTime.UtcNow;
+            var newSession = new RefreshToken
             {
-                _dbContext.Sessions.Remove(foundToken);
-                await _dbContext.SaveChangesAsync(cancellationToken);
-            }
-            catch (Exception)
+                Token = refreshToken,
+                UserId = foundToken.UserId,
+            };
+            await _dbContext.RefreshTokens.AddAsync(newSession, cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation("Refresh token rotated for user {UserId}", foundToken.UserId);
+            return new()
             {
-                _logger.LogError("Failed to remove session {Session}", foundToken.Id);
-            }
-            CreateTokenRequest createTokenRequest = new() { User = foundToken.User };
-            return await _mediator.Send(createTokenRequest, cancellationToken);
+                AccessToken = accessToken,
+                RefreshToken = refreshToken,
+                User = foundToken.User.Adapt<UserDto>(),
+            };
         }
     }
 }

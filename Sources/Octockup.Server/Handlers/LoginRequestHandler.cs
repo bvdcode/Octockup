@@ -1,14 +1,18 @@
-﻿using MediatR;
+﻿using Mapster;
+using MediatR;
 using System.Net;
 using Octockup.Server.Models;
+using EasyExtensions.Helpers;
 using Octockup.Server.Database;
-using EasyExtensions.EntityFrameworkCore.Exceptions;
+using Octockup.Server.Models.Dto;
 using EasyExtensions.Abstractions;
+using EasyExtensions.EntityFrameworkCore.Exceptions;
+using EasyExtensions.AspNetCore.Authorization.Abstractions;
 
 namespace Octockup.Server.Handlers
 {
     public class LoginRequestHandler(
-        IMediator _mediator,
+        ITokenProvider _tokens,
         AppDbContext _dbContext,
         IPasswordHashService _passwords,
         ILogger<LoginRequestHandler> _logger) : IRequestHandler<LoginRequest, AuthResponse>
@@ -23,9 +27,19 @@ namespace Octockup.Server.Handlers
                 _logger.LogWarning("Login attempt for '{user}' failed", foundUser);
                 throw new WebApiException(HttpStatusCode.Unauthorized, nameof(User), "Invalid password");
             }
+            RefreshToken refreshToken = new()
+            {
+                UserId = foundUser.Id,
+                Token = StringHelpers.CreateRandomString(64)
+            };
+            await _dbContext.AddAsync(refreshToken, cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            string accessToken = _tokens.CreateToken(x => x.Add("sub", foundUser.Id.ToString()));
             _logger.LogInformation("User '{user}' logged in", foundUser);
             return new()
             {
+                AccessToken = accessToken,
+                RefreshToken = refreshToken.Token,
                 User = foundUser.Adapt<UserDto>(),
             };
         }

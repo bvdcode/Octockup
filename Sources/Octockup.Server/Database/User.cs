@@ -12,6 +12,6 @@ namespace Octockup.Server.Database
         [Column("password_phc")]
         public string PasswordPhc { get; set; } = null!;
 
-        public virtual ICollection<Session> Sessions { get; set; } = [];
+        public virtual ICollection<RefreshToken> Sessions { get; set; } = [];
     }
 }

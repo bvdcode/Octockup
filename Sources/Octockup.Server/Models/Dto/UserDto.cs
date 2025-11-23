@@ -1,4 +1,6 @@
-﻿namespace Octockup.Server.Models.Dto
+﻿using EasyExtensions.Models.Dto;
+
+namespace Octockup.Server.Models.Dto
 {
     public class UserDto : BaseDto<Guid>
     {
