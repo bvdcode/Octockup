@@ -1,4 +1,5 @@
 ﻿using MediatR;
+using EasyExtensions;
 using Octockup.Server.Models;
 using Microsoft.AspNetCore.Mvc;
 using Octockup.Server.Abstractions;
@@ -15,7 +16,8 @@ namespace Octockup.Server.Controllers
         [HttpPost("change-password")]
         public async Task<IActionResult> ChangePasswordAsync([FromBody] ChangePasswordRequest request)
         {
-            bool success = _userDataStorage.ChangePassword(request);
+            string username = User.GetUserName();
+            bool success = _userDataStorage.ChangePassword(username, request.OldPassword, request.NewPassword);
             if (!success)
             {
                 return BadRequest("Password change failed.");
@@ -32,6 +34,15 @@ namespace Octockup.Server.Controllers
         [HttpPost("login")]
         public IActionResult LoginAsync([FromBody] LoginRequest request)
         {
+            string username = request.Username.ToLower();
+            // username must contain only a-z, A-Z, 0-9, ., -, _
+            foreach (char c in username)
+            {
+                if (!char.IsLetterOrDigit(c) && c != '.' && c != '-' && c != '_')
+                {
+                    return this.ApiUnauthorized("Invalid username or password.");
+                }
+            }
             var result = _mediator.Send(request);
             if (result == null)
             {

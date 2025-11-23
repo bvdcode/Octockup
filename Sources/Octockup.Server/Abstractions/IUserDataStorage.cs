@@ -1,10 +1,8 @@
-﻿using Octockup.Server.Models;
-
-namespace Octockup.Server.Abstractions
+﻿namespace Octockup.Server.Abstractions
 {
     public interface IUserDataStorage
     {
-        bool ChangePassword(ChangePasswordRequest request);
+        bool ChangePassword(string username, string oldPassword, string newPassword);
         bool ValidateUserCredentials(string username, string password);
     }
 }
