@@ -1,8 +1,10 @@
 using System.Text;
 using Octockup.Server.Hubs;
 using EasyExtensions.Crypto;
+using Octockup.Server.Services;
 using Octockup.Server.Extensions;
 using System.Security.Cryptography;
+using Octockup.Server.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using EasyExtensions.Quartz.Extensions;
 using EasyExtensions.Crypto.Abstractions;
@@ -20,6 +22,7 @@ namespace Octockup.Server
 
             builder.Services.AddControllers();
             builder.Services
+                .AddSingleton<IUserDataStorage, UserDataStorage>()
                 .AddScoped<IStreamCipher>(sp => new AesGcmStreamCipher(SHA256.HashData(Encoding.UTF8.GetBytes(masterKey))))
                 .AddPbkdf2PasswordHashService()
                 .AddCpuUsageService()
