@@ -27,6 +27,7 @@
 		<ProjectReference Include="..\octockup.client\octockup.client.esproj">
 			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
 		</ProjectReference>
+		<Folder Include="BackupStorages\" />
 		<Folder Include="wwwroot\" />
 	</ItemGroup>
 
