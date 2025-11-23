@@ -23,9 +23,9 @@ namespace Octockup.Server
             {
                 Pooling = true,
                 Password = masterKey,
-                DataSource = "/app/data/octockup.sqlite",
                 Cache = SqliteCacheMode.Shared,
                 Mode = SqliteOpenMode.ReadWriteCreate,
+                DataSource = Path.Combine(AppContext.BaseDirectory, "octockup.sqlite"),
             };
 
             builder.Services.AddControllers();
