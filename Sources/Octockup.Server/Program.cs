@@ -1,7 +1,10 @@
 using FluentValidation;
 using Octockup.Server.Hubs;
+using Microsoft.Data.Sqlite;
 using Octockup.Server.Database;
+using Octockup.Server.Extensions;
 using FluentValidation.AspNetCore;
+using Microsoft.EntityFrameworkCore;
 using EasyExtensions.Quartz.Extensions;
 using EasyExtensions.AspNetCore.Extensions;
 using EasyExtensions.EntityFrameworkCore.Extensions;
@@ -14,21 +17,30 @@ namespace Octockup.Server
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            string masterKey = builder.Configuration.GetMasterKey();
+
+            SqliteConnectionStringBuilder sqliteConnectionStringBuilder = new()
+            {
+                Pooling = true,
+                Password = masterKey,
+                DataSource = "/app/data/octockup.sqlite",
+                Cache = SqliteCacheMode.Shared,
+                Mode = SqliteOpenMode.ReadWriteCreate,
+            };
+
             builder.Services.AddControllers();
             builder.Services
+                .AddPbkdf2PasswordHashService()
                 .AddCpuUsageService()
                 .AddQuartzJobs()
                 .AddHttpContextAccessor()
                 .AddValidatorsFromAssemblyContaining<Program>()
                 .AddFluentValidationAutoValidation()
                 .AddExceptionHandler()
-                .AddAutoMapper(typeof(Program))
                 .AddMediatR(x => x.RegisterServicesFromAssemblyContaining<Program>())
-                .AddDbContext<AppDbContext>(builder.Configuration)
-                .SetupJwtKey(builder.Configuration)
-                .AddJwt(builder.Configuration)
+                .AddSqlite<AppDbContext>(sqliteConnectionStringBuilder.ConnectionString)
+                .AddJwt()
                 .AddOpenApi()
-                .SetupCors(builder.Configuration)
                 .AddSignalR();
 
             var app = builder.Build();
@@ -38,9 +50,9 @@ namespace Octockup.Server
                 .UseAuthorization();
             app.MapControllers();
             app.MapFallbackToFile("/index.html");
-            app.ApplyMigrations<AppDbContext>();
             app.UseExceptionHandler();
             app.MapHub<EventHub>("/api/v1/event-hub");
+            app.ApplyMigrations<AppDbContext>();
             app.Run();
         }
     }
