@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Octockup.Server.Abstractions;
 using Microsoft.AspNetCore.Authorization;
 using EasyExtensions.AspNetCore.Extensions;
+using System.Threading.Tasks;
 
 namespace Octockup.Server.Controllers
 {
@@ -12,6 +13,19 @@ namespace Octockup.Server.Controllers
     [Route("/api/v1/auth")]
     public class AuthController(IMediator _mediator, IUserDataStorage _userDataStorage) : ControllerBase
     {
+        [Authorize]
+        [HttpGet("me")]
+        public IActionResult MeAsync()
+        {
+            string username = User.GetUserName();
+            return Ok(new
+            {
+                username,
+                id = username,
+                displayName = username,
+            });
+        }
+
         [Authorize]
         [HttpPost("change-password")]
         public async Task<IActionResult> ChangePasswordAsync([FromBody] ChangePasswordRequest request)
@@ -25,14 +39,14 @@ namespace Octockup.Server.Controllers
             return Ok("Password changed successfully.");
         }
 
-        [HttpPost("refresh-token")]
+        [HttpPost("refresh")]
         public Task<AuthResponse> RefreshTokenAsync([FromBody] RefreshRequest request)
         {
             return _mediator.Send(request);
         }
 
         [HttpPost("login")]
-        public IActionResult LoginAsync([FromBody] LoginRequest request)
+        public async Task<IActionResult> LoginAsync([FromBody] LoginRequest request)
         {
             string username = request.Username.ToLower();
             // username must contain only a-z, A-Z, 0-9, ., -, _
@@ -43,7 +57,7 @@ namespace Octockup.Server.Controllers
                     return this.ApiUnauthorized("Invalid username or password.");
                 }
             }
-            var result = _mediator.Send(request);
+            var result = await _mediator.Send(request);
             if (result == null)
             {
                 return this.ApiUnauthorized("Invalid username or password.");

@@ -1,17 +1,37 @@
-import { AppShell } from "@bvdcode/react-kit";
 import {
+  Home,
   Backup,
+  Schedule,
   CloudDone,
   CloudDownload,
-  Home,
-  Schedule,
 } from "@mui/icons-material";
+import { AppShell, type TokenPair, type UserInfo } from "@bvdcode/react-kit";
 
 function App() {
   return (
     <AppShell
       appName="Octockup"
       logoUrl="/octockup.png"
+      authConfig={{
+        login: async (credentials, axiosInstance) => {
+          const response = await axiosInstance.post<TokenPair>(
+            "/api/v1/auth/login",
+            credentials,
+          );
+          return response.data;
+        },
+        getUserInfo: async (axiosInstance) => {
+          const response = await axiosInstance.get<UserInfo>("/api/v1/auth/me");
+          return response.data;
+        },
+        refreshToken: async (refreshToken, axiosInstance) => {
+          const response = await axiosInstance.post<TokenPair>(
+            "/api/v1/auth/refresh",
+            { refreshToken },
+          );
+          return response.data;
+        },
+      }}
       pages={[
         {
           icon: <Home />,
