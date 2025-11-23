@@ -5,7 +5,7 @@ VisualStudioVersion = 17.12.35506.116 d17.12
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Octockup.Server", "Octockup.Server\Octockup.Server.csproj", "{55B17BAB-F519-4887-B8E3-708B79CF5117}"
 EndProject
-Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "octockup.client", "octockup.client\octockup.client.esproj", "{1386BBF0-87C3-4EA1-AB55-A57F5446106B}"
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "octockup.client", "octockup\octockup.client.esproj", "{1386BBF0-87C3-4EA1-AB55-A57F5446106B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

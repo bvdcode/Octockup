@@ -15,7 +15,7 @@ FROM with-node AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["Octockup.Server/Octockup.Server.csproj", "Octockup.Server/"]
-COPY ["octockup.client/octockup.client.esproj", "octockup.client/"]
+COPY ["octockup/octockup.client.esproj", "octockup.client/"]
 RUN dotnet restore "./Octockup.Server/Octockup.Server.csproj"
 COPY . .
 WORKDIR "/src/Octockup.Server"
