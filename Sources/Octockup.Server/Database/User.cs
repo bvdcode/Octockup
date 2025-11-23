@@ -13,5 +13,10 @@ namespace Octockup.Server.Database
         public string PasswordPhc { get; set; } = null!;
 
         public virtual ICollection<RefreshToken> Sessions { get; set; } = [];
+
+        public override string ToString()
+        {
+            return $"#{Id} | {Username}";
+        }
     }
 }

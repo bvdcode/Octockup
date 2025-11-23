@@ -27,6 +27,11 @@ namespace Octockup.Server.Handlers
                 _logger.LogWarning("Login attempt for '{user}' failed", foundUser);
                 throw new WebApiException(HttpStatusCode.Unauthorized, nameof(User), "Invalid password");
             }
+            if (needsUpgrade)
+            {
+                foundUser.PasswordPhc = _passwords.Hash(request.Password);
+                _logger.LogWarning("Upgrading password hash for user '{user}'", foundUser);
+            }
             RefreshToken refreshToken = new()
             {
                 UserId = foundUser.Id,
