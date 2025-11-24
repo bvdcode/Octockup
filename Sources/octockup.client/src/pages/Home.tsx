@@ -1,10 +1,10 @@
-import { Box, Typography, Card, CardContent } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useSignalR } from "../hooks/useSignalR";
+import { Box, Typography, Card, CardContent } from "@mui/material";
 
 export function HomePage() {
   const [serverTime, setServerTime] = useState<string | null>(null);
-  const { connection, isConnected } = useSignalR("/api/v1/event-hub");
+  const { connection, isConnected } = useSignalR("http://localhost:5112/api/v1/event-hub");
 
   useEffect(() => {
     if (!connection || !isConnected) return;
@@ -28,8 +28,13 @@ export function HomePage() {
           <Typography variant="subtitle1" gutterBottom>
             Server Time (UTC)
           </Typography>
-          <Typography variant="h6" color={isConnected ? "primary" : "text.secondary"}>
-            {isConnected ? serverTime || "Waiting for time..." : "Not connected"}
+          <Typography
+            variant="h6"
+            color={isConnected ? "primary" : "text.secondary"}
+          >
+            {isConnected
+              ? serverTime || "Waiting for time..."
+              : "Not connected"}
           </Typography>
         </CardContent>
       </Card>

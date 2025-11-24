@@ -6,17 +6,23 @@ namespace Octockup.Server.Hubs
 {
     [Authorize]
     [EnableCors]
-    public class EventHub : Hub
+    public class EventHub(ILogger<EventHub> _logger) : Hub
     {
-        public override async Task OnConnectedAsync()
+        public override Task OnConnectedAsync()
         {
-            // send time every 100ms while connected
-            
-            while (!Context.ConnectionAborted.IsCancellationRequested)
+            _logger.LogInformation("Client connected: {connectionId}", Context.ConnectionId);
+            return Task.Run(() =>
             {
-                await Clients.Caller.SendAsync("Time", DateTime.UtcNow);
-                await Task.Delay(100);
-            }
+                while (true)
+                {
+                    Thread.Sleep(25);
+                    Clients.Caller.SendAsync("Time", DateTime.UtcNow);
+                    if (Context.ConnectionAborted.IsCancellationRequested)
+                    {
+                        break;
+                    }
+                }
+            });
         }
     }
 }

@@ -37,6 +37,9 @@ namespace Octockup.Server
                 .AddJwt()
                 .AddSignalR();
 
+            string[] corsOrigins = builder.Configuration.GetSection("CorsOrigins").Get<string[]>() ?? [];
+            builder.Services.AddDefaultCorsWithOrigins(corsOrigins);
+
             var app = builder.Build();
             app.UseCors().UseDefaultFiles();
             app.MapStaticAssets();

@@ -18,7 +18,7 @@
 		<PackageReference Include="FluentValidation" Version="12.1.0" />
 		<PackageReference Include="EasyExtensions.Quartz" Version="2.0.38" />
 		<PackageReference Include="EasyExtensions.Crypto" Version="2.0.38" />
-		<PackageReference Include="EasyExtensions.AspNetCore" Version="2.0.38" />
+		<PackageReference Include="EasyExtensions.AspNetCore" Version="2.0.39" />
 		<PackageReference Include="EasyExtensions.AspNetCore.Authorization" Version="2.0.38" />
 		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1" />
 		<PackageReference Include="Microsoft.AspNetCore.SpaProxy">

@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
 import {
+  LogLevel,
   HubConnection,
   HubConnectionBuilder,
-  LogLevel,
 } from "@microsoft/signalr";
+import { useEffect, useState } from "react";
 import { useAuthStore } from "@bvdcode/react-kit";
 
 export function useSignalR(hubUrl: string) {
@@ -21,7 +21,7 @@ export function useSignalR(hubUrl: string) {
       .withUrl(hubUrl, {
         accessTokenFactory: () => accessToken,
       })
-      .configureLogging(LogLevel.None)
+      .configureLogging(LogLevel.Warning)
       .withAutomaticReconnect()
       .build();
 
