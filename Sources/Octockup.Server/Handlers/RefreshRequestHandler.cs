@@ -34,6 +34,7 @@ namespace Octockup.Server.Handlers
             string refreshToken = StringHelpers.CreateRandomString(64);
             var newSession = new RefreshToken(foundToken.Username, refreshToken);
             _logger.LogInformation("Refresh token rotated for user {UserId}", foundToken.Username);
+            _refreshTokens.Add(newSession);
             return new()
             {
                 AccessToken = accessToken,
