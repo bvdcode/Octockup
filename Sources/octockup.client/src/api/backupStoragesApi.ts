@@ -28,6 +28,14 @@ class BackupStoragesApiClient {
     );
     return data;
   }
+
+  async getDirectories(id: string, parameters: Record<string, any>): Promise<string[]> {
+    const { data } = await this.axios().post<string[]>(
+      `/api/v1/backups/storages/${encodeURIComponent(id)}/directories`,
+      { parameters },
+    );
+    return data;
+  }
 }
 
 export function useBackupStoragesApi(): BackupStoragesApiClient {

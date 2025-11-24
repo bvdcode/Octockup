@@ -13,6 +13,7 @@ import {
   TableBody,
   TableRow,
   TableCell,
+  Autocomplete,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -40,6 +41,8 @@ export default function SourceWizard() {
   const [testMessage, setTestMessage] = useState<string | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<TestResultItem[] | null>(null);
+  const [directories, setDirectories] = useState<string[]>([]);
+  const [directoriesLoading, setDirectoriesLoading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -84,6 +87,30 @@ export default function SourceWizard() {
     setTestMessage(null);
     setTestError(null);
     setTestResult(null);
+    // If user changes any param and path exists, reset directories
+    if (name !== "path" && sourceMeta?.parameters.includes("path")) {
+      setDirectories([]);
+    }
+  }
+
+  async function loadDirectories() {
+    if (!sourceMeta || directoriesLoading) return;
+    const required = sourceMeta.parameters.filter((p) => p !== "path");
+    const missing = required.filter((p) => !(params[p] && String(params[p]).length > 0));
+    if (missing.length > 0) {
+      // Not all other parameters filled yet
+      return;
+    }
+    try {
+      setDirectoriesLoading(true);
+      const dirs = await api.getDirectories(typeId, params);
+      setDirectories(dirs || []);
+    } catch (err: unknown) {
+      console.error("Failed to load directories:", err);
+      setDirectories([]);
+    } finally {
+      setDirectoriesLoading(false);
+    }
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -209,17 +236,47 @@ export default function SourceWizard() {
                       {t("wizard.noParameters")}
                     </Typography>
                   ) : (
-                    sourceMeta.parameters.map((p) => (
-                      <TextField
-                        key={p}
-                        required
-                        fullWidth
-                        label={p}
-                        value={params[p] ?? ""}
-                        onChange={(e) => updateParam(p, e.target.value)}
-                        placeholder={t("wizard.enterValue", { param: p })}
-                      />
-                    ))
+                    sourceMeta.parameters.map((p) =>
+                      p === "path" ? (
+                        <Autocomplete
+                          key={p}
+                          freeSolo
+                          options={directories}
+                          value={params[p] ?? ""}
+                          onInputChange={(_, newValue) => updateParam(p, newValue)}
+                          onOpen={loadDirectories}
+                          loading={directoriesLoading}
+                          renderInput={(inputParams) => (
+                            <TextField
+                              {...inputParams}
+                              required
+                              fullWidth
+                              label={p}
+                              placeholder={t("wizard.enterValue", { param: p })}
+                              InputProps={{
+                                ...inputParams.InputProps,
+                                endAdornment: (
+                                  <>
+                                    {directoriesLoading ? <CircularProgress size={20} /> : null}
+                                    {inputParams.InputProps.endAdornment}
+                                  </>
+                                ),
+                              }}
+                            />
+                          )}
+                        />
+                      ) : (
+                        <TextField
+                          key={p}
+                          required
+                          fullWidth
+                          label={p}
+                          value={params[p] ?? ""}
+                          onChange={(e) => updateParam(p, e.target.value)}
+                          placeholder={t("wizard.enterValue", { param: p })}
+                        />
+                      )
+                    )
                   )}
                 </Stack>
               </CardContent>
