@@ -27,8 +27,14 @@
     "testing": "Testing...",
     "testSuccess": "Connection test successful.",
     "testFailed": "Connection test failed.",
-    "fillParameters": "Please fill all parameters before testing."
+    "fillParameters": "Please fill all parameters before testing.",
+    "testResult": "Test Result",
+    "fileName": "Name",
+    "filePath": "Path",
+    "fileSize": "Size",
+    "fileModified": "Modified"
   },
+  
   "storages": {
     "title": "Your Storages",
     "noStorages": "No storages configured yet.",
@@ -47,5 +53,11 @@
     "loadError": "Failed to load storage metadata.",
     "enterValue": "Enter value for {{param}}",
     "storageCreated": "Storage prepared (stub). Check console."
+    ,
+    "testConnection": "Test connection",
+    "testing": "Testing...",
+    "testSuccess": "Connection test successful.",
+    "testFailed": "Connection test failed.",
+    "fillParameters": "Please fill all parameters before testing."
   }
 }

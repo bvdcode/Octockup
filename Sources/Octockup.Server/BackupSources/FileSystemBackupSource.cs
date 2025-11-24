@@ -10,11 +10,11 @@ namespace Octockup.Server.BackupSources
         public IEnumerable<string> RequiredParameters => [ "path" ];
 
         private static readonly string _rootDirectory = Path.Combine(AppContext.BaseDirectory, "mounts");
-        private string _baseDirectory = "/";
+        private string _baseDirectory = _rootDirectory;
 
         public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false)
         {
-            Directory.CreateDirectory(_baseDirectory);
+            Directory.CreateDirectory(_rootDirectory);
             string fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, _baseDirectory));
             if (!Directory.Exists(fullPath))
             {

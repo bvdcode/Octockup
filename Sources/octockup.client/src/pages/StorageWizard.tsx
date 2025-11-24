@@ -8,11 +8,16 @@ import {
   Typography,
   CardContent,
   CircularProgress,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowBack } from "@mui/icons-material";
-import type { BackupStorage } from "../types/api";
+import type { BackupStorage, TestResultItem } from "../types/api";
 import { getSourceIcon } from "../constants/sourceIcons";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useBackupStoragesApi } from "../api/backupStoragesApi";
@@ -31,6 +36,10 @@ export default function StorageWizard() {
   const [error, setError] = useState<string | null>(null);
   const [storageMeta, setStorageMeta] = useState<BackupStorage | null>(null);
   const [params, setParams] = useState<ParamState>({});
+  const [testLoading, setTestLoading] = useState(false);
+  const [testMessage, setTestMessage] = useState<string | null>(null);
+  const [testError, setTestError] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<TestResultItem[] | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -72,13 +81,47 @@ export default function StorageWizard() {
 
   function updateParam(name: string, value: string) {
     setParams((prev) => ({ ...prev, [name]: value }));
+    setTestMessage(null);
+    setTestError(null);
+    setTestResult(null);
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    console.log("Create storage", { typeId, parameters: params });
     alert(t("storageWizard.storageCreated"));
     navigate("/storages");
+  }
+
+  async function handleTest() {
+    setTestError(null);
+    setTestMessage(null);
+    setTestResult(null);
+    if (!storageMeta) return;
+    const required = storageMeta.parameters || [];
+    const missing = required.filter((p) => !(params[p] && String(params[p]).length > 0));
+    if (missing.length > 0) {
+      setTestError(t("wizard.fillParameters"));
+      return;
+    }
+    try {
+      setTestLoading(true);
+      const result = await api.test(typeId, params);
+      if (Array.isArray(result)) {
+        setTestResult(result as TestResultItem[]);
+        setTestMessage(t("storageWizard.testSuccess") ?? t("wizard.testSuccess"));
+      } else if (result && Array.isArray(result.items)) {
+        setTestResult(result.items as TestResultItem[]);
+        setTestMessage(t("storageWizard.testSuccess") ?? t("wizard.testSuccess"));
+      } else {
+        const message = result?.message ?? t("storageWizard.testSuccess") ?? t("wizard.testSuccess");
+        setTestMessage(typeof message === "string" ? message : JSON.stringify(message));
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setTestError(msg || (t("storageWizard.testFailed") ?? t("wizard.testFailed")));
+    } finally {
+      setTestLoading(false);
+    }
   }
 
   if (loading) {
@@ -87,6 +130,29 @@ export default function StorageWizard() {
         <CircularProgress />
       </Box>
     );
+  }
+
+  function humanBytes(bytes: number | null | undefined) {
+    if (bytes == null) return "-";
+    if (bytes === 0) return "0 B";
+    const sizes = ["B", "KB", "MB", "GB", "TB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+  }
+
+  function formatLocalWithMs(utcString?: string | null) {
+    if (!utcString) return "-";
+    const d = new Date(utcString);
+    if (isNaN(d.getTime())) return utcString;
+    const datePart = d.toLocaleDateString();
+    const timePart = d.toLocaleTimeString(undefined, {
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+    const ms = d.getMilliseconds().toString().padStart(3, "0");
+    return `${datePart} ${timePart}.${ms}`;
   }
 
   if (error) {
@@ -161,13 +227,49 @@ export default function StorageWizard() {
               </CardContent>
             </Card>
 
-            <Stack direction="row" spacing={2}>
-              <Button type="submit" variant="contained">
-                {t("storageWizard.createStorage")}
-              </Button>
-              <Button variant="outlined" onClick={() => navigate("/storages")}>
-                {t("storageWizard.cancel")}
-              </Button>
+            <Stack spacing={2}>
+              {testMessage && <Alert severity="success">{testMessage}</Alert>}
+              {testError && <Alert severity="error">{testError}</Alert>}
+              {testResult && (
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="subtitle2" gutterBottom>
+                      {t("wizard.testResult")}
+                    </Typography>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>{t("wizard.fileName")}</TableCell>
+                          <TableCell>{t("wizard.filePath")}</TableCell>
+                          <TableCell>{t("wizard.fileSize")}</TableCell>
+                          <TableCell>{t("wizard.fileModified")}</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {testResult.map((it) => (
+                          <TableRow key={it.path + it.name}>
+                            <TableCell>{it.name}</TableCell>
+                            <TableCell>{it.path}</TableCell>
+                            <TableCell>{humanBytes(it.size)}</TableCell>
+                            <TableCell>{formatLocalWithMs(it.lastModified)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )}
+              <Stack direction="row" spacing={2}>
+                <Button type="submit" variant="contained">
+                  {t("storageWizard.createStorage")}
+                </Button>
+                <Button variant="outlined" onClick={() => navigate("/storages") }>
+                  {t("storageWizard.cancel")}
+                </Button>
+                <Button variant="outlined" onClick={handleTest} disabled={testLoading}>
+                  {testLoading ? t("wizard.testing") : t("wizard.testConnection")}
+                </Button>
+              </Stack>
             </Stack>
           </Stack>
         </Box>

@@ -20,6 +20,14 @@ class BackupStoragesApiClient {
     );
     return data;
   }
+
+  async test(id: string, parameters: Record<string, any>): Promise<any> {
+    const { data } = await this.axios().post<any>(
+      `/api/v1/backups/storages/${encodeURIComponent(id)}/test`,
+      { parameters },
+    );
+    return data;
+  }
 }
 
 export function useBackupStoragesApi(): BackupStoragesApiClient {

@@ -8,11 +8,16 @@ import {
   Typography,
   CardContent,
   CircularProgress,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowBack } from "@mui/icons-material";
-import type { BackupSource } from "../types/api";
+import type { BackupSource, TestResultItem } from "../types/api";
 import { getSourceIcon } from "../constants/sourceIcons";
 import { useBackupSourcesApi } from "../api/backupSourcesApi";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -34,6 +39,7 @@ export default function SourceWizard() {
   const [testLoading, setTestLoading] = useState(false);
   const [testMessage, setTestMessage] = useState<string | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<TestResultItem[] | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -77,11 +83,11 @@ export default function SourceWizard() {
     setParams((prev) => ({ ...prev, [name]: value }));
     setTestMessage(null);
     setTestError(null);
+    setTestResult(null);
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    console.log("Create source", { typeId, parameters: params });
     alert(t("wizard.sourceCreated"));
     navigate("/sources");
   }
@@ -100,14 +106,45 @@ export default function SourceWizard() {
     try {
       setTestLoading(true);
       const result = await api.test(typeId, params);
-      const message = result?.message ?? t("wizard.testSuccess");
-      setTestMessage(typeof message === "string" ? message : JSON.stringify(message));
+      if (Array.isArray(result)) {
+        setTestResult(result as TestResultItem[]);
+        setTestMessage(t("wizard.testSuccess"));
+      } else if (result && Array.isArray(result.items)) {
+        setTestResult(result.items as TestResultItem[]);
+        setTestMessage(t("wizard.testSuccess"));
+      } else {
+        const message = result?.message ?? t("wizard.testSuccess");
+        setTestMessage(typeof message === "string" ? message : JSON.stringify(message));
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setTestError(msg || t("wizard.testFailed"));
     } finally {
       setTestLoading(false);
     }
+  }
+
+  function humanBytes(bytes: number | null | undefined) {
+    if (bytes == null) return "-";
+    if (bytes === 0) return "0 B";
+    const sizes = ["B", "KB", "MB", "GB", "TB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+  }
+
+  function formatLocalWithMs(utcString?: string | null) {
+    if (!utcString) return "-";
+    const d = new Date(utcString);
+    if (isNaN(d.getTime())) return utcString;
+    const datePart = d.toLocaleDateString();
+    const timePart = d.toLocaleTimeString(undefined, {
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+    const ms = d.getMilliseconds().toString().padStart(3, "0");
+    return `${datePart} ${timePart}.${ms}`;
   }
 
   if (loading) {
@@ -189,10 +226,37 @@ export default function SourceWizard() {
             </Card>
 
             <Stack spacing={2}>
-              {testMessage && (
-                <Alert severity="success">{testMessage}</Alert>
-              )}
+              {testMessage && <Alert severity="success">{testMessage}</Alert>}
               {testError && <Alert severity="error">{testError}</Alert>}
+              {testResult && (
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="subtitle2" gutterBottom>
+                      {t("wizard.testResult")}
+                    </Typography>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>{t("wizard.fileName")}</TableCell>
+                          <TableCell>{t("wizard.filePath")}</TableCell>
+                          <TableCell>{t("wizard.fileSize")}</TableCell>
+                          <TableCell>{t("wizard.fileModified")}</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {testResult.map((it) => (
+                          <TableRow key={it.path + it.name}>
+                            <TableCell>{it.name}</TableCell>
+                            <TableCell>{it.path}</TableCell>
+                            <TableCell>{humanBytes(it.size)}</TableCell>
+                            <TableCell>{formatLocalWithMs(it.lastModified)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )}
               <Stack direction="row" spacing={2}>
                 <Button type="submit" variant="contained">
                   {t("wizard.createSource")}
