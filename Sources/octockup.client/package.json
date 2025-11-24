@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@bvdcode/react-kit": "^0.0.29",
+    "@bvdcode/react-kit": "^0.0.30",
     "@mui/icons-material": "^7.3.5",
     "@mui/material": "^7.3.4",
     "@mui/styled-engine": "^7.3.4",
