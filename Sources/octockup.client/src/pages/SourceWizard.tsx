@@ -103,7 +103,9 @@ export default function SourceWizard() {
   async function loadBrowserDirectories(targetPath: string) {
     if (!sourceMeta || browserLoading) return;
     const required = sourceMeta.parameters.filter((p) => p !== "path");
-    const missing = required.filter((p) => !(params[p] && String(params[p]).length > 0));
+    const missing = required.filter(
+      (p) => !(params[p] && String(params[p]).length > 0),
+    );
     if (missing.length > 0) {
       return;
     }
@@ -149,7 +151,9 @@ export default function SourceWizard() {
     if (!sourceMeta) return;
     // Ensure all parameters are filled
     const required = sourceMeta.parameters || [];
-    const missing = required.filter((p) => !(params[p] && String(params[p]).length > 0));
+    const missing = required.filter(
+      (p) => !(params[p] && String(params[p]).length > 0),
+    );
     if (missing.length > 0) {
       setTestError(t("wizard.fillParameters"));
       return;
@@ -165,7 +169,9 @@ export default function SourceWizard() {
         setTestMessage(t("wizard.testSuccess"));
       } else {
         const message = result?.message ?? t("wizard.testSuccess");
-        setTestMessage(typeof message === "string" ? message : JSON.stringify(message));
+        setTestMessage(
+          typeof message === "string" ? message : JSON.stringify(message),
+        );
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -273,14 +279,29 @@ export default function SourceWizard() {
                         />
                       ))}
                       {sourceMeta.parameters.includes("path") && (
-                        <Paper variant="outlined" sx={{ p: 2, maxHeight: 300, overflow: "auto" }}>
+                        <Paper
+                          variant="outlined"
+                          sx={{ p: 2, maxHeight: 300, overflow: "auto" }}
+                        >
                           <Stack spacing={1}>
-                            <Stack direction="row" alignItems="center" justifyContent="space-between">
-                              <Typography variant="caption" color="text.secondary">
-                                {t("wizard.directoryBrowser")}: {browserPath || "(root)"}
+                            <Stack
+                              direction="row"
+                              alignItems="center"
+                              justifyContent="space-between"
+                            >
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
+                                {t("wizard.directoryBrowser")}:{" "}
+                                {browserPath || "(root)"}
                               </Typography>
                               {browserPath && (
-                                <Button size="small" startIcon={<ArrowUpward />} onClick={handleBrowserUp}>
+                                <Button
+                                  size="small"
+                                  startIcon={<ArrowUpward />}
+                                  onClick={handleBrowserUp}
+                                >
                                   {t("wizard.up")}
                                 </Button>
                               )}
@@ -290,14 +311,23 @@ export default function SourceWizard() {
                                 <CircularProgress size={24} />
                               </Box>
                             ) : browserDirs.length === 0 ? (
-                              <Typography variant="body2" color="text.secondary" textAlign="center" py={2}>
-                                {browserPath ? t("wizard.noSubdirectories") : t("wizard.clickToLoad")}
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                                textAlign="center"
+                                py={2}
+                              >
+                                {browserPath
+                                  ? t("wizard.noSubdirectories")
+                                  : t("wizard.clickToLoad")}
                               </Typography>
                             ) : (
                               <List dense>
                                 {browserDirs.map((dir) => (
                                   <ListItem key={dir} disablePadding>
-                                    <ListItemButton onClick={() => handleBrowserNavigate(dir)}>
+                                    <ListItemButton
+                                      onClick={() => handleBrowserNavigate(dir)}
+                                    >
                                       <ListItemIcon sx={{ minWidth: 36 }}>
                                         <Folder />
                                       </ListItemIcon>
@@ -339,7 +369,6 @@ export default function SourceWizard() {
                       <TableHead>
                         <TableRow>
                           <TableCell>{t("wizard.fileName")}</TableCell>
-                          <TableCell>{t("wizard.filePath")}</TableCell>
                           <TableCell>{t("wizard.fileSize")}</TableCell>
                           <TableCell>{t("wizard.fileModified")}</TableCell>
                         </TableRow>
@@ -348,9 +377,10 @@ export default function SourceWizard() {
                         {testResult.map((it) => (
                           <TableRow key={it.path + it.name}>
                             <TableCell>{it.name}</TableCell>
-                            <TableCell>{it.path}</TableCell>
                             <TableCell>{humanBytes(it.size)}</TableCell>
-                            <TableCell>{formatLocalWithMs(it.lastModified)}</TableCell>
+                            <TableCell>
+                              {formatLocalWithMs(it.lastModified)}
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -358,22 +388,18 @@ export default function SourceWizard() {
                   </CardContent>
                 </Card>
               )}
-              <Stack direction="row" spacing={2}>
-                <Button type="submit" variant="contained">
-                  {t("wizard.createSource")}
-                </Button>
-                <Button
-                  variant="outlined"
-                  onClick={() => navigate("/sources")}
-                >
-                  {t("wizard.cancel")}
-                </Button>
+              <Stack direction="row" spacing={2} justifyContent="flex-end">
                 <Button
                   variant="outlined"
                   onClick={handleTest}
                   disabled={testLoading}
                 >
-                  {testLoading ? t("wizard.testing") : t("wizard.testConnection")}
+                  {testLoading
+                    ? t("wizard.testing")
+                    : t("wizard.testConnection")}
+                </Button>
+                <Button type="submit" variant="contained">
+                  {t("wizard.createSource")}
                 </Button>
               </Stack>
             </Stack>
