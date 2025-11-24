@@ -8,7 +8,7 @@ _IN DEVELOPMENT_
 [![Docker Image Size](https://badgen.net/docker/size/bvdcode/octockup?icon=docker&label=image%20size)](https://hub.docker.com/r/bvdcode/octockup/)
 ![Github last-commit](https://img.shields.io/github/last-commit/bvdcode/Octockup)
 
->Live: [https://backup.belov.us](https://backup.belov.us)
+>Live: [https://backup.belov.us](https://octockup.splidex.com)
 
 Octockup is an all-in-one client and server application for autobackup that includes both backend and frontend in a single Docker container. It allows you to gather and manage data from various sources, such as YouTube, SSH, FTP, and more, directly through the browser.
 
