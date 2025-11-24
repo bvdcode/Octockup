@@ -6,6 +6,7 @@ import {
   CloudDownload,
 } from "@mui/icons-material";
 import * as locales from "./locales";
+import HomePage from "./pages/Home";
 import SourcesPage from "./pages/Sources";
 import StoragesPage from "./pages/Storages";
 import SourceWizard from "./pages/SourceWizard";
@@ -48,7 +49,7 @@ function App() {
           icon: <Home />,
           name: "Home",
           route: "/",
-          component: <div>Home Page</div>,
+          component: <HomePage />,
         },
         {
           icon: <Backup />,
