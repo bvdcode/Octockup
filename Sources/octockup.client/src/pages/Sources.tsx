@@ -1,19 +1,16 @@
 import {
   Box,
-  Typography,
   Card,
-  CardContent,
-  Table,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
   Stack,
-  CircularProgress,
   Alert,
+  Divider,
+  Typography,
+  CardContent,
+  CircularProgress,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import type { BackupSource } from "../types/api";
 import { AddCircleOutline } from "@mui/icons-material";
 import { getSourceIcon } from "../constants/sourceIcons";
@@ -26,6 +23,7 @@ interface State {
 
 export function SourcesPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const api = useBackupSourcesApi();
   const [state, setState] = useState<State>({ loading: true, error: null });
   const [sources, setSources] = useState<BackupSource[]>([]);
@@ -81,37 +79,7 @@ export function SourcesPage() {
           </CardContent>
         </Card>
       </Box>
-
-      <Box>
-        <Typography variant="h6" gutterBottom>
-          {t("sources.availableTypes")}
-        </Typography>
-        {sources.length === 0 ? (
-          <Typography color="text.secondary">{t("sources.noTypes")}</Typography>
-        ) : (
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>{t("sources.name")}</TableCell>
-                <TableCell>{t("sources.id")}</TableCell>
-                <TableCell>{t("sources.parameters")}</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {sources.map((s) => (
-                <TableRow key={s.id}>
-                  <TableCell>{s.name}</TableCell>
-                  <TableCell>{s.id}</TableCell>
-                  <TableCell>
-                    {s.parameters.length > 0 ? s.parameters.join(", ") : "-"}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </Box>
-
+      <Divider />
       <Box>
         <Typography variant="h6" gutterBottom>
           {t("sources.addNew")}
@@ -126,9 +94,7 @@ export function SourcesPage() {
                 "&:hover": { bgcolor: "action.hover" },
               }}
               onClick={() => {
-                window.location.href = `/sources/new?type=${encodeURIComponent(
-                  s.id,
-                )}`;
+                navigate(`/sources/new?type=${encodeURIComponent(s.id)}`);
               }}
             >
               <CardContent

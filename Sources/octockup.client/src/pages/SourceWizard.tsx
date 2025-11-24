@@ -9,12 +9,13 @@ import {
   CardContent,
   CircularProgress,
 } from "@mui/material";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowBack } from "@mui/icons-material";
 import type { BackupSource } from "../types/api";
-import { useEffect, useMemo, useState } from "react";
 import { getSourceIcon } from "../constants/sourceIcons";
 import { useBackupSourcesApi } from "../api/backupSourcesApi";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 interface ParamState {
   [key: string]: string;
@@ -22,9 +23,10 @@ interface ParamState {
 
 export default function SourceWizard() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const api = useBackupSourcesApi();
-  const query = useMemo(() => new URLSearchParams(window.location.search), []);
-  const typeId = query.get("type") || "";
+  const [searchParams] = useSearchParams();
+  const typeId = searchParams.get("type") || "";
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sourceMeta, setSourceMeta] = useState<BackupSource | null>(null);
@@ -76,7 +78,7 @@ export default function SourceWizard() {
     e.preventDefault();
     console.log("Create source", { typeId, parameters: params });
     alert(t("wizard.sourceCreated"));
-    window.location.href = "/sources";
+    navigate("/sources");
   }
 
   if (loading) {
@@ -101,7 +103,7 @@ export default function SourceWizard() {
         <Button
           variant="outlined"
           startIcon={<ArrowBack />}
-          onClick={() => (window.location.href = "/sources")}
+          onClick={() => navigate("/sources")}
         >
           {t("wizard.back")}
         </Button>
@@ -161,10 +163,7 @@ export default function SourceWizard() {
               <Button type="submit" variant="contained">
                 {t("wizard.createSource")}
               </Button>
-              <Button
-                variant="outlined"
-                onClick={() => (window.location.href = "/sources")}
-              >
+              <Button variant="outlined" onClick={() => navigate("/sources")}>
                 {t("wizard.cancel")}
               </Button>
             </Stack>
