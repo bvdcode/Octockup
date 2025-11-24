@@ -89,8 +89,13 @@ export function SourcesPage() {
             <Card
               key={s.id}
               sx={{
-                minWidth: 120,
+                width: 160,
+                height: 120,
+                flex: "0 0 160px",
                 cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
                 "&:hover": { bgcolor: "action.hover" },
               }}
               onClick={() => {
@@ -103,10 +108,14 @@ export function SourcesPage() {
                   flexDirection: "column",
                   alignItems: "center",
                   gap: 1,
+                  justifyContent: "center",
+                  height: "100%",
                 }}
               >
                 <Box sx={{ fontSize: 32 }}>{getSourceIcon(s.id)}</Box>
-                <Typography variant="caption">{s.name}</Typography>
+                <Typography variant="caption" noWrap sx={{ textAlign: "center", maxWidth: 140 }}>
+                  {s.name}
+                </Typography>
               </CardContent>
             </Card>
           ))}
