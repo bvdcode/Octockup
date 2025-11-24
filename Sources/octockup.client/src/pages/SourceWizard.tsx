@@ -113,6 +113,8 @@ export default function SourceWizard() {
       const dirs = await api.getDirectories(typeId, paramsWithPath);
       setBrowserDirs(dirs || []);
       setBrowserPath(targetPath);
+      // Update path field with current browser path
+      setParams((prev) => ({ ...prev, path: targetPath }));
     } catch (err: unknown) {
       console.error("Failed to load directories:", err);
       setBrowserDirs([]);
@@ -122,14 +124,16 @@ export default function SourceWizard() {
   }
 
   function handleBrowserNavigate(dir: string) {
-    const newPath = browserPath ? `${browserPath}/${dir}` : dir;
+    const sep = sourceMeta?.pathSeparator || "/";
+    const newPath = browserPath ? `${browserPath}${sep}${dir}` : dir;
     loadBrowserDirectories(newPath);
   }
 
   function handleBrowserUp() {
-    const parts = browserPath.split("/").filter(Boolean);
+    const sep = sourceMeta?.pathSeparator || "/";
+    const parts = browserPath.split(sep).filter(Boolean);
     parts.pop();
-    const newPath = parts.join("/");
+    const newPath = parts.join(sep);
     loadBrowserDirectories(newPath);
   }
 
@@ -273,7 +277,7 @@ export default function SourceWizard() {
                           <Stack spacing={1}>
                             <Stack direction="row" alignItems="center" justifyContent="space-between">
                               <Typography variant="caption" color="text.secondary">
-                                {t("wizard.directoryBrowser")}: /{browserPath}
+                                {t("wizard.directoryBrowser")}: {browserPath || "(root)"}
                               </Typography>
                               {browserPath && (
                                 <Button size="small" startIcon={<ArrowUpward />} onClick={handleBrowserUp}>
