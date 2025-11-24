@@ -1,9 +1,7 @@
 ﻿namespace Octockup.Server.Abstractions
 {
-    public interface IBackupSource
+    public interface IBackupSource : IBackupModule
     {
-        string Id { get; }
-        string Name { get; }
-        IEnumerable<string> RequiredParameters { get; }
+        IEnumerable<BackupFileInfo> GetFiles();
     }
 }
