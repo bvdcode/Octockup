@@ -36,7 +36,7 @@ export function HomePage() {
   }
 
   return (
-    <Box p={3}>
+    <Box>
       <Typography variant="h4" gutterBottom>
         Home
       </Typography>
