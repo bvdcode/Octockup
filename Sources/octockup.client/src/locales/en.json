@@ -22,6 +22,12 @@
     "loadError": "Failed to load source metadata.",
     "enterValue": "Enter value for {{param}}",
     "sourceCreated": "Source prepared (stub). Check console."
+    ,
+    "testConnection": "Test connection",
+    "testing": "Testing...",
+    "testSuccess": "Connection test successful.",
+    "testFailed": "Connection test failed.",
+    "fillParameters": "Please fill all parameters before testing."
   },
   "storages": {
     "title": "Your Storages",

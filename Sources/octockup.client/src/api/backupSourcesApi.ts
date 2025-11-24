@@ -18,6 +18,13 @@ class BackupSourcesApiClient {
     const { data } = await this.axios().get<BackupSource[]>("/api/v1/backups/sources");
     return data;
   }
+
+  async test(id: string, parameters: Record<string, any>): Promise<any> {
+    const { data } = await this.axios().post<any>(`/api/v1/backups/sources/${encodeURIComponent(
+      id,
+    )}/test`, { parameters });
+    return data;
+  }
 }
 
 export function useBackupSourcesApi(): BackupSourcesApiClient {

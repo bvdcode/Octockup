@@ -31,6 +31,9 @@ export default function SourceWizard() {
   const [error, setError] = useState<string | null>(null);
   const [sourceMeta, setSourceMeta] = useState<BackupSource | null>(null);
   const [params, setParams] = useState<ParamState>({});
+  const [testLoading, setTestLoading] = useState(false);
+  const [testMessage, setTestMessage] = useState<string | null>(null);
+  const [testError, setTestError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -72,6 +75,8 @@ export default function SourceWizard() {
 
   function updateParam(name: string, value: string) {
     setParams((prev) => ({ ...prev, [name]: value }));
+    setTestMessage(null);
+    setTestError(null);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -79,6 +84,30 @@ export default function SourceWizard() {
     console.log("Create source", { typeId, parameters: params });
     alert(t("wizard.sourceCreated"));
     navigate("/sources");
+  }
+
+  async function handleTest() {
+    setTestError(null);
+    setTestMessage(null);
+    if (!sourceMeta) return;
+    // Ensure all parameters are filled
+    const required = sourceMeta.parameters || [];
+    const missing = required.filter((p) => !(params[p] && String(params[p]).length > 0));
+    if (missing.length > 0) {
+      setTestError(t("wizard.fillParameters"));
+      return;
+    }
+    try {
+      setTestLoading(true);
+      const result = await api.test(typeId, params);
+      const message = result?.message ?? t("wizard.testSuccess");
+      setTestMessage(typeof message === "string" ? message : JSON.stringify(message));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setTestError(msg || t("wizard.testFailed"));
+    } finally {
+      setTestLoading(false);
+    }
   }
 
   if (loading) {
@@ -159,13 +188,29 @@ export default function SourceWizard() {
               </CardContent>
             </Card>
 
-            <Stack direction="row" spacing={2}>
-              <Button type="submit" variant="contained">
-                {t("wizard.createSource")}
-              </Button>
-              <Button variant="outlined" onClick={() => navigate("/sources")}>
-                {t("wizard.cancel")}
-              </Button>
+            <Stack spacing={2}>
+              {testMessage && (
+                <Alert severity="success">{testMessage}</Alert>
+              )}
+              {testError && <Alert severity="error">{testError}</Alert>}
+              <Stack direction="row" spacing={2}>
+                <Button type="submit" variant="contained">
+                  {t("wizard.createSource")}
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={() => navigate("/sources")}
+                >
+                  {t("wizard.cancel")}
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={handleTest}
+                  disabled={testLoading}
+                >
+                  {testLoading ? t("wizard.testing") : t("wizard.testConnection")}
+                </Button>
+              </Stack>
             </Stack>
           </Stack>
         </Box>
