@@ -62,9 +62,11 @@ namespace Octockup.Server.BackupSources
             foreach (var file in files)
             {
                 var fileInfo = new FileInfo(file);
+                var relativePath = Path.GetRelativePath(_baseDirectory, file);
+                
                 yield return new BackupFileInfo
                 {
-                    Path = file,
+                    Path = relativePath,
                     Name = fileInfo.Name,
                     Size = fileInfo.Length,
                     LastModified = fileInfo.LastWriteTimeUtc
@@ -87,7 +89,8 @@ namespace Octockup.Server.BackupSources
 
             foreach (var dir in directories)
             {
-                yield return dir;
+                var relativePath = Path.GetRelativePath(_baseDirectory, dir);
+                yield return relativePath;
             }
         }
 
