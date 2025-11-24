@@ -9,15 +9,16 @@ namespace Octockup.Server.BackupSources
         public string Id => GetType().FullName!;
         public IEnumerable<string> RequiredParameters => [ "path" ];
 
-        private static readonly string _baseDirectory = Path.Combine(AppContext.BaseDirectory, "mounts");
+        private static readonly string _rootDirectory = Path.Combine(AppContext.BaseDirectory, "mounts");
+        private string _baseDirectory = "/";
 
-        public IEnumerable<BackupFileInfo> GetFiles(string directory, bool recursive = false)
+        public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false)
         {
             Directory.CreateDirectory(_baseDirectory);
-            string fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, directory));
+            string fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, _baseDirectory));
             if (!Directory.Exists(fullPath))
             {
-                throw new DirectoryNotFoundException($"The directory '{directory}' does not exist.");
+                throw new DirectoryNotFoundException($"The directory '{_baseDirectory}' does not exist.");
             }
             var searchOption = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
             var files = Directory.GetFiles(fullPath, "*", searchOption);
@@ -32,6 +33,15 @@ namespace Octockup.Server.BackupSources
                     LastModified = fileInfo.LastWriteTimeUtc
                 };
             }
+        }
+
+        public void SetParameters(Dictionary<string, string> parameters)
+        {
+            if (!parameters.TryGetValue("path", out var path))
+            {
+                throw new ArgumentException("Missing required parameter: path");
+            }
+            _baseDirectory = Path.GetFullPath(Path.Combine(_rootDirectory, path));
         }
     }
 }

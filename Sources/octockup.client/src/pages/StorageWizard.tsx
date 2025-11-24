@@ -110,7 +110,7 @@ export default function StorageWizard() {
         <Typography variant="h5">{t("storageWizard.title")}</Typography>
       </Stack>
       {storageMeta && (
-        <Box component="form" onSubmit={handleSubmit} maxWidth={640}>
+        <Box component="form" onSubmit={handleSubmit}>
           <Stack spacing={3}>
             <Card variant="outlined">
               <CardContent>

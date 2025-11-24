@@ -18,7 +18,7 @@ function App() {
     <AppShell
       appName="Octockup"
       logoUrl="/octockup.png"
-      contentMaxWidth={1200}
+      contentMaxWidth={800}
       translations={{
         en: { translation: locales.en },
         ru: { translation: locales.ru },
