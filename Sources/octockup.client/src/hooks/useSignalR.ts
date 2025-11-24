@@ -10,24 +10,25 @@ export function useSignalR(hubUrl: string) {
   const [connection, setConnection] = useState<HubConnection | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const apiService = useAuthStore((s) => s.apiService);
+  const accessToken = useAuthStore((s) => s.accessToken);
 
   useEffect(() => {
-    if (!apiService) return;
+    if (!apiService || !accessToken) {
+      return;
+    }
 
-    const accessToken = apiService.getAccessToken();
-    if (!accessToken) return;
-
+    let mounted = true;
     const newConnection = new HubConnectionBuilder()
       .withUrl(hubUrl, {
-        accessTokenFactory: () => accessToken,
+        accessTokenFactory: () => accessToken || "",
       })
-      .configureLogging(LogLevel.Warning)
+      .configureLogging(LogLevel.None)
       .withAutomaticReconnect()
       .build();
-
     newConnection
       .start()
       .then(() => {
+        if (!mounted) return;
         setIsConnected(true);
         setConnection(newConnection);
       })
@@ -44,10 +45,14 @@ export function useSignalR(hubUrl: string) {
     });
 
     return () => {
-      newConnection.stop();
-      setConnection(null);
+      mounted = false;
+      // stop created connection and clear state only if it was the one we created
+      // ignore errors on stop
+      newConnection.stop().catch(() => {});
+      setConnection((prev) => (prev === newConnection ? null : prev));
+      setIsConnected(false);
     };
-  }, [hubUrl, apiService]);
+  }, [hubUrl, apiService, accessToken]);
 
   return { connection, isConnected };
 }
