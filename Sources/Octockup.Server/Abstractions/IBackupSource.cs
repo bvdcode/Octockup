@@ -4,6 +4,6 @@ namespace Octockup.Server.Abstractions
 {
     public interface IBackupSource : IBackupModule
     {
-        IEnumerable<BackupFileInfo> GetFiles();
+        IEnumerable<BackupFileInfo> GetFiles(string directory, bool recursive = false);
     }
 }

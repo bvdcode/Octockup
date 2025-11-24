@@ -1,5 +1,5 @@
-﻿using Octockup.Server.Abstractions;
-using Octockup.Server.Models;
+﻿using Octockup.Server.Models;
+using Octockup.Server.Abstractions;
 
 namespace Octockup.Server.BackupSources
 {
@@ -9,9 +9,25 @@ namespace Octockup.Server.BackupSources
         public string Id => GetType().FullName!;
         public IEnumerable<string> RequiredParameters => [ "path" ];
 
-        public IEnumerable<BackupFileInfo> GetFiles()
+        public IEnumerable<BackupFileInfo> GetFiles(string directory, bool recursive = false)
         {
-            return [];
+            if (!Directory.Exists(directory))
+            {
+                throw new DirectoryNotFoundException($"The directory '{directory}' does not exist.");
+            }
+            var searchOption = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
+            var files = Directory.GetFiles(directory, "*", searchOption);
+            foreach (var file in files)
+            {
+                var fileInfo = new FileInfo(file);
+                yield return new BackupFileInfo
+                {
+                    Path = file,
+                    Name = fileInfo.Name,
+                    Size = fileInfo.Length,
+                    LastModified = fileInfo.LastWriteTimeUtc
+                };
+            }
         }
     }
 }

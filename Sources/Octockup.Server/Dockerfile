@@ -1,8 +1,4 @@
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
-RUN apt-get update
-RUN apt-get --yes install curl
-RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-USER $APP_UID
 WORKDIR /app
 EXPOSE 8080
 
@@ -28,5 +24,4 @@ RUN dotnet publish "./Octockup.Server.csproj" -c $BUILD_CONFIGURATION -o /app/pu
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-HEALTHCHECK --interval=15s --timeout=60s --retries=3 CMD curl --silent --fail http://localhost:8080/api/v1/health || exit 1
 ENTRYPOINT ["dotnet", "Octockup.Server.dll"]
