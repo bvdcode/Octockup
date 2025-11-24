@@ -4,9 +4,7 @@ import { Box, Typography, Card, CardContent } from "@mui/material";
 
 export function HomePage() {
   const [serverTime, setServerTime] = useState<string>("");
-  const { connection, isConnected } = useSignalR(
-    "http://localhost:5112/api/v1/event-hub",
-  );
+  const { connection, isConnected } = useSignalR("/api/v1/event-hub");
 
   useEffect(() => {
     if (!connection || !isConnected) return;
