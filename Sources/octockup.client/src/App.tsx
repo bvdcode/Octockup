@@ -5,12 +5,12 @@ import {
   CloudDone,
   CloudDownload,
 } from "@mui/icons-material";
-import { AppShell, type TokenPair, type UserInfo } from "@bvdcode/react-kit";
-import SourcesPage from "./pages/Sources";
-import SourceWizard from "./pages/SourceWizard";
-import StoragesPage from "./pages/Storages";
-import StorageWizard from "./pages/StorageWizard";
 import * as locales from "./locales";
+import SourcesPage from "./pages/Sources";
+import StoragesPage from "./pages/Storages";
+import SourceWizard from "./pages/SourceWizard";
+import StorageWizard from "./pages/StorageWizard";
+import { AppShell, type TokenPair, type UserInfo } from "@bvdcode/react-kit";
 
 function App() {
   return (
