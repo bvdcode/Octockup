@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   Box,
   Typography,
@@ -13,10 +12,12 @@ import {
   CircularProgress,
   Alert,
 } from "@mui/material";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { BackupSource } from "../types/api";
 import { AddCircleOutline } from "@mui/icons-material";
 import { getSourceIcon } from "../constants/sourceIcons";
 import { useBackupSourcesApi } from "../api/backupSourcesApi";
-import type { BackupSource } from "../types/api";
 
 interface State {
   loading: boolean;
@@ -24,6 +25,7 @@ interface State {
 }
 
 export function SourcesPage() {
+  const { t } = useTranslation();
   const api = useBackupSourcesApi();
   const [state, setState] = useState<State>({ loading: true, error: null });
   const [sources, setSources] = useState<BackupSource[]>([]);
@@ -39,7 +41,10 @@ export function SourcesPage() {
       })
       .catch((e) => {
         if (!active) return;
-        setState({ loading: false, error: e?.message || "Failed to load sources" });
+        setState({
+          loading: false,
+          error: e?.message || "Failed to load sources",
+        });
       });
     return () => {
       active = false;
@@ -66,28 +71,30 @@ export function SourcesPage() {
     <Stack spacing={3}>
       <Box>
         <Typography variant="h5" gutterBottom>
-          Your Sources
+          {t("sources.title")}
         </Typography>
         <Card variant="outlined">
           <CardContent>
-            <Typography color="text.secondary">No sources configured yet.</Typography>
+            <Typography color="text.secondary">
+              {t("sources.noSources")}
+            </Typography>
           </CardContent>
         </Card>
       </Box>
 
       <Box>
         <Typography variant="h6" gutterBottom>
-          Available Source Types
+          {t("sources.availableTypes")}
         </Typography>
         {sources.length === 0 ? (
-          <Typography color="text.secondary">No available types.</Typography>
+          <Typography color="text.secondary">{t("sources.noTypes")}</Typography>
         ) : (
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>ID</TableCell>
-                <TableCell>Parameters</TableCell>
+                <TableCell>{t("sources.name")}</TableCell>
+                <TableCell>{t("sources.id")}</TableCell>
+                <TableCell>{t("sources.parameters")}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -95,7 +102,9 @@ export function SourcesPage() {
                 <TableRow key={s.id}>
                   <TableCell>{s.name}</TableCell>
                   <TableCell>{s.id}</TableCell>
-                  <TableCell>{s.parameters.length > 0 ? s.parameters.join(", ") : "-"}</TableCell>
+                  <TableCell>
+                    {s.parameters.length > 0 ? s.parameters.join(", ") : "-"}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -105,7 +114,7 @@ export function SourcesPage() {
 
       <Box>
         <Typography variant="h6" gutterBottom>
-          Add New
+          {t("sources.addNew")}
         </Typography>
         <Stack direction="row" spacing={2} flexWrap="wrap">
           {sources.map((s) => (
@@ -117,19 +126,35 @@ export function SourcesPage() {
                 "&:hover": { bgcolor: "action.hover" },
               }}
               onClick={() => {
-                window.location.href = `/sources/new?type=${encodeURIComponent(s.id)}`;
+                window.location.href = `/sources/new?type=${encodeURIComponent(
+                  s.id,
+                )}`;
               }}
             >
-              <CardContent sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+              <CardContent
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 1,
+                }}
+              >
                 <Box sx={{ fontSize: 32 }}>{getSourceIcon(s.id)}</Box>
                 <Typography variant="caption">{s.name}</Typography>
               </CardContent>
             </Card>
           ))}
           {sources.length === 0 && (
-            <Stack direction="row" spacing={1} alignItems="center" color="text.secondary">
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              color="text.secondary"
+            >
               <AddCircleOutline />
-              <Typography variant="body2">No types available</Typography>
+              <Typography variant="body2">
+                {t("sources.noTypesAvailable")}
+              </Typography>
             </Stack>
           )}
         </Stack>

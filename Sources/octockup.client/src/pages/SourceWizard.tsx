@@ -9,6 +9,7 @@ import {
   CardContent,
   CircularProgress,
 } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import { ArrowBack } from "@mui/icons-material";
 import type { BackupSource } from "../types/api";
 import { useEffect, useMemo, useState } from "react";
@@ -20,6 +21,7 @@ interface ParamState {
 }
 
 export default function SourceWizard() {
+  const { t } = useTranslation();
   const api = useBackupSourcesApi();
   const query = useMemo(() => new URLSearchParams(window.location.search), []);
   const typeId = query.get("type") || "";
@@ -33,7 +35,7 @@ export default function SourceWizard() {
 
     const load = async () => {
       if (!typeId) {
-        setError("Source type not specified (missing 'type' query param).");
+        setError(t("wizard.typeNotSpecified"));
         setLoading(false);
         return;
       }
@@ -44,7 +46,7 @@ export default function SourceWizard() {
 
         const meta = all.find((x) => x.id === typeId);
         if (!meta) {
-          setError("Source type not found.");
+          setError(t("wizard.typeNotFound"));
         } else {
           setSourceMeta(meta);
           const initial: ParamState = {};
@@ -54,9 +56,7 @@ export default function SourceWizard() {
         setLoading(false);
       } catch (e: unknown) {
         if (!active) return;
-        setError(
-          e instanceof Error ? e.message : "Failed to load source metadata.",
-        );
+        setError(e instanceof Error ? e.message : t("wizard.loadError"));
         setLoading(false);
       }
     };
@@ -66,7 +66,7 @@ export default function SourceWizard() {
     return () => {
       active = false;
     };
-  }, [api, typeId]);
+  }, [api, typeId, t]);
 
   function updateParam(name: string, value: string) {
     setParams((prev) => ({ ...prev, [name]: value }));
@@ -75,7 +75,7 @@ export default function SourceWizard() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     console.log("Create source", { typeId, parameters: params });
-    alert("Source prepared (stub). Check console.");
+    alert(t("wizard.sourceCreated"));
     window.location.href = "/sources";
   }
 
@@ -103,9 +103,9 @@ export default function SourceWizard() {
           startIcon={<ArrowBack />}
           onClick={() => (window.location.href = "/sources")}
         >
-          Back
+          {t("wizard.back")}
         </Button>
-        <Typography variant="h5">Add Source Wizard</Typography>
+        <Typography variant="h5">{t("wizard.title")}</Typography>
       </Stack>
       {sourceMeta && (
         <Box component="form" onSubmit={handleSubmit} maxWidth={640}>
@@ -129,7 +129,7 @@ export default function SourceWizard() {
             <Card variant="outlined">
               <CardContent>
                 <Typography variant="subtitle1" gutterBottom>
-                  Parameters
+                  {t("wizard.parameters")}
                 </Typography>
                 <Stack spacing={2}>
                   {sourceMeta.parameters.length === 0 ? (
@@ -138,7 +138,7 @@ export default function SourceWizard() {
                       color="text.secondary"
                       fontStyle="italic"
                     >
-                      No parameters required.
+                      {t("wizard.noParameters")}
                     </Typography>
                   ) : (
                     sourceMeta.parameters.map((p) => (
@@ -149,7 +149,7 @@ export default function SourceWizard() {
                         label={p}
                         value={params[p] ?? ""}
                         onChange={(e) => updateParam(p, e.target.value)}
-                        placeholder={`Enter value for ${p}`}
+                        placeholder={t("wizard.enterValue", { param: p })}
                       />
                     ))
                   )}
@@ -159,13 +159,13 @@ export default function SourceWizard() {
 
             <Stack direction="row" spacing={2}>
               <Button type="submit" variant="contained">
-                Create Source
+                {t("wizard.createSource")}
               </Button>
               <Button
                 variant="outlined"
                 onClick={() => (window.location.href = "/sources")}
               >
-                Cancel
+                {t("wizard.cancel")}
               </Button>
             </Stack>
           </Stack>

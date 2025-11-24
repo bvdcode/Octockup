@@ -8,12 +8,17 @@ import {
 import { AppShell, type TokenPair, type UserInfo } from "@bvdcode/react-kit";
 import SourcesPage from "./pages/Sources";
 import SourceWizard from "./pages/SourceWizard";
+import * as locales from "./locales";
 
 function App() {
   return (
     <AppShell
       appName="Octockup"
       logoUrl="/octockup.png"
+      translations={{
+        en: { translation: locales.en },
+        ru: { translation: locales.ru },
+      }}
       authConfig={{
         usernamePattern: /^[a-zA-Z0-9._-]+$/,
         login: async (credentials, axiosInstance) => {

@@ -1,0 +1,26 @@
+{
+  "sources": {
+    "title": "Your Sources",
+    "noSources": "No sources configured yet.",
+    "availableTypes": "Available Source Types",
+    "noTypes": "No available types.",
+    "addNew": "Add New",
+    "noTypesAvailable": "No types available",
+    "name": "Name",
+    "id": "ID",
+    "parameters": "Parameters"
+  },
+  "wizard": {
+    "back": "Back",
+    "title": "Add Source Wizard",
+    "parameters": "Parameters",
+    "noParameters": "No parameters required.",
+    "createSource": "Create Source",
+    "cancel": "Cancel",
+    "typeNotSpecified": "Source type not specified (missing 'type' query param).",
+    "typeNotFound": "Source type not found.",
+    "loadError": "Failed to load source metadata.",
+    "enterValue": "Enter value for {{param}}",
+    "sourceCreated": "Source prepared (stub). Check console."
+  }
+}
