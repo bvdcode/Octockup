@@ -3,8 +3,10 @@ import { useSignalR } from "../hooks/useSignalR";
 import { Box, Typography, Card, CardContent } from "@mui/material";
 
 export function HomePage() {
-  const [serverTime, setServerTime] = useState<string | null>(null);
-  const { connection, isConnected } = useSignalR("http://localhost:5112/api/v1/event-hub");
+  const [serverTime, setServerTime] = useState<string>("");
+  const { connection, isConnected } = useSignalR(
+    "http://localhost:5112/api/v1/event-hub",
+  );
 
   useEffect(() => {
     if (!connection || !isConnected) return;
@@ -18,6 +20,21 @@ export function HomePage() {
     };
   }, [connection, isConnected]);
 
+  function formatLocalWithMs(utcString: string | undefined | null) {
+    if (!utcString) return "";
+    const d = new Date(utcString);
+    if (isNaN(d.getTime())) return utcString;
+    const datePart = d.toLocaleDateString();
+    const timePart = d.toLocaleTimeString(undefined, {
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+    const ms = d.getMilliseconds().toString().padStart(3, "0");
+    return `${datePart} ${timePart}.${ms}`;
+  }
+
   return (
     <Box p={3}>
       <Typography variant="h4" gutterBottom>
@@ -26,14 +43,16 @@ export function HomePage() {
       <Card variant="outlined" sx={{ mt: 2 }}>
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>
-            Server Time (UTC)
+            Server Time
           </Typography>
           <Typography
             variant="h6"
             color={isConnected ? "primary" : "text.secondary"}
           >
             {isConnected
-              ? serverTime || "Waiting for time..."
+              ? serverTime
+                ? formatLocalWithMs(serverTime)
+                : "Waiting for time..."
               : "Not connected"}
           </Typography>
         </CardContent>
