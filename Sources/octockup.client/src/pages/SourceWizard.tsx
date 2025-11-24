@@ -117,6 +117,10 @@ export default function SourceWizard() {
       setBrowserPath(targetPath);
       // Update path field with current browser path
       setParams((prev) => ({ ...prev, path: targetPath }));
+      // Reset test results when path changes
+      setTestMessage(null);
+      setTestError(null);
+      setTestResult(null);
     } catch (err: unknown) {
       console.error("Failed to load directories:", err);
       setBrowserDirs([]);
@@ -398,7 +402,7 @@ export default function SourceWizard() {
                     ? t("wizard.testing")
                     : t("wizard.testConnection")}
                 </Button>
-                <Button type="submit" variant="contained">
+                <Button type="submit" variant="contained" disabled={!testMessage}>
                   {t("wizard.createSource")}
                 </Button>
               </Stack>

@@ -115,6 +115,10 @@ export default function StorageWizard() {
       setBrowserPath(targetPath);
       // Update path field with current browser path
       setParams((prev) => ({ ...prev, path: targetPath }));
+      // Reset test results when path changes
+      setTestMessage(null);
+      setTestError(null);
+      setTestResult(null);
     } catch (err: unknown) {
       console.error("Failed to load directories:", err);
       setBrowserDirs([]);
@@ -361,7 +365,7 @@ export default function StorageWizard() {
                 </Card>
               )}
               <Stack direction="row" spacing={2}>
-                <Button type="submit" variant="contained">
+                <Button type="submit" variant="contained" disabled={!testMessage}>
                   {t("storageWizard.createStorage")}
                 </Button>
                 <Button variant="outlined" onClick={() => navigate("/storages") }>
