@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import { HubConnection, HubConnectionBuilder } from "@microsoft/signalr";
+import {
+  HubConnection,
+  HubConnectionBuilder,
+  LogLevel,
+} from "@microsoft/signalr";
 import { useAuthStore } from "@bvdcode/react-kit";
 
 export function useSignalR(hubUrl: string) {
@@ -17,6 +21,7 @@ export function useSignalR(hubUrl: string) {
       .withUrl(hubUrl, {
         accessTokenFactory: () => accessToken,
       })
+      .configureLogging(LogLevel.None)
       .withAutomaticReconnect()
       .build();
 
@@ -26,8 +31,7 @@ export function useSignalR(hubUrl: string) {
         setIsConnected(true);
         setConnection(newConnection);
       })
-      .catch((err) => {
-        console.error("SignalR connection error:", err);
+      .catch(() => {
         setIsConnected(false);
       });
 

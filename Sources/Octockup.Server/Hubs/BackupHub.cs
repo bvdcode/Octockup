@@ -12,7 +12,7 @@ namespace Octockup.Server.Hubs
         {
             // send time every 100ms while connected
             
-            while (this.Context.ConnectionAborted.IsCancellationRequested == false)
+            while (!Context.ConnectionAborted.IsCancellationRequested)
             {
                 await Clients.Caller.SendAsync("Time", DateTime.UtcNow);
                 await Task.Delay(100);
