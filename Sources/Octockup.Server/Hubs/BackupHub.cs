@@ -8,6 +8,15 @@ namespace Octockup.Server.Hubs
     [EnableCors]
     public class EventHub : Hub
     {
-
+        public override async Task OnConnectedAsync()
+        {
+            // send time every 100ms while connected
+            
+            while (this.Context.ConnectionAborted.IsCancellationRequested == false)
+            {
+                await Clients.Caller.SendAsync("Time", DateTime.UtcNow);
+                await Task.Delay(100);
+            }
+        }
     }
 }
