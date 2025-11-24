@@ -55,9 +55,6 @@ function App() {
           component: <SourcesPage />,
         },
         {
-          // Не показываем иконку создания и используем минимальный вид.
-          icon: <div style={{ display: "none" }} />,
-          name: "New Source", // Можно переименовать/скрыть, если AppShell поддерживает.
           route: "/sources/new",
           component: <SourceWizard />,
         },
