@@ -32,7 +32,12 @@
     "fileName": "Имя",
     "filePath": "Путь",
     "fileSize": "Размер",
-    "fileModified": "Изменён"
+    "fileModified": "Изменён",
+    "directoryBrowser": "Браузер папок",
+    "up": "Вверх",
+    "noSubdirectories": "Нет подпапок",
+    "clickToLoad": "Нажмите кнопку ниже, чтобы загрузить корневые папки",
+    "loadRootDirectories": "Загрузить корневые папки"
   },
   
   "storages": {

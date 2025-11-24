@@ -4,8 +4,8 @@ namespace Octockup.Server.BackupStorages
 {
     public class S3BackupStorage : IBackupStorage
     {
+        public char PathSeparator => '/';
         public string Id => GetType().FullName!;
-
         public string Name => "S3 or compatible";
 
         public IEnumerable<string> RequiredParameters =>

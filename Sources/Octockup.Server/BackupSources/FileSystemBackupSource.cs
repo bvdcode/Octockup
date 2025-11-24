@@ -8,6 +8,7 @@ namespace Octockup.Server.BackupSources
         public string Name => "File System";
         public string Id => GetType().FullName!;
         public IEnumerable<string> RequiredParameters => ["path"];
+        public char PathSeparator => Path.DirectorySeparatorChar;
 
         private static readonly string _rootDirectory =
             Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "mounts"));

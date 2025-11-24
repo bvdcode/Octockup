@@ -32,7 +32,12 @@
     "fileName": "Name",
     "filePath": "Path",
     "fileSize": "Size",
-    "fileModified": "Modified"
+    "fileModified": "Modified",
+    "directoryBrowser": "Directory Browser",
+    "up": "Up",
+    "noSubdirectories": "No subdirectories",
+    "clickToLoad": "Click button below to load root directories",
+    "loadRootDirectories": "Load Root Directories"
   },
   
   "storages": {

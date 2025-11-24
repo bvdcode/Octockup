@@ -61,6 +61,7 @@ namespace Octockup.Server.Controllers
             {
                 name = x.Name,
                 id = x.GetType().FullName,
+                pathSeparator = x.PathSeparator,
                 parameters = x.RequiredParameters,
             });
             return Ok(mapped);

@@ -13,11 +13,16 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  Autocomplete,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Paper,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowBack } from "@mui/icons-material";
+import { ArrowBack, Folder, ArrowUpward } from "@mui/icons-material";
 import type { BackupSource, TestResultItem } from "../types/api";
 import { getSourceIcon } from "../constants/sourceIcons";
 import { useBackupSourcesApi } from "../api/backupSourcesApi";
@@ -41,8 +46,9 @@ export default function SourceWizard() {
   const [testMessage, setTestMessage] = useState<string | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<TestResultItem[] | null>(null);
-  const [directories, setDirectories] = useState<string[]>([]);
-  const [directoriesLoading, setDirectoriesLoading] = useState(false);
+  const [browserPath, setBrowserPath] = useState<string>("");
+  const [browserDirs, setBrowserDirs] = useState<string[]>([]);
+  const [browserLoading, setBrowserLoading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -87,30 +93,44 @@ export default function SourceWizard() {
     setTestMessage(null);
     setTestError(null);
     setTestResult(null);
-    // If user changes any param and path exists, reset directories
+    // If user changes any param (except path), reset browser
     if (name !== "path" && sourceMeta?.parameters.includes("path")) {
-      setDirectories([]);
+      setBrowserPath("");
+      setBrowserDirs([]);
     }
   }
 
-  async function loadDirectories() {
-    if (!sourceMeta || directoriesLoading) return;
+  async function loadBrowserDirectories(targetPath: string) {
+    if (!sourceMeta || browserLoading) return;
     const required = sourceMeta.parameters.filter((p) => p !== "path");
     const missing = required.filter((p) => !(params[p] && String(params[p]).length > 0));
     if (missing.length > 0) {
-      // Not all other parameters filled yet
       return;
     }
     try {
-      setDirectoriesLoading(true);
-      const dirs = await api.getDirectories(typeId, params);
-      setDirectories(dirs || []);
+      setBrowserLoading(true);
+      const paramsWithPath = { ...params, path: targetPath };
+      const dirs = await api.getDirectories(typeId, paramsWithPath);
+      setBrowserDirs(dirs || []);
+      setBrowserPath(targetPath);
     } catch (err: unknown) {
       console.error("Failed to load directories:", err);
-      setDirectories([]);
+      setBrowserDirs([]);
     } finally {
-      setDirectoriesLoading(false);
+      setBrowserLoading(false);
     }
+  }
+
+  function handleBrowserNavigate(dir: string) {
+    const newPath = browserPath ? `${browserPath}/${dir}` : dir;
+    loadBrowserDirectories(newPath);
+  }
+
+  function handleBrowserUp() {
+    const parts = browserPath.split("/").filter(Boolean);
+    parts.pop();
+    const newPath = parts.join("/");
+    loadBrowserDirectories(newPath);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -236,36 +256,8 @@ export default function SourceWizard() {
                       {t("wizard.noParameters")}
                     </Typography>
                   ) : (
-                    sourceMeta.parameters.map((p) =>
-                      p === "path" ? (
-                        <Autocomplete
-                          key={p}
-                          freeSolo
-                          options={directories}
-                          value={params[p] ?? ""}
-                          onInputChange={(_, newValue) => updateParam(p, newValue)}
-                          onOpen={loadDirectories}
-                          loading={directoriesLoading}
-                          renderInput={(inputParams) => (
-                            <TextField
-                              {...inputParams}
-                              required
-                              fullWidth
-                              label={p}
-                              placeholder={t("wizard.enterValue", { param: p })}
-                              InputProps={{
-                                ...inputParams.InputProps,
-                                endAdornment: (
-                                  <>
-                                    {directoriesLoading ? <CircularProgress size={20} /> : null}
-                                    {inputParams.InputProps.endAdornment}
-                                  </>
-                                ),
-                              }}
-                            />
-                          )}
-                        />
-                      ) : (
+                    <>
+                      {sourceMeta.parameters.map((p) => (
                         <TextField
                           key={p}
                           required
@@ -275,8 +267,56 @@ export default function SourceWizard() {
                           onChange={(e) => updateParam(p, e.target.value)}
                           placeholder={t("wizard.enterValue", { param: p })}
                         />
-                      )
-                    )
+                      ))}
+                      {sourceMeta.parameters.includes("path") && (
+                        <Paper variant="outlined" sx={{ p: 2, maxHeight: 300, overflow: "auto" }}>
+                          <Stack spacing={1}>
+                            <Stack direction="row" alignItems="center" justifyContent="space-between">
+                              <Typography variant="caption" color="text.secondary">
+                                {t("wizard.directoryBrowser")}: /{browserPath}
+                              </Typography>
+                              {browserPath && (
+                                <Button size="small" startIcon={<ArrowUpward />} onClick={handleBrowserUp}>
+                                  {t("wizard.up")}
+                                </Button>
+                              )}
+                            </Stack>
+                            {browserLoading ? (
+                              <Box display="flex" justifyContent="center" p={2}>
+                                <CircularProgress size={24} />
+                              </Box>
+                            ) : browserDirs.length === 0 ? (
+                              <Typography variant="body2" color="text.secondary" textAlign="center" py={2}>
+                                {browserPath ? t("wizard.noSubdirectories") : t("wizard.clickToLoad")}
+                              </Typography>
+                            ) : (
+                              <List dense>
+                                {browserDirs.map((dir) => (
+                                  <ListItem key={dir} disablePadding>
+                                    <ListItemButton onClick={() => handleBrowserNavigate(dir)}>
+                                      <ListItemIcon sx={{ minWidth: 36 }}>
+                                        <Folder />
+                                      </ListItemIcon>
+                                      <ListItemText primary={dir} />
+                                    </ListItemButton>
+                                  </ListItem>
+                                ))}
+                              </List>
+                            )}
+                            {!browserPath && !browserLoading && (
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() => loadBrowserDirectories("")}
+                                fullWidth
+                              >
+                                {t("wizard.loadRootDirectories")}
+                              </Button>
+                            )}
+                          </Stack>
+                        </Paper>
+                      )}
+                    </>
                   )}
                 </Stack>
               </CardContent>

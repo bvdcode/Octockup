@@ -4,6 +4,7 @@
     {
         string Id { get; }
         string Name { get; }
+        char PathSeparator { get; }
         IEnumerable<string> RequiredParameters { get; }
     }
 }
