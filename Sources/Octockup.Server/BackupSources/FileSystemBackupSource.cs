@@ -7,10 +7,19 @@ namespace Octockup.Server.BackupSources
     {
         public string Name => "File System";
         public string Id => GetType().FullName!;
-        public IEnumerable<string> RequiredParameters => [ "path" ];
+        public IEnumerable<string> RequiredParameters => ["path"];
 
         private static readonly string _rootDirectory = Path.Combine(AppContext.BaseDirectory, "mounts");
         private string _baseDirectory = _rootDirectory;
+
+        public void SetParameters(Dictionary<string, string> parameters)
+        {
+            if (!parameters.TryGetValue("path", out var path))
+            {
+                throw new ArgumentException("Missing required parameter: path");
+            }
+            _baseDirectory = Path.GetFullPath(Path.Combine(_rootDirectory, path));
+        }
 
         public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false)
         {
@@ -35,13 +44,20 @@ namespace Octockup.Server.BackupSources
             }
         }
 
-        public void SetParameters(Dictionary<string, string> parameters)
+        public IEnumerable<string> GetDirectories(bool recursive = false)
         {
-            if (!parameters.TryGetValue("path", out var path))
+            Directory.CreateDirectory(_rootDirectory);
+            string fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, _baseDirectory));
+            if (!Directory.Exists(fullPath))
             {
-                throw new ArgumentException("Missing required parameter: path");
+                throw new DirectoryNotFoundException($"The directory '{_baseDirectory}' does not exist.");
             }
-            _baseDirectory = Path.GetFullPath(Path.Combine(_rootDirectory, path));
+            var searchOption = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
+            var directories = Directory.GetDirectories(fullPath, "*", searchOption);
+            foreach (var dir in directories)
+            {
+                yield return dir;
+            }
         }
     }
 }
