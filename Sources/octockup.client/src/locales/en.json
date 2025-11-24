@@ -22,5 +22,24 @@
     "loadError": "Failed to load source metadata.",
     "enterValue": "Enter value for {{param}}",
     "sourceCreated": "Source prepared (stub). Check console."
+  },
+  "storages": {
+    "title": "Your Storages",
+    "noStorages": "No storages configured yet.",
+    "addNew": "Add New",
+    "noTypesAvailable": "No types available"
+  },
+  "storageWizard": {
+    "back": "Back",
+    "title": "Add Storage Wizard",
+    "parameters": "Parameters",
+    "noParameters": "No parameters required.",
+    "createStorage": "Create Storage",
+    "cancel": "Cancel",
+    "typeNotSpecified": "Storage type not specified (missing 'type' query param).",
+    "typeNotFound": "Storage type not found.",
+    "loadError": "Failed to load storage metadata.",
+    "enterValue": "Enter value for {{param}}",
+    "storageCreated": "Storage prepared (stub). Check console."
   }
 }

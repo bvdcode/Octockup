@@ -8,6 +8,8 @@ import {
 import { AppShell, type TokenPair, type UserInfo } from "@bvdcode/react-kit";
 import SourcesPage from "./pages/Sources";
 import SourceWizard from "./pages/SourceWizard";
+import StoragesPage from "./pages/Storages";
+import StorageWizard from "./pages/StorageWizard";
 import * as locales from "./locales";
 
 function App() {
@@ -62,7 +64,11 @@ function App() {
           icon: <CloudDownload />,
           name: "Storages",
           route: "/storages",
-          component: <div>Storages Page</div>,
+          component: <StoragesPage />,
+        },
+        {
+          route: "/storages/new",
+          component: <StorageWizard />,
         },
         {
           icon: <CloudDone />,
