@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Octockup.Server.Abstractions;
 using Microsoft.AspNetCore.Authorization;
 using EasyExtensions.AspNetCore.Extensions;
+using Octockup.Server.Models.Database;
 
 namespace Octockup.Server.Controllers
 {

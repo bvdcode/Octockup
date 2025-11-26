@@ -1,10 +1,10 @@
 ﻿using Mapster;
 using System.Text.Json;
-using Octockup.Server.Models;
 using EasyExtensions.Extensions;
 using EasyExtensions.Abstractions;
 using Octockup.Server.Abstractions;
 using System.Collections.Concurrent;
+using Octockup.Server.Models.Database;
 
 namespace Octockup.Server.Services
 {

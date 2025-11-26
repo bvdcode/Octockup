@@ -10,7 +10,7 @@ export interface UserBackupSource {
   tag: string;
   username: string;
   backupSourceId: string;
-  parameters: Record<string, any>;
+  parameters: Record<string, string>;
 }
 
 export interface BackupStorage {
