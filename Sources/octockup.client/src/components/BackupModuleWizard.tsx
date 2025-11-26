@@ -38,6 +38,7 @@ interface BackupModuleWizardProps {
       id: string,
       parameters: Record<string, string>,
     ) => Promise<string[]>;
+    list: () => Promise<Array<{ id: string; tag: string }>>;
   };
   backRoute: string;
 }
@@ -70,11 +71,21 @@ export default function BackupModuleWizard({
   const [creating, setCreating] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [existingTags, setExistingTags] = useState<string[]>([]);
 
   // Initialize params when metadata loads
   useEffect(() => {
     initializeParams();
   }, [initializeParams]);
+
+  // Load existing tags
+  useEffect(() => {
+    apiClient.list().then((items) => {
+      setExistingTags(items.map((item) => item.tag.toLowerCase()));
+    }).catch(() => {
+      // ignore errors
+    });
+  }, [apiClient]);
 
   // Reset test state when params change (except path)
   const handleParamChange = (name: string, value: string) => {
@@ -149,6 +160,10 @@ export default function BackupModuleWizard({
     e.preventDefault();
     if (!moduleMeta || !tag.trim()) {
       setSubmitError(t("wizard.fillParameters"));
+      return;
+    }
+    if (existingTags.includes(tag.trim().toLowerCase())) {
+      setSubmitError(t("wizard.tagAlreadyExists", { defaultValue: "Tag already exists" }));
       return;
     }
     const invalidHttp = test.validateHttpEndpoint();
