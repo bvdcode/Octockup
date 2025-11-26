@@ -31,7 +31,7 @@ export function SourcesPage() {
   useEffect(() => {
     let active = true;
     api
-      .list()
+      .listAvailable()
       .then((data) => {
         if (!active) return;
         setSources(data);

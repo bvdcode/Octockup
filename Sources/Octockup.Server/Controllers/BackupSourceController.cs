@@ -10,7 +10,7 @@ namespace Octockup.Server.Controllers
 {
     [ApiController]
     public class BackupSourceController(
-        UserDataStorage _userDataStorage,
+        IUserDataStorage _userDataStorage,
         IEnumerable<IBackupSource> _backupSources) : ControllerBase
     {
         [Authorize]

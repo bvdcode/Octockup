@@ -19,6 +19,18 @@ class BackupSourcesApiClient {
     return data;
   }
 
+  async listAvailable(): Promise<BackupSource[]> {
+    const { data } = await this.axios().get<BackupSource[]>("/api/v1/backups/sources/available");
+    return data;
+  }
+
+  async create(backupSourceId: string, tag: string, parameters: Record<string, any>): Promise<any> {
+    const { data } = await this.axios().post<any>(`/api/v1/backups/sources/${encodeURIComponent(
+      backupSourceId,
+    )}/create`, { tag, parameters });
+    return data;
+  }
+
   async test(id: string, parameters: Record<string, any>): Promise<any> {
     const { data } = await this.axios().post<any>(`/api/v1/backups/sources/${encodeURIComponent(
       id,

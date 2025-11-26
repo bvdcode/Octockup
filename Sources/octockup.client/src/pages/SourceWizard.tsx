@@ -44,6 +44,7 @@ export default function SourceWizard() {
   const [error, setError] = useState<string | null>(null);
   const [sourceMeta, setSourceMeta] = useState<BackupSource | null>(null);
   const [params, setParams] = useState<ParamState>({});
+  const [tag, setTag] = useState<string>("");
   const [testLoading, setTestLoading] = useState(false);
   const [testMessage, setTestMessage] = useState<string | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
@@ -62,7 +63,7 @@ export default function SourceWizard() {
       }
 
       try {
-        const all = await api.list();
+        const all = await api.listAvailable();
         if (!active) return;
 
         const meta = all.find((x) => x.id === typeId);
@@ -160,10 +161,22 @@ export default function SourceWizard() {
     loadBrowserDirectories(newPath);
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    alert(t("wizard.sourceCreated"));
-    navigate("/sources");
+    if (!sourceMeta || !tag.trim()) {
+      setError(t("wizard.fillParameters"));
+      return;
+    }
+    try {
+      setLoading(true);
+      await api.create(typeId, tag.trim(), params);
+      navigate("/sources");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg || t("wizard.createError"));
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleTest() {
@@ -253,6 +266,14 @@ export default function SourceWizard() {
                   {t("wizard.parameters")}
                 </Typography>
                 <Stack spacing={2}>
+                  <TextField
+                    required
+                    fullWidth
+                    label={t("wizard.tag")}
+                    value={tag}
+                    onChange={(e) => setTag(e.target.value)}
+                    placeholder={t("wizard.enterTag")}
+                  />
                   {sourceMeta.parameters.length === 0 ? (
                     <Typography
                       variant="body2"
