@@ -14,7 +14,7 @@ namespace Octockup.Server.Controllers
     {
         [Authorize]
         [HttpPost("/api/v1/backups/sources/{backupSourceId:required}/create")]
-        public IActionResult CreateBackupSource([FromRoute] string backupSourceId, [FromBody] CreateBackupRequest request)
+        public IActionResult CreateBackupSource([FromRoute] string backupSourceId, [FromBody] SaveModuleRequest request)
         {
             var foundSource = _backupSources.FirstOrDefault(x => x.Id == backupSourceId);
             if (foundSource == null)
@@ -26,16 +26,16 @@ namespace Octockup.Server.Controllers
                 Tag = request.Tag,
                 CreatedAt = DateTime.UtcNow,
                 Username = User.GetUserName(),
-                BackupModuleId = backupSourceId,
                 Parameters = request.Parameters,
+                BackupModuleId = foundSource.Id,
             };
-            _userDataStorage.AddBackupSource(newSource);
+            _userDataStorage.AddSavedSource(newSource);
             return Ok(new { message = "Backup source created successfully." });
         }
 
         [Authorize]
         [HttpPost("/api/v1/backups/sources/{backupSourceId:required}/directories")]
-        public IActionResult GetBackupSourceDirectories([FromRoute] string backupSourceId, [FromBody] CreateBackupRequest request)
+        public IActionResult GetBackupSourceDirectories([FromRoute] string backupSourceId, [FromBody] SaveModuleRequest request)
         {
             var foundSource = _backupSources.FirstOrDefault(x => x.Id == backupSourceId);
             if (foundSource == null)
@@ -57,7 +57,7 @@ namespace Octockup.Server.Controllers
 
         [Authorize]
         [HttpPost("/api/v1/backups/sources/{id:required}/test")]
-        public IActionResult TestBackupSource([FromRoute] string id, [FromBody] CreateBackupRequest request)
+        public IActionResult TestBackupSource([FromRoute] string id, [FromBody] SaveModuleRequest request)
         {
             var foundSource = _backupSources.FirstOrDefault(x => x.Id == id);
             if (foundSource == null)
