@@ -14,6 +14,21 @@ namespace Octockup.Server.Controllers
         IEnumerable<IBackupStorage> _backupStorages) : ControllerBase
     {
         [Authorize]
+        [HttpDelete("/api/v1/backups/storages/{savedStorageId:guid}")]
+        public IActionResult DeleteUserBackupStorage([FromRoute] Guid savedStorageId)
+        {
+            string username = User.GetUserName();
+            var userData = _userDataStorage.GetUserData(username);
+            var foundStorage = userData.SavedStorages.FirstOrDefault(x => x.Id == savedStorageId);
+            if (foundStorage == null)
+            {
+                return this.ApiNotFound("Saved backup storage not found: " + savedStorageId);
+            }
+            _userDataStorage.RemoveSavedStorage(foundStorage);
+            return Ok(new { message = "Backup storage deleted successfully." });
+        }
+
+        [Authorize]
         [HttpPost("/api/v1/backups/storages/{backupStorageId:required}/create")]
         public IActionResult CreateBackupStorage([FromRoute] string backupStorageId, [FromBody] SaveModuleRequest request)
         {

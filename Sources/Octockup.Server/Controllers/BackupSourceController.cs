@@ -2,9 +2,9 @@
 using Octockup.Server.Models;
 using Microsoft.AspNetCore.Mvc;
 using Octockup.Server.Abstractions;
+using Octockup.Server.Models.Database;
 using Microsoft.AspNetCore.Authorization;
 using EasyExtensions.AspNetCore.Extensions;
-using Octockup.Server.Models.Database;
 
 namespace Octockup.Server.Controllers
 {
@@ -13,6 +13,21 @@ namespace Octockup.Server.Controllers
         IUserDataStorage _userDataStorage,
         IEnumerable<IBackupSource> _backupSources) : ControllerBase
     {
+        [Authorize]
+        [HttpDelete("/api/v1/backups/sources/{savedSourceId:guid}")]
+        public IActionResult DeleteUserBackupSource([FromRoute] Guid savedSourceId)
+        {
+            string username = User.GetUserName();
+            var userData = _userDataStorage.GetUserData(username);
+            var foundSource = userData.SavedSources.FirstOrDefault(x => x.Id == savedSourceId);
+            if (foundSource == null)
+            {
+                return this.ApiNotFound("Backup source not found: " + savedSourceId);
+            }
+            _userDataStorage.RemoveSavedSource(foundSource);
+            return Ok(new { message = "Backup source deleted successfully." });
+        }
+
         [Authorize]
         [HttpPost("/api/v1/backups/sources/{backupSourceId:required}/create")]
         public IActionResult CreateBackupSource([FromRoute] string backupSourceId, [FromBody] SaveModuleRequest request)

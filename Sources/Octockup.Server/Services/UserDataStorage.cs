@@ -20,7 +20,8 @@ namespace Octockup.Server.Services
             {
                 return false;
             }
-            if (_cache.TryGetValue(username, out UserData? userData))
+            UserData? userData = FindUserData(username);
+            if (userData != null)
             {
                 userData.PasswordPhc = _passwords.Hash(newPassword);
                 SaveUserData(userData);
@@ -42,10 +43,8 @@ namespace Octockup.Server.Services
                     PasswordPhc = _passwords.Hash(password)
                 };
                 SaveUserData(savedData);
-                _cache[username] = savedData;
                 return true;
             }
-            _cache[username] = savedData;
             bool valid = _passwords.Verify(password, savedData.PasswordPhc, out bool needsUpgrade);
             if (valid && needsUpgrade)
             {
@@ -61,9 +60,12 @@ namespace Octockup.Server.Services
             userData.UpdatedAt = DateTime.UtcNow;
             string json = JsonSerializer.Serialize(userData);
             byte[] encrypted = _crypto.Encrypt(json);
-            string path = Path.Combine(_userDataFilePath, $"{userData.Username}.oct");
+            string path = Path.Combine(_userDataFilePath, $"{userData.Username}.oct.tmp");
             Directory.CreateDirectory(_userDataFilePath);
             File.WriteAllBytes(path, encrypted);
+            string finalPath = Path.Combine(_userDataFilePath, $"{userData.Username}.oct");
+            File.Move(path, finalPath, true);
+            _cache[userData.Username] = userData;
         }
 
         public void AddSavedSource(SavedBackupModule newSource)
@@ -79,7 +81,7 @@ namespace Octockup.Server.Services
             newSource.CreatedAt = DateTime.UtcNow;
             newSource.UpdatedAt = DateTime.UtcNow;
             userData.SavedSources.Add(newSource);
-            _cache[newSource.Username] = userData;
+            SaveUserData(userData);
         }
 
         public void AddSavedStorage(SavedBackupModule newSource)
@@ -95,7 +97,7 @@ namespace Octockup.Server.Services
             newSource.CreatedAt = DateTime.UtcNow;
             newSource.UpdatedAt = DateTime.UtcNow;
             userData.SavedSources.Add(newSource);
-            _cache[newSource.Username] = userData;
+            SaveUserData(userData);
         }
 
         public UserData GetUserData(string username)
@@ -118,6 +120,22 @@ namespace Octockup.Server.Services
             string json = _crypto.Decrypt(content);
             return JsonSerializer.Deserialize<UserData>(json)
                 ?? throw new Exception("Deserialized user data is null");
+        }
+
+        public void RemoveSavedSource(SavedBackupModule foundSource)
+        {
+            var userData = GetUserData(foundSource.Username);
+            var source = userData.SavedSources.First(x => x.Id == foundSource.Id);
+            userData.SavedSources.Remove(source);
+            SaveUserData(userData);
+        }
+
+        public void RemoveSavedStorage(SavedBackupModule foundStorage)
+        {
+            var userData = GetUserData(foundStorage.Username);
+            var storage = userData.SavedStorages.First(x => x.Id == foundStorage.Id);
+            userData.SavedStorages.Remove(storage);
+            SaveUserData(userData);
         }
     }
 }
