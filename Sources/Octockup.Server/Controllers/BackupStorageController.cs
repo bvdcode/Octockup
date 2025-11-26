@@ -76,6 +76,7 @@ namespace Octockup.Server.Controllers
                 {
                     return this.ApiBadRequest("Test file was not found after upload.");
                 }
+                await foundStorage.DeleteAsync(testFileName);
                 return Ok(result);
             }
             catch (Exception ex)

@@ -258,5 +258,13 @@ namespace Octockup.Server.BackupStorages
 
             return _s3.PutObjectAsync(req);
         }
+
+        public Task DeleteAsync(string path)
+        {
+            ArgumentException.ThrowIfNullOrEmpty(path);
+            ArgumentNullException.ThrowIfNull(_s3);
+            var key = string.IsNullOrEmpty(_path) ? path : $"{_path}/{path}";
+            return _s3.DeleteObjectAsync(_bucket, key);
+        }
     }
 }

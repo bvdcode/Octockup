@@ -48,7 +48,8 @@
     "creating": "Создание...",
     "unsavedChanges": "У вас есть несохранённые изменения. Вы уверены, что хотите уйти?",
     "sourceCreatedSuccess": "Источник успешно создан!",
-    "storageCreatedSuccess": "Хранилище успешно создано!"
+    "storageCreatedSuccess": "Хранилище успешно создано!",
+    "invalidHttpEndpoint": "httpEndpoint должен начинаться с http:// или https://"
   },
   
   "storages": {

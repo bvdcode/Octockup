@@ -48,7 +48,8 @@
     "creating": "Creating...",
     "unsavedChanges": "You have unsaved changes. Are you sure you want to leave?",
     "sourceCreatedSuccess": "Source created successfully!",
-    "storageCreatedSuccess": "Storage created successfully!"
+    "storageCreatedSuccess": "Storage created successfully!",
+    "invalidHttpEndpoint": "httpEndpoint must start with http:// or https://"
   },
   
   "storages": {

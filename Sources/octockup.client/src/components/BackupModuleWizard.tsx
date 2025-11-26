@@ -148,29 +148,7 @@ export default function BackupModuleWizard({
     [moduleMeta, browserLoading, params, apiClient, typeId],
   );
 
-  useEffect(() => {
-    if (!moduleMeta || !moduleMeta.parameters.includes("path")) return;
-    const required = moduleMeta.parameters.filter((p) => p !== "path");
-    const allFilled = required.every(
-      (p) => params[p] && String(params[p]).length > 0,
-    );
-    const sep = moduleMeta.pathSeparator || "/";
-    if (
-      allFilled &&
-      browserPath === "" &&
-      browserDirs.length === 0 &&
-      !browserLoading
-    ) {
-      loadBrowserDirectories(sep);
-    }
-  }, [
-    params,
-    moduleMeta,
-    browserPath,
-    browserDirs.length,
-    browserLoading,
-    loadBrowserDirectories,
-  ]);
+  // Auto-loading of directories removed to avoid loops; user triggers loading explicitly
 
   function updateParam(name: string, value: string) {
     setParams((prev) => ({ ...prev, [name]: value }));
@@ -198,6 +176,17 @@ export default function BackupModuleWizard({
     const newPath =
       lastSepIndex <= 0 ? sep : browserPath.substring(0, lastSepIndex);
     loadBrowserDirectories(newPath);
+  }
+
+  function validateHttpEndpoint(): string | null {
+    if (!moduleMeta) return null;
+    if (!moduleMeta.parameters.includes("httpEndpoint")) return null;
+    const ep = (params["httpEndpoint"] || "").trim();
+    if (!ep) return null; // required check handled elsewhere
+    if (!/^https?:\/\//i.test(ep)) {
+      return t("wizard.invalidHttpEndpoint");
+    }
+    return null;
   }
 
   function handleParamsPaste(e: ClipboardEvent<HTMLInputElement>) {
@@ -234,6 +223,11 @@ export default function BackupModuleWizard({
       setError(t("wizard.fillParameters"));
       return;
     }
+    const invalidHttp = validateHttpEndpoint();
+    if (invalidHttp) {
+      setError(invalidHttp);
+      return;
+    }
     try {
       setCreating(true);
       setError(null);
@@ -255,6 +249,11 @@ export default function BackupModuleWizard({
     setTestError(null);
     setTestMessage(null);
     if (!moduleMeta) return;
+    const invalidHttp = validateHttpEndpoint();
+    if (invalidHttp) {
+      setTestError(invalidHttp);
+      return;
+    }
     const required = moduleMeta.parameters || [];
     const missing = required.filter(
       (p) => !(params[p] && String(params[p]).length > 0),
