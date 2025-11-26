@@ -1,6 +1,9 @@
 {
   "common": {
-    "back": "Back"
+    "back": "Back",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "confirmDelete": "Confirm Delete"
   },
   "sources": {
     "title": "Your Sources",
@@ -13,7 +16,8 @@
     "id": "ID",
     "parameters": "Parameters",
     "newSource": "Add New Source",
-    "create": "Create Source"
+    "create": "Create Source",
+    "deleteConfirm": "Are you sure you want to delete source '{{tag}}'?"
   },
   "wizard": {
     "back": "Back",
@@ -58,7 +62,8 @@
     "addNew": "Add New",
     "noTypesAvailable": "No types available",
     "newStorage": "Add New Storage",
-    "create": "Create Storage"
+    "create": "Create Storage",
+    "deleteConfirm": "Are you sure you want to delete storage '{{tag}}'?"
   },
   "storageWizard": {
     "back": "Back",

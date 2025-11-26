@@ -6,6 +6,7 @@ export interface BackupSource {
 }
 
 export interface SavedBackupModule {
+  id: string;
   createdAt: string;
   tag: string;
   username: string;
