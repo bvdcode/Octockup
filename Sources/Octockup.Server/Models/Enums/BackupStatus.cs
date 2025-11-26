@@ -1,6 +1,6 @@
 ﻿namespace Octockup.Server.Models.Enums
 {
-    public enum BackupTaskStatus
+    public enum BackupStatus
     {
         Created = 0,
         Running = 1,

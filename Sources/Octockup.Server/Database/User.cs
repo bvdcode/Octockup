@@ -3,12 +3,11 @@ using EasyExtensions.EntityFrameworkCore.Abstractions;
 
 namespace Octockup.Server.Database
 {
-    [Index(nameof(UserName), IsUnique = true)]
+    [Index(nameof(UsernameRename), IsUnique = true)]
     public class User : BaseEntity<Guid>
     {
-        public string UserName { get; set; } = string.Empty;
+        public string UsernameRename { get; set; } = string.Empty;
         public string PasswordPhc { get; set; } = string.Empty;
-        public ICollection<Module> SavedSources { get; set; } = [];
-        public ICollection<Module> SavedStorages { get; set; } = [];
+        public ICollection<Module> Modules { get; set; } = [];
     }
 }

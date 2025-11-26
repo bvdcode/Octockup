@@ -1,7 +1,7 @@
 ﻿using Octockup.Server.Models;
 using Octockup.Server.Abstractions;
 
-namespace Octockup.Server.BackupSources
+namespace Octockup.Server.Modules
 {
     public class FileSystemBackupSource : IBackupSource
     {

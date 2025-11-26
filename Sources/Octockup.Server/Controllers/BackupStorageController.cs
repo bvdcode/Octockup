@@ -1,24 +1,24 @@
 ﻿using EasyExtensions;
 using Microsoft.AspNetCore.Mvc;
+using Octockup.Server.Database;
 using Octockup.Server.Abstractions;
+using Octockup.Server.Models.Requests;
 using Microsoft.AspNetCore.Authorization;
 using EasyExtensions.AspNetCore.Extensions;
-using Octockup.Server.Database;
-using Octockup.Server.Models.Requests;
 
 namespace Octockup.Server.Controllers
 {
     [ApiController]
     public class BackupStorageController(
-        IUserDataStorage _userDataStorage,
+        AppDbContext _dbContext,
         IEnumerable<IBackupStorage> _backupStorages) : ControllerBase
     {
         [Authorize]
         [HttpDelete("/api/v1/backups/storages/{savedStorageId:guid}")]
-        public IActionResult DeleteUserBackupStorage([FromRoute] Guid savedStorageId)
+        public async Task<IActionResult> DeleteUserBackupStorage([FromRoute] Guid savedStorageId)
         {
-            string username = User.GetUserName();
-            var userData = _userDataStorage.GetUser(username);
+            Guid userId = User.GetUserId();
+            var user = await _dbContext.Modules.FindAsync(userId);
             var foundStorage = userData.SavedStorages.FirstOrDefault(x => x.Id == savedStorageId);
             if (foundStorage == null)
             {

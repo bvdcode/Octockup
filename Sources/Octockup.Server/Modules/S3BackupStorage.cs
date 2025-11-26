@@ -4,7 +4,7 @@ using System.Net.Mime;
 using Octockup.Server.Models;
 using Octockup.Server.Abstractions;
 
-namespace Octockup.Server.BackupStorages
+namespace Octockup.Server.Modules
 {
     public class S3BackupStorage : IBackupStorage
     {
