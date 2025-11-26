@@ -9,12 +9,13 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { useEffect, useState } from "react";
+import { confirm } from "material-ui-confirm";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import type { BackupSource, SavedBackupModule } from "../types/api";
 import { AddCircleOutline } from "@mui/icons-material";
 import { getSourceIcon } from "../constants/sourceIcons";
 import { useBackupSourcesApi } from "../api/backupSourcesApi";
+import type { BackupSource, SavedBackupModule } from "../types/api";
 
 interface State {
   loading: boolean;
