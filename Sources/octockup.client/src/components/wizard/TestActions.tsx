@@ -9,7 +9,6 @@ interface TestActionsProps {
   creating: boolean;
   moduleType: "source" | "storage";
   onTest: () => void;
-  onSubmit: () => void;
 }
 
 export function TestActions({
@@ -19,7 +18,6 @@ export function TestActions({
   creating,
   moduleType,
   onTest,
-  onSubmit,
 }: TestActionsProps) {
   const { t } = useTranslation();
 
@@ -44,7 +42,6 @@ export function TestActions({
           variant="contained"
           disabled={!testMessage || creating}
           startIcon={creating ? <CircularProgress size={20} /> : null}
-          onClick={onSubmit}
         >
           {creating
             ? t("wizard.creating")
