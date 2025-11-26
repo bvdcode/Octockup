@@ -11,7 +11,7 @@ namespace Octockup.Server.Services
     public class UserDataStorage(IStreamCipher _crypto, IPasswordHashService _passwords) : IUserDataStorage
     {
         private readonly string _userDataFilePath = Path.Combine(AppContext.BaseDirectory, "userdata");
-        private static readonly ConcurrentDictionary<string, UserData> _cache = new();
+        private static readonly ConcurrentDictionary<string, User> _cache = new();
 
         public bool ChangePassword(string username, string oldPassword, string newPassword)
         {
@@ -20,7 +20,7 @@ namespace Octockup.Server.Services
             {
                 return false;
             }
-            UserData? userData = FindUserData(username);
+            User? userData = FindUserData(username);
             if (userData != null)
             {
                 userData.PasswordPhc = _passwords.Hash(newPassword);
@@ -32,7 +32,7 @@ namespace Octockup.Server.Services
 
         public bool ValidateUserCredentials(string username, string password)
         {
-            UserData? savedData = FindUserData(username);
+            User? savedData = FindUserData(username);
             if (savedData == null)
             {
                 savedData = new()
@@ -54,7 +54,7 @@ namespace Octockup.Server.Services
             return valid;
         }
 
-        private void SaveUserData(UserData? userData)
+        private void SaveUserData(User? userData)
         {
             ArgumentNullException.ThrowIfNull(userData);
             userData.UpdatedAt = DateTime.UtcNow;
@@ -70,7 +70,7 @@ namespace Octockup.Server.Services
 
         public void AddSavedSource(SavedBackupModule newSource)
         {
-            UserData? userData = FindUserData(newSource.Username)
+            User? userData = FindUserData(newSource.Username)
                 ?? throw new Exception("User data not found");
             bool exists = userData.SavedSources.Any(source => source.Tag.Equals(newSource.Tag, StringComparison.OrdinalIgnoreCase));
             if (exists)
@@ -86,7 +86,7 @@ namespace Octockup.Server.Services
 
         public void AddSavedStorage(SavedBackupModule newSource)
         {
-            UserData? userData = FindUserData(newSource.Username)
+            User? userData = FindUserData(newSource.Username)
                 ?? throw new Exception("User data not found");
             bool exists = userData.SavedStorages.Any(source => source.Tag.Equals(newSource.Tag, StringComparison.OrdinalIgnoreCase));
             if (exists)
@@ -100,16 +100,16 @@ namespace Octockup.Server.Services
             SaveUserData(userData);
         }
 
-        public UserData GetUserData(string username)
+        public User GetUser(string username)
         {
             return FindUserData(username) ?? throw new Exception("User data not found");
         }
 
-        public UserData? FindUserData(string username)
+        public User? FindUserData(string username)
         {
-            if (_cache.TryGetValue(username, out UserData? userData))
+            if (_cache.TryGetValue(username, out User? userData))
             {
-                return userData.Adapt<UserData>();
+                return userData.Adapt<User>();
             }
             string path = Path.Combine(_userDataFilePath, $"{username}.oct");
             if (!File.Exists(path))
@@ -118,7 +118,7 @@ namespace Octockup.Server.Services
             }
             byte[] content = File.ReadAllBytes(path);
             string json = _crypto.Decrypt(content);
-            return JsonSerializer.Deserialize<UserData>(json)
+            return JsonSerializer.Deserialize<User>(json)
                 ?? throw new Exception("Deserialized user data is null");
         }
 

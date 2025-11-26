@@ -1,6 +1,6 @@
 ﻿namespace Octockup.Server.Database
 {
-    public class UserData : BaseEntity
+    public class User : BaseEntity
     {
         public string Username { get; set; } = string.Empty;
         public string PasswordPhc { get; set; } = string.Empty;

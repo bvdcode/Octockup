@@ -18,7 +18,7 @@ namespace Octockup.Server.Controllers
         public IActionResult DeleteUserBackupSource([FromRoute] Guid savedSourceId)
         {
             string username = User.GetUserName();
-            var userData = _userDataStorage.GetUserData(username);
+            var userData = _userDataStorage.GetUser(username);
             var foundSource = userData.SavedSources.FirstOrDefault(x => x.Id == savedSourceId);
             if (foundSource == null)
             {
@@ -37,11 +37,12 @@ namespace Octockup.Server.Controllers
             {
                 return this.ApiNotFound("Backup source not found: " + backupSourceId);
             }
+            var user = _userDataStorage.GetUser(User.GetUserName());
             SavedBackupModule newSource = new()
             {
+                UserId = user.Id,
                 Tag = request.Tag,
                 CreatedAt = DateTime.UtcNow,
-                Username = User.GetUserName(),
                 Parameters = request.Parameters,
                 BackupModuleId = foundSource.Id,
             };
@@ -98,7 +99,7 @@ namespace Octockup.Server.Controllers
         public IActionResult GetUserBackupSources()
         {
             string username = User.GetUserName();
-            var userSources = _userDataStorage.GetUserData(username).SavedSources;
+            var userSources = _userDataStorage.GetUser(username).SavedSources;
             foreach (var userSource in userSources)
             {
                 userSource.Parameters.Clear();
