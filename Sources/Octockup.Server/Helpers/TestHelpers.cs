@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Octockup.Server.Controllers;
 using Octockup.Server.Abstractions;
 using EasyExtensions.AspNetCore.Extensions;
 
@@ -6,7 +7,7 @@ namespace Octockup.Server.Helpers
 {
     public static class TestHelpers
     {
-        public static async Task<IActionResult> TestStorageAsync(this ControllerBase controller, IBackupStorage storage)
+        public static async Task<IActionResult> TestStorageAsync(ControllerBase controller, IBackupStorage storage)
         {
             try
             {
@@ -23,6 +24,20 @@ namespace Octockup.Server.Helpers
             catch (Exception ex)
             {
                 return controller.ApiBadRequest("Failed to connect to backup storage with provided parameters: " + ex.Message);
+            }
+        }
+
+        public static async Task<IActionResult> TestSourceAsync(ModuleController moduleController, IBackupSource source)
+        {
+            try
+            {
+                source.GetDirectories(recursive: false);
+                var files = source.GetFiles(recursive: false);
+                return moduleController.Ok(files);
+            }
+            catch (Exception ex)
+            {
+                return moduleController.ApiBadRequest("Failed to connect to backup source with provided parameters: " + ex.Message);
             }
         }
     }

@@ -90,8 +90,13 @@ namespace Octockup.Server.Controllers
             foundModule.SetParameters(request.Parameters);
             if (foundModule is IBackupStorage storage)
             {
-                return TestHelpers.TestStorageAsync(storage);
+                return await TestHelpers.TestStorageAsync(this, storage);
             }
+            if (foundModule is IBackupSource source)
+            {
+                return await TestHelpers.TestSourceAsync(this, source);
+            }
+            return this.ApiBadRequest("Module is not able to pass backup storage/source tests.");
         }
 
         [Authorize]
