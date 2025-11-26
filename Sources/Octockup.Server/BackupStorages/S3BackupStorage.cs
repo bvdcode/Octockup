@@ -19,7 +19,7 @@ namespace Octockup.Server.BackupStorages
         public IEnumerable<string> RequiredParameters =>
         [
             "accessKey", "secretKey", "bucket",
-            "region", "endpoint", "path"
+            "region", "httpEndpoint", "path"
         ];
 
         public void SetParameters(Dictionary<string, string> parameters)
@@ -29,7 +29,7 @@ namespace Octockup.Server.BackupStorages
                 UseHttp = false,
                 MaxErrorRetry = 5,
                 ForcePathStyle = true,
-                ServiceURL = parameters["endpoint"],
+                ServiceURL = parameters["httpEndpoint"],
                 AuthenticationRegion = parameters["region"],
             };
 

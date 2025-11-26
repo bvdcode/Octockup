@@ -54,38 +54,12 @@ interface BackupModuleWizardProps {
     ) => Promise<string[]>;
   };
   backRoute: string;
-  translations: {
-    title: string;
-    tag: string;
-    enterTag: string;
-    testConnection: string;
-    testing: string;
-    testSuccess: string;
-    testFailed: string;
-    fillParameters: string;
-    testResult: string;
-    fileName: string;
-    filePath: string;
-    fileSize: string;
-    fileModified: string;
-    directoryBrowser: string;
-    up: string;
-    noSubdirectories: string;
-    clickToLoad: string;
-    loadRootDirectories: string;
-    create: string;
-    back: string;
-    creating: string;
-    unsavedChanges: string;
-    createSuccess: string;
-    createError: string;
-  };
 }
 
 export default function BackupModuleWizard({
+  moduleType,
   apiClient,
   backRoute,
-  translations,
 }: BackupModuleWizardProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -113,7 +87,7 @@ export default function BackupModuleWizard({
 
     const load = async () => {
       if (!typeId) {
-        setError("Type not specified");
+        setError(t("wizard.typeNotSpecified"));
         setLoading(false);
         return;
       }
@@ -124,7 +98,7 @@ export default function BackupModuleWizard({
 
         const meta = all.find((x) => x.id === typeId);
         if (!meta) {
-          setError("Type not found");
+          setError(t("wizard.typeNotFound"));
         } else {
           setModuleMeta(meta);
           const initial: ParamState = {};
@@ -134,7 +108,7 @@ export default function BackupModuleWizard({
         setLoading(false);
       } catch (e: unknown) {
         if (!active) return;
-        setError(e instanceof Error ? e.message : "Failed to load metadata");
+        setError(e instanceof Error ? e.message : t("wizard.loadError"));
         setLoading(false);
       }
     };
@@ -144,7 +118,7 @@ export default function BackupModuleWizard({
     return () => {
       active = false;
     };
-  }, [apiClient, typeId, translations]);
+  }, [apiClient, typeId, t]);
 
   const loadBrowserDirectories = useCallback(
     async (targetPath: string) => {
@@ -324,7 +298,7 @@ export default function BackupModuleWizard({
           startIcon={<ArrowBack />}
           onClick={() => navigate(backRoute)}
         >
-          {translations.back}
+          {t("common.back")}
         </Button>
       </Box>
     );
@@ -340,9 +314,11 @@ export default function BackupModuleWizard({
             onClick={handleBack}
             disabled={creating}
           >
-            {translations.back}
+            {t("common.back")}
           </Button>
-          <Typography variant="h5">{translations.title}</Typography>
+          <Typography variant="h5">
+            {t(moduleType === "source" ? "sources.newSource" : "storages.newStorage")}
+          </Typography>
         </Stack>
         {moduleMeta && (
           <Box component="form" onSubmit={handleSubmit}>
@@ -366,7 +342,7 @@ export default function BackupModuleWizard({
               <Card variant="outlined">
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
-                    Parameters
+                    {t("wizard.parameters")}
                   </Typography>
                   <Stack spacing={2}>
                     <TextField
@@ -387,7 +363,7 @@ export default function BackupModuleWizard({
                         color="text.secondary"
                         fontStyle="italic"
                       >
-                        No parameters required.
+                        {t("wizard.noParameters")}
                       </Typography>
                     ) : (
                       <>
@@ -522,7 +498,9 @@ export default function BackupModuleWizard({
                     disabled={!testMessage || creating}
                     startIcon={creating ? <CircularProgress size={20} /> : null}
                   >
-                    {creating ? translations.creating : translations.create}
+                    {creating
+                      ? t("wizard.creating")
+                      : t(moduleType === "source" ? "sources.create" : "storages.create")}
                   </Button>
                 </Stack>
               </Stack>
@@ -542,7 +520,11 @@ export default function BackupModuleWizard({
           icon={<CheckCircle />}
           sx={{ width: "100%" }}
         >
-          {translations.createSuccess}
+          {t(
+            moduleType === "source"
+              ? "wizard.sourceCreatedSuccess"
+              : "wizard.storageCreatedSuccess",
+          )}
         </Alert>
       </Snackbar>
     </>
