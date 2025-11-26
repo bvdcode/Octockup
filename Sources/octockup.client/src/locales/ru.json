@@ -1,4 +1,7 @@
 {
+  "common": {
+    "back": "Назад"
+  },
   "sources": {
     "title": "Ваши источники",
     "noSources": "Пока нет добавленных источников.",
@@ -8,7 +11,9 @@
     "noTypesAvailable": "Нет типов для добавления",
     "name": "Название",
     "id": "ID",
-    "parameters": "Параметры"
+    "parameters": "Параметры",
+    "newSource": "Добавить новый источник",
+    "create": "Создать источник"
   },
   "wizard": {
     "back": "Назад",
@@ -39,14 +44,20 @@
     "up": "Вверх",
     "noSubdirectories": "Нет подпапок",
     "clickToLoad": "Нажмите кнопку ниже, чтобы загрузить корневые папки",
-    "loadRootDirectories": "Загрузить корневые папки"
+    "loadRootDirectories": "Загрузить корневые папки",
+    "creating": "Создание...",
+    "unsavedChanges": "У вас есть несохранённые изменения. Вы уверены, что хотите уйти?",
+    "sourceCreatedSuccess": "Источник успешно создан!",
+    "storageCreatedSuccess": "Хранилище успешно создано!"
   },
   
   "storages": {
     "title": "Ваши хранилища",
     "noStorages": "Пока нет добавленных хранилищ.",
     "addNew": "Добавить новое",
-    "noTypesAvailable": "Нет типов для добавления"
+    "noTypesAvailable": "Нет типов для добавления",
+    "newStorage": "Добавить новое хранилище",
+    "create": "Создать хранилище"
   },
   "storageWizard": {
     "back": "Назад",

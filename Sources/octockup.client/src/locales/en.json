@@ -1,4 +1,7 @@
 {
+  "common": {
+    "back": "Back"
+  },
   "sources": {
     "title": "Your Sources",
     "noSources": "No sources configured yet.",
@@ -8,7 +11,9 @@
     "noTypesAvailable": "No types available",
     "name": "Name",
     "id": "ID",
-    "parameters": "Parameters"
+    "parameters": "Parameters",
+    "newSource": "Add New Source",
+    "create": "Create Source"
   },
   "wizard": {
     "back": "Back",
@@ -39,14 +44,20 @@
     "up": "Up",
     "noSubdirectories": "No subdirectories",
     "clickToLoad": "Click button below to load root directories",
-    "loadRootDirectories": "Load Root Directories"
+    "loadRootDirectories": "Load Root Directories",
+    "creating": "Creating...",
+    "unsavedChanges": "You have unsaved changes. Are you sure you want to leave?",
+    "sourceCreatedSuccess": "Source created successfully!",
+    "storageCreatedSuccess": "Storage created successfully!"
   },
   
   "storages": {
     "title": "Your Storages",
     "noStorages": "No storages configured yet.",
     "addNew": "Add New",
-    "noTypesAvailable": "No types available"
+    "noTypesAvailable": "No types available",
+    "newStorage": "Add New Storage",
+    "create": "Create Storage"
   },
   "storageWizard": {
     "back": "Back",
