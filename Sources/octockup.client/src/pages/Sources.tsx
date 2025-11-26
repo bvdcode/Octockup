@@ -11,7 +11,7 @@ import {
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import type { BackupSource } from "../types/api";
+import type { BackupSource, UserBackupSource } from "../types/api";
 import { AddCircleOutline } from "@mui/icons-material";
 import { getSourceIcon } from "../constants/sourceIcons";
 import { useBackupSourcesApi } from "../api/backupSourcesApi";
@@ -33,7 +33,7 @@ export function SourcesPage() {
     availableLoading: true, 
     availableError: null 
   });
-  const [userSources, setUserSources] = useState<BackupSource[]>([]);
+  const [userSources, setUserSources] = useState<UserBackupSource[]>([]);
   const [availableSources, setAvailableSources] = useState<BackupSource[]>([]);
 
   useEffect(() => {
@@ -112,7 +112,7 @@ export function SourcesPage() {
           <Stack direction="row" spacing={2} flexWrap="wrap">
             {userSources.map((s) => (
               <Card
-                key={s.id}
+                key={s.tag}
                 sx={{
                   width: 160,
                   height: 120,
@@ -132,9 +132,9 @@ export function SourcesPage() {
                     height: "100%",
                   }}
                 >
-                  <Box sx={{ fontSize: 32 }}>{getSourceIcon(s.id)}</Box>
+                  <Box sx={{ fontSize: 32 }}>{getSourceIcon(s.backupSourceId)}</Box>
                   <Typography variant="caption" noWrap sx={{ textAlign: "center", maxWidth: 140 }}>
-                    {s.name}
+                    {s.tag}
                   </Typography>
                 </CardContent>
               </Card>

@@ -5,6 +5,14 @@ export interface BackupSource {
   pathSeparator: string;
 }
 
+export interface UserBackupSource {
+  createdAt: string;
+  tag: string;
+  username: string;
+  backupSourceId: string;
+  parameters: Record<string, any>;
+}
+
 export interface BackupStorage {
   id: string;
   name: string;

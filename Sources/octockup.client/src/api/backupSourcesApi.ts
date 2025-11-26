@@ -1,7 +1,7 @@
 import type { AxiosInstance } from "axios";
 import { useAxios } from "@bvdcode/react-kit";
 import { useMemo } from "react";
-import type { BackupSource } from "../types/api";
+import type { BackupSource, UserBackupSource } from "../types/api";
 
 class BackupSourcesApiClient {
   private axiosFactory: () => AxiosInstance;
@@ -14,8 +14,8 @@ class BackupSourcesApiClient {
     return this.axiosFactory();
   }
 
-  async list(): Promise<BackupSource[]> {
-    const { data } = await this.axios().get<BackupSource[]>("/api/v1/backups/sources");
+  async list(): Promise<UserBackupSource[]> {
+    const { data } = await this.axios().get<UserBackupSource[]>("/api/v1/backups/sources");
     return data;
   }
 
