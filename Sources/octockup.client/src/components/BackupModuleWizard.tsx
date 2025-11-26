@@ -18,6 +18,7 @@ import {
   Snackbar,
 } from "@mui/material";
 import { useEffect, useState, useCallback } from "react";
+import type { ClipboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -222,6 +223,34 @@ export default function BackupModuleWizard({
     loadBrowserDirectories(newPath);
   }
 
+  function handleParamsPaste(e: ClipboardEvent<HTMLInputElement>) {
+    if (!moduleMeta) return;
+    const text = e.clipboardData?.getData("text") ?? "";
+    if (!text) return;
+    const rawLines = text.split(/\r?\n/);
+    if (rawLines.length === 0) return;
+    if (rawLines[rawLines.length - 1] === "") rawLines.pop();
+    const lines = rawLines;
+    const keys = moduleMeta.parameters || [];
+    if (lines.length !== keys.length) return;
+
+    e.preventDefault();
+    const next: ParamState = { ...params };
+    keys.forEach((k, i) => {
+      next[k] = lines[i];
+    });
+    setParams(next);
+    setHasUnsavedChanges(true);
+    setTestMessage(null);
+    setTestError(null);
+
+    if (keys.includes("path")) {
+      const pastedPath = next["path"] || "";
+      setBrowserPath(pastedPath);
+      setBrowserDirs([]);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!moduleMeta || !tag.trim()) {
@@ -370,6 +399,7 @@ export default function BackupModuleWizard({
                             label={p}
                             value={params[p] ?? ""}
                             onChange={(e) => updateParam(p, e.target.value)}
+                            onPaste={handleParamsPaste}
                             placeholder={t("wizard.enterValue", { param: p })}
                             disabled={creating}
                           />
