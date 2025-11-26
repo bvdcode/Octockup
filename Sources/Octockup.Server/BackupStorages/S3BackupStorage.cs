@@ -1,4 +1,5 @@
-﻿using Octockup.Server.Abstractions;
+﻿using Octockup.Server.Models;
+using Octockup.Server.Abstractions;
 
 namespace Octockup.Server.BackupStorages
 {
@@ -10,7 +11,7 @@ namespace Octockup.Server.BackupStorages
 
         public IEnumerable<string> RequiredParameters =>
         [
-            "accessKey", "secretKey", "bucketName", "region", "endpoint"
+            "accessKey", "secretKey", "bucketName", "region", "endpoint", "folderPath"
         ];
 
         public Task<Stream> DownloadAsync(string path)
@@ -19,6 +20,16 @@ namespace Octockup.Server.BackupStorages
         }
 
         public bool? Exists(string path)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IEnumerable<string> GetDirectories(bool recursive = false)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false)
         {
             throw new NotImplementedException();
         }

@@ -1,7 +1,6 @@
 ﻿using EasyExtensions;
 using Octockup.Server.Models;
 using Microsoft.AspNetCore.Mvc;
-using Octockup.Server.Services;
 using Octockup.Server.Abstractions;
 using Microsoft.AspNetCore.Authorization;
 using EasyExtensions.AspNetCore.Extensions;
@@ -22,12 +21,12 @@ namespace Octockup.Server.Controllers
             {
                 return this.ApiNotFound("Backup source not found: " + backupSourceId);
             }
-            UserBackupSource newSource = new()
+            SavedBackupModule newSource = new()
             {
                 Tag = request.Tag,
                 CreatedAt = DateTime.UtcNow,
                 Username = User.GetUserName(),
-                BackupSourceId = backupSourceId,
+                BackupModuleId = backupSourceId,
                 Parameters = request.Parameters,
             };
             _userDataStorage.AddBackupSource(newSource);
@@ -83,7 +82,7 @@ namespace Octockup.Server.Controllers
         public IActionResult GetUserBackupSources()
         {
             string username = User.GetUserName();
-            var userSources = _userDataStorage.GetUserData(username).BackupSources;
+            var userSources = _userDataStorage.GetUserData(username).SavedSources;
             foreach (var userSource in userSources)
             {
                 userSource.Parameters.Clear();

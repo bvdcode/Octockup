@@ -1,6 +1,6 @@
 ﻿namespace Octockup.Server.Abstractions
 {
-    public interface IBackupStorage : IBackupModule
+    public interface IBackupStorage : IBackupSource, IBackupModule
     {
         bool? Exists(string path);
         Task UploadAsync(string path, Stream data);
