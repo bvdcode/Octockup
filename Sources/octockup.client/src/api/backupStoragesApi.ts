@@ -29,26 +29,50 @@ class BackupStoragesApiClient {
   }
 
   async create(backupModuleId: string, tag: string, parameters: Record<string, any>): Promise<any> {
-    const { data } = await this.axios().post<any>(`/api/v1/backups/storages/${encodeURIComponent(
-      backupModuleId,
-    )}/create`, { tag, parameters });
-    return data;
+    try {
+      const { data } = await this.axios().post<any>(`/api/v1/backups/storages/${encodeURIComponent(
+        backupModuleId,
+      )}/create`, { tag, parameters });
+      return data;
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail;
+      if (detail) {
+        throw new Error(detail);
+      }
+      throw error;
+    }
   }
 
   async test(id: string, parameters: Record<string, any>): Promise<any> {
-    const { data } = await this.axios().post<any>(
-      `/api/v1/backups/storages/${encodeURIComponent(id)}/test`,
-      { parameters },
-    );
-    return data;
+    try {
+      const { data } = await this.axios().post<any>(
+        `/api/v1/backups/storages/${encodeURIComponent(id)}/test`,
+        { parameters },
+      );
+      return data;
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail;
+      if (detail) {
+        throw new Error(detail);
+      }
+      throw error;
+    }
   }
 
   async getDirectories(id: string, parameters: Record<string, any>): Promise<string[]> {
-    const { data } = await this.axios().post<string[]>(
-      `/api/v1/backups/storages/${encodeURIComponent(id)}/directories`,
-      { parameters },
-    );
-    return data;
+    try {
+      const { data } = await this.axios().post<string[]>(
+        `/api/v1/backups/storages/${encodeURIComponent(id)}/directories`,
+        { parameters },
+      );
+      return data;
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail;
+      if (detail) {
+        throw new Error(detail);
+      }
+      throw error;
+    }
   }
 }
 
