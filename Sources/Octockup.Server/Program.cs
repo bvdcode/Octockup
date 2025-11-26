@@ -1,6 +1,6 @@
 using Octockup.Server.Hubs;
 using EasyExtensions.Crypto;
-using Octockup.Server.Services;
+using Octockup.Server.Modules;
 using Octockup.Server.Database;
 using Octockup.Server.Extensions;
 using EasyExtensions.Abstractions;
@@ -10,7 +10,6 @@ using EasyExtensions.Quartz.Extensions;
 using EasyExtensions.AspNetCore.Extensions;
 using EasyExtensions.EntityFrameworkCore.Extensions;
 using EasyExtensions.AspNetCore.Authorization.Extensions;
-using Octockup.Server.Modules;
 
 namespace Octockup.Server
 {
@@ -29,15 +28,13 @@ namespace Octockup.Server
             builder.Services.AddControllers();
             builder.Services
                 .AddSqlite<AppDbContext>(connectionString: $"Data Source={sqlitePath};Password={sqlitePassword};")
-                .AddScoped<IBackupStorage, S3BackupStorage>()
-                .AddScoped<IBackupSource, FileSystemBackupSource>()
-                .AddScoped<IUserDataStorage, UserDataStorage>()
+                .AddScoped<IBackupModule, S3BackupStorage>()
+                .AddScoped<IBackupModule, FileSystemBackupSource>()
                 .AddScoped<IStreamCipher>(sp => new AesGcmStreamCipher(cryptoKey))
                 .AddPbkdf2PasswordHashService()
                 .AddCpuUsageService()
                 .AddQuartzJobs()
                 .AddHttpContextAccessor()
-                .AddMediatR(x => x.RegisterServicesFromAssemblyContaining<Program>())
                 .AddJwt()
                 .AddSignalR();
 

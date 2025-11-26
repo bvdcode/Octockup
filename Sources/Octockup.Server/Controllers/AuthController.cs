@@ -93,11 +93,6 @@ namespace Octockup.Server.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> LoginAsync([FromBody] LoginRequest request)
         {
-            var result = await _mediator.Send(request);
-            if (result == null)
-            {
-                return this.ApiUnauthorized("Invalid username or password.");
-            }
             var user = await _dbContext.Users.FirstAsync(u => u.UsernameRename == request.Username);
             if (user == null)
             {
