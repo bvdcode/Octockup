@@ -38,7 +38,7 @@ namespace Octockup.Server.Controllers
                 return this.ApiNotFound("Backup storage not found: " + backupStorageId);
             }
             var user = _userDataStorage.GetUser(User.GetUserName());
-            SavedBackupModule newStorage = new()
+            Module newStorage = new()
             {
                 UserId = user.Id,
                 Tag = request.Tag,

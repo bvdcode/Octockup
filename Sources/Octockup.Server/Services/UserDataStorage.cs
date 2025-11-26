@@ -68,7 +68,7 @@ namespace Octockup.Server.Services
             _cache[userData.Username] = userData;
         }
 
-        public void AddSavedSource(SavedBackupModule newSource)
+        public void AddSavedSource(Module newSource)
         {
             User? userData = FindUserData(newSource.Username)
                 ?? throw new Exception("User data not found");
@@ -84,7 +84,7 @@ namespace Octockup.Server.Services
             SaveUserData(userData);
         }
 
-        public void AddSavedStorage(SavedBackupModule newSource)
+        public void AddSavedStorage(Module newSource)
         {
             User? userData = FindUserData(newSource.Username)
                 ?? throw new Exception("User data not found");
@@ -122,7 +122,7 @@ namespace Octockup.Server.Services
                 ?? throw new Exception("Deserialized user data is null");
         }
 
-        public void RemoveSavedSource(SavedBackupModule foundSource)
+        public void RemoveSavedSource(Module foundSource)
         {
             var userData = GetUserData(foundSource.Username);
             var source = userData.SavedSources.First(x => x.Id == foundSource.Id);
@@ -130,7 +130,7 @@ namespace Octockup.Server.Services
             SaveUserData(userData);
         }
 
-        public void RemoveSavedStorage(SavedBackupModule foundStorage)
+        public void RemoveSavedStorage(Module foundStorage)
         {
             var userData = GetUserData(foundStorage.Username);
             var storage = userData.SavedStorages.First(x => x.Id == foundStorage.Id);

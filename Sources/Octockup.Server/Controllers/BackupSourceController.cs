@@ -38,11 +38,10 @@ namespace Octockup.Server.Controllers
                 return this.ApiNotFound("Backup source not found: " + backupSourceId);
             }
             var user = _userDataStorage.GetUser(User.GetUserName());
-            SavedBackupModule newSource = new()
+            Module newSource = new()
             {
                 UserId = user.Id,
                 Tag = request.Tag,
-                CreatedAt = DateTime.UtcNow,
                 Parameters = request.Parameters,
                 BackupModuleId = foundSource.Id,
             };

@@ -1,6 +1,7 @@
 using Octockup.Server.Hubs;
 using EasyExtensions.Crypto;
 using Octockup.Server.Services;
+using Octockup.Server.Database;
 using Octockup.Server.Extensions;
 using EasyExtensions.Abstractions;
 using Octockup.Server.Abstractions;
@@ -9,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Octockup.Server.BackupStorages;
 using EasyExtensions.Quartz.Extensions;
 using EasyExtensions.AspNetCore.Extensions;
+using EasyExtensions.EntityFrameworkCore.Extensions;
 using EasyExtensions.AspNetCore.Authorization.Extensions;
 
 namespace Octockup.Server
@@ -22,9 +24,12 @@ namespace Octockup.Server
             string masterKey = builder.Configuration.GetMasterKey();
             builder.Configuration["Pepper"] = KeyDerivation.DeriveSubkeyBase64(masterKey, "pepper", 32);
             byte[] cryptoKey = KeyDerivation.DeriveSubkey(masterKey, "crypto", 32);
+            string sqlitePassword = KeyDerivation.DeriveSubkeyBase64(masterKey, "sqlite", 32);
+            string sqlitePath = Path.Combine(AppContext.BaseDirectory, "data", "octockup.sqlite");
 
             builder.Services.AddControllers();
             builder.Services
+                .AddSqlite<AppDbContext>(connectionString: $"Data Source={sqlitePath};Password={sqlitePassword};")
                 .AddScoped<IBackupStorage, S3BackupStorage>()
                 .AddScoped<IBackupSource, FileSystemBackupSource>()
                 .AddScoped<IUserDataStorage, UserDataStorage>()
@@ -48,6 +53,7 @@ namespace Octockup.Server
             app.MapControllers();
             app.MapFallbackToFile("/index.html");
             app.MapHub<EventHub>("/api/v1/event-hub");
+            app.ApplyMigrations<AppDbContext>();
             app.Run();
         }
     }

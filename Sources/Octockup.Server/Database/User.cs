@@ -1,10 +1,14 @@
-﻿namespace Octockup.Server.Database
+﻿using Microsoft.EntityFrameworkCore;
+using EasyExtensions.EntityFrameworkCore.Abstractions;
+
+namespace Octockup.Server.Database
 {
-    public class User : BaseEntity
+    [Index(nameof(UserName), IsUnique = true)]
+    public class User : BaseEntity<Guid>
     {
-        public string Username { get; set; } = string.Empty;
+        public string UserName { get; set; } = string.Empty;
         public string PasswordPhc { get; set; } = string.Empty;
-        public ICollection<SavedBackupModule> SavedSources { get; set; } = [];
-        public ICollection<SavedBackupModule> SavedStorages { get; set; } = [];
+        public ICollection<Module> SavedSources { get; set; } = [];
+        public ICollection<Module> SavedStorages { get; set; } = [];
     }
 }

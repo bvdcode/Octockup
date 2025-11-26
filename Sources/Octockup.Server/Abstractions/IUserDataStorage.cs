@@ -4,13 +4,13 @@ namespace Octockup.Server.Abstractions
 {
     public interface IUserDataStorage
     {
-        void AddSavedSource(SavedBackupModule newSource);
-        void AddSavedStorage(SavedBackupModule newStorage);
+        void AddSavedSource(Module newSource);
+        void AddSavedStorage(Module newStorage);
         bool ChangePassword(string username, string oldPassword, string newPassword);
         User? FindUserData(string username);
         User GetUser(string username);
-        void RemoveSavedSource(SavedBackupModule foundSource);
-        void RemoveSavedStorage(SavedBackupModule foundStorage);
+        void RemoveSavedSource(Module foundSource);
+        void RemoveSavedStorage(Module foundStorage);
         bool ValidateUserCredentials(string username, string password);
     }
 }
