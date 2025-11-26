@@ -127,12 +127,17 @@ export function SourcesPage() {
                   display: "flex",
                   alignItems: "stretch",
                   justifyContent: "center",
+                  position: "relative",
                 }}
               >
                 <IconButton
                   size="small"
                   aria-label={t("common.delete")}
-                  sx={{ position: "absolute", top: 4, right: 4 }}
+                  sx={{
+                    position: "absolute",
+                    top: 4,
+                    right: 4,
+                  }}
                   onClick={async (e) => {
                     e.stopPropagation();
                     const result = await confirm({
@@ -157,7 +162,7 @@ export function SourcesPage() {
                     }
                   }}
                 >
-                  <DeleteOutline fontSize="small" />
+                  <DeleteOutline fontSize="small" color="primary" />
                 </IconButton>
                 <CardContent
                   sx={{
