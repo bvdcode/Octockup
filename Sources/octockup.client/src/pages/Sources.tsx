@@ -7,12 +7,14 @@ import {
   Typography,
   CardContent,
   CircularProgress,
+  IconButton,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { confirm } from "material-ui-confirm";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { AddCircleOutline } from "@mui/icons-material";
+import { DeleteOutline } from "@mui/icons-material";
 import { getSourceIcon } from "../constants/sourceIcons";
 import { useBackupSourcesApi } from "../api/backupSourcesApi";
 import type { BackupSource, SavedBackupModule } from "../types/api";
@@ -127,6 +129,36 @@ export function SourcesPage() {
                   justifyContent: "center",
                 }}
               >
+                <IconButton
+                  size="small"
+                  aria-label={t("common.delete")}
+                  sx={{ position: "absolute", top: 4, right: 4 }}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    const result = await confirm({
+                      title: t("sources.deleteTitle", {
+                        defaultValue: "Delete source",
+                      }),
+                      description: t("sources.deleteText", {
+                        defaultValue: "This action is permanent!",
+                      }),
+                      confirmationText: t("common.delete", {
+                        defaultValue: "Delete",
+                      }),
+                      cancellationText: t("common.cancel", {
+                        defaultValue: "Cancel",
+                      }),
+                    });
+                    if (result.confirmed) {
+                      await api.delete(s.id);
+                      setUserSources((prev) =>
+                        prev.filter((x) => x.id !== s.id),
+                      );
+                    }
+                  }}
+                >
+                  <DeleteOutline fontSize="small" />
+                </IconButton>
                 <CardContent
                   sx={{
                     display: "flex",
@@ -138,7 +170,9 @@ export function SourcesPage() {
                     p: 2,
                   }}
                 >
-                  <Box sx={{ fontSize: 32 }}>{getSourceIcon(s.backupModuleId)}</Box>
+                  <Box sx={{ fontSize: 32 }}>
+                    {getSourceIcon(s.backupModuleId)}
+                  </Box>
                   <Typography
                     variant="subtitle2"
                     noWrap
@@ -149,7 +183,12 @@ export function SourcesPage() {
                   </Typography>
                   <Typography
                     variant="caption"
-                    sx={{ textAlign: "center", maxWidth: 140, color: "text.secondary", fontSize: "0.7rem" }}
+                    sx={{
+                      textAlign: "center",
+                      maxWidth: 140,
+                      color: "text.secondary",
+                      fontSize: "0.7rem",
+                    }}
                   >
                     {new Date(s.createdAt).toLocaleDateString()}
                   </Typography>

@@ -7,12 +7,14 @@ import {
   Typography,
   CardContent,
   CircularProgress,
+  IconButton,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import type { BackupStorage, SavedBackupModule } from "../types/api";
-import { AddCircleOutline } from "@mui/icons-material";
+import { AddCircleOutline, DeleteOutline } from "@mui/icons-material";
+import { confirm } from "material-ui-confirm";
 import { getSourceIcon } from "../constants/sourceIcons";
 import { useBackupStoragesApi } from "../api/backupStoragesApi";
 
@@ -27,9 +29,16 @@ export function StoragesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const api = useBackupStoragesApi();
-  const [state, setState] = useState<State>({ loading: true, error: null, availableLoading: true, availableError: null });
+  const [state, setState] = useState<State>({
+    loading: true,
+    error: null,
+    availableLoading: true,
+    availableError: null,
+  });
   const [userStorages, setUserStorages] = useState<SavedBackupModule[]>([]);
-  const [availableStorages, setAvailableStorages] = useState<BackupStorage[]>([]);
+  const [availableStorages, setAvailableStorages] = useState<BackupStorage[]>(
+    [],
+  );
 
   useEffect(() => {
     let active = true;
@@ -43,7 +52,11 @@ export function StoragesPage() {
       })
       .catch((e) => {
         if (!active) return;
-        setState((prev) => ({ ...prev, loading: false, error: e?.message || "Failed to load storages" }));
+        setState((prev) => ({
+          ...prev,
+          loading: false,
+          error: e?.message || "Failed to load storages",
+        }));
       });
 
     // load available storage types
@@ -52,11 +65,19 @@ export function StoragesPage() {
       .then((data) => {
         if (!active) return;
         setAvailableStorages(data);
-        setState((prev) => ({ ...prev, availableLoading: false, availableError: null }));
+        setState((prev) => ({
+          ...prev,
+          availableLoading: false,
+          availableError: null,
+        }));
       })
       .catch((e) => {
         if (!active) return;
-        setState((prev) => ({ ...prev, availableLoading: false, availableError: e?.message || "Failed to load available storages" }));
+        setState((prev) => ({
+          ...prev,
+          availableLoading: false,
+          availableError: e?.message || "Failed to load available storages",
+        }));
       });
 
     return () => {
@@ -106,8 +127,39 @@ export function StoragesPage() {
                   display: "flex",
                   alignItems: "stretch",
                   justifyContent: "center",
+                  position: "relative",
                 }}
               >
+                <IconButton
+                  size="small"
+                  aria-label={t("common.delete")}
+                  sx={{ position: "absolute", top: 4, right: 4 }}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    const result = await confirm({
+                      title: t("storages.deleteTitle", {
+                        defaultValue: "Delete storage",
+                      }),
+                      description: t("storages.deleteText", {
+                        defaultValue: "This action is permanent!",
+                      }),
+                      confirmationText: t("common.delete", {
+                        defaultValue: "Delete",
+                      }),
+                      cancellationText: t("common.cancel", {
+                        defaultValue: "Cancel",
+                      }),
+                    });
+                    if (result.confirmed) {
+                      await api.delete(s.id);
+                      setUserStorages((prev) =>
+                        prev.filter((x) => x.id !== s.id),
+                      );
+                    }
+                  }}
+                >
+                  <DeleteOutline fontSize="small" />
+                </IconButton>
                 <CardContent
                   sx={{
                     display: "flex",
@@ -119,11 +171,27 @@ export function StoragesPage() {
                     p: 2,
                   }}
                 >
-                  <Box sx={{ fontSize: 32 }}>{getSourceIcon(s.backupModuleId)}</Box>
-                  <Typography variant="subtitle2" noWrap title={s.tag} sx={{ textAlign: "center", maxWidth: 140 }}>
+                  <Box sx={{ fontSize: 32 }}>
+                    {getSourceIcon(s.backupModuleId)}
+                  </Box>
+                  <Typography
+                    variant="subtitle2"
+                    noWrap
+                    title={s.tag}
+                    sx={{ textAlign: "center", maxWidth: 140 }}
+                  >
                     {s.tag}
                   </Typography>
-                  <Typography variant="caption" noWrap sx={{ textAlign: "center", maxWidth: 140, fontSize: "0.7rem", color: "text.secondary" }}>
+                  <Typography
+                    variant="caption"
+                    noWrap
+                    sx={{
+                      textAlign: "center",
+                      maxWidth: 140,
+                      fontSize: "0.7rem",
+                      color: "text.secondary",
+                    }}
+                  >
                     {new Date(s.createdAt).toLocaleDateString()}
                   </Typography>
                 </CardContent>
@@ -167,7 +235,11 @@ export function StoragesPage() {
                 }}
               >
                 <Box sx={{ fontSize: 32 }}>{getSourceIcon(s.id)}</Box>
-                <Typography variant="caption" noWrap sx={{ textAlign: "center", maxWidth: 140 }}>
+                <Typography
+                  variant="caption"
+                  noWrap
+                  sx={{ textAlign: "center", maxWidth: 140 }}
+                >
                   {s.name}
                 </Typography>
               </CardContent>
