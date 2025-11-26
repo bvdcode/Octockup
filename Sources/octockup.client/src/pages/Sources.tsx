@@ -11,7 +11,7 @@ import {
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import type { BackupSource, UserBackupSource } from "../types/api";
+import type { BackupSource, SavedBackupModule } from "../types/api";
 import { AddCircleOutline } from "@mui/icons-material";
 import { getSourceIcon } from "../constants/sourceIcons";
 import { useBackupSourcesApi } from "../api/backupSourcesApi";
@@ -33,7 +33,7 @@ export function SourcesPage() {
     availableLoading: true,
     availableError: null,
   });
-  const [userSources, setUserSources] = useState<UserBackupSource[]>([]);
+  const [userSources, setUserSources] = useState<SavedBackupModule[]>([]);
   const [availableSources, setAvailableSources] = useState<BackupSource[]>([]);
 
   useEffect(() => {
@@ -137,7 +137,7 @@ export function SourcesPage() {
                     p: 2,
                   }}
                 >
-                  <Box sx={{ fontSize: 32 }}>{getSourceIcon(s.backupSourceId)}</Box>
+                  <Box sx={{ fontSize: 32 }}>{getSourceIcon(s.backupModuleId)}</Box>
                   <Typography
                     variant="subtitle2"
                     noWrap

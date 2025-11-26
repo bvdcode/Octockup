@@ -41,6 +41,7 @@ export default function StorageWizard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [storageMeta, setStorageMeta] = useState<BackupStorage | null>(null);
+  const [tag, setTag] = useState<string>("");
   const [params, setParams] = useState<ParamState>({});
   const [testLoading, setTestLoading] = useState(false);
   const [testMessage, setTestMessage] = useState<string | null>(null);
@@ -61,7 +62,7 @@ export default function StorageWizard() {
       }
 
       try {
-        const all = await api.list();
+        const all = await api.listAvailable();
         if (!active) return;
 
         const meta = all.find((x) => x.id === typeId);
@@ -141,10 +142,22 @@ export default function StorageWizard() {
     loadBrowserDirectories(newPath);
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    alert(t("storageWizard.storageCreated"));
-    navigate("/storages");
+    if (!storageMeta || !tag.trim()) {
+      setError(t("wizard.fillParameters"));
+      return;
+    }
+    try {
+      setLoading(true);
+      await api.create(typeId, tag.trim(), params);
+      navigate("/storages");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg || t("createError"));
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleTest() {
@@ -255,6 +268,14 @@ export default function StorageWizard() {
                   {t("storageWizard.parameters")}
                 </Typography>
                 <Stack spacing={2}>
+                  <TextField
+                    required
+                    fullWidth
+                    label={t("wizard.tag")}
+                    value={tag}
+                    onChange={(e) => setTag(e.target.value)}
+                    placeholder={t("wizard.enterTag")}
+                  />
                   {storageMeta.parameters.length === 0 ? (
                     <Typography
                       variant="body2"
@@ -268,7 +289,7 @@ export default function StorageWizard() {
                       {storageMeta.parameters.map((p) => (
                         <TextField
                           key={p}
-                          required
+                          required={p !== "path"}
                           fullWidth
                           label={p}
                           value={params[p] ?? ""}

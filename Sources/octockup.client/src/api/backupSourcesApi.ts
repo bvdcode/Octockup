@@ -1,7 +1,7 @@
 import type { AxiosInstance } from "axios";
 import { useAxios } from "@bvdcode/react-kit";
 import { useMemo } from "react";
-import type { BackupSource, UserBackupSource } from "../types/api";
+import type { BackupSource, SavedBackupModule } from "../types/api";
 
 class BackupSourcesApiClient {
   private axiosFactory: () => AxiosInstance;
@@ -14,8 +14,8 @@ class BackupSourcesApiClient {
     return this.axiosFactory();
   }
 
-  async list(): Promise<UserBackupSource[]> {
-    const { data } = await this.axios().get<UserBackupSource[]>("/api/v1/backups/sources");
+  async list(): Promise<SavedBackupModule[]> {
+    const { data } = await this.axios().get<SavedBackupModule[]>("/api/v1/backups/sources");
     return data;
   }
 
@@ -24,9 +24,9 @@ class BackupSourcesApiClient {
     return data;
   }
 
-  async create(backupSourceId: string, tag: string, parameters: Record<string, any>): Promise<any> {
+  async create(backupModuleId: string, tag: string, parameters: Record<string, any>): Promise<any> {
     const { data } = await this.axios().post<any>(`/api/v1/backups/sources/${encodeURIComponent(
-      backupSourceId,
+      backupModuleId,
     )}/create`, { tag, parameters });
     return data;
   }

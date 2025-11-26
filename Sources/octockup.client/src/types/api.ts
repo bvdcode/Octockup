@@ -5,11 +5,11 @@ export interface BackupSource {
   pathSeparator: string;
 }
 
-export interface UserBackupSource {
+export interface SavedBackupModule {
   createdAt: string;
   tag: string;
   username: string;
-  backupSourceId: string;
+  backupModuleId: string;
   parameters: Record<string, string>;
 }
 

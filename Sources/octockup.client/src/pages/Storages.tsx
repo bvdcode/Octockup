@@ -11,7 +11,7 @@ import {
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import type { BackupStorage } from "../types/api";
+import type { BackupStorage, SavedBackupModule } from "../types/api";
 import { AddCircleOutline } from "@mui/icons-material";
 import { getSourceIcon } from "../constants/sourceIcons";
 import { useBackupStoragesApi } from "../api/backupStoragesApi";
@@ -19,37 +19,52 @@ import { useBackupStoragesApi } from "../api/backupStoragesApi";
 interface State {
   loading: boolean;
   error: string | null;
+  availableLoading: boolean;
+  availableError: string | null;
 }
 
 export function StoragesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const api = useBackupStoragesApi();
-  const [state, setState] = useState<State>({ loading: true, error: null });
-  const [storages, setStorages] = useState<BackupStorage[]>([]);
+  const [state, setState] = useState<State>({ loading: true, error: null, availableLoading: true, availableError: null });
+  const [userStorages, setUserStorages] = useState<SavedBackupModule[]>([]);
+  const [availableStorages, setAvailableStorages] = useState<BackupStorage[]>([]);
 
   useEffect(() => {
     let active = true;
+    // load user-created storages
     api
       .list()
       .then((data) => {
         if (!active) return;
-        setStorages(data);
-        setState({ loading: false, error: null });
+        setUserStorages(data);
+        setState((prev) => ({ ...prev, loading: false, error: null }));
       })
       .catch((e) => {
         if (!active) return;
-        setState({
-          loading: false,
-          error: e?.message || "Failed to load storages",
-        });
+        setState((prev) => ({ ...prev, loading: false, error: e?.message || "Failed to load storages" }));
       });
+
+    // load available storage types
+    api
+      .listAvailable()
+      .then((data) => {
+        if (!active) return;
+        setAvailableStorages(data);
+        setState((prev) => ({ ...prev, availableLoading: false, availableError: null }));
+      })
+      .catch((e) => {
+        if (!active) return;
+        setState((prev) => ({ ...prev, availableLoading: false, availableError: e?.message || "Failed to load available storages" }));
+      });
+
     return () => {
       active = false;
     };
   }, [api]);
 
-  if (state.loading) {
+  if (state.loading || state.availableLoading) {
     return (
       <Box display="flex" justifyContent="center" p={4}>
         <CircularProgress />
@@ -57,7 +72,7 @@ export function StoragesPage() {
     );
   }
 
-  if (state.error) {
+  if (state.error || state.availableError) {
     return (
       <Box p={2}>
         <Alert severity="error">{state.error}</Alert>
@@ -71,13 +86,51 @@ export function StoragesPage() {
         <Typography variant="h5" gutterBottom>
           {t("storages.title")}
         </Typography>
-        <Card variant="outlined">
-          <CardContent>
-            <Typography color="text.secondary">
-              {t("storages.noStorages")}
-            </Typography>
-          </CardContent>
-        </Card>
+        {userStorages.length === 0 ? (
+          <Card variant="outlined">
+            <CardContent>
+              <Typography color="text.secondary">
+                {t("storages.noStorages")}
+              </Typography>
+            </CardContent>
+          </Card>
+        ) : (
+          <Stack direction="row" spacing={2} flexWrap="wrap">
+            {userStorages.map((s) => (
+              <Card
+                key={s.tag}
+                sx={{
+                  width: 160,
+                  height: 140,
+                  flex: "0 0 160px",
+                  display: "flex",
+                  alignItems: "stretch",
+                  justifyContent: "center",
+                }}
+              >
+                <CardContent
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 0.5,
+                    justifyContent: "space-between",
+                    height: "100%",
+                    p: 2,
+                  }}
+                >
+                  <Box sx={{ fontSize: 32 }}>{getSourceIcon(s.backupModuleId)}</Box>
+                  <Typography variant="subtitle2" noWrap title={s.tag} sx={{ textAlign: "center", maxWidth: 140 }}>
+                    {s.tag}
+                  </Typography>
+                  <Typography variant="caption" noWrap sx={{ textAlign: "center", maxWidth: 140, fontSize: "0.7rem", color: "text.secondary" }}>
+                    {new Date(s.createdAt).toLocaleDateString()}
+                  </Typography>
+                </CardContent>
+              </Card>
+            ))}
+          </Stack>
+        )}
       </Box>
       <Divider />
       <Box>
@@ -85,12 +138,12 @@ export function StoragesPage() {
           {t("storages.addNew")}
         </Typography>
         <Stack direction="row" spacing={2} flexWrap="wrap">
-          {storages.map((s) => (
+          {availableStorages.map((s) => (
             <Card
               key={s.id}
               sx={{
                 width: 160,
-                height: 120,
+                height: 140,
                 flex: "0 0 160px",
                 cursor: "pointer",
                 display: "flex",
@@ -107,9 +160,10 @@ export function StoragesPage() {
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
-                  gap: 1,
-                  justifyContent: "center",
+                  gap: 0.5,
+                  justifyContent: "space-between",
                   height: "100%",
+                  p: 2,
                 }}
               >
                 <Box sx={{ fontSize: 32 }}>{getSourceIcon(s.id)}</Box>
@@ -119,7 +173,7 @@ export function StoragesPage() {
               </CardContent>
             </Card>
           ))}
-          {storages.length === 0 && (
+          {availableStorages.length === 0 && (
             <Stack
               direction="row"
               spacing={1}
