@@ -88,7 +88,7 @@ namespace Octockup.Server.Services
         {
             UserData? userData = FindUserData(newSource.Username)
                 ?? throw new Exception("User data not found");
-            bool exists = userData.SavedSources.Any(source => source.Tag.Equals(newSource.Tag, StringComparison.OrdinalIgnoreCase));
+            bool exists = userData.SavedStorages.Any(source => source.Tag.Equals(newSource.Tag, StringComparison.OrdinalIgnoreCase));
             if (exists)
             {
                 throw new Exception("Backup source with the same tag already exists");
@@ -96,7 +96,7 @@ namespace Octockup.Server.Services
             newSource.Id = Guid.NewGuid();
             newSource.CreatedAt = DateTime.UtcNow;
             newSource.UpdatedAt = DateTime.UtcNow;
-            userData.SavedSources.Add(newSource);
+            userData.SavedStorages.Add(newSource);
             SaveUserData(userData);
         }
 
