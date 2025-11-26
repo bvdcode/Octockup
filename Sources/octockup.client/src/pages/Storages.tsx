@@ -153,6 +153,7 @@ export function StoragesPage() {
                       cancellationText: t("common.cancel", {
                         defaultValue: "Cancel",
                       }),
+                      confirmationKeywordTextFieldProps: { color: "error" },
                     });
                     if (result.confirmed) {
                       await api.delete(s.id);
