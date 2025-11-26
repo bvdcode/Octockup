@@ -1,18 +1,26 @@
-import { Box, Alert, Button, CircularProgress, Snackbar, Stack, Typography } from "@mui/material";
-import { ArrowBack, CheckCircle } from "@mui/icons-material";
+import {
+  Box,
+  Alert,
+  Stack,
+  Button,
+  Snackbar,
+  Typography,
+  CircularProgress,
+} from "@mui/material";
 import type { ClipboardEvent } from "react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import type { BackupSource, BackupStorage } from "../types/api";
-import { useModuleMetadata } from "../hooks/useModuleMetadata";
-import { useWizardForm } from "../hooks/useWizardForm";
-import { useDirectoryBrowser } from "../hooks/useDirectoryBrowser";
-import { useModuleTest } from "../hooks/useModuleTest";
+import { TestActions } from "./wizard/TestActions";
 import { ModuleHeader } from "./wizard/ModuleHeader";
+import { useWizardForm } from "../hooks/useWizardForm";
+import { useModuleTest } from "../hooks/useModuleTest";
 import { ParametersForm } from "./wizard/ParametersForm";
 import { DirectoryBrowser } from "./wizard/DirectoryBrowser";
-import { TestActions } from "./wizard/TestActions";
+import { ArrowBack, CheckCircle } from "@mui/icons-material";
+import { useModuleMetadata } from "../hooks/useModuleMetadata";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import type { BackupSource, BackupStorage } from "../types/api";
+import { useDirectoryBrowser } from "../hooks/useDirectoryBrowser";
 
 type ModuleType = "source" | "storage";
 
@@ -120,7 +128,8 @@ export default function BackupModuleWizard({
     if (!moduleMeta) return;
     const sep = moduleMeta.pathSeparator || "/";
     const lastSepIndex = browser.browserPath.lastIndexOf(sep);
-    const newPath = lastSepIndex <= 0 ? sep : browser.browserPath.substring(0, lastSepIndex);
+    const newPath =
+      lastSepIndex <= 0 ? sep : browser.browserPath.substring(0, lastSepIndex);
     browser.navigateUp();
     if (moduleMeta.parameters.includes("path")) {
       updateParam("path", newPath);

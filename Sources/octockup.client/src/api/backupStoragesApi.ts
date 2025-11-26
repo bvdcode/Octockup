@@ -74,6 +74,18 @@ class BackupStoragesApiClient {
       throw error;
     }
   }
+
+  async delete(savedStorageId: string): Promise<void> {
+    try {
+      await this.axios().delete(`/api/v1/backups/storages/${encodeURIComponent(savedStorageId)}`);
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail;
+      if (detail) {
+        throw new Error(detail);
+      }
+      throw error;
+    }
+  }
 }
 
 export function useBackupStoragesApi(): BackupStoragesApiClient {

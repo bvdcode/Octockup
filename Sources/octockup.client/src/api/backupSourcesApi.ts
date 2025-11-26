@@ -68,6 +68,18 @@ class BackupSourcesApiClient {
       throw error;
     }
   }
+
+  async delete(savedSourceId: string): Promise<void> {
+    try {
+      await this.axios().delete(`/api/v1/backups/sources/${encodeURIComponent(savedSourceId)}`);
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail;
+      if (detail) {
+        throw new Error(detail);
+      }
+      throw error;
+    }
+  }
 }
 
 export function useBackupSourcesApi(): BackupSourcesApiClient {
