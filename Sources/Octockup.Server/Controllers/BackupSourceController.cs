@@ -1,5 +1,7 @@
-﻿using Octockup.Server.Models;
+﻿using EasyExtensions;
+using Octockup.Server.Models;
 using Microsoft.AspNetCore.Mvc;
+using Octockup.Server.Services;
 using Octockup.Server.Abstractions;
 using Microsoft.AspNetCore.Authorization;
 using EasyExtensions.AspNetCore.Extensions;
@@ -7,16 +9,39 @@ using EasyExtensions.AspNetCore.Extensions;
 namespace Octockup.Server.Controllers
 {
     [ApiController]
-    public class BackupSourceController(IEnumerable<IBackupSource> _backupSources) : ControllerBase
+    public class BackupSourceController(
+        UserDataStorage _userDataStorage,
+        IEnumerable<IBackupSource> _backupSources) : ControllerBase
     {
         [Authorize]
-        [HttpPost("/api/v1/backups/sources/{id:required}/directories")]
-        public IActionResult GetBackupSourceDirectories([FromRoute] string id, [FromBody] CreateBackupRequest request)
+        [HttpPost("/api/v1/backups/sources/{backupSourceId:required}/create")]
+        public IActionResult CreateBackupSource([FromRoute] string backupSourceId, [FromBody] CreateBackupRequest request)
         {
-            var foundSource = _backupSources.FirstOrDefault(x => x.Id == id);
+            var foundSource = _backupSources.FirstOrDefault(x => x.Id == backupSourceId);
             if (foundSource == null)
             {
-                return this.ApiNotFound("Backup source not found: " + id);
+                return this.ApiNotFound("Backup source not found: " + backupSourceId);
+            }
+            UserBackupSource newSource = new()
+            {
+                Tag = request.Tag,
+                CreatedAt = DateTime.UtcNow,
+                Username = User.GetUserName(),
+                BackupSourceId = backupSourceId,
+                Parameters = request.Parameters,
+            };
+            _userDataStorage.AddBackupSource(newSource);
+            return Ok(new { message = "Backup source created successfully." });
+        }
+
+        [Authorize]
+        [HttpPost("/api/v1/backups/sources/{backupSourceId:required}/directories")]
+        public IActionResult GetBackupSourceDirectories([FromRoute] string backupSourceId, [FromBody] CreateBackupRequest request)
+        {
+            var foundSource = _backupSources.FirstOrDefault(x => x.Id == backupSourceId);
+            if (foundSource == null)
+            {
+                return this.ApiNotFound("Backup source not found: " + backupSourceId);
             }
 
             foundSource.SetParameters(request.Parameters);
@@ -55,6 +80,19 @@ namespace Octockup.Server.Controllers
 
         [Authorize]
         [HttpGet("/api/v1/backups/sources")]
+        public IActionResult GetUserBackupSources()
+        {
+            string username = User.GetUserName();
+            var userSources = _userDataStorage.GetUserData(username).BackupSources;
+            foreach (var userSource in userSources)
+            {
+                userSource.Parameters.Clear();
+            }
+            return Ok(userSources);
+        }
+
+        [Authorize]
+        [HttpGet("/api/v1/backups/sources/available")]
         public IActionResult GetBackupSources()
         {
             var mapped = _backupSources.Select(x => new

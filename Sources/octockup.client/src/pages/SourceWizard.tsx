@@ -9,26 +9,26 @@ import {
   ListItem,
   TextField,
   Typography,
+  IconButton,
   CardContent,
   ListItemIcon,
   ListItemText,
   ListItemButton,
   CircularProgress,
-  IconButton,
 } from "@mui/material";
+import {
+  Home,
+  Folder,
+  ArrowBack,
+  ArrowRight,
+  ArrowUpward,
+} from "@mui/icons-material";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { BackupSource } from "../types/api";
 import { getSourceIcon } from "../constants/sourceIcons";
 import { useBackupSourcesApi } from "../api/backupSourcesApi";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import {
-  ArrowBack,
-  Folder,
-  ArrowUpward,
-  Home,
-  ArrowRight,
-} from "@mui/icons-material";
 
 interface ParamState {
   [key: string]: string;
@@ -96,7 +96,12 @@ export default function SourceWizard() {
       (p) => params[p] && String(params[p]).length > 0,
     );
     const sep = sourceMeta.pathSeparator || "/";
-    if (allFilled && browserPath === "" && browserDirs.length === 0 && !browserLoading) {
+    if (
+      allFilled &&
+      browserPath === "" &&
+      browserDirs.length === 0 &&
+      !browserLoading
+    ) {
       loadBrowserDirectories(sep);
     }
   }, [params, sourceMeta, browserPath, browserDirs.length, browserLoading]);
@@ -140,14 +145,18 @@ export default function SourceWizard() {
 
   function handleBrowserNavigate(dir: string) {
     const sep = sourceMeta?.pathSeparator || "/";
-    const newPath = browserPath === sep ? `${browserPath}${dir}` : `${browserPath}${sep}${dir}`;
+    const newPath =
+      browserPath === sep
+        ? `${browserPath}${dir}`
+        : `${browserPath}${sep}${dir}`;
     loadBrowserDirectories(newPath);
   }
 
   function handleBrowserUp() {
     const sep = sourceMeta?.pathSeparator || "/";
     const lastSepIndex = browserPath.lastIndexOf(sep);
-    const newPath = lastSepIndex <= 0 ? sep : browserPath.substring(0, lastSepIndex);
+    const newPath =
+      lastSepIndex <= 0 ? sep : browserPath.substring(0, lastSepIndex);
     loadBrowserDirectories(newPath);
   }
 
@@ -286,7 +295,8 @@ export default function SourceWizard() {
                                 <IconButton
                                   size="small"
                                   onClick={() => {
-                                    const sep = sourceMeta?.pathSeparator || "/";
+                                    const sep =
+                                      sourceMeta?.pathSeparator || "/";
                                     loadBrowserDirectories(sep);
                                   }}
                                 >

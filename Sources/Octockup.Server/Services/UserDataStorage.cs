@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using Mapster;
+using System.Text.Json;
 using Octockup.Server.Models;
 using EasyExtensions.Extensions;
 using EasyExtensions.Abstractions;
@@ -30,28 +31,24 @@ namespace Octockup.Server.Services
 
         public bool ValidateUserCredentials(string username, string password)
         {
-            string path = Path.Combine(_userDataFilePath, $"{username}.oct");
-            if (!File.Exists(path))
+            UserData? savedData = FindUserData(username);
+            if (savedData == null)
             {
-                UserData newUserData = new()
+                savedData = new()
                 {
                     Username = username,
                     PasswordPhc = _passwords.Hash(password)
                 };
-                SaveUserData(newUserData);
-                _cache[username] = newUserData;
+                SaveUserData(savedData);
+                _cache[username] = savedData;
                 return true;
             }
-            byte[] content = File.ReadAllBytes(path);
-            string json = _crypto.Decrypt(content);
-            UserData userData = JsonSerializer.Deserialize<UserData>(json)
-                ?? throw new Exception("Deserialized user data is null");
-            _cache[username] = userData;
-            bool valid = _passwords.Verify(password, userData.PasswordPhc, out bool needsUpgrade);
+            _cache[username] = savedData;
+            bool valid = _passwords.Verify(password, savedData.PasswordPhc, out bool needsUpgrade);
             if (valid && needsUpgrade)
             {
-                userData.PasswordPhc = _passwords.Hash(password);
-                SaveUserData(userData);
+                savedData.PasswordPhc = _passwords.Hash(password);
+                SaveUserData(savedData);
             }
             return valid;
         }
@@ -64,6 +61,41 @@ namespace Octockup.Server.Services
             string path = Path.Combine(_userDataFilePath, $"{userData.Username}.oct");
             Directory.CreateDirectory(_userDataFilePath);
             File.WriteAllBytes(path, encrypted);
+        }
+
+        public void AddBackupSource(UserBackupSource newSource)
+        {
+            UserData? userData = FindUserData(newSource.Username)
+                ?? throw new Exception("User data not found");
+            bool exists = userData.BackupSources.Any(source => source.Tag.Equals(newSource.Tag, StringComparison.OrdinalIgnoreCase));
+            if (exists)
+            {
+                throw new Exception("Backup source with the same tag already exists");
+            }
+            userData.BackupSources.Add(newSource);
+            _cache[newSource.Username] = userData;
+        }
+
+        public UserData GetUserData(string username)
+        {
+            return FindUserData(username) ?? throw new Exception("User data not found");
+        }
+
+        public UserData? FindUserData(string username)
+        {
+            if (_cache.TryGetValue(username, out UserData? userData))
+            {
+                return userData.Adapt<UserData>();
+            }
+            string path = Path.Combine(_userDataFilePath, $"{username}.oct");
+            if (!File.Exists(path))
+            {
+                return null;
+            }
+            byte[] content = File.ReadAllBytes(path);
+            string json = _crypto.Decrypt(content);
+            return JsonSerializer.Deserialize<UserData>(json)
+                ?? throw new Exception("Deserialized user data is null");
         }
     }
 }
