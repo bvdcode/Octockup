@@ -1,36 +1,36 @@
 import {
   Box,
   Card,
+  List,
   Alert,
   Stack,
   Paper,
   Button,
-  TextField,
+  ListItem,
+  Snackbar,
+  IconButton,
   Typography,
   CardContent,
-  CircularProgress,
-  List,
-  ListItem,
-  ListItemButton,
   ListItemIcon,
   ListItemText,
-  IconButton,
-  Snackbar,
+  ListItemButton,
+  CircularProgress,
+  TextField,
 } from "@mui/material";
-import { useEffect, useState, useCallback } from "react";
-import type { ClipboardEvent } from "react";
-import { useTranslation } from "react-i18next";
-import { useNavigate, useSearchParams } from "react-router-dom";
 import {
-  ArrowBack,
-  Folder,
-  ArrowUpward,
   Home,
+  Folder,
+  ArrowBack,
   ArrowRight,
+  ArrowUpward,
   CheckCircle,
 } from "@mui/icons-material";
-import type { BackupSource, BackupStorage } from "../types/api";
+import type { ClipboardEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { getSourceIcon } from "../constants/sourceIcons";
+import { useEffect, useState, useCallback } from "react";
+import type { BackupSource, BackupStorage } from "../types/api";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 interface ParamState {
   [key: string]: string;
@@ -186,14 +186,17 @@ export default function BackupModuleWizard({
   function handleBrowserNavigate(dir: string) {
     const sep = moduleMeta?.pathSeparator || "/";
     const newPath =
-      browserPath === sep ? `${browserPath}${dir}` : `${browserPath}${sep}${dir}`;
+      browserPath === sep
+        ? `${browserPath}${dir}`
+        : `${browserPath}${sep}${dir}`;
     loadBrowserDirectories(newPath);
   }
 
   function handleBrowserUp() {
     const sep = moduleMeta?.pathSeparator || "/";
     const lastSepIndex = browserPath.lastIndexOf(sep);
-    const newPath = lastSepIndex <= 0 ? sep : browserPath.substring(0, lastSepIndex);
+    const newPath =
+      lastSepIndex <= 0 ? sep : browserPath.substring(0, lastSepIndex);
     loadBrowserDirectories(newPath);
   }
 
@@ -317,7 +320,11 @@ export default function BackupModuleWizard({
             {t("common.back")}
           </Button>
           <Typography variant="h5">
-            {t(moduleType === "source" ? "sources.newSource" : "storages.newStorage")}
+            {t(
+              moduleType === "source"
+                ? "sources.newSource"
+                : "storages.newStorage",
+            )}
           </Typography>
         </Stack>
         {moduleMeta && (
@@ -500,7 +507,11 @@ export default function BackupModuleWizard({
                   >
                     {creating
                       ? t("wizard.creating")
-                      : t(moduleType === "source" ? "sources.create" : "storages.create")}
+                      : t(
+                          moduleType === "source"
+                            ? "sources.create"
+                            : "storages.create",
+                        )}
                   </Button>
                 </Stack>
               </Stack>
@@ -515,11 +526,7 @@ export default function BackupModuleWizard({
         onClose={() => setShowSuccessToast(false)}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       >
-        <Alert
-          severity="success"
-          icon={<CheckCircle />}
-          sx={{ width: "100%" }}
-        >
+        <Alert severity="success" icon={<CheckCircle />} sx={{ width: "100%" }}>
           {t(
             moduleType === "source"
               ? "wizard.sourceCreatedSuccess"
