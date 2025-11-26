@@ -23,6 +23,11 @@ namespace Octockup.Server.BackupStorages
             throw new NotImplementedException();
         }
 
+        public void SetParameters(Dictionary<string, string> parameters)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task UploadAsync(string path, Stream data)
         {
             throw new NotImplementedException();
