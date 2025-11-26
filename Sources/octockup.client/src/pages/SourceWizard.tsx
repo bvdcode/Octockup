@@ -1,32 +1,34 @@
 import {
   Box,
+  List,
   Card,
+  Paper,
   Alert,
   Stack,
   Button,
+  ListItem,
   TextField,
   Typography,
   CardContent,
-  CircularProgress,
-  Table,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-  List,
-  ListItem,
-  ListItemButton,
   ListItemIcon,
   ListItemText,
-  Paper,
+  ListItemButton,
+  CircularProgress,
+  IconButton,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowBack, Folder, ArrowUpward } from "@mui/icons-material";
-import type { BackupSource, TestResultItem } from "../types/api";
+import type { BackupSource } from "../types/api";
 import { getSourceIcon } from "../constants/sourceIcons";
 import { useBackupSourcesApi } from "../api/backupSourcesApi";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import {
+  ArrowBack,
+  Folder,
+  ArrowUpward,
+  Home,
+  ArrowRight,
+} from "@mui/icons-material";
 
 interface ParamState {
   [key: string]: string;
@@ -45,7 +47,6 @@ export default function SourceWizard() {
   const [testLoading, setTestLoading] = useState(false);
   const [testMessage, setTestMessage] = useState<string | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
-  const [testResult, setTestResult] = useState<TestResultItem[] | null>(null);
   const [browserPath, setBrowserPath] = useState<string>("");
   const [browserDirs, setBrowserDirs] = useState<string[]>([]);
   const [browserLoading, setBrowserLoading] = useState(false);
@@ -92,8 +93,6 @@ export default function SourceWizard() {
     setParams((prev) => ({ ...prev, [name]: value }));
     setTestMessage(null);
     setTestError(null);
-    setTestResult(null);
-    // If user changes any param (except path), reset browser
     if (name !== "path" && sourceMeta?.parameters.includes("path")) {
       setBrowserPath("");
       setBrowserDirs([]);
@@ -120,9 +119,7 @@ export default function SourceWizard() {
       // Reset test results when path changes
       setTestMessage(null);
       setTestError(null);
-      setTestResult(null);
     } catch (err: unknown) {
-      console.error("Failed to load directories:", err);
       setBrowserDirs([]);
     } finally {
       setBrowserLoading(false);
@@ -166,10 +163,8 @@ export default function SourceWizard() {
       setTestLoading(true);
       const result = await api.test(typeId, params);
       if (Array.isArray(result)) {
-        setTestResult(result as TestResultItem[]);
         setTestMessage(t("wizard.testSuccess"));
       } else if (result && Array.isArray(result.items)) {
-        setTestResult(result.items as TestResultItem[]);
         setTestMessage(t("wizard.testSuccess"));
       } else {
         const message = result?.message ?? t("wizard.testSuccess");
@@ -183,29 +178,6 @@ export default function SourceWizard() {
     } finally {
       setTestLoading(false);
     }
-  }
-
-  function humanBytes(bytes: number | null | undefined) {
-    if (bytes == null) return "-";
-    if (bytes === 0) return "0 B";
-    const sizes = ["B", "KB", "MB", "GB", "TB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
-  }
-
-  function formatLocalWithMs(utcString?: string | null) {
-    if (!utcString) return "-";
-    const d = new Date(utcString);
-    if (isNaN(d.getTime())) return utcString;
-    const datePart = d.toLocaleDateString();
-    const timePart = d.toLocaleTimeString(undefined, {
-      hour12: false,
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-    const ms = d.getMilliseconds().toString().padStart(3, "0");
-    return `${datePart} ${timePart}.${ms}`;
   }
 
   if (loading) {
@@ -293,13 +265,31 @@ export default function SourceWizard() {
                               alignItems="center"
                               justifyContent="space-between"
                             >
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 0.1,
+                                }}
                               >
-                                {t("wizard.directoryBrowser")}:{" "}
-                                {browserPath || "(root)"}
-                              </Typography>
+                                <IconButton
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 0.1,
+                                  }}
+                                  onClick={() => loadBrowserDirectories("")}
+                                >
+                                  <Home fontSize="small" />
+                                </IconButton>
+                                <ArrowRight fontSize="small" />
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                >
+                                  {browserPath}
+                                </Typography>
+                              </Box>
                               {browserPath && (
                                 <Button
                                   size="small"
@@ -341,16 +331,6 @@ export default function SourceWizard() {
                                 ))}
                               </List>
                             )}
-                            {!browserPath && !browserLoading && (
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={() => loadBrowserDirectories("")}
-                                fullWidth
-                              >
-                                {t("wizard.loadRootDirectories")}
-                              </Button>
-                            )}
                           </Stack>
                         </Paper>
                       )}
@@ -363,35 +343,6 @@ export default function SourceWizard() {
             <Stack spacing={2}>
               {testMessage && <Alert severity="success">{testMessage}</Alert>}
               {testError && <Alert severity="error">{testError}</Alert>}
-              {testResult && (
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography variant="subtitle2" gutterBottom>
-                      {t("wizard.testResult")}
-                    </Typography>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>{t("wizard.fileName")}</TableCell>
-                          <TableCell>{t("wizard.fileSize")}</TableCell>
-                          <TableCell>{t("wizard.fileModified")}</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {testResult.map((it) => (
-                          <TableRow key={it.path + it.name}>
-                            <TableCell>{it.name}</TableCell>
-                            <TableCell>{humanBytes(it.size)}</TableCell>
-                            <TableCell>
-                              {formatLocalWithMs(it.lastModified)}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-              )}
               <Stack direction="row" spacing={2} justifyContent="flex-end">
                 <Button
                   variant="outlined"
@@ -402,7 +353,11 @@ export default function SourceWizard() {
                     ? t("wizard.testing")
                     : t("wizard.testConnection")}
                 </Button>
-                <Button type="submit" variant="contained" disabled={!testMessage}>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  disabled={!testMessage}
+                >
                   {t("wizard.createSource")}
                 </Button>
               </Stack>
