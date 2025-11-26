@@ -6,6 +6,7 @@ using Octockup.Server.Abstractions;
 using Microsoft.AspNetCore.Authorization;
 using EasyExtensions.AspNetCore.Extensions;
 using System.Threading.Tasks;
+using Octockup.Server.Models.Requests;
 
 namespace Octockup.Server.Controllers
 {

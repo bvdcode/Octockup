@@ -1,4 +1,4 @@
-﻿namespace Octockup.Server.Models.Database
+﻿namespace Octockup.Server.Database
 {
     public class UserData : BaseEntity
     {

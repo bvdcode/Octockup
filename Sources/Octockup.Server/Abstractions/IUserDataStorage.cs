@@ -1,4 +1,4 @@
-﻿using Octockup.Server.Models.Database;
+﻿using Octockup.Server.Database;
 
 namespace Octockup.Server.Abstractions
 {

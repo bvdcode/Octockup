@@ -1,10 +1,10 @@
 ﻿using EasyExtensions;
-using Octockup.Server.Models;
 using Microsoft.AspNetCore.Mvc;
 using Octockup.Server.Abstractions;
-using Octockup.Server.Models.Database;
 using Microsoft.AspNetCore.Authorization;
 using EasyExtensions.AspNetCore.Extensions;
+using Octockup.Server.Database;
+using Octockup.Server.Models.Requests;
 
 namespace Octockup.Server.Controllers
 {

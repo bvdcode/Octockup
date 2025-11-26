@@ -1,6 +1,6 @@
 ﻿using MediatR;
 
-namespace Octockup.Server.Models
+namespace Octockup.Server.Models.Requests
 {
     public class ChangePasswordRequest : IRequest
     {
