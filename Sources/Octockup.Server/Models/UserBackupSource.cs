@@ -1,8 +1,7 @@
 ﻿namespace Octockup.Server.Models
 {
-    public class UserBackupSource
+    public class UserBackupSource : BaseEntity
     {
-        public DateTime CreatedAt { get; set; }
         public string Tag { get; set; } = string.Empty;
         public string Username { get; set; } = string.Empty;
         public string BackupSourceId { get; set; } = string.Empty;

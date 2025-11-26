@@ -36,7 +36,9 @@ namespace Octockup.Server.Services
             {
                 savedData = new()
                 {
+                    Id = Guid.NewGuid(),
                     Username = username,
+                    CreatedAt = DateTime.UtcNow,
                     PasswordPhc = _passwords.Hash(password)
                 };
                 SaveUserData(savedData);
@@ -56,6 +58,7 @@ namespace Octockup.Server.Services
         private void SaveUserData(UserData? userData)
         {
             ArgumentNullException.ThrowIfNull(userData);
+            userData.UpdatedAt = DateTime.UtcNow;
             string json = JsonSerializer.Serialize(userData);
             byte[] encrypted = _crypto.Encrypt(json);
             string path = Path.Combine(_userDataFilePath, $"{userData.Username}.oct");
@@ -72,6 +75,9 @@ namespace Octockup.Server.Services
             {
                 throw new Exception("Backup source with the same tag already exists");
             }
+            newSource.Id = Guid.NewGuid();
+            newSource.CreatedAt = DateTime.UtcNow;
+            newSource.UpdatedAt = DateTime.UtcNow;
             userData.BackupSources.Add(newSource);
             _cache[newSource.Username] = userData;
         }

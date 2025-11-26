@@ -27,18 +27,18 @@ export function SourcesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const api = useBackupSourcesApi();
-  const [state, setState] = useState<State>({ 
-    loading: true, 
-    error: null, 
-    availableLoading: true, 
-    availableError: null 
+  const [state, setState] = useState<State>({
+    loading: true,
+    error: null,
+    availableLoading: true,
+    availableError: null,
   });
   const [userSources, setUserSources] = useState<UserBackupSource[]>([]);
   const [availableSources, setAvailableSources] = useState<BackupSource[]>([]);
 
   useEffect(() => {
     let active = true;
-    
+
     // Load user's created sources
     api
       .list()
@@ -55,14 +55,18 @@ export function SourcesPage() {
           error: e?.message || "Failed to load sources",
         }));
       });
-    
+
     // Load available source types
     api
       .listAvailable()
       .then((data) => {
         if (!active) return;
         setAvailableSources(data);
-        setState((prev) => ({ ...prev, availableLoading: false, availableError: null }));
+        setState((prev) => ({
+          ...prev,
+          availableLoading: false,
+          availableError: null,
+        }));
       })
       .catch((e) => {
         if (!active) return;
@@ -72,7 +76,7 @@ export function SourcesPage() {
           availableError: e?.message || "Failed to load available sources",
         }));
       });
-    
+
     return () => {
       active = false;
     };
@@ -115,10 +119,10 @@ export function SourcesPage() {
                 key={s.tag}
                 sx={{
                   width: 160,
-                  height: 120,
+                  height: 140,
                   flex: "0 0 160px",
                   display: "flex",
-                  alignItems: "center",
+                  alignItems: "stretch",
                   justifyContent: "center",
                 }}
               >
@@ -127,14 +131,26 @@ export function SourcesPage() {
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
-                    gap: 1,
-                    justifyContent: "center",
+                    gap: 0.5,
+                    justifyContent: "space-between",
                     height: "100%",
+                    p: 2,
                   }}
                 >
                   <Box sx={{ fontSize: 32 }}>{getSourceIcon(s.backupSourceId)}</Box>
-                  <Typography variant="caption" noWrap sx={{ textAlign: "center", maxWidth: 140 }}>
+                  <Typography
+                    variant="subtitle2"
+                    noWrap
+                    title={s.tag}
+                    sx={{ textAlign: "center", maxWidth: 140 }}
+                  >
                     {s.tag}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{ textAlign: "center", maxWidth: 140, color: "text.secondary", fontSize: "0.7rem" }}
+                  >
+                    {new Date(s.createdAt).toLocaleDateString()}
                   </Typography>
                 </CardContent>
               </Card>
@@ -153,7 +169,7 @@ export function SourcesPage() {
               key={s.id}
               sx={{
                 width: 160,
-                height: 120,
+                height: 140,
                 flex: "0 0 160px",
                 cursor: "pointer",
                 display: "flex",
@@ -170,13 +186,18 @@ export function SourcesPage() {
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
-                  gap: 1,
-                  justifyContent: "center",
+                  gap: 0.5,
+                  justifyContent: "space-between",
                   height: "100%",
+                  p: 2,
                 }}
               >
                 <Box sx={{ fontSize: 32 }}>{getSourceIcon(s.id)}</Box>
-                <Typography variant="caption" noWrap sx={{ textAlign: "center", maxWidth: 140 }}>
+                <Typography
+                  variant="caption"
+                  noWrap
+                  sx={{ textAlign: "center", maxWidth: 140 }}
+                >
                   {s.name}
                 </Typography>
               </CardContent>

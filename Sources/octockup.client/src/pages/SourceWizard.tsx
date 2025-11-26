@@ -23,7 +23,7 @@ import {
   ArrowRight,
   ArrowUpward,
 } from "@mui/icons-material";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import type { BackupSource } from "../types/api";
 import { getSourceIcon } from "../constants/sourceIcons";
@@ -90,34 +90,7 @@ export default function SourceWizard() {
     };
   }, [api, typeId, t]);
 
-  useEffect(() => {
-    if (!sourceMeta || !sourceMeta.parameters.includes("path")) return;
-    const required = sourceMeta.parameters.filter((p) => p !== "path");
-    const allFilled = required.every(
-      (p) => params[p] && String(params[p]).length > 0,
-    );
-    const sep = sourceMeta.pathSeparator || "/";
-    if (
-      allFilled &&
-      browserPath === "" &&
-      browserDirs.length === 0 &&
-      !browserLoading
-    ) {
-      loadBrowserDirectories(sep);
-    }
-  }, [params, sourceMeta, browserPath, browserDirs.length, browserLoading]);
-
-  function updateParam(name: string, value: string) {
-    setParams((prev) => ({ ...prev, [name]: value }));
-    setTestMessage(null);
-    setTestError(null);
-    if (name !== "path" && sourceMeta?.parameters.includes("path")) {
-      setBrowserPath("");
-      setBrowserDirs([]);
-    }
-  }
-
-  async function loadBrowserDirectories(targetPath: string) {
+  const loadBrowserDirectories = useCallback(async (targetPath: string) => {
     if (!sourceMeta || browserLoading) return;
     const required = sourceMeta.parameters.filter((p) => p !== "path");
     const missing = required.filter(
@@ -141,6 +114,33 @@ export default function SourceWizard() {
       setBrowserDirs([]);
     } finally {
       setBrowserLoading(false);
+    }
+  }, [sourceMeta, browserLoading, params, api, typeId]);
+
+  useEffect(() => {
+    if (!sourceMeta || !sourceMeta.parameters.includes("path")) return;
+    const required = sourceMeta.parameters.filter((p) => p !== "path");
+    const allFilled = required.every(
+      (p) => params[p] && String(params[p]).length > 0,
+    );
+    const sep = sourceMeta.pathSeparator || "/";
+    if (
+      allFilled &&
+      browserPath === "" &&
+      browserDirs.length === 0 &&
+      !browserLoading
+    ) {
+      loadBrowserDirectories(sep);
+    }
+  }, [params, sourceMeta, browserPath, browserDirs.length, browserLoading, loadBrowserDirectories]);
+
+  function updateParam(name: string, value: string) {
+    setParams((prev) => ({ ...prev, [name]: value }));
+    setTestMessage(null);
+    setTestError(null);
+    if (name !== "path" && sourceMeta?.parameters.includes("path")) {
+      setBrowserPath("");
+      setBrowserDirs([]);
     }
   }
 
