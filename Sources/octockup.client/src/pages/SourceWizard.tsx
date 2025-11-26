@@ -89,6 +89,18 @@ export default function SourceWizard() {
     };
   }, [api, typeId, t]);
 
+  useEffect(() => {
+    if (!sourceMeta || !sourceMeta.parameters.includes("path")) return;
+    const required = sourceMeta.parameters.filter((p) => p !== "path");
+    const allFilled = required.every(
+      (p) => params[p] && String(params[p]).length > 0,
+    );
+    const sep = sourceMeta.pathSeparator || "/";
+    if (allFilled && browserPath === "" && browserDirs.length === 0 && !browserLoading) {
+      loadBrowserDirectories(sep);
+    }
+  }, [params, sourceMeta, browserPath, browserDirs.length, browserLoading]);
+
   function updateParam(name: string, value: string) {
     setParams((prev) => ({ ...prev, [name]: value }));
     setTestMessage(null);
@@ -119,7 +131,7 @@ export default function SourceWizard() {
       // Reset test results when path changes
       setTestMessage(null);
       setTestError(null);
-    } catch (err: unknown) {
+    } catch {
       setBrowserDirs([]);
     } finally {
       setBrowserLoading(false);
@@ -128,15 +140,14 @@ export default function SourceWizard() {
 
   function handleBrowserNavigate(dir: string) {
     const sep = sourceMeta?.pathSeparator || "/";
-    const newPath = browserPath ? `${browserPath}${sep}${dir}` : dir;
+    const newPath = browserPath === sep ? `${browserPath}${dir}` : `${browserPath}${sep}${dir}`;
     loadBrowserDirectories(newPath);
   }
 
   function handleBrowserUp() {
     const sep = sourceMeta?.pathSeparator || "/";
-    const parts = browserPath.split(sep).filter(Boolean);
-    parts.pop();
-    const newPath = parts.join(sep);
+    const lastSepIndex = browserPath.lastIndexOf(sep);
+    const newPath = lastSepIndex <= 0 ? sep : browserPath.substring(0, lastSepIndex);
     loadBrowserDirectories(newPath);
   }
 
@@ -246,7 +257,7 @@ export default function SourceWizard() {
                       {sourceMeta.parameters.map((p) => (
                         <TextField
                           key={p}
-                          required
+                          required={p !== "path"}
                           fullWidth
                           label={p}
                           value={params[p] ?? ""}
@@ -269,16 +280,15 @@ export default function SourceWizard() {
                                 sx={{
                                   display: "flex",
                                   alignItems: "center",
-                                  gap: 0.1,
+                                  gap: 0.5,
                                 }}
                               >
                                 <IconButton
-                                  sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 0.1,
+                                  size="small"
+                                  onClick={() => {
+                                    const sep = sourceMeta?.pathSeparator || "/";
+                                    loadBrowserDirectories(sep);
                                   }}
-                                  onClick={() => loadBrowserDirectories("")}
                                 >
                                   <Home fontSize="small" />
                                 </IconButton>
@@ -287,7 +297,7 @@ export default function SourceWizard() {
                                   variant="caption"
                                   color="text.secondary"
                                 >
-                                  {browserPath}
+                                  {browserPath || "/"}
                                 </Typography>
                               </Box>
                               {browserPath && (
