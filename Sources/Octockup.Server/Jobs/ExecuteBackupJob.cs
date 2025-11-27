@@ -9,6 +9,7 @@ using Octockup.Server.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using EasyExtensions.Quartz.Attributes;
 using Octockup.Server.Models.Enums;
+using Octockup.Server.Models;
 
 namespace Octockup.Server.Jobs
 {
@@ -51,20 +52,26 @@ namespace Octockup.Server.Jobs
             }
 
             await report.SendAsync(0, "Listing files to backup...");
-            var filesToBackup = foundSourceProvider.GetFiles(recursive: true).ToList();
-            report.Total = filesToBackup.Count;
+            next.Status = BackupStatus.Running;
+            await _dbContext.SaveChangesAsync();
 
-            long processedBytes = 0;
-            for (int i = 0; i < filesToBackup.Count; i++)
+            try
             {
-                var file = filesToBackup[i];
-                await report.SendAsync(i, $"Processing file: {file.Name}", processedBytes: processedBytes);
-                await Task.Delay(Random.Shared.Next(1, 1000));
-                await _hubContext.Clients.User(userId.ToString()).SendAsync("ScheduleReport", report);
-                _logger.LogInformation("Schedule {ScheduleId}: {Message} ({Processed}/{Total})", next.Id, report.Message, report.Processed, report.Total);
-                processedBytes += filesToBackup[i].Size ?? 0;
-            }
+                var filesToBackup = foundSourceProvider.GetFiles(recursive: true).ToList();
+                report.Total = filesToBackup.Count;
 
+                await BackupAsync(next, foundSourceProvider, foundStorageProvider, filesToBackup, report);
+            }
+            catch (Exception ex)
+            {
+                next.ErrorMessage = $"Backup failed: {ex.Message}";
+                next.Status = BackupStatus.Failed;
+                next.FinishedAt = DateTime.UtcNow;
+                await _dbContext.SaveChangesAsync();
+                _logger.LogError(ex, "Schedule {ScheduleId} backup failed", next.Id);
+                await report.SendAsync(report.Processed, next.ErrorMessage, status: BackupStatus.Failed);
+                return;
+            }
         }
 
         private async Task<Schedule?> GetNextScheduleAsync()
@@ -105,7 +112,9 @@ namespace Octockup.Server.Jobs
             {
                 // Not started yet → next start
                 if (s.FinishedAt is null)
+                {
                     return s.StartAt > now ? s.StartAt : now;
+                }
 
                 // already executed → no more runs
                 return null;
@@ -122,17 +131,34 @@ namespace Octockup.Server.Jobs
 
             // If StartAt is in the future
             if (s.StartAt > now)
+            {
                 return s.StartAt;
+            }
 
             // Calculate next interval tick
             var elapsed = now - s.StartAt;
             if (elapsed.TotalMilliseconds < 0)
+            {
                 elapsed = TimeSpan.Zero;
+            }
 
-            long k = (long)(elapsed.Ticks / interval.Ticks);
+            long k = elapsed.Ticks / interval.Ticks;
             DateTime next = s.StartAt.AddTicks(interval.Ticks * (k + 1));
 
             return next;
+        }
+
+        private async Task BackupAsync(Schedule next, IBackupSource foundSourceProvider, IBackupStorage foundStorageProvider, List<BackupFileInfo> filesToBackup, ScheduleReport report)
+        {
+            long processedBytes = 0;
+            for (int i = 0; i < filesToBackup.Count; i++)
+            {
+                var file = filesToBackup[i];
+                await report.SendAsync(i, $"Processing file: {file.Name}", processedBytes: processedBytes);
+                await Task.Delay(Random.Shared.Next(1, 1000));
+                _logger.LogInformation("Schedule {ScheduleId}: {Message} ({Processed}/{Total})", next.Id, report.Message, report.Processed, report.Total);
+                processedBytes += filesToBackup[i].Size ?? 0;
+            }
         }
     }
 }
