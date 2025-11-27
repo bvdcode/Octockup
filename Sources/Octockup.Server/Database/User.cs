@@ -3,6 +3,9 @@ using EasyExtensions.EntityFrameworkCore.Abstractions;
 
 namespace Octockup.Server.Database
 {
+    /// <summary>
+    /// Represents an application user with authentication credentials and associated modules.
+    /// </summary>
     [Index(nameof(UsernameRename), IsUnique = true)]
     public class User : BaseEntity<Guid>
     {
