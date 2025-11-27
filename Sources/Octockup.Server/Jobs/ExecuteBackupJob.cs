@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.SignalR;
 using Octockup.Server.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using EasyExtensions.Quartz.Attributes;
+using System.Collections.Concurrent;
 
 namespace Octockup.Server.Jobs
 {
@@ -27,6 +28,12 @@ namespace Octockup.Server.Jobs
         IHubContext<EventHub> _hubContext,
         IEnumerable<IBackupProvider> _providers) : IJob
     {
+        public static void StopRunningBackup(Guid scheduleId)
+        {
+            _stoppingSchedules.Add(scheduleId);
+        }
+
+        private static readonly List<Guid> _stoppingSchedules = [];
         private const int ChunkSize = 4 * 1024 * 1024;
 
         public async Task Execute(IJobExecutionContext context)
@@ -104,6 +111,11 @@ namespace Octockup.Server.Jobs
                 List<string> chunkHashes = [];
                 foreach (Stream chunk in chunker.GetChunks())
                 {
+                    if (_stoppingSchedules.Contains(schedule.Id))
+                    {
+                        _stoppingSchedules.Remove(schedule.Id);
+                        throw new OperationCanceledException("Backup stopped by user request.");
+                    }
                     chunk.Seek(0, SeekOrigin.Begin);
                     string hash = chunk.Sha256();
                     chunk.Seek(0, SeekOrigin.Begin);
@@ -135,6 +147,12 @@ namespace Octockup.Server.Jobs
                     await report.SendAsync(i, $"Uploading chunk: {file.Name} ({hash})", processedBytes: processedBytes);
 
                     chunkHashes.Add(hash);
+                    ArrayPool<byte>.Shared.Return(buffer);
+                    if (_stoppingSchedules.Contains(schedule.Id))
+                    {
+                        _stoppingSchedules.Remove(schedule.Id);
+                        throw new OperationCanceledException("Backup stopped by user request.");
+                    }
                 }
 
 

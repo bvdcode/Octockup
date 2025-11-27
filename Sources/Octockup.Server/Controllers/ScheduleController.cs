@@ -36,6 +36,14 @@ namespace Octockup.Server.Controllers
         }
 
         [Authorize]
+        [HttpPost("/api/v1/schedules/{scheduleId:guid}/cancel")]
+        public async Task<IActionResult> CancelSchedule(Guid scheduleId)
+        {
+            ExecuteBackupJob.StopRunningBackup(scheduleId);
+            return Ok(new { message = "Schedule cancellation requested." });
+        }
+
+        [Authorize]
         [HttpPost("/api/v1/schedules")]
         public async Task<IActionResult> CreateSchedule([FromBody] CreateScheduleRequest request)
         {
