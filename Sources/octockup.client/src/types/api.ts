@@ -1,4 +1,7 @@
-export enum ModuleDestination { Source = 1, Target = 2 }
+export enum ModuleDestination {
+  Source = 1,
+  Target = 2,
+}
 
 // Match backend JSON (C# property names are PascalCase)
 export interface Module {
