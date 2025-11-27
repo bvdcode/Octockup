@@ -7,7 +7,7 @@ export interface Module {
   userId: string;
   tag: string;
   backupModuleId: string;
-  Type: ModuleDestination;
+  destination: ModuleDestination;
 }
 
 export interface ModuleProviderInfo {

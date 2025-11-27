@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import type { AxiosInstance } from "axios";
 import { useAxios } from "@bvdcode/react-kit";
-import type { Module, ModuleProviderInfo, ModuleDestination, CreateModuleRequest } from "../types/api";
+import { ModuleDestination } from "../types/api";
+import type { Module, ModuleProviderInfo, CreateModuleRequest } from "../types/api";
 
 class ModulesApiClient {
   private axiosFactory: () => AxiosInstance;

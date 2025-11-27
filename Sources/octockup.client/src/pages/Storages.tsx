@@ -12,7 +12,8 @@ import {
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import type { Module, ModuleProviderInfo, ModuleDestination } from "../types/api";
+import { ModuleDestination } from "../types/api";
+import type { Module, ModuleProviderInfo } from "../types/api";
 import { AddCircleOutline, DeleteOutline } from "@mui/icons-material";
 import { confirm } from "material-ui-confirm";
 import { getSourceIcon } from "../constants/sourceIcons";
@@ -45,7 +46,7 @@ export function StoragesPage() {
       .list()
       .then((data) => {
         if (!active) return;
-        setUserStorages(data.filter((m) => m.Type === ModuleDestination.Target));
+        setUserStorages(data.filter((m) => m.destination === ModuleDestination.Target));
         setState((prev) => ({ ...prev, loading: false, error: null }));
       })
       .catch((e) => {

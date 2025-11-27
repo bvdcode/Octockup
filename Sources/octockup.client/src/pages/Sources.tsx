@@ -17,7 +17,8 @@ import { AddCircleOutline } from "@mui/icons-material";
 import { DeleteOutline } from "@mui/icons-material";
 import { getSourceIcon } from "../constants/sourceIcons";
 import { useModulesApi } from "../api/modulesApi";
-import type { Module, ModuleProviderInfo, ModuleDestination } from "../types/api";
+import { ModuleDestination } from "../types/api";
+import type { Module, ModuleProviderInfo } from "../types/api";
 
 interface State {
   loading: boolean;
@@ -48,7 +49,7 @@ export function SourcesPage() {
       .then((data) => {
         if (!active) return;
         // filter sources
-        setUserSources(data.filter((m) => m.Type === ModuleDestination.Source));
+        setUserSources(data.filter((m) => m.destination === ModuleDestination.Source));
         setState((prev) => ({ ...prev, loading: false, error: null }));
       })
       .catch((e) => {

@@ -8,7 +8,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import type { ClipboardEvent } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { TestActions } from "./wizard/TestActions";
 import { ModuleHeader } from "./wizard/ModuleHeader";
@@ -19,7 +19,8 @@ import { DirectoryBrowser } from "./wizard/DirectoryBrowser";
 import { ArrowBack, CheckCircle } from "@mui/icons-material";
 import { useModuleMetadata } from "../hooks/useModuleMetadata";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import type { ModuleProviderInfo, ModuleDestination } from "../types/api";
+import { ModuleDestination } from "../types/api";
+import type { ModuleProviderInfo } from "../types/api";
 import { useDirectoryBrowser } from "../hooks/useDirectoryBrowser";
 
 type ModuleType = "source" | "target";
@@ -52,10 +53,13 @@ export default function BackupModuleWizard({
   const [searchParams] = useSearchParams();
   const providerId = searchParams.get("type") || ""; // provider full name
 
-  const { loading, error, moduleMeta } = useModuleMetadata(
-    providerId,
+  // Memoize provider fetch to avoid recreating function every render (prevents infinite fetch loop)
+  const fetchProviders = useCallback(
     () => apiClient.listProvidersByType(moduleType === "source" ? "source" : "target"),
+    [apiClient, moduleType],
   );
+
+  const { loading, error, moduleMeta } = useModuleMetadata(providerId, fetchProviders);
   const {
     params,
     tag,
