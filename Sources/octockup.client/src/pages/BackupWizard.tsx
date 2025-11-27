@@ -45,7 +45,8 @@ export default function BackupWizard() {
 
   const [sourceId, setSourceId] = useState<string>("");
   const [storageId, setStorageId] = useState<string>("");
-  const [tagOverride, setTagOverride] = useState<string>("");
+  const [tag, setTag] = useState<string>("");
+  const [userEditedTag, setUserEditedTag] = useState<boolean>(false);
   const [ignoredPathsInput, setIgnoredPathsInput] = useState<string>("");
 
   useEffect(() => {
@@ -90,11 +91,16 @@ export default function BackupWizard() {
     return "";
   }, [sourceId, storageId, modules, t]);
 
-  const effectiveTag = tagOverride || autoTag;
+  const displayTag = useMemo(() => {
+    if (userEditedTag) {
+      return tag;
+    }
+    return autoTag || tag;
+  }, [tag, autoTag, userEditedTag]);
 
   const canCreate = useMemo(
-    () => !!sourceId && !!storageId && !!effectiveTag,
-    [sourceId, storageId, effectiveTag],
+    () => !!sourceId && !!storageId && !!displayTag,
+    [sourceId, storageId, displayTag],
   );
 
   if (state.loading) {
@@ -227,9 +233,11 @@ export default function BackupWizard() {
             <Stack spacing={2}>
               <TextField
                 label={t("backupWizard.tag")}
-                value={tagOverride}
-                placeholder={autoTag}
-                onChange={(e) => setTagOverride(e.target.value)}
+                value={displayTag}
+                onChange={(e) => {
+                  setTag(e.target.value);
+                  setUserEditedTag(true);
+                }}
                 fullWidth
               />
               <TextField
@@ -272,7 +280,7 @@ export default function BackupWizard() {
               const payload: CreateBackupRequest = {
                 sourceId,
                 storageId,
-                tag: effectiveTag,
+                tag: displayTag,
                 ignoredPaths: ignoredPathsInput
                   .split(/\r?\n/)
                   .filter((x) => x.trim() !== ""),
