@@ -11,9 +11,9 @@ import {
   CircularProgress,
 } from "@mui/material";
 import {
-  ArrowRight,
   PlayArrow,
   DeleteOutline,
+  ArrowRightAlt,
   AddCircleOutline,
 } from "@mui/icons-material";
 import { useEffect, useState } from "react";
@@ -138,7 +138,7 @@ export default function BackupsPage() {
                   >
                     {getSourceIcon(b.source.backupModuleId)}
                   </Box>
-                  <ArrowRight />
+                  <ArrowRightAlt />
                   <Box
                     fontSize={40}
                     sx={{

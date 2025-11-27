@@ -9,16 +9,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Octockup.Server.Jobs
 {
-    public class ScheduleReport(Guid userId, Guid scheduleId, int total, IHubContext<EventHub> _hubContext)
+    public class ScheduleReport(Guid userId, Guid scheduleId, IHubContext<EventHub> _hubContext)
     {
-        public int Total { get; } = total;
         public Guid UserId { get; } = userId;
         public Guid ScheduleId { get; } = scheduleId;
         public BackupStatus Status { get; set; }
         public DateTime Timestamp { get; set; }
+        public TimeSpan Elapsed => _stopwatch.Elapsed;
         public string Message { get; set; } = string.Empty;
         public int Processed { get; set; }
         public double Speed { get; set; }
+        public int Total { get; set; }
 
         private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
 

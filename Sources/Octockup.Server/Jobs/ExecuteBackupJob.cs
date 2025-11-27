@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.SignalR;
 using Octockup.Server.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using EasyExtensions.Quartz.Attributes;
+using Octockup.Server.Models.Enums;
 
 namespace Octockup.Server.Jobs
 {
@@ -26,14 +27,42 @@ namespace Octockup.Server.Jobs
                 return;
             }
             Guid userId = next.Backup.Source.UserId;
-            ScheduleReport report = new(userId, next.Id, 10000, _hubContext);
-            for (int i = 0; i < 10000; i++)
+            ScheduleReport report = new(userId, next.Id, _hubContext);
+
+            if (_providers.FirstOrDefault(x => x.Id == next.Backup.Source.BackupModuleId) is not IBackupSource foundSourceProvider)
             {
-                int randomSleepTime = Random.Shared.Next(1, 1000);
-                await report.SendAsync(i + 1, $"Processing file: {i}.txt...");
-                await Task.Delay(randomSleepTime);
+                next.ErrorMessage = $"Source provider not found: {next.Backup.Source.BackupModuleId}";
+                next.Status = BackupStatus.Failed;
+                next.FinishedAt = DateTime.UtcNow;
+                await _dbContext.SaveChangesAsync();
+                _logger.LogWarning("{msg}", next.ErrorMessage);
+                await report.SendAsync(0, next.ErrorMessage);
+                return;
+            }
+            if (_providers.FirstOrDefault(x => x.Id == next.Backup.Storage.BackupModuleId) is not IBackupStorage foundStorageProvider)
+            {
+                next.ErrorMessage = $"Storage provider not found: {next.Backup.Storage.BackupModuleId}";
+                next.Status = BackupStatus.Failed;
+                next.FinishedAt = DateTime.UtcNow;
+                await _dbContext.SaveChangesAsync();
+                _logger.LogWarning("{msg}", next.ErrorMessage);
+                await report.SendAsync(0, next.ErrorMessage);
+                return;
+            }
+
+            await report.SendAsync(0, "Listing files to backup...");
+            var filesToBackup = foundSourceProvider.GetFiles(recursive: true).ToList();
+            report.Total = filesToBackup.Count;
+
+            long processedBytes = 0;
+            for (int i = 0; i < filesToBackup.Count; i++)
+            {
+                var file = filesToBackup[i];
+                await report.SendAsync(i, $"Processing file: {file.Name}", processedBytes: processedBytes);
+                await Task.Delay(Random.Shared.Next(1, 1000));
                 await _hubContext.Clients.User(userId.ToString()).SendAsync("ScheduleReport", report);
                 _logger.LogInformation("Schedule {ScheduleId}: {Message} ({Processed}/{Total})", next.Id, report.Message, report.Processed, report.Total);
+                processedBytes += filesToBackup[i].Size ?? 0;
             }
 
         }
@@ -46,6 +75,8 @@ namespace Octockup.Server.Jobs
                 .AsNoTracking()
                 .Include(x => x.Backup)
                 .ThenInclude(b => b.Source)
+                .Include(x => x.Backup)
+                .ThenInclude(b => b.Storage)
                 .ToListAsync();
 
             Schedule? best = null;

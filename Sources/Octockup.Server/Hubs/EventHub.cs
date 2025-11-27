@@ -14,7 +14,7 @@ namespace Octockup.Server.Hubs
         public override Task OnConnectedAsync()
         {
             _logger.LogInformation("Client connected: {connectionId}", Context.ConnectionId);
-            Task.Run(() =>
+            return Task.Run(() =>
             {
                 while (true)
                 {
@@ -27,7 +27,6 @@ namespace Octockup.Server.Hubs
                     }
                 }
             });
-            return base.OnConnectedAsync();
         }
     }
 }
