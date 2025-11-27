@@ -52,10 +52,14 @@ namespace Octockup.Server.Modules
         private string ToRelativeKey(string fullKey, string basePrefix)
         {
             if (string.IsNullOrEmpty(basePrefix))
+            {
                 return fullKey.Trim(PathSeparator);
+            }
 
             if (fullKey.StartsWith(basePrefix, StringComparison.Ordinal))
-                return fullKey.Substring(basePrefix.Length).Trim(PathSeparator);
+            {
+                return fullKey[basePrefix.Length..].Trim(PathSeparator);
+            }
 
             return fullKey.Trim(PathSeparator);
         }
@@ -259,12 +263,13 @@ namespace Octockup.Server.Modules
             return _s3.PutObjectAsync(req);
         }
 
-        public Task DeleteAsync(string path)
+        public async Task<bool?> DeleteAsync(string path)
         {
             ArgumentException.ThrowIfNullOrEmpty(path);
             ArgumentNullException.ThrowIfNull(_s3);
             var key = string.IsNullOrEmpty(_path) ? path : $"{_path}/{path}";
-            return _s3.DeleteObjectAsync(_bucket, key);
+            var result = await _s3.DeleteObjectAsync(_bucket, key);
+            return result.HttpStatusCode == System.Net.HttpStatusCode.NoContent;
         }
     }
 }
