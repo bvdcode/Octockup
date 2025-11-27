@@ -23,7 +23,7 @@ import { ModuleDestination } from "../types/api";
 import type { ModuleProviderInfo } from "../types/api";
 import { useDirectoryBrowser } from "../hooks/useDirectoryBrowser";
 
-type ModuleType = "source" | "target";
+type ModuleType = "source" | "storage" | "target";
 
 interface BackupModuleWizardProps {
   moduleType: ModuleType;

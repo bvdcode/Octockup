@@ -20,6 +20,9 @@ export interface ModuleProviderInfo {
   requiredParameters: string[];
 }
 
+export type BackupSource = ModuleProviderInfo;
+export type BackupStorage = ModuleProviderInfo;
+
 export interface TestResultItem {
   path: string;
   name: string;

@@ -161,13 +161,15 @@ export default function SchedulesPage() {
       .then((data) => {
         if (!active) return;
         setItems(data);
-        setState({ loading: false, error: null });
+        setState({ loading: false, error: null, deletingId: null, cancelingId: null });
       })
       .catch((e) => {
         if (!active) return;
         setState({
           loading: false,
           error: e?.message || "Failed to load schedules",
+          deletingId: null,
+          cancelingId: null,
         });
       });
     return () => {
