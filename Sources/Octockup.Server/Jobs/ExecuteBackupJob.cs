@@ -103,7 +103,7 @@ namespace Octockup.Server.Jobs
             {
                 var file = files[i];
                 await report.SendAsync(i, $"Processing: {file.Name}", processedBytes: processedBytes);
-                
+
                 using var stream = await source.GetFileStreamAsync(file);
                 using var chunker = new ChunkedStream(stream, ChunkSize);
 
@@ -143,8 +143,8 @@ namespace Octockup.Server.Jobs
                             schedule.Id, hash, file.Name);
                     }
 
-                        processedBytes += chunk.Length;
-                    await report.SendAsync(i, $"Uploading chunk: {file.Name} ({hash})", processedBytes: processedBytes);
+                    processedBytes += chunk.Length;
+                    await report.SendAsync(i, $"Uploading: {file.Name}", processedBytes: processedBytes);
 
                     chunkHashes.Add(hash);
                     ArrayPool<byte>.Shared.Return(buffer);
