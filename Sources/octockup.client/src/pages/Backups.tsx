@@ -103,138 +103,106 @@ export default function BackupsPage() {
           </CardContent>
         </Card>
       ) : (
-        <Stack direction="row" spacing={2} flexWrap="wrap">
+        <Stack spacing={1}>
           {backups.map((b) => (
             <Card
               key={b.id}
               sx={{
-                width: 240,
-                height: 170,
-                flex: "0 0 240px",
                 display: "flex",
-                alignItems: "stretch",
+                alignItems: "center",
                 position: "relative",
+                minHeight: 80,
               }}
             >
-              <Box
-                sx={{
-                  position: "absolute",
-                  top: 4,
-                  right: 4,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 0.5,
-                }}
-              >
-                <Tooltip
-                  title={t("backups.deleteTooltip", {
-                    defaultValue: "Delete backup",
-                  })}
-                  placement="left"
-                >
-                  <span>
-                    <IconButton
-                      size="small"
-                      aria-label={t("common.delete")}
-                      disabled={state.deletingId === b.id}
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        const result = await confirm({
-                          title: t("backups.deleteTitle", {
-                            defaultValue: "Delete backup",
-                          }),
-                          description: t("backups.deleteText", {
-                            defaultValue: "This action is permanent!",
-                          }),
-                          confirmationText: t("common.delete", {
-                            defaultValue: "Delete",
-                          }),
-                          cancellationText: t("common.cancel", {
-                            defaultValue: "Cancel",
-                          }),
-                          confirmationButtonProps: { color: "error" },
-                        });
-                        if (result.confirmed) {
-                          setState((s) => ({ ...s, deletingId: b.id }));
-                          await backupsApi.delete(b.id);
-                          setBackups((prev) =>
-                            prev.filter((x) => x.id !== b.id),
-                          );
-                          setState((s) => ({ ...s, deletingId: null }));
-                        }
-                      }}
-                    >
-                      <DeleteOutline fontSize="small" color="primary" />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-                <Tooltip
-                  title={t("backups.runOnce", { defaultValue: "Run once" })}
-                  placement="left"
-                >
-                  <span>
-                    <IconButton
-                      size="small"
-                      aria-label={t("backups.runOnce", {
-                        defaultValue: "Run once",
-                      })}
-                      disabled={state.runningId === b.id}
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        try {
-                          setState((s) => ({ ...s, runningId: b.id }));
-                          await schedulesApi.create({
-                            backupId: b.id,
-                            startAt: new Date().toISOString(),
-                          });
-                        } finally {
-                          setState((s) => ({ ...s, runningId: null }));
-                        }
-                      }}
-                    >
-                      {state.runningId === b.id ? (
-                        <CircularProgress size={16} />
-                      ) : (
-                        <PlayArrow fontSize="small" color="success" />
-                      )}
-                    </IconButton>
-                  </span>
-                </Tooltip>
-              </Box>
               <CardContent
                 sx={{
                   display: "flex",
-                  flexDirection: "column",
                   alignItems: "center",
-                  gap: 0.75,
-                  justifyContent: "space-between",
-                  height: "100%",
+                  gap: 2,
+                  width: "100%",
                   p: 2,
+                  "&:last-child": { pb: 2 },
                 }}
               >
-                <Box display="flex" alignItems="center" gap={1} mt={1}>
-                  <Box fontSize={32}>
+                <Box display="flex" alignItems="center" gap={1.5}>
+                  <Box fontSize={40}>
                     {getSourceIcon(b.source.backupModuleId)}
                   </Box>
-                  <Typography variant="caption">→</Typography>
-                  <Box fontSize={32}>
+                  <Typography variant="h6" sx={{ mx: 1 }}>→</Typography>
+                  <Box fontSize={40}>
                     {getSourceIcon(b.storage.backupModuleId)}
                   </Box>
                 </Box>
-                <Typography
-                  variant="subtitle2"
-                  noWrap
-                  title={b.tag}
-                  sx={{ textAlign: "center", maxWidth: 180 }}
-                >
-                  {b.tag}
-                </Typography>
-                <Typography
-                  variant="caption"
-                  sx={{ color: "text.secondary", textAlign: "center" }}
-                >
-                  {b.source.tag} → {b.storage.tag}
-                </Typography>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography variant="subtitle1" noWrap title={b.tag}>
+                    {b.tag}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                    {b.source.tag} → {b.storage.tag}
+                  </Typography>
+                </Box>
+                <Box display="flex" gap={1}>
+                  <Tooltip
+                    title={t("backups.runOnce", { defaultValue: "Run once" })}
+                    placement="top"
+                  >
+                    <span>
+                      <IconButton
+                        size="medium"
+                        aria-label={t("backups.runOnce", { defaultValue: "Run once" })}
+                        disabled={state.runningId === b.id}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            setState((s) => ({ ...s, runningId: b.id }));
+                            await schedulesApi.create({
+                              backupId: b.id,
+                              startAt: new Date().toISOString(),
+                            });
+                          } finally {
+                            setState((s) => ({ ...s, runningId: null }));
+                          }
+                        }}
+                      >
+                        {state.runningId === b.id ? (
+                          <CircularProgress size={20} />
+                        ) : (
+                          <PlayArrow color="success" />
+                        )}
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                  <Tooltip
+                    title={t("backups.deleteTooltip", { defaultValue: "Delete backup" })}
+                    placement="top"
+                  >
+                    <span>
+                      <IconButton
+                        size="medium"
+                        aria-label={t("common.delete")}
+                        disabled={state.deletingId === b.id}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const result = await confirm({
+                            title: t("backups.deleteTitle", { defaultValue: "Delete backup" }),
+                            description: t("backups.deleteText", { defaultValue: "This action is permanent!" }),
+                            confirmationText: t("common.delete", { defaultValue: "Delete" }),
+                            cancellationText: t("common.cancel", { defaultValue: "Cancel" }),
+                            confirmationButtonProps: { color: "error" },
+                          });
+                          if (result.confirmed) {
+                            setState((s) => ({ ...s, deletingId: b.id }));
+                            await backupsApi.delete(b.id);
+                            setBackups((prev) => prev.filter((x) => x.id !== b.id));
+                            setState((s) => ({ ...s, deletingId: null }));
+                          }
+                        }}
+                      >
+                        <DeleteOutline color="primary" />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                </Box>
               </CardContent>
             </Card>
           ))}

@@ -10,6 +10,7 @@ import {
   Card,
   CardContent,
   MenuItem,
+  ButtonGroup,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -29,7 +30,11 @@ export default function ScheduleWizard() {
   const [state, setState] = useState<State>({ loading: true, error: null, creating: false, createError: null });
   const [backups, setBackups] = useState<BackupItem[]>([]);
   const [backupId, setBackupId] = useState<string>("");
-  const [startAt, setStartAt] = useState<string>("");
+  const [startAt, setStartAt] = useState<string>(() => {
+    const now = new Date();
+    now.setSeconds(0, 0);
+    return now.toISOString().slice(0, 16);
+  });
   const [intervalMinutes, setIntervalMinutes] = useState<string>("");
 
   useEffect(() => {
@@ -75,14 +80,22 @@ export default function ScheduleWizard() {
               fullWidth
               InputLabelProps={{ shrink: true }}
             />
-            <TextField
-              type="number"
-              label={t("scheduleWizard.intervalMinutes")}
-              value={intervalMinutes}
-              onChange={e => setIntervalMinutes(e.target.value)}
-              fullWidth
-              inputProps={{ min: 0 }}
-            />
+            <Box display="flex" gap={2} alignItems="center">
+              <TextField
+                type="number"
+                label={t("scheduleWizard.intervalMinutes")}
+                value={intervalMinutes}
+                onChange={e => setIntervalMinutes(e.target.value)}
+                sx={{ flex: 1 }}
+                inputProps={{ min: 0 }}
+              />
+              <ButtonGroup variant="outlined" size="small">
+                <Button onClick={() => setIntervalMinutes("60")}>1h</Button>
+                <Button onClick={() => setIntervalMinutes(String(60 * 24))}>1d</Button>
+                <Button onClick={() => setIntervalMinutes(String(60 * 24 * 7))}>1w</Button>
+                <Button onClick={() => setIntervalMinutes(String(60 * 24 * 30))}>1m</Button>
+              </ButtonGroup>
+            </Box>
           </Stack>
         </CardContent>
       </Card>
