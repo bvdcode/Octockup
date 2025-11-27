@@ -15,6 +15,7 @@ namespace Octockup.Server.Database
         public DbSet<Module> Modules => Set<Module>();
         public DbSet<Schedule> Schedules => Set<Schedule>();
         public DbSet<Snapshot> Snapshots => Set<Snapshot>();
+        public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<SnapshotFile> SnapshotFiles => Set<SnapshotFile>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

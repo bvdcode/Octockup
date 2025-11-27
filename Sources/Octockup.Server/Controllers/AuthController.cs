@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Mvc;
 using Octockup.Server.Database;
 using EasyExtensions.Abstractions;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Concurrent;
 using Octockup.Server.Models.Requests;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authorization;
@@ -25,9 +24,6 @@ namespace Octockup.Server.Controllers
         ILogger<ActionContext> _logger,
         IPasswordHashService _passwords) : ControllerBase
     {
-        private static readonly ConcurrentBag<RefreshToken> _refreshTokens = [];
-        public record RefreshToken(Guid UserId, string Token);
-
         [Authorize]
         [HttpGet("me")]
         public async Task<IActionResult> MeAsync()
@@ -75,16 +71,22 @@ namespace Octockup.Server.Controllers
         [HttpPost("refresh")]
         public async Task<AuthResponse> RefreshTokenAsync([FromBody] RefreshRequest request)
         {
-            var foundToken = _refreshTokens.FirstOrDefault(x => x.Token == request.RefreshToken);
+            var foundToken = _dbContext.RefreshTokens.FirstOrDefault(x => x.Token == request.RefreshToken && x.RevokedAt == null);
             if (foundToken == null)
             {
                 return new AuthResponse();
             }
             string accessToken = _tokens.CreateToken(x => x.Add(JwtRegisteredClaimNames.Sub, foundToken.UserId.ToString()));
             string refreshToken = StringHelpers.CreateRandomString(64);
-            var newSession = new RefreshToken(foundToken.UserId, refreshToken);
+            var newSession = new RefreshToken()
+            {
+                UserId = foundToken.UserId,
+                Token = refreshToken,
+            };
             _logger.LogInformation("Refresh token rotated for user {UserId}", foundToken.UserId);
-            _refreshTokens.Add(newSession);
+            _dbContext.RefreshTokens.Add(newSession);
+            foundToken.RevokedAt = DateTime.UtcNow;
+            await _dbContext.SaveChangesAsync();
             return new AuthResponse()
             {
                 AccessToken = accessToken,
@@ -114,7 +116,19 @@ namespace Octockup.Server.Controllers
                 return this.ApiUnauthorized("Invalid username or password.");
             }
 
-            string refreshToken = CreateRefreshToken(user.Id);
+            string refreshToken = StringHelpers.CreateRandomString(64);
+            var session = new RefreshToken()
+            {
+                UserId = user.Id,
+                Token = refreshToken,
+            };
+            _dbContext.RefreshTokens.Add(session);
+            if (needsRehash)
+            {
+                user.PasswordPhc = _passwords.Hash(request.Password);
+                _dbContext.Users.Update(user);
+            }
+            await _dbContext.SaveChangesAsync();
             string accessToken = _tokens.CreateToken(x => x.Add(JwtRegisteredClaimNames.Sub, user.Id.ToString()));
             _logger.LogInformation("User '{user}' logged in", request.Username);
             return Ok(new AuthResponse()
@@ -122,14 +136,6 @@ namespace Octockup.Server.Controllers
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
             });
-        }
-
-        public static string CreateRefreshToken(Guid userId)
-        {
-            string refreshToken = StringHelpers.CreateRandomString(64);
-            var newSession = new RefreshToken(userId, refreshToken);
-            _refreshTokens.Add(newSession);
-            return refreshToken;
         }
     }
 }
