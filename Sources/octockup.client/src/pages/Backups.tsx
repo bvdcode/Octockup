@@ -164,16 +164,11 @@ export default function BackupsPage() {
                   </Typography>
                 </Box>
                 <Box display="flex" gap={1}>
-                  <Tooltip
-                    title={t("backups.runOnce", { defaultValue: "Run once" })}
-                    placement="top"
-                  >
+                  <Tooltip title={t("backups.runOnce")} placement="top">
                     <span>
                       <IconButton
                         size="medium"
-                        aria-label={t("backups.runOnce", {
-                          defaultValue: "Run once",
-                        })}
+                        aria-label={t("backups.runOnce")}
                         disabled={state.runningId === b.id}
                         onClick={async (e) => {
                           e.stopPropagation();
@@ -197,12 +192,7 @@ export default function BackupsPage() {
                       </IconButton>
                     </span>
                   </Tooltip>
-                  <Tooltip
-                    title={t("backups.deleteTooltip", {
-                      defaultValue: "Delete backup",
-                    })}
-                    placement="top"
-                  >
+                  <Tooltip title={t("backups.deleteTooltip")} placement="top">
                     <span>
                       <IconButton
                         size="medium"
@@ -211,18 +201,10 @@ export default function BackupsPage() {
                         onClick={async (e) => {
                           e.stopPropagation();
                           const result = await confirm({
-                            title: t("backups.deleteTitle", {
-                              defaultValue: "Delete backup",
-                            }),
-                            description: t("backups.deleteText", {
-                              defaultValue: "This action is permanent!",
-                            }),
-                            confirmationText: t("common.delete", {
-                              defaultValue: "Delete",
-                            }),
-                            cancellationText: t("common.cancel", {
-                              defaultValue: "Cancel",
-                            }),
+                            title: t("backups.deleteTitle"),
+                            description: t("backups.deleteText"),
+                            confirmationText: t("common.delete"),
+                            cancellationText: t("common.cancel"),
                             confirmationButtonProps: { color: "error" },
                           });
                           if (result.confirmed) {

@@ -75,21 +75,19 @@ export function formatNextRun(
   // No next run scheduled
   if (!nextRun) {
     if (item.status === BackupStatus.Running) {
-      return t("schedules.nextRun.afterCurrent", {
-        defaultValue: "After current run",
-      });
+      return t("schedules.nextRun.afterCurrent");
     }
     if (!item.interval) {
-      return t("schedules.nextRun.never", { defaultValue: "Never" });
+      return t("schedules.nextRun.never");
     }
-    return t("schedules.nextRun.unknown", { defaultValue: "Unknown" });
+    return t("schedules.nextRun.unknown");
   }
 
   const diff = nextRun.getTime() - now.getTime();
 
   // Already passed or very soon
   if (diff < 60000) {
-    return t("schedules.nextRun.soon", { defaultValue: "Soon" });
+    return t("schedules.nextRun.soon");
   }
 
   // Format based on time difference
@@ -100,39 +98,24 @@ export function formatNextRun(
   const months = Math.floor(diff / 2592000000);
 
   if (diff < 3600000) {
-    return t("schedules.nextRun.inMinutes", {
-      defaultValue: "In {{count}} minutes",
-      count: minutes,
-    });
+    return t("schedules.nextRun.inMinutes", { count: minutes });
   }
 
   if (diff < 86400000) {
-    return t("schedules.nextRun.inHours", {
-      defaultValue: "In {{count}} hours",
-      count: hours,
-    });
+    return t("schedules.nextRun.inHours", { count: hours });
   }
 
   if (diff < 172800000) {
-    return t("schedules.nextRun.tomorrow", { defaultValue: "Tomorrow" });
+    return t("schedules.nextRun.tomorrow");
   }
 
   if (diff < 604800000) {
-    return t("schedules.nextRun.inDays", {
-      defaultValue: "In {{count}} days",
-      count: days,
-    });
+    return t("schedules.nextRun.inDays", { count: days });
   }
 
   if (diff < 2592000000) {
-    return t("schedules.nextRun.inWeeks", {
-      defaultValue: "In {{count}} weeks",
-      count: weeks,
-    });
+    return t("schedules.nextRun.inWeeks", { count: weeks });
   }
 
-  return t("schedules.nextRun.inMonths", {
-    defaultValue: "In {{count}} months",
-    count: months,
-  });
+  return t("schedules.nextRun.inMonths", { count: months });
 }

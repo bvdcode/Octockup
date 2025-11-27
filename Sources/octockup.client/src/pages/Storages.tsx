@@ -135,12 +135,7 @@ export function StoragesPage() {
                   position: "relative",
                 }}
               >
-                <Tooltip
-                  title={t("storages.deleteTooltip", {
-                    defaultValue: "Delete storage",
-                  })}
-                  placement="left"
-                >
+                <Tooltip title={t("storages.deleteTooltip")} placement="left">
                   <IconButton
                     size="small"
                     aria-label={t("common.delete")}
@@ -152,18 +147,10 @@ export function StoragesPage() {
                     onClick={async (e) => {
                       e.stopPropagation();
                       const result = await confirm({
-                        title: t("storages.deleteTitle", {
-                          defaultValue: "Delete storage",
-                        }),
-                        description: t("storages.deleteText", {
-                          defaultValue: "This action is permanent!",
-                        }),
-                        confirmationText: t("common.delete", {
-                          defaultValue: "Delete",
-                        }),
-                        cancellationText: t("common.cancel", {
-                          defaultValue: "Cancel",
-                        }),
+                        title: t("storages.deleteTitle"),
+                        description: t("storages.deleteText"),
+                        confirmationText: t("common.delete"),
+                        cancellationText: t("common.cancel"),
                         confirmationButtonProps: { color: "error" },
                       });
                       if (result.confirmed) {

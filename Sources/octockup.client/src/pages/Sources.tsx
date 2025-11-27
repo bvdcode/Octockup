@@ -138,12 +138,7 @@ export function SourcesPage() {
                   position: "relative",
                 }}
               >
-                <Tooltip
-                  title={t("sources.deleteTooltip", {
-                    defaultValue: "Delete source",
-                  })}
-                  placement="left"
-                >
+                <Tooltip title={t("sources.deleteTooltip")} placement="left">
                   <IconButton
                     size="small"
                     aria-label={t("common.delete")}
@@ -155,18 +150,10 @@ export function SourcesPage() {
                     onClick={async (e) => {
                       e.stopPropagation();
                       const result = await confirm({
-                        title: t("sources.deleteTitle", {
-                          defaultValue: "Delete source",
-                        }),
-                        description: t("sources.deleteText", {
-                          defaultValue: "This action is permanent!",
-                        }),
-                        confirmationText: t("common.delete", {
-                          defaultValue: "Delete",
-                        }),
-                        cancellationText: t("common.cancel", {
-                          defaultValue: "Cancel",
-                        }),
+                        title: t("sources.deleteTitle"),
+                        description: t("sources.deleteText"),
+                        confirmationText: t("common.delete"),
+                        cancellationText: t("common.cancel"),
                         confirmationButtonProps: { color: "error" },
                       });
                       if (result.confirmed) {

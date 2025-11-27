@@ -97,16 +97,16 @@ export default function ScheduleWizard() {
                 inputProps={{ min: 0 }}
               />
               <ButtonGroup variant="outlined" size="small">
-                <Tooltip title={t("scheduleWizard.interval1h", { defaultValue: "1 hour" })}>
+                <Tooltip title={t("scheduleWizard.interval1h")}>
                   <Button onClick={() => setIntervalMinutes("60")}>1h</Button>
                 </Tooltip>
-                <Tooltip title={t("scheduleWizard.interval1d", { defaultValue: "1 day" })}>
+                <Tooltip title={t("scheduleWizard.interval1d")}>
                   <Button onClick={() => setIntervalMinutes(String(60 * 24))}>1d</Button>
                 </Tooltip>
-                <Tooltip title={t("scheduleWizard.interval1w", { defaultValue: "1 week" })}>
+                <Tooltip title={t("scheduleWizard.interval1w")}>
                   <Button onClick={() => setIntervalMinutes(String(60 * 24 * 7))}>1w</Button>
                 </Tooltip>
-                <Tooltip title={t("scheduleWizard.interval1m", { defaultValue: "1 month" })}>
+                <Tooltip title={t("scheduleWizard.interval1m")}>
                   <Button onClick={() => setIntervalMinutes(String(60 * 24 * 30))}>1m</Button>
                 </Tooltip>
               </ButtonGroup>

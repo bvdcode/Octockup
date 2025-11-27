@@ -48,18 +48,10 @@ export function ScheduleCard({
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const result = await confirm({
-      title: t("schedules.deleteTitle", {
-        defaultValue: "Delete schedule",
-      }),
-      description: t("schedules.deleteText", {
-        defaultValue: "This action is permanent!",
-      }),
-      confirmationText: t("common.delete", {
-        defaultValue: "Delete",
-      }),
-      cancellationText: t("common.cancel", {
-        defaultValue: "Cancel",
-      }),
+      title: t("schedules.deleteTitle"),
+      description: t("schedules.deleteText"),
+      confirmationText: t("common.delete"),
+      cancellationText: t("common.cancel"),
       confirmationButtonProps: { color: "error" },
     });
     if (result.confirmed) {
@@ -249,21 +241,18 @@ function ScheduleStatus({
       alignItems="flex-end"
       minWidth={120}
     >
-      <Chip
-        size="small"
-        label={t(
-          `schedules.status.${BackupStatus[item.status].toLowerCase()}`,
-        )}
-        color={statusColor(item.status)}
-      />
-      {item.status !== BackupStatus.Running && (
-        <>
-          <Typography variant="caption" sx={{ color: "text.secondary" }}>
-            {t("schedules.nextRun.label", {
-              defaultValue: "Next run",
-            })}
-            : {formatNextRun(item, t)}
-          </Typography>
+        <Chip
+          size="small"
+          label={t(
+            `schedules.status.${BackupStatus[item.status].toLowerCase()}`,
+          )}
+          color={statusColor(item.status)}
+        />
+        {item.status !== BackupStatus.Running && (
+          <>
+            <Typography variant="caption" sx={{ color: "text.secondary" }}>
+              {t("schedules.nextRun.label")}: {formatNextRun(item, t)}
+            </Typography>
           <Typography
             variant="caption"
             sx={{ color: "text.secondary", fontSize: "0.65rem" }}
@@ -294,12 +283,7 @@ function ScheduleActions({
   
   return (
     <Box display="flex" flexDirection="column" gap={0.5}>
-      <Tooltip
-        title={t("schedules.deleteTooltip", {
-          defaultValue: "Delete schedule",
-        })}
-        placement="top"
-      >
+      <Tooltip title={t("schedules.deleteTooltip")} placement="top">
         <span>
           <IconButton
             size="small"
@@ -311,18 +295,11 @@ function ScheduleActions({
           </IconButton>
         </span>
       </Tooltip>
-      <Tooltip
-        title={t("schedules.stopTooltip", {
-          defaultValue: "Stop running schedule",
-        })}
-        placement="top"
-      >
+      <Tooltip title={t("schedules.stopTooltip")} placement="top">
         <span>
           <IconButton
             size="small"
-            aria-label={t("schedules.stop", {
-              defaultValue: "Stop",
-            })}
+            aria-label={t("schedules.stop")}
             disabled={
               item.status !== BackupStatus.Running || isCanceling
             }

@@ -192,9 +192,7 @@ export default function BackupModuleWizard({
       return;
     }
     if (existingTags.includes(tag.trim().toLowerCase())) {
-      setSubmitError(
-        t("wizard.tagAlreadyExists", { defaultValue: "Tag already exists" }),
-      );
+      setSubmitError(t("wizard.tagAlreadyExists"));
       return;
     }
     const invalidHttp = test.validateHttpEndpoint();
