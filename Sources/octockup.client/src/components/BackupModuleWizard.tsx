@@ -52,7 +52,10 @@ export default function BackupModuleWizard({
   const [searchParams] = useSearchParams();
   const providerId = searchParams.get("type") || ""; // provider full name
 
-  const { loading, error, moduleMeta } = useModuleMetadata(providerId, apiClient);
+  const { loading, error, moduleMeta } = useModuleMetadata(
+    providerId,
+    () => apiClient.listProvidersByType(moduleType === "source" ? "source" : "target"),
+  );
   const {
     params,
     tag,

@@ -62,7 +62,7 @@ export function SourcesPage() {
 
     // Load available source types
     api
-      .listProviders()
+      .listProvidersByType('source')
       .then((data) => {
         if (!active) return;
         setAvailableSources(data);

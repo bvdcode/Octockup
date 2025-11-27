@@ -59,7 +59,7 @@ export function StoragesPage() {
 
     // load available storage types
     api
-      .listProviders()
+      .listProvidersByType('storage')
       .then((data) => {
         if (!active) return;
         setAvailableStorages(data);

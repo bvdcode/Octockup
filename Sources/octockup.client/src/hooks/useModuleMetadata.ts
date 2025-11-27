@@ -4,7 +4,7 @@ import type { ModuleProviderInfo } from "../types/api";
 
 export function useModuleMetadata(
   providerId: string,
-  apiClient: { listProviders: () => Promise<ModuleProviderInfo[]> },
+  fetchProviders: () => Promise<ModuleProviderInfo[]>,
 ) {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
@@ -22,7 +22,7 @@ export function useModuleMetadata(
       }
 
       try {
-        const all = await apiClient.listProviders();
+        const all = await fetchProviders();
         if (!active) return;
 
         const meta = all.find((x) => x.id === providerId);
@@ -44,7 +44,7 @@ export function useModuleMetadata(
     return () => {
       active = false;
     };
-  }, [apiClient, providerId, t]);
+  }, [fetchProviders, providerId, t]);
 
   return { loading, error, moduleMeta };
 }

@@ -24,6 +24,11 @@ class ModulesApiClient {
     return data;
   }
 
+  async listProvidersByType(type: 'source' | 'target'): Promise<ModuleProviderInfo[]> {
+    const { data } = await this.axios().get<ModuleProviderInfo[]>(`/api/v1/modules/providers/${encodeURIComponent(type)}`);
+    return data;
+  }
+
   async create(providerId: string, destination: ModuleDestination, tag: string, backupModuleId: string, parameters: Record<string, string>): Promise<void> {
     const body: CreateModuleRequest = { destination, tag, backupModuleId, parameters };
     await this.axios().post(`/api/v1/modules/providers/${encodeURIComponent(providerId)}`, body);
