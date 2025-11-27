@@ -243,9 +243,8 @@ namespace Octockup.Server.Modules
                 continuationToken = response.IsTruncated == true
                     ? response.NextContinuationToken
                     : null;
-
-            } while (continuationToken != null);
-
+            }
+            while (continuationToken != null);
             return files;
         }
 

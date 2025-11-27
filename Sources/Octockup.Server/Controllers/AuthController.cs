@@ -92,7 +92,6 @@ namespace Octockup.Server.Controllers
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
             };
-
         }
 
         [HttpPost("login")]

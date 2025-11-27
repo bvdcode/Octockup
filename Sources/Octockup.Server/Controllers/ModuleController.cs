@@ -130,7 +130,6 @@ namespace Octockup.Server.Controllers
                     "source" => provider is IBackupSource,
                     _ => false,
                 };
-
             })
             .Select(x => new ProviderInfo()
             {

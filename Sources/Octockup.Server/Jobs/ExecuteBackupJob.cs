@@ -155,11 +155,7 @@ namespace Octockup.Server.Jobs
                     }
                 }
 
-
                 // TODO: save snapshot file
-
-
-
                 _logger.LogInformation("Schedule {ScheduleId}: {Message} ({Processed}/{Total})",
                     schedule.Id, report.Message, report.Processed, report.Total);
             }
