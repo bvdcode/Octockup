@@ -1,6 +1,5 @@
 # Octockup
 
-![Status](https://img.shields.io/badge/status-beta-yellow)
 [![License](https://badgen.net/github/license/bvdcode/octockup)](LICENSE)
 [![CI](https://github.com/bvdcode/octockup/actions/workflows/docker-image.yml/badge.svg)](https://github.com/bvdcode/octockup/actions)
 [![CodeFactor](https://www.codefactor.io/repository/github/bvdcode/octockup/badge)](https://www.codefactor.io/repository/github/bvdcode/octockup)
