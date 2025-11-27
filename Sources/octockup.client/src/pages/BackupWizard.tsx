@@ -35,7 +35,12 @@ export default function BackupWizard() {
   const backupsApi = useBackupsApi();
   const modulesApi = useModulesApi();
 
-  const [state, setState] = useState<State>({ loading: true, error: null, creating: false, createError: null });
+  const [state, setState] = useState<State>({
+    loading: true,
+    error: null,
+    creating: false,
+    createError: null,
+  });
   const [modules, setModules] = useState<Module[]>([]);
 
   const [sourceId, setSourceId] = useState<string>("");
@@ -45,26 +50,39 @@ export default function BackupWizard() {
 
   useEffect(() => {
     let active = true;
-    modulesApi.list()
-      .then(data => {
+    modulesApi
+      .list()
+      .then((data) => {
         if (!active) return;
         setModules(data);
-        setState(s => ({ ...s, loading: false }));
+        setState((s) => ({ ...s, loading: false }));
       })
-      .catch(e => {
+      .catch((e) => {
         if (!active) return;
-        setState(s => ({ ...s, loading: false, error: e?.message || "Failed to load modules" }));
+        setState((s) => ({
+          ...s,
+          loading: false,
+          error: e?.message || "Failed to load modules",
+        }));
       });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [modulesApi]);
 
-  const sources = useMemo(() => modules.filter(m => m.destination === ModuleDestination.Source), [modules]);
-  const storages = useMemo(() => modules.filter(m => m.destination === ModuleDestination.Target), [modules]);
+  const sources = useMemo(
+    () => modules.filter((m) => m.destination === ModuleDestination.Source),
+    [modules],
+  );
+  const storages = useMemo(
+    () => modules.filter((m) => m.destination === ModuleDestination.Target),
+    [modules],
+  );
 
   const autoTag = useMemo(() => {
     if (sourceId && storageId) {
-      const sourceMod = modules.find(m => m.id === sourceId);
-      const storageMod = modules.find(m => m.id === storageId);
+      const sourceMod = modules.find((m) => m.id === sourceId);
+      const storageMod = modules.find((m) => m.id === storageId);
       if (sourceMod && storageMod) {
         return `${sourceMod.tag} ${t("backupWizard.to")} ${storageMod.tag}`;
       }
@@ -74,13 +92,24 @@ export default function BackupWizard() {
 
   const effectiveTag = tagOverride || autoTag;
 
-  const canCreate = useMemo(() => !!sourceId && !!storageId && !!effectiveTag, [sourceId, storageId, effectiveTag]);
+  const canCreate = useMemo(
+    () => !!sourceId && !!storageId && !!effectiveTag,
+    [sourceId, storageId, effectiveTag],
+  );
 
   if (state.loading) {
-    return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
+    return (
+      <Box display="flex" justifyContent="center" p={4}>
+        <CircularProgress />
+      </Box>
+    );
   }
   if (state.error) {
-    return <Box p={2}><Alert severity="error">{state.error}</Alert></Box>;
+    return (
+      <Box p={2}>
+        <Alert severity="error">{state.error}</Alert>
+      </Box>
+    );
   }
 
   return (
@@ -90,39 +119,107 @@ export default function BackupWizard() {
       <Card variant="outlined">
         <CardContent>
           <Stack spacing={3}>
-            <Box display="flex" gap={2} alignItems="stretch" justifyContent="center" sx={{ flexDirection: { xs: "column", md: "row" } }}>
-              <Paper variant="outlined" sx={{ p: 3, flex: "1 1 auto", textAlign: "center", minWidth: 280, display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "center" }}>
-                <Box sx={{ fontSize: 96, lineHeight: 1, mb: 2, minHeight: 96, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {getSourceIcon(modules.find(m => m.id === sourceId)?.backupModuleId || "")}
+            <Box
+              display="flex"
+              gap={2}
+              alignItems="stretch"
+              justifyContent="center"
+              sx={{ flexDirection: { xs: "column", md: "row" } }}
+            >
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 3,
+                  flex: "1 1 auto",
+                  textAlign: "center",
+                  minWidth: 280,
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Box
+                  sx={{
+                    fontSize: 96,
+                    lineHeight: 1,
+                    mb: 2,
+                    minHeight: 96,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {getSourceIcon(
+                    modules.find((m) => m.id === sourceId)?.backupModuleId ||
+                      "",
+                  )}
                 </Box>
                 <TextField
                   select
                   label={t("backupWizard.source")}
                   value={sourceId}
-                  onChange={e => setSourceId(e.target.value)}
+                  onChange={(e) => setSourceId(e.target.value)}
                   fullWidth
                   sx={{ maxWidth: 400 }}
                 >
-                  {sources.map(s => (
-                    <MenuItem key={s.id} value={s.id}>{s.tag}</MenuItem>
+                  {sources.map((s) => (
+                    <MenuItem key={s.id} value={s.id}>
+                      {s.tag}
+                    </MenuItem>
                   ))}
                 </TextField>
               </Paper>
-              <Box display="flex" alignItems="center" justifyContent="center" fontSize={48} sx={{ minWidth: 48, py: { xs: 2, md: 0 } }}>→</Box>
-              <Paper variant="outlined" sx={{ p: 3, flex: "1 1 auto", textAlign: "center", minWidth: 280, display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "center" }}>
-                <Box sx={{ fontSize: 96, lineHeight: 1, mb: 2, minHeight: 96, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {getSourceIcon(modules.find(m => m.id === storageId)?.backupModuleId || "")}
+              <Box
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                fontSize={48}
+                sx={{ minWidth: 48, py: { xs: 2, md: 0 } }}
+              >
+                →
+              </Box>
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 3,
+                  flex: "1 1 auto",
+                  textAlign: "center",
+                  minWidth: 280,
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Box
+                  sx={{
+                    fontSize: 96,
+                    lineHeight: 1,
+                    mb: 2,
+                    minHeight: 96,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {getSourceIcon(
+                    modules.find((m) => m.id === storageId)?.backupModuleId ||
+                      "",
+                  )}
                 </Box>
                 <TextField
                   select
                   label={t("backupWizard.storage")}
                   value={storageId}
-                  onChange={e => setStorageId(e.target.value)}
+                  onChange={(e) => setStorageId(e.target.value)}
                   fullWidth
                   sx={{ maxWidth: 400 }}
                 >
-                  {storages.map(s => (
-                    <MenuItem key={s.id} value={s.id}>{s.tag}</MenuItem>
+                  {storages.map((s) => (
+                    <MenuItem key={s.id} value={s.id}>
+                      {s.tag}
+                    </MenuItem>
                   ))}
                 </TextField>
               </Paper>
@@ -132,23 +229,30 @@ export default function BackupWizard() {
                 label={t("backupWizard.tag")}
                 value={tagOverride}
                 placeholder={autoTag}
-                onChange={e => setTagOverride(e.target.value)}
+                onChange={(e) => setTagOverride(e.target.value)}
                 fullWidth
               />
               <TextField
                 label={t("backupWizard.ignoredPaths")}
                 value={ignoredPathsInput}
-                onChange={e => setIgnoredPathsInput(e.target.value)}
+                onChange={(e) => setIgnoredPathsInput(e.target.value)}
                 fullWidth
                 multiline
                 minRows={4}
                 placeholder={t("backupWizard.ignoredPathsPlaceholder")}
               />
               <Stack direction="row" spacing={1} flexWrap="wrap">
-                {ignoredPathsInput.split(/\r?\n/).filter(x => x.trim() !== "").map(p => (
-                  <Chip key={p} label={p} size="small" />
-                ))}
-                {ignoredPathsInput.trim() === "" && <Typography variant="caption" color="text.secondary">{t("backupWizard.noIgnoredPaths")}</Typography>}
+                {ignoredPathsInput
+                  .split(/\r?\n/)
+                  .filter((x) => x.trim() !== "")
+                  .map((p) => (
+                    <Chip key={p} label={p} size="small" />
+                  ))}
+                {ignoredPathsInput.trim() === "" && (
+                  <Typography variant="caption" color="text.secondary">
+                    {t("backupWizard.noIgnoredPaths")}
+                  </Typography>
+                )}
               </Stack>
             </Stack>
           </Stack>
@@ -156,28 +260,38 @@ export default function BackupWizard() {
       </Card>
       <Divider />
       <Stack direction="row" spacing={2}>
-        <Button variant="outlined" onClick={() => navigate(-1)}>{t("common.back")}</Button>
+        <Button variant="outlined" onClick={() => navigate(-1)}>
+          {t("common.back")}
+        </Button>
         <Button
           variant="contained"
           disabled={!canCreate || state.creating}
           onClick={async () => {
             try {
-              setState(s => ({ ...s, creating: true, createError: null }));
+              setState((s) => ({ ...s, creating: true, createError: null }));
               const payload: CreateBackupRequest = {
                 sourceId,
                 storageId,
                 tag: effectiveTag,
-                ignoredPaths: ignoredPathsInput.split(/\r?\n/).filter(x => x.trim() !== ""),
+                ignoredPaths: ignoredPathsInput
+                  .split(/\r?\n/)
+                  .filter((x) => x.trim() !== ""),
               };
               await backupsApi.create(payload);
               navigate("/backups");
             } catch (e: unknown) {
               const message = e instanceof Error ? e.message : String(e);
-              setState(s => ({ ...s, creating: false, createError: message || t("backupWizard.createError") }));
+              setState((s) => ({
+                ...s,
+                creating: false,
+                createError: message || t("backupWizard.createError"),
+              }));
             }
           }}
         >
-          {state.creating ? t("wizard.creating") : t("backupWizard.createBackup")}
+          {state.creating
+            ? t("wizard.creating")
+            : t("backupWizard.createBackup")}
         </Button>
       </Stack>
     </Stack>
