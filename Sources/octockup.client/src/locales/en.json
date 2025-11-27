@@ -105,4 +105,25 @@
     "createBackup": "Create Backup",
     "createError": "Failed to create backup."
   }
+  ,
+  "schedules": {
+    "title": "Your Schedules",
+    "newSchedule": "New Schedule",
+    "noSchedules": "No schedules yet.",
+    "everyMinutes": "every {{count}} min",
+    "status": {
+      "created": "Created",
+      "running": "Running",
+      "failed": "Failed",
+      "completed": "Completed"
+    }
+  },
+  "scheduleWizard": {
+    "title": "Create Schedule",
+    "backup": "Backup",
+    "startAt": "Start at",
+    "intervalMinutes": "Repeat interval (minutes, optional)",
+    "createSchedule": "Create Schedule",
+    "createError": "Failed to create schedule."
+  }
 }

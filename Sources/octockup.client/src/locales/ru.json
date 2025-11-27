@@ -104,4 +104,25 @@
     "createBackup": "Создать бэкап",
     "createError": "Не удалось создать бэкап."
   }
+  ,
+  "schedules": {
+    "title": "Ваши расписания",
+    "newSchedule": "Новое расписание",
+    "noSchedules": "Расписок пока нет.",
+    "everyMinutes": "каждые {{count}} мин",
+    "status": {
+      "created": "Создано",
+      "running": "Выполняется",
+      "failed": "Ошибка",
+      "completed": "Завершено"
+    }
+  },
+  "scheduleWizard": {
+    "title": "Создать расписание",
+    "backup": "Бэкап",
+    "startAt": "Время запуска",
+    "intervalMinutes": "Интервал (минуты, опционально)",
+    "createSchedule": "Создать расписание",
+    "createError": "Не удалось создать расписание."
+  }
 }

@@ -14,6 +14,8 @@ import BackupWizard from "./pages/BackupWizard";
 import SourceWizard from "./pages/SourceWizard";
 import StorageWizard from "./pages/StorageWizard";
 import { AppShell, type TokenPair, type UserInfo } from "@bvdcode/react-kit";
+import SchedulesPage from "./pages/Schedules";
+import ScheduleWizard from "./pages/ScheduleWizard";
 
 function App() {
   return (
@@ -88,7 +90,11 @@ function App() {
           icon: <Schedule />,
           name: "Schedules",
           route: "/schedules",
-          component: <div>Schedules Page</div>,
+          component: <SchedulesPage />,
+        },
+        {
+          route: "/schedules/new",
+          component: <ScheduleWizard />,
         },
       ]}
     />

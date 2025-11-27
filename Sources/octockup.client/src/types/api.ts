@@ -46,3 +46,31 @@ export interface CreateBackupRequest {
   tag: string;
   ignoredPaths: string[];
 }
+
+export enum BackupStatus {
+  Created = 0,
+  Running = 1,
+  Failed = 2,
+  Completed = 3,
+}
+
+export interface ScheduleItem {
+  id: string;
+  backupId: string;
+  startAt: string;
+  interval?: string | null;
+  status: BackupStatus;
+  finishedAt?: string | null;
+  errorMessage?: string | null;
+  backupTag: string;
+  sourceTag: string;
+  storageTag: string;
+  sourceProviderId: string;
+  storageProviderId: string;
+}
+
+export interface CreateScheduleRequest {
+  backupId: string;
+  startAt: string;
+  intervalMinutes?: number;
+}
