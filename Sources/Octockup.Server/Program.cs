@@ -28,8 +28,8 @@ namespace Octockup.Server
             builder.Services.AddControllers();
             builder.Services
                 .AddSqlite<AppDbContext>(connectionString: $"Data Source={sqlitePath};Password={sqlitePassword};")
-                .AddScoped<IBackupModule, S3BackupStorage>()
-                .AddScoped<IBackupModule, FileSystemBackupSource>()
+                .AddScoped<IBackupProvider, S3BackupStorage>()
+                .AddScoped<IBackupProvider, FileSystemBackupSource>()
                 .AddScoped<IStreamCipher>(sp => new AesGcmStreamCipher(cryptoKey))
                 .AddPbkdf2PasswordHashService()
                 .AddCpuUsageService()

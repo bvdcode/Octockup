@@ -1,6 +1,6 @@
 ﻿namespace Octockup.Server.Abstractions
 {
-    public interface IBackupStorage : IBackupSource, IBackupModule
+    public interface IBackupStorage : IBackupSource, IBackupProvider
     {
         bool? Exists(string path);
         Task DeleteAsync(string path);

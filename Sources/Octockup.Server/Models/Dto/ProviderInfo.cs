@@ -1,7 +1,7 @@
 ﻿
 namespace Octockup.Server.Models.Dto
 {
-    public class AvailableModuleInfo
+    public class ProviderInfo
     {
         public string? Id { get; set; }
         public char PathSeparator { get; set; }

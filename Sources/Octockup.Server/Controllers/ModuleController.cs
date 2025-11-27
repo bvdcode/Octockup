@@ -1,23 +1,21 @@
-﻿using EasyExtensions;
+﻿using Mapster;
+using EasyExtensions;
+using Octockup.Server.Helpers;
 using Microsoft.AspNetCore.Mvc;
 using Octockup.Server.Database;
-using Octockup.Server.Models.Enums;
+using Octockup.Server.Models.Dto;
 using Octockup.Server.Abstractions;
+using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Models.Requests;
 using Microsoft.AspNetCore.Authorization;
 using EasyExtensions.AspNetCore.Extensions;
-using Octockup.Server.Models.Dto;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using Mapster;
-using Octockup.Server.Helpers;
 
 namespace Octockup.Server.Controllers
 {
     [ApiController]
     public class ModuleController(
         AppDbContext _dbContext,
-        IEnumerable<IBackupModule> _modules) : ControllerBase
+        IEnumerable<IBackupProvider> _providers) : ControllerBase
     {
         [Authorize]
         [HttpDelete("/api/v1/modules/{moduleId:guid}")]
@@ -34,74 +32,80 @@ namespace Octockup.Server.Controllers
         }
 
         [Authorize]
-        [HttpPost("/api/v1/modules")]
-        public IActionResult CreateBackupStorage([FromRoute] string backupStorageId, [FromBody] CreateModuleRequest request)
+        [HttpPost("/api/v1/modules/providers/{backupProviderId:required}")]
+        public async Task<IActionResult> CreateBackupModule([FromRoute] string backupProviderId, [FromBody] CreateModuleRequest request)
         {
-            var foundStorage = _backupStorages.FirstOrDefault(x => x.Id == backupStorageId);
-            if (foundStorage == null)
+            var foundProvider = _providers.FirstOrDefault(x => x.Id == backupProviderId);
+            if (foundProvider == null)
             {
-                return this.ApiNotFound("Backup storage not found: " + backupStorageId);
+                return this.ApiNotFound("Backup provider not found: " + backupProviderId);
             }
-            var user = _userDataStorage.GetUser(User.GetUserName());
+
+            var user = await _dbContext.Users.FindAsync(User.GetUserId()) ?? throw new InvalidOperationException("User not found");
             Module newStorage = new()
             {
                 UserId = user.Id,
                 Tag = request.Tag,
-                CreatedAt = DateTime.UtcNow,
                 Parameters = request.Parameters,
-                BackupModuleId = foundStorage.Id,
+                Destination = request.Destination,
+                BackupModuleId = request.BackupModuleId,
             };
-            _userDataStorage.AddSavedStorage(newStorage);
+            await _dbContext.Modules.AddAsync(newStorage);
+            await _dbContext.SaveChangesAsync();
             return Ok(new { message = "Backup storage created successfully." });
         }
 
         [Authorize]
-        [HttpPost("/api/v1/modules/{backupStorageId:required}/directories")]
-        public IActionResult GetBackupStorageDirectories([FromRoute] string backupStorageId, [FromBody] CreateModuleRequest request)
+        [HttpPost("/api/v1/modules/providers/{backupProviderId:required}/directories")]
+        public IActionResult GetBackupProviderDirectories([FromRoute] string backupProviderId, [FromBody] CreateModuleRequest request)
         {
-            var foundStorage = _backupStorages.FirstOrDefault(x => x.Id == backupStorageId);
-            if (foundStorage == null)
+            var foundProvider = _providers.FirstOrDefault(x => x.Id == backupProviderId);
+            if (foundProvider == null)
             {
-                return this.ApiNotFound("Backup storage not found: " + backupStorageId);
+                return this.ApiNotFound("Backup provider not found: " + backupProviderId);
             }
 
-            foundStorage.SetParameters(request.Parameters);
+            foundProvider.SetParameters(request.Parameters);
+            if (foundProvider is not IBackupSource source)
+            {
+                return this.ApiBadRequest("Provider cannot provide directories");
+            }
             try
             {
-                var result = foundStorage.GetDirectories(recursive: false);
+                var result = source.GetDirectories(recursive: false);
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                return this.ApiBadRequest("Failed to connect to backup storage with provided parameters: " + ex.Message);
+                return this.ApiBadRequest("Failed to connect to backup provider with provided parameters: " + ex.Message);
             }
         }
 
         [Authorize]
-        [HttpPost("/api/v1/modules/{backupStorageId:required}/test")]
-        public async Task<IActionResult> TestBackupStorage([FromRoute] string backupStorageId, [FromBody] CreateModuleRequest request)
+        [HttpPost("/api/v1/modules/providers/{backupProviderId:required}/test")]
+        public async Task<IActionResult> TestBackupProvider([FromRoute] string backupProviderId, [FromBody] CreateModuleRequest request)
         {
-            var foundModule = _modules.FirstOrDefault(x => x.Id == backupStorageId);
-            if (foundModule == null)
+            var foundProvider = _providers.FirstOrDefault(x => x.Id == backupProviderId);
+            if (foundProvider == null)
             {
-                return this.ApiNotFound("Backup storage not found: " + backupStorageId);
+                return this.ApiNotFound("Backup provider not found: " + backupProviderId);
             }
 
-            foundModule.SetParameters(request.Parameters);
-            if (foundModule is IBackupStorage storage)
+            foundProvider.SetParameters(request.Parameters);
+            if (foundProvider is IBackupStorage storage)
             {
                 return await TestHelpers.TestStorageAsync(this, storage);
             }
-            if (foundModule is IBackupSource source)
+            if (foundProvider is IBackupSource source)
             {
                 return await TestHelpers.TestSourceAsync(this, source);
             }
-            return this.ApiBadRequest("Module is not able to pass backup storage/source tests.");
+            return this.ApiBadRequest("Provider is not able to pass backup storage/source tests.");
         }
 
         [Authorize]
         [HttpGet("/api/v1/modules")]
-        public async Task<IEnumerable<ModuleDto>> GetUserBackupStorages()
+        public async Task<IEnumerable<ModuleDto>> GetUserModules()
         {
             Guid userId = User.GetUserId();
             return await _dbContext.Modules
@@ -112,10 +116,10 @@ namespace Octockup.Server.Controllers
         }
 
         [Authorize]
-        [HttpGet("/api/v1/modules/available")]
-        public IEnumerable<AvailableModuleInfo> GetBackupStorages()
+        [HttpGet("/api/v1/modules/providers")]
+        public IEnumerable<ProviderInfo> GetBackupProviders()
         {
-            return _modules.Select(x => new AvailableModuleInfo()
+            return _providers.Select(x => new ProviderInfo()
             {
                 Name = x.Name,
                 Id = x.GetType().FullName,

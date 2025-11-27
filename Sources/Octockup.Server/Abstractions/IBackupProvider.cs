@@ -1,6 +1,6 @@
 ﻿namespace Octockup.Server.Abstractions
 {
-    public interface IBackupModule
+    public interface IBackupProvider
     {
         string Id { get; }
         string Name { get; }
