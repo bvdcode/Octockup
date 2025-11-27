@@ -17,7 +17,10 @@
     "parameters": "Параметры",
     "newSource": "Добавить новый источник",
     "create": "Создать источник",
-    "deleteConfirm": "Вы уверены, что хотите удалить источник '{{tag}}'?"
+    "deleteConfirm": "Вы уверены, что хотите удалить источник '{{tag}}'?",
+    "deleteTitle": "Удалить источник",
+    "deleteText": "Действие необратимо!",
+    "deleteTooltip": "Удалить источник"
   },
   "wizard": {
     "back": "Назад",
@@ -63,7 +66,10 @@
     "noTypesAvailable": "Нет типов для добавления",
     "newStorage": "Добавить новое хранилище",
     "create": "Создать хранилище",
-    "deleteConfirm": "Вы уверены, что хотите удалить хранилище '{{tag}}'?"
+    "deleteConfirm": "Вы уверены, что хотите удалить хранилище '{{tag}}'?",
+    "deleteTitle": "Удалить хранилище",
+    "deleteText": "Действие необратимо!",
+    "deleteTooltip": "Удалить хранилище"
   },
   "storageWizard": {
     "back": "Назад",
@@ -82,5 +88,73 @@
     "testSuccess": "Подключение успешно.",
     "testFailed": "Ошибка подключения.",
     "fillParameters": "Пожалуйста, заполните все параметры перед проверкой."
+  }
+  ,
+  "backups": {
+    "title": "Ваши бэкапы",
+    "newBackup": "Новый бэкап",
+    "noBackups": "Бэкапов пока нет.",
+    "deleteTitle": "Удалить бэкап",
+    "deleteText": "Действие необратимо!",
+    "deleteTooltip": "Удалить бэкап",
+    "runOnce": "Запустить разово",
+    "modulesTitle": "Модули",
+    "noModules": "Нет модулей"
+  },
+  "backupWizard": {
+    "title": "Создать бэкап",
+    "source": "Источник",
+    "storage": "Хранилище",
+    "to": "в",
+    "tag": "Тег (уникальное имя)",
+    "ignoredPaths": "Игнорируемые пути (по строке)",
+    "ignoredPathsPlaceholder": "path/to/ignore\nlogs\nnode_modules",
+    "noIgnoredPaths": "Нет игнорируемых путей",
+    "createBackup": "Создать бэкап",
+    "createError": "Не удалось создать бэкап."
+  }
+  ,
+  "schedules": {
+    "title": "Ваши расписания",
+    "newSchedule": "Новое расписание",
+    "noSchedules": "Расписок пока нет.",
+    "everyMinutes": "каждые {{count}} мин",
+    "deleteTitle": "Удалить расписание",
+    "deleteText": "Действие необратимо!",
+    "deleteTooltip": "Удалить расписание",
+    "stopTooltip": "Остановить выполнение",
+    "stop": "Остановить",
+    "status": {
+      "created": "Создано",
+      "running": "Выполняется",
+      "failed": "Ошибка",
+      "completed": "Завершено"
+    },
+    "nextRun": {
+      "label": "След. запуск",
+      "never": "Никогда",
+      "soon": "Скоро",
+      "inMinutes": "Через {{count}} мин",
+      "inHours": "Через {{count}} ч",
+      "tomorrow": "Завтра",
+      "inDays": "Через {{count}} дн.",
+      "inWeeks": "Через {{count}} нед.",
+      "inMonths": "Через {{count}} мес.",
+      "afterCurrent": "После текущего",
+      "scheduled": "Запланировано",
+      "unknown": "Неизвестно"
+    }
+  },
+  "scheduleWizard": {
+    "title": "Создать расписание",
+    "backup": "Бэкап",
+    "startAt": "Время запуска",
+    "intervalMinutes": "Интервал (минуты, опционально)",
+    "createSchedule": "Создать расписание",
+    "createError": "Не удалось создать расписание.",
+    "interval1h": "1 час",
+    "interval1d": "1 день",
+    "interval1w": "1 неделя",
+    "interval1m": "1 месяц"
   }
 }

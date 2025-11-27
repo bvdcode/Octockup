@@ -4,20 +4,23 @@ import {
   Stack,
   Alert,
   Divider,
+  Tooltip,
+  IconButton,
   Typography,
   CardContent,
   CircularProgress,
-  IconButton,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { confirm } from "material-ui-confirm";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { AddCircleOutline } from "@mui/icons-material";
+import { ModuleDestination } from "../types/api";
+import { parseUtcDate } from "../utils/dateUtils";
+import { useModulesApi } from "../api/modulesApi";
 import { DeleteOutline } from "@mui/icons-material";
+import { AddCircleOutline } from "@mui/icons-material";
 import { getSourceIcon } from "../constants/sourceIcons";
-import { useBackupSourcesApi } from "../api/backupSourcesApi";
-import type { BackupSource, SavedBackupModule } from "../types/api";
+import type { Module, ModuleProviderInfo } from "../types/api";
 
 interface State {
   loading: boolean;
@@ -29,15 +32,17 @@ interface State {
 export function SourcesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const api = useBackupSourcesApi();
+  const api = useModulesApi();
   const [state, setState] = useState<State>({
     loading: true,
     error: null,
     availableLoading: true,
     availableError: null,
   });
-  const [userSources, setUserSources] = useState<SavedBackupModule[]>([]);
-  const [availableSources, setAvailableSources] = useState<BackupSource[]>([]);
+  const [userSources, setUserSources] = useState<Module[]>([]);
+  const [availableSources, setAvailableSources] = useState<
+    ModuleProviderInfo[]
+  >([]);
 
   useEffect(() => {
     let active = true;
@@ -47,7 +52,10 @@ export function SourcesPage() {
       .list()
       .then((data) => {
         if (!active) return;
-        setUserSources(data);
+        // filter sources
+        setUserSources(
+          data.filter((m) => m.destination === ModuleDestination.Source),
+        );
         setState((prev) => ({ ...prev, loading: false, error: null }));
       })
       .catch((e) => {
@@ -61,7 +69,7 @@ export function SourcesPage() {
 
     // Load available source types
     api
-      .listAvailable()
+      .listProvidersByType("source")
       .then((data) => {
         if (!active) return;
         setAvailableSources(data);
@@ -108,7 +116,7 @@ export function SourcesPage() {
           {t("sources.title")}
         </Typography>
         {userSources.length === 0 ? (
-          <Card variant="outlined">
+          <Card>
             <CardContent>
               <Typography color="text.secondary">
                 {t("sources.noSources")}
@@ -130,41 +138,48 @@ export function SourcesPage() {
                   position: "relative",
                 }}
               >
-                <IconButton
-                  size="small"
-                  aria-label={t("common.delete")}
-                  sx={{
-                    position: "absolute",
-                    top: 4,
-                    right: 4,
-                  }}
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    const result = await confirm({
-                      title: t("sources.deleteTitle", {
-                        defaultValue: "Delete source",
-                      }),
-                      description: t("sources.deleteText", {
-                        defaultValue: "This action is permanent!",
-                      }),
-                      confirmationText: t("common.delete", {
-                        defaultValue: "Delete",
-                      }),
-                      cancellationText: t("common.cancel", {
-                        defaultValue: "Cancel",
-                      }),
-                      confirmationButtonProps: { color: "error" },
-                    });
-                    if (result.confirmed) {
-                      await api.delete(s.id);
-                      setUserSources((prev) =>
-                        prev.filter((x) => x.id !== s.id),
-                      );
-                    }
-                  }}
+                <Tooltip
+                  title={t("sources.deleteTooltip", {
+                    defaultValue: "Delete source",
+                  })}
+                  placement="left"
                 >
-                  <DeleteOutline fontSize="small" color="primary" />
-                </IconButton>
+                  <IconButton
+                    size="small"
+                    aria-label={t("common.delete")}
+                    sx={{
+                      position: "absolute",
+                      top: 4,
+                      right: 4,
+                    }}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      const result = await confirm({
+                        title: t("sources.deleteTitle", {
+                          defaultValue: "Delete source",
+                        }),
+                        description: t("sources.deleteText", {
+                          defaultValue: "This action is permanent!",
+                        }),
+                        confirmationText: t("common.delete", {
+                          defaultValue: "Delete",
+                        }),
+                        cancellationText: t("common.cancel", {
+                          defaultValue: "Cancel",
+                        }),
+                        confirmationButtonProps: { color: "error" },
+                      });
+                      if (result.confirmed) {
+                        await api.delete(s.id);
+                        setUserSources((prev) =>
+                          prev.filter((x) => x.id !== s.id),
+                        );
+                      }
+                    }}
+                  >
+                    <DeleteOutline fontSize="small" color="primary" />
+                  </IconButton>
+                </Tooltip>
                 <CardContent
                   sx={{
                     display: "flex",
@@ -196,7 +211,7 @@ export function SourcesPage() {
                       fontSize: "0.7rem",
                     }}
                   >
-                    {new Date(s.createdAt).toLocaleDateString()}
+                    {parseUtcDate(s.createdAt)!.toLocaleDateString()}
                   </Typography>
                 </CardContent>
               </Card>

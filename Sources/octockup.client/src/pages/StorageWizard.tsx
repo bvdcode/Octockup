@@ -1,10 +1,10 @@
-import { useBackupStoragesApi } from "../api/backupStoragesApi";
+import { useModulesApi } from "../api/modulesApi";
 import BackupModuleWizard from "../components/BackupModuleWizard";
 
 export default function StorageWizard() {
-  const api = useBackupStoragesApi();
+  const api = useModulesApi();
 
   return (
-    <BackupModuleWizard moduleType="storage" apiClient={api} backRoute="/storages" />
+    <BackupModuleWizard moduleType="target" apiClient={api} backRoute="/storages" />
   );
 }

@@ -1,11 +1,11 @@
 import { useState, useCallback } from "react";
-import type { BackupSource, BackupStorage } from "../types/api";
+import type { ModuleProviderInfo } from "../types/api";
 
 interface ParamState {
   [key: string]: string;
 }
 
-export function useWizardForm(moduleMeta: BackupSource | BackupStorage | null) {
+export function useWizardForm(moduleMeta: ModuleProviderInfo | null) {
   const [params, setParams] = useState<ParamState>({});
   const [tag, setTag] = useState<string>("");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -13,7 +13,7 @@ export function useWizardForm(moduleMeta: BackupSource | BackupStorage | null) {
   const initializeParams = useCallback(() => {
     if (!moduleMeta) return;
     const initial: ParamState = {};
-    moduleMeta.parameters.forEach((p) => (initial[p] = ""));
+    moduleMeta.requiredParameters.forEach((p) => (initial[p] = ""));
     setParams(initial);
   }, [moduleMeta]);
 

@@ -8,15 +8,18 @@ import {
   CardContent,
   CircularProgress,
   IconButton,
+  Tooltip,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import type { BackupStorage, SavedBackupModule } from "../types/api";
+import { ModuleDestination } from "../types/api";
+import type { Module, ModuleProviderInfo } from "../types/api";
 import { AddCircleOutline, DeleteOutline } from "@mui/icons-material";
 import { confirm } from "material-ui-confirm";
 import { getSourceIcon } from "../constants/sourceIcons";
-import { useBackupStoragesApi } from "../api/backupStoragesApi";
+import { useModulesApi } from "../api/modulesApi";
+import { parseUtcDate } from "../utils/dateUtils";
 
 interface State {
   loading: boolean;
@@ -28,17 +31,17 @@ interface State {
 export function StoragesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const api = useBackupStoragesApi();
+  const api = useModulesApi();
   const [state, setState] = useState<State>({
     loading: true,
     error: null,
     availableLoading: true,
     availableError: null,
   });
-  const [userStorages, setUserStorages] = useState<SavedBackupModule[]>([]);
-  const [availableStorages, setAvailableStorages] = useState<BackupStorage[]>(
-    [],
-  );
+  const [userStorages, setUserStorages] = useState<Module[]>([]);
+  const [availableStorages, setAvailableStorages] = useState<
+    ModuleProviderInfo[]
+  >([]);
 
   useEffect(() => {
     let active = true;
@@ -47,7 +50,9 @@ export function StoragesPage() {
       .list()
       .then((data) => {
         if (!active) return;
-        setUserStorages(data);
+        setUserStorages(
+          data.filter((m) => m.destination === ModuleDestination.Target),
+        );
         setState((prev) => ({ ...prev, loading: false, error: null }));
       })
       .catch((e) => {
@@ -61,7 +66,7 @@ export function StoragesPage() {
 
     // load available storage types
     api
-      .listAvailable()
+      .listProvidersByType("storage")
       .then((data) => {
         if (!active) return;
         setAvailableStorages(data);
@@ -108,7 +113,7 @@ export function StoragesPage() {
           {t("storages.title")}
         </Typography>
         {userStorages.length === 0 ? (
-          <Card variant="outlined">
+          <Card>
             <CardContent>
               <Typography color="text.secondary">
                 {t("storages.noStorages")}
@@ -130,41 +135,48 @@ export function StoragesPage() {
                   position: "relative",
                 }}
               >
-                <IconButton
-                  size="small"
-                  aria-label={t("common.delete")}
-                  sx={{
-                    position: "absolute",
-                    top: 4,
-                    right: 4,
-                  }}
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    const result = await confirm({
-                      title: t("storages.deleteTitle", {
-                        defaultValue: "Delete storage",
-                      }),
-                      description: t("storages.deleteText", {
-                        defaultValue: "This action is permanent!",
-                      }),
-                      confirmationText: t("common.delete", {
-                        defaultValue: "Delete",
-                      }),
-                      cancellationText: t("common.cancel", {
-                        defaultValue: "Cancel",
-                      }),
-                      confirmationButtonProps: { color: "error" },
-                    });
-                    if (result.confirmed) {
-                      await api.delete(s.id);
-                      setUserStorages((prev) =>
-                        prev.filter((x) => x.id !== s.id),
-                      );
-                    }
-                  }}
+                <Tooltip
+                  title={t("storages.deleteTooltip", {
+                    defaultValue: "Delete storage",
+                  })}
+                  placement="left"
                 >
-                  <DeleteOutline fontSize="small" color="primary" />
-                </IconButton>
+                  <IconButton
+                    size="small"
+                    aria-label={t("common.delete")}
+                    sx={{
+                      position: "absolute",
+                      top: 4,
+                      right: 4,
+                    }}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      const result = await confirm({
+                        title: t("storages.deleteTitle", {
+                          defaultValue: "Delete storage",
+                        }),
+                        description: t("storages.deleteText", {
+                          defaultValue: "This action is permanent!",
+                        }),
+                        confirmationText: t("common.delete", {
+                          defaultValue: "Delete",
+                        }),
+                        cancellationText: t("common.cancel", {
+                          defaultValue: "Cancel",
+                        }),
+                        confirmationButtonProps: { color: "error" },
+                      });
+                      if (result.confirmed) {
+                        await api.delete(s.id);
+                        setUserStorages((prev) =>
+                          prev.filter((x) => x.id !== s.id),
+                        );
+                      }
+                    }}
+                  >
+                    <DeleteOutline fontSize="small" color="primary" />
+                  </IconButton>
+                </Tooltip>
                 <CardContent
                   sx={{
                     display: "flex",
@@ -197,7 +209,7 @@ export function StoragesPage() {
                       color: "text.secondary",
                     }}
                   >
-                    {new Date(s.createdAt).toLocaleDateString()}
+                    {parseUtcDate(s.createdAt)!.toLocaleDateString()}
                   </Typography>
                 </CardContent>
               </Card>

@@ -1,0 +1,10 @@
+namespace Octockup.Server.Models.Requests
+{
+    public class CreateBackupRequest
+    {
+        public Guid SourceId { get; set; }
+        public Guid StorageId { get; set; }
+        public string Tag { get; set; } = string.Empty;
+        public ICollection<string>? IgnoredPaths { get; set; }
+    }
+}

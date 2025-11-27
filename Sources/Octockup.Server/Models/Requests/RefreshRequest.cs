@@ -1,8 +1,9 @@
-﻿using MediatR;
+﻿// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2025 Vadim Belov
 
 namespace Octockup.Server.Models.Requests
 {
-    public class RefreshRequest : IRequest<AuthResponse>
+    public class RefreshRequest
     {
         public string RefreshToken { get; set; } = string.Empty;
     }

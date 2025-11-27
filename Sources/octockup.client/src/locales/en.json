@@ -17,7 +17,10 @@
     "parameters": "Parameters",
     "newSource": "Add New Source",
     "create": "Create Source",
-    "deleteConfirm": "Are you sure you want to delete source '{{tag}}'?"
+    "deleteConfirm": "Are you sure you want to delete source '{{tag}}'?",
+    "deleteTitle": "Delete source",
+    "deleteText": "This action is permanent!",
+    "deleteTooltip": "Delete source"
   },
   "wizard": {
     "back": "Back",
@@ -63,7 +66,10 @@
     "noTypesAvailable": "No types available",
     "newStorage": "Add New Storage",
     "create": "Create Storage",
-    "deleteConfirm": "Are you sure you want to delete storage '{{tag}}'?"
+    "deleteConfirm": "Are you sure you want to delete storage '{{tag}}'?",
+    "deleteTitle": "Delete storage",
+    "deleteText": "This action is permanent!",
+    "deleteTooltip": "Delete storage"
   },
   "storageWizard": {
     "back": "Back",
@@ -83,5 +89,73 @@
     "testSuccess": "Connection test successful.",
     "testFailed": "Connection test failed.",
     "fillParameters": "Please fill all parameters before testing."
+  }
+  ,
+  "backups": {
+    "title": "Your Backups",
+    "newBackup": "New Backup",
+    "noBackups": "No backups yet.",
+    "deleteTitle": "Delete backup",
+    "deleteText": "This action is permanent!",
+    "deleteTooltip": "Delete backup",
+    "runOnce": "Run once",
+    "modulesTitle": "Modules",
+    "noModules": "No modules available"
+  },
+  "backupWizard": {
+    "title": "Create Backup",
+    "source": "Source",
+    "storage": "Storage",
+    "to": "to",
+    "tag": "Tag (unique name)",
+    "ignoredPaths": "Ignored paths (one per line)",
+    "ignoredPathsPlaceholder": "path/to/ignore\nlogs\nnode_modules",
+    "noIgnoredPaths": "No ignored paths",
+    "createBackup": "Create Backup",
+    "createError": "Failed to create backup."
+  }
+  ,
+  "schedules": {
+    "title": "Your Schedules",
+    "newSchedule": "New Schedule",
+    "noSchedules": "No schedules yet.",
+    "everyMinutes": "every {{count}} min",
+    "deleteTitle": "Delete schedule",
+    "deleteText": "This action is permanent!",
+    "deleteTooltip": "Delete schedule",
+    "stopTooltip": "Stop running schedule",
+    "stop": "Stop",
+    "status": {
+      "created": "Created",
+      "running": "Running",
+      "failed": "Failed",
+      "completed": "Completed"
+    },
+    "nextRun": {
+      "label": "Next run",
+      "never": "Never",
+      "soon": "Soon",
+      "inMinutes": "In {{count}} min",
+      "inHours": "In {{count}} h",
+      "tomorrow": "Tomorrow",
+      "inDays": "In {{count}} days",
+      "inWeeks": "In {{count}} weeks",
+      "inMonths": "In {{count}} months",
+      "afterCurrent": "After current run",
+      "scheduled": "Scheduled",
+      "unknown": "Unknown"
+    }
+  },
+  "scheduleWizard": {
+    "title": "Create Schedule",
+    "backup": "Backup",
+    "startAt": "Start at",
+    "intervalMinutes": "Repeat interval (minutes, optional)",
+    "createSchedule": "Create Schedule",
+    "createError": "Failed to create schedule.",
+    "interval1h": "1 hour",
+    "interval1d": "1 day",
+    "interval1w": "1 week",
+    "interval1m": "1 month"
   }
 }

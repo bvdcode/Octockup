@@ -1,35 +1,31 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { BackupSource, BackupStorage } from "../types/api";
+import type { ModuleProviderInfo } from "../types/api";
 
 export function useModuleMetadata(
-  typeId: string,
-  apiClient: {
-    listAvailable: () => Promise<(BackupSource | BackupStorage)[]>;
-  },
+  providerId: string,
+  fetchProviders: () => Promise<ModuleProviderInfo[]>,
 ) {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [moduleMeta, setModuleMeta] = useState<
-    BackupSource | BackupStorage | null
-  >(null);
+  const [moduleMeta, setModuleMeta] = useState<ModuleProviderInfo | null>(null);
 
   useEffect(() => {
     let active = true;
 
     const load = async () => {
-      if (!typeId) {
+      if (!providerId) {
         setError(t("wizard.typeNotSpecified"));
         setLoading(false);
         return;
       }
 
       try {
-        const all = await apiClient.listAvailable();
+        const all = await fetchProviders();
         if (!active) return;
 
-        const meta = all.find((x) => x.id === typeId);
+        const meta = all.find((x) => x.id === providerId);
         if (!meta) {
           setError(t("wizard.typeNotFound"));
         } else {
@@ -48,7 +44,7 @@ export function useModuleMetadata(
     return () => {
       active = false;
     };
-  }, [apiClient, typeId, t]);
+  }, [fetchProviders, providerId, t]);
 
   return { loading, error, moduleMeta };
 }

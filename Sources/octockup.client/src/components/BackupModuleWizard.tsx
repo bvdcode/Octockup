@@ -8,7 +8,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import type { ClipboardEvent } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { TestActions } from "./wizard/TestActions";
 import { ModuleHeader } from "./wizard/ModuleHeader";
@@ -19,26 +19,35 @@ import { DirectoryBrowser } from "./wizard/DirectoryBrowser";
 import { ArrowBack, CheckCircle } from "@mui/icons-material";
 import { useModuleMetadata } from "../hooks/useModuleMetadata";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import type { BackupSource, BackupStorage } from "../types/api";
+import { ModuleDestination } from "../types/api";
+import type { ModuleProviderInfo } from "../types/api";
 import { useDirectoryBrowser } from "../hooks/useDirectoryBrowser";
 
-type ModuleType = "source" | "storage";
+type ModuleType = "source" | "storage" | "target";
 
 interface BackupModuleWizardProps {
   moduleType: ModuleType;
   apiClient: {
-    listAvailable: () => Promise<(BackupSource | BackupStorage)[]>;
+    listProviders: () => Promise<ModuleProviderInfo[]>;
+    listProvidersByType: (
+      type: "source" | "storage",
+    ) => Promise<ModuleProviderInfo[]>;
     create: (
-      backupModuleId: string,
+      providerId: string,
+      destination: ModuleDestination,
       tag: string,
+      backupModuleId: string,
       parameters: Record<string, string>,
     ) => Promise<void>;
-    test: (id: string, parameters: Record<string, string>) => Promise<unknown>;
+    test: (
+      providerId: string,
+      parameters: Record<string, string>,
+    ) => Promise<void>;
     getDirectories: (
-      id: string,
+      providerId: string,
       parameters: Record<string, string>,
     ) => Promise<string[]>;
-    list: () => Promise<Array<{ id: string; tag: string }>>;
+    list: () => Promise<Array<{ id: string; tag: string }>>; // modules list
   };
   backRoute: string;
 }
@@ -51,9 +60,21 @@ export default function BackupModuleWizard({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const typeId = searchParams.get("type") || "";
+  const providerId = searchParams.get("type") || ""; // provider full name
 
-  const { loading, error, moduleMeta } = useModuleMetadata(typeId, apiClient);
+  // Memoize provider fetch to avoid recreating function every render (prevents infinite fetch loop)
+  const fetchProviders = useCallback(
+    () =>
+      apiClient.listProvidersByType(
+        moduleType === "source" ? "source" : "storage",
+      ),
+    [apiClient, moduleType],
+  );
+
+  const { loading, error, moduleMeta } = useModuleMetadata(
+    providerId,
+    fetchProviders,
+  );
   const {
     params,
     tag,
@@ -65,8 +86,13 @@ export default function BackupModuleWizard({
     bulkUpdateParams,
   } = useWizardForm(moduleMeta);
 
-  const browser = useDirectoryBrowser(moduleMeta, params, typeId, apiClient);
-  const test = useModuleTest(moduleMeta, params, typeId, apiClient);
+  const browser = useDirectoryBrowser(
+    moduleMeta,
+    params,
+    providerId,
+    apiClient,
+  );
+  const test = useModuleTest(moduleMeta, params, providerId, apiClient);
 
   const [creating, setCreating] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -80,18 +106,21 @@ export default function BackupModuleWizard({
 
   // Load existing tags
   useEffect(() => {
-    apiClient.list().then((items) => {
-      setExistingTags(items.map((item) => item.tag.toLowerCase()));
-    }).catch(() => {
-      // ignore errors
-    });
+    apiClient
+      .list()
+      .then((items) => {
+        setExistingTags(items.map((item) => item.tag.toLowerCase()));
+      })
+      .catch(() => {
+        // ignore errors
+      });
   }, [apiClient]);
 
   // Reset test state when params change (except path)
   const handleParamChange = (name: string, value: string) => {
     updateParam(name, value);
     test.resetTest();
-    if (name !== "path" && moduleMeta?.parameters.includes("path")) {
+    if (name !== "path" && moduleMeta?.requiredParameters.includes("path")) {
       browser.resetBrowser();
     }
   };
@@ -105,7 +134,7 @@ export default function BackupModuleWizard({
     if (rawLines.length === 0) return;
     if (rawLines[rawLines.length - 1] === "") rawLines.pop();
     const lines = rawLines;
-    const keys = moduleMeta.parameters || [];
+    const keys = moduleMeta.requiredParameters || [];
     if (lines.length !== keys.length) return;
 
     e.preventDefault();
@@ -125,7 +154,7 @@ export default function BackupModuleWizard({
   // Handle directory navigation with path sync
   const handleNavigateToDir = (dir: string) => {
     browser.navigateToDir(dir);
-    if (moduleMeta?.parameters.includes("path")) {
+    if (moduleMeta?.requiredParameters.includes("path")) {
       const sep = moduleMeta.pathSeparator || "/";
       const newPath =
         browser.browserPath === sep
@@ -142,7 +171,7 @@ export default function BackupModuleWizard({
     const newPath =
       lastSepIndex <= 0 ? sep : browser.browserPath.substring(0, lastSepIndex);
     browser.navigateUp();
-    if (moduleMeta.parameters.includes("path")) {
+    if (moduleMeta.requiredParameters.includes("path")) {
       updateParam("path", newPath);
     }
   };
@@ -151,7 +180,7 @@ export default function BackupModuleWizard({
     if (!moduleMeta) return;
     const sep = moduleMeta.pathSeparator || "/";
     browser.navigateToRoot();
-    if (moduleMeta.parameters.includes("path")) {
+    if (moduleMeta.requiredParameters.includes("path")) {
       updateParam("path", sep);
     }
   };
@@ -163,7 +192,9 @@ export default function BackupModuleWizard({
       return;
     }
     if (existingTags.includes(tag.trim().toLowerCase())) {
-      setSubmitError(t("wizard.tagAlreadyExists", { defaultValue: "Tag already exists" }));
+      setSubmitError(
+        t("wizard.tagAlreadyExists", { defaultValue: "Tag already exists" }),
+      );
       return;
     }
     const invalidHttp = test.validateHttpEndpoint();
@@ -174,7 +205,15 @@ export default function BackupModuleWizard({
     try {
       setCreating(true);
       setSubmitError(null);
-      await apiClient.create(typeId, tag.trim(), params);
+      await apiClient.create(
+        providerId,
+        moduleType === "source"
+          ? ModuleDestination.Source
+          : ModuleDestination.Target,
+        tag.trim(),
+        providerId,
+        params,
+      );
       resetUnsavedChanges();
       setShowSuccessToast(true);
       setTimeout(() => {
@@ -255,7 +294,7 @@ export default function BackupModuleWizard({
                 disabled={creating}
               />
 
-              {moduleMeta.parameters.includes("path") && (
+              {moduleMeta.requiredParameters.includes("path") && (
                 <DirectoryBrowser
                   browserPath={browser.browserPath}
                   browserDirs={browser.browserDirs}

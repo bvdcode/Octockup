@@ -1,29 +1,88 @@
-export interface BackupSource {
-  id: string;
-  name: string;
-  parameters: string[];
-  pathSeparator: string;
+export enum ModuleDestination {
+  Source = 1,
+  Target = 2,
 }
 
-export interface SavedBackupModule {
+// Match backend JSON (C# property names are PascalCase)
+export interface Module {
   id: string;
   createdAt: string;
+  userId: string;
   tag: string;
-  username: string;
   backupModuleId: string;
-  parameters: Record<string, string>;
+  destination: ModuleDestination;
 }
 
-export interface BackupStorage {
+export interface ModuleProviderInfo {
   id: string;
-  name: string;
-  parameters: string[];
   pathSeparator: string;
+  name: string;
+  requiredParameters: string[];
 }
+
+export type BackupSource = ModuleProviderInfo;
+export type BackupStorage = ModuleProviderInfo;
 
 export interface TestResultItem {
   path: string;
   name: string;
   size: number;
-  lastModified?: string; // ISO string
+  lastModified?: string;
+}
+
+export interface CreateModuleRequest {
+  destination: ModuleDestination;
+  tag: string;
+  backupModuleId: string;
+  parameters: Record<string, string>;
+}
+export interface BackupItem {
+  id: string;
+  tag: string;
+  sourceId: string;
+  storageId: string;
+  ignoredPaths: string[];
+  source: Module;
+  storage: Module;
+}
+
+export interface CreateBackupRequest {
+  sourceId: string;
+  storageId: string;
+  tag: string;
+  ignoredPaths: string[];
+}
+
+export enum BackupStatus {
+  Created = 0,
+  Running = 1,
+  Failed = 2,
+  Completed = 3,
+}
+
+export interface ScheduleItem {
+  id: string;
+  backupId: string;
+  startAt: string;
+  interval?: string | null;
+  status: BackupStatus;
+  finishedAt?: string | null;
+  errorMessage?: string | null;
+  backup: BackupItem;
+}
+
+export interface CreateScheduleRequest {
+  backupId: string;
+  startAt: string;
+  intervalMinutes?: number;
+}
+
+export interface ScheduleReport {
+  scheduleId: string;
+  timestamp: string;
+  status: BackupStatus;
+  message: string;
+  total: number;
+  processed: number;
+  speed: number;
 }

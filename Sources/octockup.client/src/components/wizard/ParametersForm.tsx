@@ -1,14 +1,14 @@
 import { Card, CardContent, Stack, TextField, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import type { ClipboardEvent } from "react";
-import type { BackupSource, BackupStorage } from "../../types/api";
+import type { ModuleProviderInfo } from "../../types/api";
 
 interface ParamState {
   [key: string]: string;
 }
 
 interface ParametersFormProps {
-  moduleMeta: BackupSource | BackupStorage;
+  moduleMeta: ModuleProviderInfo;
   params: ParamState;
   tag: string;
   onParamChange: (name: string, value: string) => void;
@@ -29,7 +29,7 @@ export function ParametersForm({
   const { t } = useTranslation();
 
   return (
-    <Card variant="outlined">
+    <Card>
       <CardContent>
         <Typography variant="h6" gutterBottom>
           {t("wizard.parameters")}
@@ -44,13 +44,13 @@ export function ParametersForm({
             placeholder={t("wizard.enterTag")}
             disabled={disabled}
           />
-          {moduleMeta.parameters.length === 0 ? (
+          {moduleMeta.requiredParameters.length === 0 ? (
             <Typography variant="body2" color="text.secondary" fontStyle="italic">
               {t("wizard.noParameters")}
             </Typography>
           ) : (
             <>
-              {moduleMeta.parameters.map((p) => (
+              {moduleMeta.requiredParameters.map((p) => (
                 <TextField
                   key={p}
                   required={p !== "path"}

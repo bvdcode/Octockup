@@ -1,14 +1,17 @@
+﻿// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2025 Vadim Belov
+
 using Octockup.Server.Hubs;
 using EasyExtensions.Crypto;
-using Octockup.Server.Services;
+using Octockup.Server.Modules;
+using Octockup.Server.Database;
 using Octockup.Server.Extensions;
 using EasyExtensions.Abstractions;
 using Octockup.Server.Abstractions;
-using Octockup.Server.BackupSources;
 using Microsoft.EntityFrameworkCore;
-using Octockup.Server.BackupStorages;
 using EasyExtensions.Quartz.Extensions;
 using EasyExtensions.AspNetCore.Extensions;
+using EasyExtensions.EntityFrameworkCore.Extensions;
 using EasyExtensions.AspNetCore.Authorization.Extensions;
 
 namespace Octockup.Server
@@ -22,18 +25,21 @@ namespace Octockup.Server
             string masterKey = builder.Configuration.GetMasterKey();
             builder.Configuration["Pepper"] = KeyDerivation.DeriveSubkeyBase64(masterKey, "pepper", 32);
             byte[] cryptoKey = KeyDerivation.DeriveSubkey(masterKey, "crypto", 32);
+            string sqlitePassword = KeyDerivation.DeriveSubkeyBase64(masterKey, "sqlite", 32);
+            string sqliteFolder = Path.Combine(AppContext.BaseDirectory, "data");
+            Directory.CreateDirectory(sqliteFolder);
+            string sqlitePath = Path.Combine(sqliteFolder, "octockup.sqlite");
 
             builder.Services.AddControllers();
             builder.Services
-                .AddScoped<IBackupStorage, S3BackupStorage>()
-                .AddScoped<IBackupSource, FileSystemBackupSource>()
-                .AddScoped<IUserDataStorage, UserDataStorage>()
+                .AddSqlite<AppDbContext>(connectionString: $"Data Source={sqlitePath};Password={sqlitePassword};")
+                .AddScoped<IBackupProvider, S3BackupStorage>()
+                .AddScoped<IBackupProvider, FileSystemBackupSource>()
                 .AddScoped<IStreamCipher>(sp => new AesGcmStreamCipher(cryptoKey))
                 .AddPbkdf2PasswordHashService()
                 .AddCpuUsageService()
                 .AddQuartzJobs()
                 .AddHttpContextAccessor()
-                .AddMediatR(x => x.RegisterServicesFromAssemblyContaining<Program>())
                 .AddJwt()
                 .AddSignalR();
 
@@ -48,6 +54,7 @@ namespace Octockup.Server
             app.MapControllers();
             app.MapFallbackToFile("/index.html");
             app.MapHub<EventHub>("/api/v1/event-hub");
+            app.ApplyMigrations<AppDbContext>();
             app.Run();
         }
     }
