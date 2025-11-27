@@ -135,11 +135,11 @@ namespace Octockup.Server.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    SnapshotId = table.Column<Guid>(type: "TEXT", nullable: false),
                     Size = table.Column<long>(type: "INTEGER", nullable: false),
                     Path = table.Column<string>(type: "TEXT", nullable: false),
                     Hashsum = table.Column<string>(type: "TEXT", nullable: false),
                     ChunkHashes = table.Column<string>(type: "TEXT", nullable: false),
-                    SnapshotId = table.Column<Guid>(type: "TEXT", nullable: true),
                     created_at = table.Column<DateTime>(type: "TEXT", nullable: false),
                     updated_at = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
@@ -150,7 +150,8 @@ namespace Octockup.Server.Migrations
                         name: "FK_SnapshotFiles_Snapshots_SnapshotId",
                         column: x => x.SnapshotId,
                         principalTable: "Snapshots",
-                        principalColumn: "id");
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(

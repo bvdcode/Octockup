@@ -11,7 +11,7 @@ using Octockup.Server.Database;
 namespace Octockup.Server.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251127005052_Initial")]
+    [Migration("20251127005224_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -200,7 +200,7 @@ namespace Octockup.Server.Migrations
                     b.Property<long>("Size")
                         .HasColumnType("INTEGER");
 
-                    b.Property<Guid?>("SnapshotId")
+                    b.Property<Guid>("SnapshotId")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -303,9 +303,13 @@ namespace Octockup.Server.Migrations
 
             modelBuilder.Entity("Octockup.Server.Database.SnapshotFile", b =>
                 {
-                    b.HasOne("Octockup.Server.Database.Snapshot", null)
+                    b.HasOne("Octockup.Server.Database.Snapshot", "Snapshot")
                         .WithMany("Files")
-                        .HasForeignKey("SnapshotId");
+                        .HasForeignKey("SnapshotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Snapshot");
                 });
 
             modelBuilder.Entity("Octockup.Server.Database.Backup", b =>
