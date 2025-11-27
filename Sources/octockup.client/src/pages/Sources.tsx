@@ -4,21 +4,22 @@ import {
   Stack,
   Alert,
   Divider,
+  Tooltip,
+  IconButton,
   Typography,
   CardContent,
   CircularProgress,
-  IconButton,
-  Tooltip,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { confirm } from "material-ui-confirm";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { AddCircleOutline } from "@mui/icons-material";
-import { DeleteOutline } from "@mui/icons-material";
-import { getSourceIcon } from "../constants/sourceIcons";
-import { useModulesApi } from "../api/modulesApi";
 import { ModuleDestination } from "../types/api";
+import { parseUtcDate } from "../utils/dateUtils";
+import { useModulesApi } from "../api/modulesApi";
+import { DeleteOutline } from "@mui/icons-material";
+import { AddCircleOutline } from "@mui/icons-material";
+import { getSourceIcon } from "../constants/sourceIcons";
 import type { Module, ModuleProviderInfo } from "../types/api";
 
 interface State {
