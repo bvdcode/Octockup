@@ -17,6 +17,7 @@ import {
   StopCircle,
   DeleteOutline,
   AddCircleOutline,
+  ArrowRightAlt,
 } from "@mui/icons-material";
 import { BackupStatus } from "../types/api";
 import { useEffect, useState } from "react";
@@ -34,6 +35,48 @@ interface State {
   error: string | null;
   deletingId: string | null;
   cancelingId: string | null;
+}
+
+function formatSpeed(bytesPerSecond: number): string {
+  const mbPerSecond = bytesPerSecond / (1024 * 1024);
+  if (mbPerSecond < 0.01) {
+    const kbPerSecond = bytesPerSecond / 1024;
+    return `${kbPerSecond.toFixed(2)} KB/s`;
+  }
+  return `${mbPerSecond.toFixed(2)} MB/s`;
+}
+
+function formatElapsed(elapsed?: string): string {
+  if (!elapsed) return "";
+  // Parse TimeSpan format: "HH:MM:SS.mmmmmmm" or "DD.HH:MM:SS.mmmmmmm"
+  const parts = elapsed.split(":");
+  if (parts.length < 3) return elapsed;
+
+  let hours = 0;
+  let minutes = 0;
+  let seconds = 0;
+
+  if (parts[0].includes(".")) {
+    // Format: DD.HH:MM:SS
+    const dayHour = parts[0].split(".");
+    const days = parseInt(dayHour[0]);
+    hours = parseInt(dayHour[1]) + days * 24;
+    minutes = parseInt(parts[1]);
+    seconds = Math.floor(parseFloat(parts[2]));
+  } else {
+    // Format: HH:MM:SS
+    hours = parseInt(parts[0]);
+    minutes = parseInt(parts[1]);
+    seconds = Math.floor(parseFloat(parts[2]));
+  }
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  } else if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  } else {
+    return `${seconds}s`;
+  }
 }
 
 function statusColor(
@@ -167,7 +210,12 @@ export default function SchedulesPage() {
       .then((data) => {
         if (!active) return;
         setItems(data);
-        setState({ loading: false, error: null, deletingId: null, cancelingId: null });
+        setState({
+          loading: false,
+          error: null,
+          deletingId: null,
+          cancelingId: null,
+        });
       })
       .catch((e) => {
         if (!active) return;
@@ -268,205 +316,231 @@ export default function SchedulesPage() {
                     "&:last-child": { pb: 2 },
                   }}
                 >
-                <Box display="flex" alignItems="center" gap={1.5}>
                   <Box
-                    fontSize={36}
-                    sx={{
-                      width: 36,
-                      height: 36,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
                   >
-                    {getSourceIcon(it.backup.source.backupModuleId)}
-                  </Box>
-                  <Typography variant="h6" sx={{ mx: 0.5 }}>
-                    →
-                  </Typography>
-                  <Box
-                    fontSize={36}
-                    sx={{
-                      width: 36,
-                      height: 36,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {getSourceIcon(it.backup.storage.backupModuleId)}
-                  </Box>
-                </Box>
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography variant="subtitle1" noWrap title={it.backup.tag}>
-                    {it.backup.tag}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{ color: "text.secondary" }}
-                  >
-                    {it.backup.source.tag} → {it.backup.storage.tag}
-                  </Typography>
-                  {report && it.status === BackupStatus.Running && (
-                    <Box sx={{ mt: 1 }}>
-                      <Box
-                        display="flex"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        mb={0.5}
-                      >
-                        <Typography variant="caption" color="text.secondary">
-                          {report.message}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {report.processed.toLocaleString()} /{" "}
-                          {report.total.toLocaleString()} (
-                          {progress.toFixed(1)}%)
-                        </Typography>
-                      </Box>
-                      <LinearProgress
-                        variant="determinate"
-                        value={progress}
-                        sx={{ height: 6, borderRadius: 1 }}
-                      />
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        sx={{ display: "block", mt: 0.5 }}
-                      >
-                        {t("schedules.speed", { defaultValue: "Speed" })}:{" "}
-                        {report.speed.toFixed(2)} {t("schedules.filesPerSec", { defaultValue: "files/sec" })}
-                      </Typography>
+                    <Box
+                      fontSize={36}
+                      sx={{
+                        width: 36,
+                        height: 36,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {getSourceIcon(it.backup.source.backupModuleId)}
                     </Box>
-                  )}
-                </Box>
-                <Box
-                  display="flex"
-                  flexDirection="column"
-                  gap={0.5}
-                  alignItems="flex-end"
-                  minWidth={150}
-                >
-                  <Chip
-                    size="small"
-                    label={t(
-                      `schedules.status.${BackupStatus[
-                        it.status
-                      ].toLowerCase()}`,
+                    <ArrowRightAlt />
+                    <Box
+                      fontSize={36}
+                      sx={{
+                        width: 36,
+                        height: 36,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {getSourceIcon(it.backup.storage.backupModuleId)}
+                    </Box>
+                  </Box>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography
+                      variant="subtitle1"
+                      noWrap
+                      title={it.backup.tag}
+                    >
+                      {it.backup.tag}
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: "text.secondary" }}
+                    >
+                      {it.backup.source.tag} → {it.backup.storage.tag}
+                    </Typography>
+                    {report && it.status === BackupStatus.Running && (
+                      <Box sx={{ mt: 1 }}>
+                        <LinearProgress
+                          variant="determinate"
+                          value={progress}
+                          sx={{ height: 4, borderRadius: 1, mb: 0.5 }}
+                        />
+                        <Box
+                          display="flex"
+                          justifyContent="space-between"
+                          alignItems="center"
+                        >
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            noWrap
+                            sx={{ flex: 1, mr: 1 }}
+                          >
+                            {report.message}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ whiteSpace: "nowrap" }}
+                          >
+                            {report.processed.toLocaleString()} /{" "}
+                            {report.total.toLocaleString()} •{" "}
+                            {progress.toFixed(0)}%
+                          </Typography>
+                        </Box>
+                        <Box display="flex" gap={2} mt={0.5}>
+                          <Typography variant="caption" color="text.secondary">
+                            {formatSpeed(report.speed)}
+                          </Typography>
+                          {report.elapsed && (
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              ⏱ {formatElapsed(report.elapsed)}
+                            </Typography>
+                          )}
+                        </Box>
+                      </Box>
                     )}
-                    color={statusColor(it.status)}
-                  />
-                  <Typography
-                    variant="caption"
-                    sx={{ color: "text.secondary" }}
+                  </Box>
+                  <Box
+                    display="flex"
+                    flexDirection="column"
+                    gap={0.5}
+                    alignItems="flex-end"
+                    minWidth={120}
                   >
-                    {t("schedules.nextRun.label", { defaultValue: "Next run" })}
-                    : {calculateNextRun(it, t)}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{ color: "text.secondary", fontSize: "0.65rem" }}
-                  >
-                    {parseUtcDate(it.startAt)!.toLocaleString()}
-                    {it.interval
-                      ? (() => {
-                          const parts = String(it.interval).split(":");
-                          const minutes =
-                            parts.length >= 2
-                              ? parseInt(parts[0]) * 60 + parseInt(parts[1])
-                              : 0;
-                          return ` • ${t("schedules.everyMinutes", {
-                            count: minutes,
-                          })}`;
-                        })()
-                      : ""}
-                  </Typography>
-                </Box>
-                <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
-                <Box display="flex" flexDirection="column" gap={0.5}>
-                  <Tooltip
-                    title={t("schedules.deleteTooltip", {
-                      defaultValue: "Delete schedule",
-                    })}
-                    placement="top"
-                  >
-                    <span>
-                      <IconButton
-                        size="small"
-                        aria-label={t("common.delete")}
-                        disabled={state.deletingId === it.id}
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          const result = await confirm({
-                            title: t("schedules.deleteTitle", {
-                              defaultValue: "Delete schedule",
-                            }),
-                            description: t("schedules.deleteText", {
-                              defaultValue: "This action is permanent!",
-                            }),
-                            confirmationText: t("common.delete", {
-                              defaultValue: "Delete",
-                            }),
-                            cancellationText: t("common.cancel", {
-                              defaultValue: "Cancel",
-                            }),
-                            confirmationButtonProps: { color: "error" },
-                          });
-                          if (result.confirmed) {
-                            setState((s) => ({ ...s, deletingId: it.id }));
-                            await api.delete(it.id);
-                            setItems((prev) =>
-                              prev.filter((x) => x.id !== it.id),
-                            );
-                            setState((s) => ({ ...s, deletingId: null }));
+                    <Chip
+                      size="small"
+                      label={t(
+                        `schedules.status.${BackupStatus[
+                          it.status
+                        ].toLowerCase()}`,
+                      )}
+                      color={statusColor(it.status)}
+                    />
+                    {it.status !== BackupStatus.Running && (
+                      <>
+                        <Typography
+                          variant="caption"
+                          sx={{ color: "text.secondary" }}
+                        >
+                          {t("schedules.nextRun.label", {
+                            defaultValue: "Next run",
+                          })}
+                          : {calculateNextRun(it, t)}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{ color: "text.secondary", fontSize: "0.65rem" }}
+                        >
+                          {parseUtcDate(it.startAt)!.toLocaleString()}
+                          {it.interval
+                            ? (() => {
+                                const parts = String(it.interval).split(":");
+                                const minutes =
+                                  parts.length >= 2
+                                    ? parseInt(parts[0]) * 60 +
+                                      parseInt(parts[1])
+                                    : 0;
+                                return ` • ${t("schedules.everyMinutes", {
+                                  count: minutes,
+                                })}`;
+                              })()
+                            : ""}
+                        </Typography>
+                      </>
+                    )}
+                  </Box>
+                  <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+                  <Box display="flex" flexDirection="column" gap={0.5}>
+                    <Tooltip
+                      title={t("schedules.deleteTooltip", {
+                        defaultValue: "Delete schedule",
+                      })}
+                      placement="top"
+                    >
+                      <span>
+                        <IconButton
+                          size="small"
+                          aria-label={t("common.delete")}
+                          disabled={state.deletingId === it.id}
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            const result = await confirm({
+                              title: t("schedules.deleteTitle", {
+                                defaultValue: "Delete schedule",
+                              }),
+                              description: t("schedules.deleteText", {
+                                defaultValue: "This action is permanent!",
+                              }),
+                              confirmationText: t("common.delete", {
+                                defaultValue: "Delete",
+                              }),
+                              cancellationText: t("common.cancel", {
+                                defaultValue: "Cancel",
+                              }),
+                              confirmationButtonProps: { color: "error" },
+                            });
+                            if (result.confirmed) {
+                              setState((s) => ({ ...s, deletingId: it.id }));
+                              await api.delete(it.id);
+                              setItems((prev) =>
+                                prev.filter((x) => x.id !== it.id),
+                              );
+                              setState((s) => ({ ...s, deletingId: null }));
+                            }
+                          }}
+                        >
+                          <DeleteOutline color="primary" />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                    <Tooltip
+                      title={t("schedules.stopTooltip", {
+                        defaultValue: "Stop running schedule",
+                      })}
+                      placement="top"
+                    >
+                      <span>
+                        <IconButton
+                          size="small"
+                          aria-label={t("schedules.stop", {
+                            defaultValue: "Stop",
+                          })}
+                          disabled={
+                            it.status !== BackupStatus.Running ||
+                            state.cancelingId === it.id
                           }
-                        }}
-                      >
-                        <DeleteOutline color="primary" />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-                  <Tooltip
-                    title={t("schedules.stopTooltip", {
-                      defaultValue: "Stop running schedule",
-                    })}
-                    placement="top"
-                  >
-                    <span>
-                      <IconButton
-                        size="small"
-                        aria-label={t("schedules.stop", {
-                          defaultValue: "Stop",
-                        })}
-                        disabled={
-                          it.status !== BackupStatus.Running ||
-                          state.cancelingId === it.id
-                        }
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          setState((s) => ({ ...s, cancelingId: it.id }));
-                          try {
-                            await api.cancel(it.id);
-                            // Refresh list or update status locally
-                            setItems((prev) =>
-                              prev.map((x) =>
-                                x.id === it.id
-                                  ? { ...x, status: BackupStatus.Failed }
-                                  : x,
-                              ),
-                            );
-                          } finally {
-                            setState((s) => ({ ...s, cancelingId: null }));
-                          }
-                        }}
-                      >
-                        <StopCircle />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-                </Box>
-              </CardContent>
-            </Card>
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            setState((s) => ({ ...s, cancelingId: it.id }));
+                            try {
+                              await api.cancel(it.id);
+                              // Refresh list or update status locally
+                              setItems((prev) =>
+                                prev.map((x) =>
+                                  x.id === it.id
+                                    ? { ...x, status: BackupStatus.Failed }
+                                    : x,
+                                ),
+                              );
+                            } finally {
+                              setState((s) => ({ ...s, cancelingId: null }));
+                            }
+                          }}
+                        >
+                          <StopCircle />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  </Box>
+                </CardContent>
+              </Card>
             );
           })}
         </Stack>

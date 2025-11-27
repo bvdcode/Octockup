@@ -85,4 +85,5 @@ export interface ScheduleReport {
   total: number;
   processed: number;
   speed: number;
+  elapsed?: string;
 }
