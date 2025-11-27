@@ -71,9 +71,9 @@ namespace Octockup.Server.Modules
                 yield return new BackupFileInfo
                 {
                     Path = relativePath,
-                    Name = fileInfo.Name,
                     Size = fileInfo.Length,
-                    LastModified = fileInfo.LastWriteTimeUtc
+                    LastModified = fileInfo.LastWriteTimeUtc,
+                    Name = fileInfo.Name + fileInfo.Extension,
                 };
             }
         }
@@ -110,6 +110,17 @@ namespace Octockup.Server.Modules
                    || normalizedPath.StartsWith(
                        normalizedBase + Path.DirectorySeparatorChar,
                        StringComparison.OrdinalIgnoreCase);
+        }
+
+        public Task<Stream> GetFileStreamAsync(BackupFileInfo file)
+        {
+            var fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, file.Path));
+            if (!IsSubPathOf(fullPath, _baseDirectory))
+            {
+                throw new ArgumentException($"File path '{file.Path}' escapes the base directory.");
+            }
+            Stream stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            return Task.FromResult(stream);
         }
     }
 }

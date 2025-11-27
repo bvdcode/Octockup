@@ -16,13 +16,13 @@
 		<PackageReference Include="FluentFTP" Version="53.0.2" />
 		<PackageReference Include="AWSSDK.S3" Version="4.0.13.1" />
 		<PackageReference Include="FluentValidation" Version="12.1.0" />
-		<PackageReference Include="EasyExtensions.Quartz" Version="2.0.39" />
-		<PackageReference Include="EasyExtensions.Crypto" Version="2.0.39" />
-		<PackageReference Include="EasyExtensions.AspNetCore" Version="2.0.39" />
-		<PackageReference Include="EasyExtensions.EntityFrameworkCore" Version="2.0.39" />
+		<PackageReference Include="EasyExtensions.Quartz" Version="2.0.40" />
+		<PackageReference Include="EasyExtensions.Crypto" Version="2.0.40" />
+		<PackageReference Include="EasyExtensions.AspNetCore" Version="2.0.40" />
+		<PackageReference Include="EasyExtensions.EntityFrameworkCore" Version="2.0.40" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="10.0.0" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Proxies" Version="10.0.0" />
-		<PackageReference Include="EasyExtensions.AspNetCore.Authorization" Version="2.0.39" />
+		<PackageReference Include="EasyExtensions.AspNetCore.Authorization" Version="2.0.40" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.0">
 		  <PrivateAssets>all</PrivateAssets>
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

@@ -78,5 +78,11 @@ namespace Octockup.Server.Helpers
 
             return next;
         }
+
+        public static string SplitHash(string hash, char pathSeparator)
+        {
+            // format: aa/bb/ccddeeff...
+            return $"{hash[..2]}{pathSeparator}{hash.Substring(2, 2)}{pathSeparator}{hash[4..]}.oct";
+        }
     }
 }

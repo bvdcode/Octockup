@@ -67,8 +67,9 @@ namespace Octockup.Server.Modules
             return fullKey.Trim(PathSeparator);
         }
 
-        public async Task<Stream> DownloadAsync(string path)
+        public async Task<Stream> GetFileStreamAsync(BackupFileInfo fileInfo)
         {
+            string path = fileInfo.Path;
             ArgumentException.ThrowIfNullOrEmpty(path);
             ArgumentNullException.ThrowIfNull(_s3);
 
@@ -83,7 +84,7 @@ namespace Octockup.Server.Modules
             return result.ResponseStream;
         }
 
-        public bool? Exists(string path)
+        public Task<bool?> ExistsAsync(string path)
         {
             ArgumentException.ThrowIfNullOrEmpty(path);
             ArgumentNullException.ThrowIfNull(_s3);
@@ -99,13 +100,14 @@ namespace Octockup.Server.Modules
             try
             {
                 var res = _s3.GetObjectMetadataAsync(req).Result;
-                return res.HttpStatusCode == System.Net.HttpStatusCode.OK;
+                bool? result = res.HttpStatusCode == System.Net.HttpStatusCode.OK;
+                return Task.FromResult(result);
             }
             catch (AggregateException ex) when (
                 ex.InnerException is AmazonS3Exception s3Ex &&
                 s3Ex.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
-                return false;
+                return Task.FromResult<bool?>(false);
             }
         }
 

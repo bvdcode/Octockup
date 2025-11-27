@@ -2,10 +2,15 @@
 // Copyright (c) 2025 Vadim Belov
 
 using Quartz;
+using System.Buffers;
+using EasyExtensions;
 using Octockup.Server.Hubs;
+using System.IO.Compression;
+using EasyExtensions.Streams;
 using Octockup.Server.Models;
 using Octockup.Server.Helpers;
 using Octockup.Server.Database;
+using EasyExtensions.Abstractions;
 using Octockup.Server.Models.Enums;
 using Microsoft.AspNetCore.SignalR;
 using Octockup.Server.Abstractions;
@@ -16,11 +21,14 @@ namespace Octockup.Server.Jobs
 {
     [JobTrigger(minutes: 1)]
     public class ExecuteBackupJob(
+        IStreamCipher _crypto,
         AppDbContext _dbContext,
         ILogger<ExecuteBackupJob> _logger,
         IHubContext<EventHub> _hubContext,
         IEnumerable<IBackupProvider> _providers) : IJob
     {
+        private const int ChunkSize = 4 * 1024 * 1024;
+
         public async Task Execute(IJobExecutionContext context)
         {
             Schedule? next = await ScheduleHelpers.GetNextScheduleAsync(_dbContext.Schedules);
@@ -60,8 +68,7 @@ namespace Octockup.Server.Jobs
             {
                 var filesToBackup = foundSourceProvider.GetFiles(recursive: true).ToList();
                 report.Total = filesToBackup.Count;
-
-                await BackupAsync(next, foundSourceProvider, foundStorageProvider, filesToBackup, report);
+                await BackupAsync(next, foundSourceProvider, foundStorageProvider, report, filesToBackup);
             }
             catch (Exception ex)
             {
@@ -71,26 +78,51 @@ namespace Octockup.Server.Jobs
                 await _dbContext.SaveChangesAsync();
                 _logger.LogError(ex, "Schedule {ScheduleId} backup failed", next.Id);
                 await report.SendAsync(report.Processed, next.ErrorMessage, status: BackupStatus.Failed);
-                return;
             }
         }
 
-        private async Task BackupAsync(Schedule next, IBackupSource foundSourceProvider, IBackupStorage foundStorageProvider, List<BackupFileInfo> filesToBackup, ScheduleReport report)
+        private async Task BackupAsync(
+            Schedule schedule,
+            IBackupSource source,
+            IBackupStorage storage,
+            ScheduleReport report,
+            List<BackupFileInfo> files)
         {
             long processedBytes = 0;
-            for (int i = 0; i < filesToBackup.Count; i++)
+            for (int i = 0; i < files.Count; i++)
             {
-                var file = filesToBackup[i];
+                var file = files[i];
                 await report.SendAsync(i, $"Processing: {file.Name}", processedBytes: processedBytes);
                 
-                
-                
-                await Task.Delay(Random.Shared.Next(1, 1000));
+                using var stream = await source.GetFileStreamAsync(file);
+                using var chunker = new ChunkedStream(stream, ChunkSize);
+
+                byte[] buffer = ArrayPool<byte>.Shared.Rent(ChunkSize);
+                List<string> chunkHashes = [];
+                foreach (Stream chunk in chunker.GetChunks())
+                {
+                    int bytesRead = await chunk.ReadAsync(buffer.AsMemory(0, ChunkSize));
+                    if (bytesRead <= 0)
+                    {
+                        break;
+                    }
+                    string hash = chunk.Sha256();
+                    chunk.Seek(default, SeekOrigin.Begin);
+                    using var compressedStream = new BrotliStream(chunk, CompressionLevel.Fastest);
+                    using var encryptedStream = await _crypto.EncryptAsync(compressedStream);
+                    string path = ScheduleHelpers.SplitHash(hash, storage.PathSeparator);
+                    await storage.UploadAsync(path, encryptedStream);
+                    processedBytes += bytesRead;
+                    await report.SendAsync(i, $"Uploading chunk: {file.Name} ({hash})", processedBytes: processedBytes);
+                    chunkHashes.Add(hash);
+                }
+
+                // TODO: save snapshot file
 
 
 
-                processedBytes += filesToBackup[i].Size ?? 0;
-                _logger.LogInformation("Schedule {ScheduleId}: {Message} ({Processed}/{Total})", next.Id, report.Message, report.Processed, report.Total);
+                _logger.LogInformation("Schedule {ScheduleId}: {Message} ({Processed}/{Total})",
+                    schedule.Id, report.Message, report.Processed, report.Total);
             }
         }
     }
