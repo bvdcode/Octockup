@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { AxiosInstance } from "axios";
 import { useAxios } from "@bvdcode/react-kit";
-import type { ScheduleItem, CreateScheduleRequest } from "../types/api";
+import type { ScheduleItem, CreateScheduleRequest, BackupItem } from "../types/api";
 import { BackupStatus } from "../types/api";
 
 class SchedulesApiClient {
@@ -11,20 +11,27 @@ class SchedulesApiClient {
 
   async list(): Promise<ScheduleItem[]> {
     const { data } = await this.axios().get<Array<any>>("/api/v1/schedules");
-    return data.map(x => ({
-      id: x.id,
-      backupId: x.backupId,
-      startAt: x.startAt,
-      interval: x.interval,
-      status: x.status as BackupStatus,
-      finishedAt: x.finishedAt ?? null,
-      errorMessage: x.errorMessage ?? null,
-      backupTag: x.backup_Tag,
-      sourceTag: x.backup_SourceTag,
-      storageTag: x.backup_StorageTag,
-      sourceProviderId: x.backup_SourceProviderId,
-      storageProviderId: x.backup_StorageProviderId,
-    }));
+    return data.map(x => {
+      const backup: BackupItem = {
+        id: x.backup.id,
+        tag: x.backup.tag,
+        sourceId: x.backup.sourceId,
+        storageId: x.backup.storageId,
+        ignoredPaths: x.backup.ignoredPaths ?? [],
+        source: x.backup.source,
+        storage: x.backup.storage,
+      };
+      return {
+        id: x.id,
+        backupId: x.backupId,
+        startAt: x.startAt,
+        interval: x.interval,
+        status: x.status as BackupStatus,
+        finishedAt: x.finishedAt ?? null,
+        errorMessage: x.errorMessage ?? null,
+        backup,
+      };
+    });
   }
 
   async create(request: CreateScheduleRequest): Promise<void> {

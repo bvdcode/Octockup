@@ -62,11 +62,7 @@ export interface ScheduleItem {
   status: BackupStatus;
   finishedAt?: string | null;
   errorMessage?: string | null;
-  backupTag: string;
-  sourceTag: string;
-  storageTag: string;
-  sourceProviderId: string;
-  storageProviderId: string;
+  backup: BackupItem;
 }
 
 export interface CreateScheduleRequest {

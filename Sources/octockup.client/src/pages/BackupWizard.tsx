@@ -11,7 +11,6 @@ import {
   CardContent,
   MenuItem,
   Chip,
-  Grid,
   Paper,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
@@ -77,72 +76,62 @@ export default function BackupWizard() {
       {state.createError && <Alert severity="error">{state.createError}</Alert>}
       <Card variant="outlined">
         <CardContent>
-          <Grid container spacing={3} alignItems="stretch">
-            <Grid item xs={12} md={5}>
-              <Stack spacing={2}>
-                <Paper variant="outlined" sx={{ p: 2, textAlign: "center" }}>
-                  <Box fontSize={64} mb={1}>{getSourceIcon(modules.find(m => m.id === sourceId)?.backupModuleId || "")}</Box>
-                  <TextField
-                    select
-                    label={t("backupWizard.source")}
-                    value={sourceId}
-                    onChange={e => setSourceId(e.target.value)}
-                    fullWidth
-                  >
-                    {sources.map(s => (
-                      <MenuItem key={s.id} value={s.id}>{s.tag}</MenuItem>
-                    ))}
-                  </TextField>
-                </Paper>
-              </Stack>
-            </Grid>
-            <Grid item xs={12} md={2}>
-              <Box display="flex" height="100%" alignItems="center" justifyContent="center" fontSize={32}>→</Box>
-            </Grid>
-            <Grid item xs={12} md={5}>
-              <Stack spacing={2}>
-                <Paper variant="outlined" sx={{ p: 2, textAlign: "center" }}>
-                  <Box fontSize={64} mb={1}>{getSourceIcon(modules.find(m => m.id === storageId)?.backupModuleId || "")}</Box>
-                  <TextField
-                    select
-                    label={t("backupWizard.storage")}
-                    value={storageId}
-                    onChange={e => setStorageId(e.target.value)}
-                    fullWidth
-                  >
-                    {storages.map(s => (
-                      <MenuItem key={s.id} value={s.id}>{s.tag}</MenuItem>
-                    ))}
-                  </TextField>
-                </Paper>
-              </Stack>
-            </Grid>
-            <Grid item xs={12}>
-              <Stack spacing={2}>
+          <Stack spacing={3}>
+            <Box display="flex" gap={4} justifyContent="space-between" flexWrap="wrap">
+              <Paper variant="outlined" sx={{ p: 2, flex: "1 1 320px", textAlign: "center", minWidth: 280 }}>
+                <Box fontSize={72} mb={2}>{getSourceIcon(modules.find(m => m.id === sourceId)?.backupModuleId || "")}</Box>
                 <TextField
-                  label={t("backupWizard.tag")}
-                  value={tag}
-                  onChange={e => setTag(e.target.value)}
+                  select
+                  label={t("backupWizard.source")}
+                  value={sourceId}
+                  onChange={e => setSourceId(e.target.value)}
                   fullWidth
-                />
-                <TextField
-                  label={t("backupWizard.ignoredPaths")}
-                  value={ignoredPathsInput}
-                  onChange={e => setIgnoredPathsInput(e.target.value)}
-                  fullWidth
-                  multiline
-                  minRows={3}
-                  placeholder={t("backupWizard.ignoredPathsPlaceholder")}
-                />
-                <Stack direction="row" spacing={1} flexWrap="wrap">
-                  {ignoredPathsInput.split(/\r?\n/).filter(x => x.trim() !== "").map(p => (
-                    <Chip key={p} label={p} size="small" />
+                >
+                  {sources.map(s => (
+                    <MenuItem key={s.id} value={s.id}>{s.tag}</MenuItem>
                   ))}
-                  {ignoredPathsInput.trim() === "" && <Typography variant="caption" color="text.secondary">{t("backupWizard.noIgnoredPaths")}</Typography>}
-                </Stack>
+                </TextField>
+              </Paper>
+              <Box display="flex" alignItems="center" justifyContent="center" fontSize={40}>→</Box>
+              <Paper variant="outlined" sx={{ p: 2, flex: "1 1 320px", textAlign: "center", minWidth: 280 }}>
+                <Box fontSize={72} mb={2}>{getSourceIcon(modules.find(m => m.id === storageId)?.backupModuleId || "")}</Box>
+                <TextField
+                  select
+                  label={t("backupWizard.storage")}
+                  value={storageId}
+                  onChange={e => setStorageId(e.target.value)}
+                  fullWidth
+                >
+                  {storages.map(s => (
+                    <MenuItem key={s.id} value={s.id}>{s.tag}</MenuItem>
+                  ))}
+                </TextField>
+              </Paper>
+            </Box>
+            <Stack spacing={2}>
+              <TextField
+                label={t("backupWizard.tag")}
+                value={tag}
+                onChange={e => setTag(e.target.value)}
+                fullWidth
+              />
+              <TextField
+                label={t("backupWizard.ignoredPaths")}
+                value={ignoredPathsInput}
+                onChange={e => setIgnoredPathsInput(e.target.value)}
+                fullWidth
+                multiline
+                minRows={4}
+                placeholder={t("backupWizard.ignoredPathsPlaceholder")}
+              />
+              <Stack direction="row" spacing={1} flexWrap="wrap">
+                {ignoredPathsInput.split(/\r?\n/).filter(x => x.trim() !== "").map(p => (
+                  <Chip key={p} label={p} size="small" />
+                ))}
+                {ignoredPathsInput.trim() === "" && <Typography variant="caption" color="text.secondary">{t("backupWizard.noIgnoredPaths")}</Typography>}
               </Stack>
-            </Grid>
-          </Grid>
+            </Stack>
+          </Stack>
         </CardContent>
       </Card>
       <Divider />

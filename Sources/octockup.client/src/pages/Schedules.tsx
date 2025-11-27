@@ -68,11 +68,11 @@ export default function SchedulesPage() {
             <Card key={it.id} sx={{ width: 260, height: 170, flex: "0 0 260px", display: "flex", position: "relative" }} data-animatable={it.status === BackupStatus.Running ? "true" : undefined}>
               <CardContent sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, justifyContent: "space-between", height: "100%", p: 2, width: "100%" }}>
                 <Box display="flex" alignItems="center" gap={1} width="100%" justifyContent="space-between">
-                  <Box fontSize={24}>{getSourceIcon(it.sourceProviderId)}</Box>
-                  <Typography variant="subtitle2" noWrap title={it.sourceTag} sx={{ maxWidth: 120, textAlign: "center" }}>{it.sourceTag}</Typography>
-                  <Box fontSize={24}>{getSourceIcon(it.storageProviderId)}</Box>
+                  <Box fontSize={24}>{getSourceIcon(it.backup.source.backupModuleId)}</Box>
+                  <Typography variant="subtitle2" noWrap title={it.backup.source.tag} sx={{ maxWidth: 120, textAlign: "center" }}>{it.backup.source.tag}</Typography>
+                  <Box fontSize={24}>{getSourceIcon(it.backup.storage.backupModuleId)}</Box>
                 </Box>
-                <Typography variant="caption" sx={{ color: "text.secondary" }}>{it.backupTag}</Typography>
+                <Typography variant="caption" sx={{ color: "text.secondary" }}>{it.backup.tag}</Typography>
                 <Chip size="small" label={t(`schedules.status.${BackupStatus[it.status].toLowerCase()}`)} color={statusColor(it.status)} />
                 <Typography variant="caption" sx={{ color: "text.secondary", textAlign: "center" }}>
                   {new Date(it.startAt).toLocaleString()}
