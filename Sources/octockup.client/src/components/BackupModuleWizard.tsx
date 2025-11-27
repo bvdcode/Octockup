@@ -29,6 +29,9 @@ interface BackupModuleWizardProps {
   moduleType: ModuleType;
   apiClient: {
     listProviders: () => Promise<ModuleProviderInfo[]>;
+    listProvidersByType: (
+      type: "source" | "storage",
+    ) => Promise<ModuleProviderInfo[]>;
     create: (
       providerId: string,
       destination: ModuleDestination,

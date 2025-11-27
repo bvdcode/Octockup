@@ -7,7 +7,7 @@ interface TestActionsProps {
   testMessage: string | null;
   testError: string | null;
   creating: boolean;
-  moduleType: "source" | "storage";
+  moduleType: "source" | "storage" | "target";
   onTest: () => void;
 }
 
