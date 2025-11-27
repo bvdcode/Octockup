@@ -12,6 +12,11 @@ import {
   CardContent,
   CircularProgress,
 } from "@mui/material";
+import {
+  StopCircle,
+  DeleteOutline,
+  AddCircleOutline,
+} from "@mui/icons-material";
 import { BackupStatus } from "../types/api";
 import { useEffect, useState } from "react";
 import { confirm } from "material-ui-confirm";
@@ -20,11 +25,6 @@ import { useNavigate } from "react-router-dom";
 import type { ScheduleItem } from "../types/api";
 import { useSchedulesApi } from "../api/schedulesApi";
 import { getSourceIcon } from "../constants/sourceIcons";
-import {
-  AddCircleOutline,
-  DeleteOutline,
-  StopCircleOutline,
-} from "@mui/icons-material";
 
 interface State {
   loading: boolean;
@@ -385,7 +385,7 @@ export default function SchedulesPage() {
                           }
                         }}
                       >
-                        <StopCircleOutline color="primary" />
+                        <StopCircle />
                       </IconButton>
                     </span>
                   </Tooltip>
