@@ -6,23 +6,11 @@ using Octockup.Server.Hubs;
 using Octockup.Server.Database;
 using Microsoft.AspNetCore.SignalR;
 using Octockup.Server.Abstractions;
-using Octockup.Server.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 using EasyExtensions.Quartz.Attributes;
 
 namespace Octockup.Server.Jobs
 {
-    public record ScheduleReport
-    {
-        public Guid ScheduleId { get; set; }
-        public BackupStatus Status { get; set; }
-        public DateTime Timestamp { get; set; }
-        public string Message { get; set; } = string.Empty;
-        public int Total { get; set; }
-        public int Processed { get; set; }
-        public double Speed { get; set; }
-    }
-
     [JobTrigger(minutes: 1)]
     public class ExecuteBackupJob(
         AppDbContext _dbContext,
@@ -38,19 +26,11 @@ namespace Octockup.Server.Jobs
                 return;
             }
             Guid userId = next.Backup.Source.UserId;
+            ScheduleReport report = new(userId, next.Id, 10000, _hubContext);
             for (int i = 0; i < 10000; i++)
             {
                 int randomSleepTime = Random.Shared.Next(1, 1000);
-                ScheduleReport report = new()
-                {
-                    ScheduleId = next.Id,
-                    Timestamp = DateTime.UtcNow,
-                    Status = BackupStatus.Running,
-                    Message = $"Processing file: {i}.txt...",
-                    Total = 10000,
-                    Processed = i + 1,
-                    Speed = 1000 / (randomSleepTime / 1000.0)
-                };
+                await report.SendAsync(i + 1, $"Processing file: {i}.txt...");
                 await Task.Delay(randomSleepTime);
                 await _hubContext.Clients.User(userId.ToString()).SendAsync("ScheduleReport", report);
                 _logger.LogInformation("Schedule {ScheduleId}: {Message} ({Processed}/{Total})", next.Id, report.Message, report.Processed, report.Total);
