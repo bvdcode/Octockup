@@ -34,7 +34,13 @@ export default function ScheduleWizard() {
   const [startAt, setStartAt] = useState<string>(() => {
     const now = new Date();
     now.setSeconds(0, 0);
-    return now.toISOString().slice(0, 16);
+    // datetime-local expects format: YYYY-MM-DDTHH:mm (local time, no Z)
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   });
   const [intervalMinutes, setIntervalMinutes] = useState<string>("");
 
@@ -117,9 +123,12 @@ export default function ScheduleWizard() {
           onClick={async () => {
             try {
               setState(s => ({ ...s, creating: true, createError: null }));
+              // datetime-local value is in local time format (YYYY-MM-DDTHH:mm)
+              // Create a Date object which will interpret it as local time
+              const localDate = new Date(startAt);
               const payload: CreateScheduleRequest = {
                 backupId,
-                startAt: new Date(startAt).toISOString(),
+                startAt: localDate.toISOString(), // Convert to UTC ISO string for server
                 intervalMinutes: intervalMinutes ? parseInt(intervalMinutes, 10) : undefined,
               };
               await schedulesApi.create(payload);
