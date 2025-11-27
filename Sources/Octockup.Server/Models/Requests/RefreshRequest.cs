@@ -1,6 +1,4 @@
-﻿using MediatR;
-
-namespace Octockup.Server.Models.Requests
+﻿namespace Octockup.Server.Models.Requests
 {
     public class RefreshRequest
     {

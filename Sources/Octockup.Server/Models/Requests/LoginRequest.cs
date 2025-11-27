@@ -1,8 +1,6 @@
-﻿using MediatR;
-
-namespace Octockup.Server.Models.Requests
+﻿namespace Octockup.Server.Models.Requests
 {
-    public class LoginRequest : IRequest<AuthResponse>
+    public class LoginRequest
     {
         public string Username { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
