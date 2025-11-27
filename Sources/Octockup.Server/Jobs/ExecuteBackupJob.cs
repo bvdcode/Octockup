@@ -37,9 +37,10 @@ namespace Octockup.Server.Jobs
             {
                 return;
             }
+            Guid userId = next.Backup.Source.UserId;
             for (int i = 0; i < 10000; i++)
             {
-                int randomSleepTime = Random.Shared.Next(1, 5000);
+                int randomSleepTime = Random.Shared.Next(1, 1000);
                 ScheduleReport report = new()
                 {
                     ScheduleId = next.Id,
@@ -51,7 +52,7 @@ namespace Octockup.Server.Jobs
                     Speed = 1000 / (randomSleepTime / 1000.0)
                 };
                 await Task.Delay(randomSleepTime);
-                await _hubContext.Clients.Client(next.Backup.Source.UserId.ToString()).SendAsync("ScheduleReport", report);
+                await _hubContext.Clients.User(userId.ToString()).SendAsync("ScheduleReport", report);
                 _logger.LogInformation("Schedule {ScheduleId}: {Message} ({Processed}/{Total})", next.Id, report.Message, report.Processed, report.Total);
             }
 
@@ -64,6 +65,7 @@ namespace Octockup.Server.Jobs
             var schedules = await _dbContext.Schedules
                 .AsNoTracking()
                 .Include(x => x.Backup)
+                .ThenInclude(b => b.Source)
                 .ToListAsync();
 
             Schedule? best = null;

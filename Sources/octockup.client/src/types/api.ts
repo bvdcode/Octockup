@@ -76,3 +76,13 @@ export interface CreateScheduleRequest {
   startAt: string;
   intervalMinutes?: number;
 }
+
+export interface ScheduleReport {
+  scheduleId: string;
+  timestamp: string;
+  status: BackupStatus;
+  message: string;
+  total: number;
+  processed: number;
+  speed: number;
+}

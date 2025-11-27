@@ -11,6 +11,7 @@ import {
   IconButton,
   CardContent,
   CircularProgress,
+  LinearProgress,
 } from "@mui/material";
 import {
   StopCircle,
@@ -22,7 +23,8 @@ import { useEffect, useState } from "react";
 import { confirm } from "material-ui-confirm";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import type { ScheduleItem } from "../types/api";
+import { useSignalR } from "../hooks/useSignalR";
+import type { ScheduleItem, ScheduleReport } from "../types/api";
 import { parseUtcDate } from "../utils/dateUtils";
 import { useSchedulesApi } from "../api/schedulesApi";
 import { getSourceIcon } from "../constants/sourceIcons";
@@ -146,6 +148,7 @@ export default function SchedulesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const api = useSchedulesApi();
+  const { connection, isConnected } = useSignalR("/api/v1/event-hub");
   const [state, setState] = useState<State>({
     loading: true,
     error: null,
@@ -153,6 +156,9 @@ export default function SchedulesPage() {
     cancelingId: null,
   });
   const [items, setItems] = useState<ScheduleItem[]>([]);
+  const [scheduleReports, setScheduleReports] = useState<
+    Record<string, ScheduleReport>
+  >({});
 
   useEffect(() => {
     let active = true;
@@ -176,6 +182,33 @@ export default function SchedulesPage() {
       active = false;
     };
   }, [api]);
+
+  // WebSocket listener for schedule reports
+  useEffect(() => {
+    if (!connection || !isConnected) return;
+
+    const handler = (report: ScheduleReport) => {
+      setScheduleReports((prev) => ({
+        ...prev,
+        [report.scheduleId]: report,
+      }));
+
+      // Update schedule status in items list
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === report.scheduleId
+            ? { ...item, status: report.status }
+            : item,
+        ),
+      );
+    };
+
+    connection.on("ScheduleReport", handler);
+
+    return () => {
+      connection.off("ScheduleReport", handler);
+    };
+  }, [connection, isConnected]);
 
   if (state.loading) {
     return (
@@ -216,18 +249,25 @@ export default function SchedulesPage() {
         </Card>
       ) : (
         <Stack spacing={2}>
-          {items.map((it) => (
-            <Card key={it.id} sx={{ display: "flex" }}>
-              <CardContent
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 2,
-                  width: "100%",
-                  p: 2,
-                  "&:last-child": { pb: 2 },
-                }}
-              >
+          {items.map((it) => {
+            const report = scheduleReports[it.id];
+            const progress =
+              report && report.total > 0
+                ? (report.processed / report.total) * 100
+                : 0;
+
+            return (
+              <Card key={it.id} sx={{ display: "flex" }}>
+                <CardContent
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 2,
+                    width: "100%",
+                    p: 2,
+                    "&:last-child": { pb: 2 },
+                  }}
+                >
                 <Box display="flex" alignItems="center" gap={1.5}>
                   <Box
                     fontSize={36}
@@ -267,6 +307,38 @@ export default function SchedulesPage() {
                   >
                     {it.backup.source.tag} → {it.backup.storage.tag}
                   </Typography>
+                  {report && it.status === BackupStatus.Running && (
+                    <Box sx={{ mt: 1 }}>
+                      <Box
+                        display="flex"
+                        justifyContent="space-between"
+                        alignItems="center"
+                        mb={0.5}
+                      >
+                        <Typography variant="caption" color="text.secondary">
+                          {report.message}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {report.processed.toLocaleString()} /{" "}
+                          {report.total.toLocaleString()} (
+                          {progress.toFixed(1)}%)
+                        </Typography>
+                      </Box>
+                      <LinearProgress
+                        variant="determinate"
+                        value={progress}
+                        sx={{ height: 6, borderRadius: 1 }}
+                      />
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: "block", mt: 0.5 }}
+                      >
+                        {t("schedules.speed", { defaultValue: "Speed" })}:{" "}
+                        {report.speed.toFixed(2)} {t("schedules.filesPerSec", { defaultValue: "files/sec" })}
+                      </Typography>
+                    </Box>
+                  )}
                 </Box>
                 <Box
                   display="flex"
@@ -395,7 +467,8 @@ export default function SchedulesPage() {
                 </Box>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </Stack>
       )}
       <Divider />

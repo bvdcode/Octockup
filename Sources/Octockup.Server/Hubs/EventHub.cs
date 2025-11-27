@@ -14,18 +14,20 @@ namespace Octockup.Server.Hubs
         public override Task OnConnectedAsync()
         {
             _logger.LogInformation("Client connected: {connectionId}", Context.ConnectionId);
-            return Task.Run(() =>
+            Task.Run(() =>
             {
                 while (true)
                 {
-                    Thread.Sleep(25);
+                    Thread.Sleep(125);
                     Clients.Caller.SendAsync("Time", DateTime.UtcNow);
                     if (Context.ConnectionAborted.IsCancellationRequested)
                     {
+                        _logger.LogInformation("Client disconnected: {connectionId}", Context.ConnectionId);
                         break;
                     }
                 }
             });
+            return base.OnConnectedAsync();
         }
     }
 }
