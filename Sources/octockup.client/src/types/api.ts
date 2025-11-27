@@ -30,3 +30,42 @@ export interface CreateModuleRequest {
   backupModuleId: string;
   parameters: Record<string, string>;
 }
+
+export enum TaskStatus {
+  Created = 0,
+  Running = 1,
+  Failed = 2,
+  Completed = 3,
+}
+
+export interface BackupSummary {
+  id: string;
+  tag: string;
+  sourceId: string;
+  storageId: string;
+  sourceTag: string;
+  storageTag: string;
+  sourceProviderId: string;
+  storageProviderId: string;
+}
+
+export interface TaskItem {
+  id: string;
+  backupId: string;
+  startAt: string;
+  interval?: string | null;
+  status: TaskStatus;
+  finishedAt?: string | null;
+  errorMessage?: string | null;
+  backupTag: string;
+  sourceTag: string;
+  storageTag: string;
+  sourceProviderId: string;
+  storageProviderId: string;
+}
+
+export interface CreateTaskRequest {
+  backupId: string;
+  startAt: string;
+  intervalMinutes?: number;
+}

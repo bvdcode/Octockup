@@ -84,4 +84,25 @@
     "testFailed": "Connection test failed.",
     "fillParameters": "Please fill all parameters before testing."
   }
+  ,
+  "tasks": {
+    "title": "Your Tasks",
+    "newTask": "New Task",
+    "noTasks": "No tasks yet.",
+    "everyMinutes": "every {{count}} min",
+    "status": {
+      "created": "Created",
+      "running": "Running",
+      "failed": "Failed",
+      "completed": "Completed"
+    }
+  },
+  "taskWizard": {
+    "title": "Create Task",
+    "backup": "Backup",
+    "startAt": "Start at",
+    "intervalMinutes": "Repeat interval (minutes, optional)",
+    "createTask": "Create Task",
+    "createError": "Failed to create task."
+  }
 }
