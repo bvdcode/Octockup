@@ -36,8 +36,14 @@ interface BackupModuleWizardProps {
       backupModuleId: string,
       parameters: Record<string, string>,
     ) => Promise<void>;
-    test: (providerId: string, parameters: Record<string, string>) => Promise<void>;
-    getDirectories: (providerId: string, parameters: Record<string, string>) => Promise<string[]>;
+    test: (
+      providerId: string,
+      parameters: Record<string, string>,
+    ) => Promise<void>;
+    getDirectories: (
+      providerId: string,
+      parameters: Record<string, string>,
+    ) => Promise<string[]>;
     list: () => Promise<Array<{ id: string; tag: string }>>; // modules list
   };
   backRoute: string;
@@ -55,11 +61,17 @@ export default function BackupModuleWizard({
 
   // Memoize provider fetch to avoid recreating function every render (prevents infinite fetch loop)
   const fetchProviders = useCallback(
-    () => apiClient.listProvidersByType(moduleType === "source" ? "source" : "storage"),
+    () =>
+      apiClient.listProvidersByType(
+        moduleType === "source" ? "source" : "storage",
+      ),
     [apiClient, moduleType],
   );
 
-  const { loading, error, moduleMeta } = useModuleMetadata(providerId, fetchProviders);
+  const { loading, error, moduleMeta } = useModuleMetadata(
+    providerId,
+    fetchProviders,
+  );
   const {
     params,
     tag,
@@ -71,7 +83,12 @@ export default function BackupModuleWizard({
     bulkUpdateParams,
   } = useWizardForm(moduleMeta);
 
-  const browser = useDirectoryBrowser(moduleMeta, params, providerId, apiClient);
+  const browser = useDirectoryBrowser(
+    moduleMeta,
+    params,
+    providerId,
+    apiClient,
+  );
   const test = useModuleTest(moduleMeta, params, providerId, apiClient);
 
   const [creating, setCreating] = useState(false);
@@ -172,7 +189,9 @@ export default function BackupModuleWizard({
       return;
     }
     if (existingTags.includes(tag.trim().toLowerCase())) {
-      setSubmitError(t("wizard.tagAlreadyExists", { defaultValue: "Tag already exists" }));
+      setSubmitError(
+        t("wizard.tagAlreadyExists", { defaultValue: "Tag already exists" }),
+      );
       return;
     }
     const invalidHttp = test.validateHttpEndpoint();
@@ -185,7 +204,9 @@ export default function BackupModuleWizard({
       setSubmitError(null);
       await apiClient.create(
         providerId,
-        moduleType === "source" ? ModuleDestination.Source : ModuleDestination.Target,
+        moduleType === "source"
+          ? ModuleDestination.Source
+          : ModuleDestination.Target,
         tag.trim(),
         providerId,
         params,
