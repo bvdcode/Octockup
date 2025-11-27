@@ -93,7 +93,7 @@ namespace Octockup.Server.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> LoginAsync([FromBody] LoginRequest request)
         {
-            var user = await _dbContext.Users.FirstAsync(u => u.UsernameRename == request.Username);
+            var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.UsernameRename == request.Username);
             if (user == null)
             {
                 user = new()
