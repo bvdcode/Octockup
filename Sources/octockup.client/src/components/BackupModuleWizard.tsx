@@ -55,7 +55,7 @@ export default function BackupModuleWizard({
 
   // Memoize provider fetch to avoid recreating function every render (prevents infinite fetch loop)
   const fetchProviders = useCallback(
-    () => apiClient.listProvidersByType(moduleType === "source" ? "source" : "target"),
+    () => apiClient.listProvidersByType(moduleType === "source" ? "source" : "storage"),
     [apiClient, moduleType],
   );
 

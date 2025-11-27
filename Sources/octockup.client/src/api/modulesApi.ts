@@ -25,7 +25,7 @@ class ModulesApiClient {
     return data;
   }
 
-  async listProvidersByType(type: 'source' | 'target'): Promise<ModuleProviderInfo[]> {
+  async listProvidersByType(type: 'source' | 'storage'): Promise<ModuleProviderInfo[]> {
     const { data } = await this.axios().get<ModuleProviderInfo[]>(`/api/v1/modules/providers/${encodeURIComponent(type)}`);
     return data;
   }
