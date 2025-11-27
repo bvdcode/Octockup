@@ -3,9 +3,11 @@ WORKDIR /app
 EXPOSE 8080
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS with-node
-RUN apt-get update
-RUN curl -sL https://deb.nodesource.com/setup_25.x | bash
-RUN apt-get --yes install nodejs && apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN curl -sL https://deb.nodesource.com/setup_25.x | bash \
+ && apt-get update \
+ && apt-get --yes install nodejs \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 FROM with-node AS build
 ARG BUILD_CONFIGURATION=Release
