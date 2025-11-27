@@ -9,8 +9,8 @@ import * as locales from "./locales";
 import HomePage from "./pages/Home";
 import SourcesPage from "./pages/Sources";
 import StoragesPage from "./pages/Storages";
-import TasksPage from "./pages/Tasks";
-import TaskWizard from "./pages/TaskWizard";
+import BackupsPage from "./pages/Backups";
+import BackupWizard from "./pages/BackupWizard";
 import SourceWizard from "./pages/SourceWizard";
 import StorageWizard from "./pages/StorageWizard";
 import { AppShell, type TokenPair, type UserInfo } from "@bvdcode/react-kit";
@@ -76,13 +76,13 @@ function App() {
         },
         {
           icon: <CloudDone />,
-          name: "Tasks",
-          route: "/tasks",
-          component: <TasksPage />,
+          name: "Backups",
+          route: "/backups",
+          component: <BackupsPage />,
         },
         {
-          route: "/tasks/new",
-          component: <TaskWizard />,
+          route: "/backups/new",
+          component: <BackupWizard />,
         },
         {
           icon: <Schedule />,

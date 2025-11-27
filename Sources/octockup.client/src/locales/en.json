@@ -85,24 +85,24 @@
     "fillParameters": "Please fill all parameters before testing."
   }
   ,
-  "tasks": {
-    "title": "Your Tasks",
-    "newTask": "New Task",
-    "noTasks": "No tasks yet.",
-    "everyMinutes": "every {{count}} min",
-    "status": {
-      "created": "Created",
-      "running": "Running",
-      "failed": "Failed",
-      "completed": "Completed"
-    }
+  "backups": {
+    "title": "Your Backups",
+    "newBackup": "New Backup",
+    "noBackups": "No backups yet.",
+    "deleteTitle": "Delete backup",
+    "deleteText": "This action is permanent!",
+    "modulesTitle": "Modules",
+    "noModules": "No modules available"
   },
-  "taskWizard": {
-    "title": "Create Task",
-    "backup": "Backup",
-    "startAt": "Start at",
-    "intervalMinutes": "Repeat interval (minutes, optional)",
-    "createTask": "Create Task",
-    "createError": "Failed to create task."
+  "backupWizard": {
+    "title": "Create Backup",
+    "source": "Source",
+    "storage": "Storage",
+    "tag": "Tag (unique name)",
+    "ignoredPaths": "Ignored paths (one per line)",
+    "ignoredPathsPlaceholder": "path/to/ignore\nlogs\nnode_modules",
+    "noIgnoredPaths": "No ignored paths",
+    "createBackup": "Create Backup",
+    "createError": "Failed to create backup."
   }
 }

@@ -1,0 +1,160 @@
+import {
+  Box,
+  Stack,
+  Alert,
+  Button,
+  Divider,
+  Typography,
+  CircularProgress,
+  TextField,
+  Card,
+  CardContent,
+  MenuItem,
+  Chip,
+} from "@mui/material";
+import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
+import { useBackupsApi } from "../api/backupsApi";
+import { useModulesApi } from "../api/modulesApi";
+import type { Module, CreateBackupRequest } from "../types/api";
+import { ModuleDestination } from "../types/api";
+import { getSourceIcon } from "../constants/sourceIcons";
+
+interface State {
+  loading: boolean;
+  error: string | null;
+  creating: boolean;
+  createError: string | null;
+}
+
+export default function BackupWizard() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const backupsApi = useBackupsApi();
+  const modulesApi = useModulesApi();
+
+  const [state, setState] = useState<State>({ loading: true, error: null, creating: false, createError: null });
+  const [modules, setModules] = useState<Module[]>([]);
+
+  const [sourceId, setSourceId] = useState<string>("");
+  const [storageId, setStorageId] = useState<string>("");
+  const [tag, setTag] = useState<string>("");
+  const [ignoredPathsInput, setIgnoredPathsInput] = useState<string>("");
+
+  useEffect(() => {
+    let active = true;
+    modulesApi.list()
+      .then(data => {
+        if (!active) return;
+        setModules(data);
+        setState(s => ({ ...s, loading: false }));
+      })
+      .catch(e => {
+        if (!active) return;
+        setState(s => ({ ...s, loading: false, error: e?.message || "Failed to load modules" }));
+      });
+    return () => { active = false; };
+  }, [modulesApi]);
+
+  const sources = useMemo(() => modules.filter(m => m.destination === ModuleDestination.Source), [modules]);
+  const storages = useMemo(() => modules.filter(m => m.destination === ModuleDestination.Target), [modules]);
+
+  const canCreate = useMemo(() => !!sourceId && !!storageId && !!tag, [sourceId, storageId, tag]);
+
+  if (state.loading) {
+    return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
+  }
+  if (state.error) {
+    return <Box p={2}><Alert severity="error">{state.error}</Alert></Box>;
+  }
+
+  return (
+    <Stack spacing={3}>
+      <Typography variant="h5">{t("backupWizard.title")}</Typography>
+      {state.createError && <Alert severity="error">{state.createError}</Alert>}
+      <Card variant="outlined">
+        <CardContent>
+          <Stack spacing={2}>
+            <TextField
+              select
+              label={t("backupWizard.source")}
+              value={sourceId}
+              onChange={e => setSourceId(e.target.value)}
+              fullWidth
+            >
+              {sources.map(s => (
+                <MenuItem key={s.id} value={s.id}>{s.tag}</MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label={t("backupWizard.storage")}
+              value={storageId}
+              onChange={e => setStorageId(e.target.value)}
+              fullWidth
+            >
+              {storages.map(s => (
+                <MenuItem key={s.id} value={s.id}>{s.tag}</MenuItem>
+              ))}
+            </TextField>
+            {(sourceId || storageId) && (
+              <Box display="flex" alignItems="center" gap={2}>
+                <Box fontSize={32}>{getSourceIcon(modules.find(m => m.id === sourceId)?.backupModuleId || "")}</Box>
+                <Typography variant="caption">→</Typography>
+                <Box fontSize={32}>{getSourceIcon(modules.find(m => m.id === storageId)?.backupModuleId || "")}</Box>
+              </Box>
+            )}
+            <TextField
+              label={t("backupWizard.tag")}
+              value={tag}
+              onChange={e => setTag(e.target.value)}
+              fullWidth
+            />
+            <TextField
+              label={t("backupWizard.ignoredPaths")}
+              value={ignoredPathsInput}
+              onChange={e => setIgnoredPathsInput(e.target.value)}
+              fullWidth
+              multiline
+              minRows={3}
+              placeholder={t("backupWizard.ignoredPathsPlaceholder")}
+            />
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              {ignoredPathsInput.split(/\r?\n/).filter(x => x.trim() !== "").map(p => (
+                <Chip key={p} label={p} size="small" />
+              ))}
+              {ignoredPathsInput.trim() === "" && <Typography variant="caption" color="text.secondary">{t("backupWizard.noIgnoredPaths")}</Typography>}
+            </Stack>
+          </Stack>
+        </CardContent>
+      </Card>
+      <Divider />
+      <Stack direction="row" spacing={2}>
+        <Button variant="outlined" onClick={() => navigate(-1)}>{t("common.back")}</Button>
+        <Button
+          variant="contained"
+          disabled={!canCreate || state.creating}
+          onClick={async () => {
+            try {
+              setState(s => ({ ...s, creating: true, createError: null }));
+              const payload: CreateBackupRequest = {
+                sourceId,
+                storageId,
+                tag,
+                ignoredPaths: ignoredPathsInput.split(/\r?\n/).filter(x => x.trim() !== ""),
+              };
+              await backupsApi.create(payload);
+              navigate("/backups");
+            } catch (e: unknown) {
+              const message = e instanceof Error ? e.message : String(e);
+              setState(s => ({ ...s, creating: false, createError: message || t("backupWizard.createError") }));
+            }
+          }}
+        >
+          {state.creating ? t("wizard.creating") : t("backupWizard.createBackup")}
+        </Button>
+      </Stack>
+    </Stack>
+  );
+}

@@ -84,24 +84,24 @@
     "fillParameters": "Пожалуйста, заполните все параметры перед проверкой."
   }
   ,
-  "tasks": {
-    "title": "Ваши задачи",
-    "newTask": "Новая задача",
-    "noTasks": "Задач пока нет.",
-    "everyMinutes": "каждые {{count}} мин",
-    "status": {
-      "created": "Создана",
-      "running": "Выполняется",
-      "failed": "Ошибка",
-      "completed": "Завершена"
-    }
+  "backups": {
+    "title": "Ваши бэкапы",
+    "newBackup": "Новый бэкап",
+    "noBackups": "Бэкапов пока нет.",
+    "deleteTitle": "Удалить бэкап",
+    "deleteText": "Действие необратимо!",
+    "modulesTitle": "Модули",
+    "noModules": "Нет модулей"
   },
-  "taskWizard": {
-    "title": "Создать задачу",
-    "backup": "Бэкап",
-    "startAt": "Время запуска",
-    "intervalMinutes": "Интервал (минуты, опционально)",
-    "createTask": "Создать задачу",
-    "createError": "Не удалось создать задачу."
+  "backupWizard": {
+    "title": "Создать бэкап",
+    "source": "Источник",
+    "storage": "Хранилище",
+    "tag": "Тег (уникальное имя)",
+    "ignoredPaths": "Игнорируемые пути (по строке)",
+    "ignoredPathsPlaceholder": "path/to/ignore\nlogs\nnode_modules",
+    "noIgnoredPaths": "Нет игнорируемых путей",
+    "createBackup": "Создать бэкап",
+    "createError": "Не удалось создать бэкап."
   }
 }
