@@ -9,5 +9,6 @@ namespace Octockup.Server.Database
         public DbSet<Backup> Backups => Set<Backup>();
         public DbSet<Module> Modules => Set<Module>();
         public DbSet<Schedule> Schedules => Set<Schedule>();
+        public DbSet<Snapshot> Snapshots => Set<Snapshot>();
     }
 }
