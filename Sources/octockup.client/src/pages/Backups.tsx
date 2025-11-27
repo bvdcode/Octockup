@@ -95,7 +95,7 @@ export default function BackupsPage() {
         </Button>
       </Box>
       {backups.length === 0 ? (
-        <Card variant="outlined">
+        <Card>
           <CardContent>
             <Typography color="text.secondary">
               {t("backups.noBackups")}

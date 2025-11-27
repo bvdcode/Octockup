@@ -38,7 +38,7 @@ export function HomePage() {
       <Typography variant="h4" gutterBottom>
         Home
       </Typography>
-      <Card variant="outlined" sx={{ mt: 2 }}>
+      <Card sx={{ mt: 2 }}>
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>
             Server Time

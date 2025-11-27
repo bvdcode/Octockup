@@ -8,7 +8,7 @@ interface ModuleHeaderProps {
 
 export function ModuleHeader({ moduleMeta }: ModuleHeaderProps) {
   return (
-    <Card variant="outlined">
+    <Card>
       <CardContent>
         <Stack direction="row" spacing={2} alignItems="center">
           <Box sx={{ fontSize: 42 }}>{getSourceIcon(moduleMeta.id)}</Box>

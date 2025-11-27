@@ -122,7 +122,7 @@ export default function BackupWizard() {
     <Stack spacing={3}>
       <Typography variant="h5">{t("backupWizard.title")}</Typography>
       {state.createError && <Alert severity="error">{state.createError}</Alert>}
-      <Card variant="outlined">
+      <Card>
         <CardContent>
           <Stack spacing={3}>
             <Box

@@ -61,7 +61,7 @@ export default function SchedulesPage() {
         <Button variant="contained" startIcon={<AddCircleOutline />} onClick={() => navigate("/schedules/new")}>{t("schedules.newSchedule")}</Button>
       </Box>
       {!hasItems ? (
-        <Card variant="outlined"><CardContent><Typography color="text.secondary">{t("schedules.noSchedules")}</Typography></CardContent></Card>
+        <Card><CardContent><Typography color="text.secondary">{t("schedules.noSchedules")}</Typography></CardContent></Card>
       ) : (
         <Stack direction="row" spacing={2} flexWrap="wrap">
           {items.map(it => (

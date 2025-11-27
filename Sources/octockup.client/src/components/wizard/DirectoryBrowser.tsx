@@ -37,11 +37,19 @@ export function DirectoryBrowser({
   const { t } = useTranslation();
 
   return (
-    <Paper variant="outlined" sx={{ p: 2, maxHeight: 300, overflow: "auto" }}>
+    <Paper sx={{ p: 2, maxHeight: 300, overflow: "auto" }}>
       <Stack spacing={1}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between">
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+        >
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <IconButton size="small" onClick={onNavigateToRoot} disabled={disabled}>
+            <IconButton
+              size="small"
+              onClick={onNavigateToRoot}
+              disabled={disabled}
+            >
               <Home fontSize="small" />
             </IconButton>
             <ArrowRight fontSize="small" />
@@ -71,13 +79,18 @@ export function DirectoryBrowser({
             textAlign="center"
             py={2}
           >
-            {browserPath ? t("wizard.noSubdirectories") : t("wizard.clickToLoad")}
+            {browserPath
+              ? t("wizard.noSubdirectories")
+              : t("wizard.clickToLoad")}
           </Typography>
         ) : (
           <List dense>
             {browserDirs.map((dir) => (
               <ListItem key={dir} disablePadding>
-                <ListItemButton onClick={() => onNavigateToDir(dir)} disabled={disabled}>
+                <ListItemButton
+                  onClick={() => onNavigateToDir(dir)}
+                  disabled={disabled}
+                >
                   <ListItemIcon sx={{ minWidth: 36 }}>
                     <Folder />
                   </ListItemIcon>

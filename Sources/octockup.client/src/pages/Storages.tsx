@@ -108,7 +108,7 @@ export function StoragesPage() {
           {t("storages.title")}
         </Typography>
         {userStorages.length === 0 ? (
-          <Card variant="outlined">
+          <Card>
             <CardContent>
               <Typography color="text.secondary">
                 {t("storages.noStorages")}

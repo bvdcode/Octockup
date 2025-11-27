@@ -111,7 +111,7 @@ export function SourcesPage() {
           {t("sources.title")}
         </Typography>
         {userSources.length === 0 ? (
-          <Card variant="outlined">
+          <Card>
             <CardContent>
               <Typography color="text.secondary">
                 {t("sources.noSources")}

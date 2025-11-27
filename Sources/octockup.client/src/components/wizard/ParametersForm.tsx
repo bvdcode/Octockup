@@ -29,7 +29,7 @@ export function ParametersForm({
   const { t } = useTranslation();
 
   return (
-    <Card variant="outlined">
+    <Card>
       <CardContent>
         <Typography variant="h6" gutterBottom>
           {t("wizard.parameters")}

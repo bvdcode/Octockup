@@ -53,7 +53,7 @@ export default function ScheduleWizard() {
     <Stack spacing={3}>
       <Typography variant="h5">{t("scheduleWizard.title")}</Typography>
       {state.createError && <Alert severity="error">{state.createError}</Alert>}
-      <Card variant="outlined">
+      <Card>
         <CardContent>
           <Stack spacing={2}>
             <TextField
