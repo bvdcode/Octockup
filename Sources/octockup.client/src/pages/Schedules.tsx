@@ -30,6 +30,52 @@ function statusColor(status: BackupStatus): "default" | "success" | "error" | "w
   }
 }
 
+function calculateNextRun(item: ScheduleItem, t: (key: string, options?: Record<string, unknown>) => string): string {
+  const now = new Date();
+  const startAt = new Date(item.startAt);
+  
+  // If no interval (one-time schedule)
+  if (!item.interval) {
+    if (item.status === BackupStatus.Completed || item.status === BackupStatus.Failed) {
+      return t("schedules.nextRun.never", { defaultValue: "Never" });
+    }
+    if (startAt > now) {
+      const diff = startAt.getTime() - now.getTime();
+      if (diff < 60000) return t("schedules.nextRun.soon", { defaultValue: "Soon" });
+      if (diff < 3600000) return t("schedules.nextRun.inMinutes", { defaultValue: "In {{count}} minutes", count: Math.floor(diff / 60000) });
+      if (diff < 86400000) return t("schedules.nextRun.inHours", { defaultValue: "In {{count}} hours", count: Math.floor(diff / 3600000) });
+      return t("schedules.nextRun.scheduled", { defaultValue: "Scheduled" });
+    }
+    return t("schedules.nextRun.soon", { defaultValue: "Soon" });
+  }
+
+  // Parse interval
+  const parts = String(item.interval).split(":");
+  const intervalMinutes = parts.length >= 2 ? parseInt(parts[0]) * 60 + parseInt(parts[1]) : 0;
+  if (intervalMinutes === 0) return t("schedules.nextRun.unknown", { defaultValue: "Unknown" });
+
+  // Calculate next run based on last run or start time
+  let nextRun: Date;
+  if (item.finishedAt && (item.status === BackupStatus.Completed || item.status === BackupStatus.Failed)) {
+    nextRun = new Date(new Date(item.finishedAt).getTime() + intervalMinutes * 60000);
+  } else if (item.status === BackupStatus.Running) {
+    // Currently running, next run is after it finishes
+    return t("schedules.nextRun.afterCurrent", { defaultValue: "After current run" });
+  } else {
+    nextRun = new Date(startAt.getTime() + intervalMinutes * 60000);
+  }
+
+  const diff = nextRun.getTime() - now.getTime();
+  if (diff < 0) return t("schedules.nextRun.soon", { defaultValue: "Soon" });
+  if (diff < 60000) return t("schedules.nextRun.soon", { defaultValue: "Soon" });
+  if (diff < 3600000) return t("schedules.nextRun.inMinutes", { defaultValue: "In {{count}} minutes", count: Math.floor(diff / 60000) });
+  if (diff < 86400000) return t("schedules.nextRun.inHours", { defaultValue: "In {{count}} hours", count: Math.floor(diff / 3600000) });
+  if (diff < 172800000) return t("schedules.nextRun.tomorrow", { defaultValue: "Tomorrow" });
+  if (diff < 604800000) return t("schedules.nextRun.inDays", { defaultValue: "In {{count}} days", count: Math.floor(diff / 86400000) });
+  if (diff < 2592000000) return t("schedules.nextRun.inWeeks", { defaultValue: "In {{count}} weeks", count: Math.floor(diff / 604800000) });
+  return t("schedules.nextRun.inMonths", { defaultValue: "In {{count}} months", count: Math.floor(diff / 2592000000) });
+}
+
 export default function SchedulesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -63,21 +109,37 @@ export default function SchedulesPage() {
       {!hasItems ? (
         <Card><CardContent><Typography color="text.secondary">{t("schedules.noSchedules")}</Typography></CardContent></Card>
       ) : (
-        <Stack direction="row" spacing={2} flexWrap="wrap">
+        <Stack spacing={2}>
           {items.map(it => (
-            <Card key={it.id} sx={{ width: 260, height: 170, flex: "0 0 260px", display: "flex", position: "relative" }} data-animatable={it.status === BackupStatus.Running ? "true" : undefined}>
-              <CardContent sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, justifyContent: "space-between", height: "100%", p: 2, width: "100%" }}>
-                <Box display="flex" alignItems="center" gap={1} width="100%" justifyContent="space-between">
-                  <Box fontSize={24}>{getSourceIcon(it.backup.source.backupModuleId)}</Box>
-                  <Typography variant="subtitle2" noWrap title={it.backup.source.tag} sx={{ maxWidth: 120, textAlign: "center" }}>{it.backup.source.tag}</Typography>
-                  <Box fontSize={24}>{getSourceIcon(it.backup.storage.backupModuleId)}</Box>
+            <Card key={it.id} sx={{ display: "flex" }}>
+              <CardContent sx={{ display: "flex", alignItems: "center", gap: 2, width: "100%", p: 2, "&:last-child": { pb: 2 } }}>
+                <Box display="flex" alignItems="center" gap={1.5}>
+                  <Box fontSize={36} sx={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {getSourceIcon(it.backup.source.backupModuleId)}
+                  </Box>
+                  <Typography variant="h6" sx={{ mx: 0.5 }}>→</Typography>
+                  <Box fontSize={36} sx={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {getSourceIcon(it.backup.storage.backupModuleId)}
+                  </Box>
                 </Box>
-                <Typography variant="caption" sx={{ color: "text.secondary" }}>{it.backup.tag}</Typography>
-                <Chip size="small" label={t(`schedules.status.${BackupStatus[it.status].toLowerCase()}`)} color={statusColor(it.status)} />
-                <Typography variant="caption" sx={{ color: "text.secondary", textAlign: "center" }}>
-                  {new Date(it.startAt).toLocaleString()}
-                  {it.interval ? (() => { const parts = String(it.interval).split(":"); const minutes = parts.length >= 2 ? parseInt(parts[0]) * 60 + parseInt(parts[1]) : 0; return ` • ${t("schedules.everyMinutes", { count: minutes })}`; })() : ""}
-                </Typography>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography variant="subtitle1" noWrap title={it.backup.tag}>
+                    {it.backup.tag}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                    {it.backup.source.tag} → {it.backup.storage.tag}
+                  </Typography>
+                </Box>
+                <Box display="flex" flexDirection="column" gap={0.5} alignItems="flex-end" minWidth={150}>
+                  <Chip size="small" label={t(`schedules.status.${BackupStatus[it.status].toLowerCase()}`)} color={statusColor(it.status)} />
+                  <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                    {t("schedules.nextRun.label", { defaultValue: "Next run" })}: {calculateNextRun(it, t)}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: "text.secondary", fontSize: "0.65rem" }}>
+                    {new Date(it.startAt).toLocaleString()}
+                    {it.interval ? (() => { const parts = String(it.interval).split(":"); const minutes = parts.length >= 2 ? parseInt(parts[0]) * 60 + parseInt(parts[1]) : 0; return ` • ${t("schedules.everyMinutes", { count: minutes })}`; })() : ""}
+                  </Typography>
+                </Box>
               </CardContent>
             </Card>
           ))}

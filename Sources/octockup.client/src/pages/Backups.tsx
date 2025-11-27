@@ -11,6 +11,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import {
+  ArrowRight,
   PlayArrow,
   DeleteOutline,
   AddCircleOutline,
@@ -124,12 +125,30 @@ export default function BackupsPage() {
                   "&:last-child": { pb: 2 },
                 }}
               >
-                <Box display="flex" alignItems="center" gap={1.5}>
-                  <Box fontSize={40}>
+                <Box display="flex" alignItems="center" gap={0.5}>
+                  <Box
+                    fontSize={40}
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
                     {getSourceIcon(b.source.backupModuleId)}
                   </Box>
-                  <Typography variant="h6" sx={{ mx: 1 }}>→</Typography>
-                  <Box fontSize={40}>
+                  <ArrowRight />
+                  <Box
+                    fontSize={40}
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
                     {getSourceIcon(b.storage.backupModuleId)}
                   </Box>
                 </Box>
@@ -137,7 +156,10 @@ export default function BackupsPage() {
                   <Typography variant="subtitle1" noWrap title={b.tag}>
                     {b.tag}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: "text.secondary" }}
+                  >
                     {b.source.tag} → {b.storage.tag}
                   </Typography>
                 </Box>
@@ -149,7 +171,9 @@ export default function BackupsPage() {
                     <span>
                       <IconButton
                         size="medium"
-                        aria-label={t("backups.runOnce", { defaultValue: "Run once" })}
+                        aria-label={t("backups.runOnce", {
+                          defaultValue: "Run once",
+                        })}
                         disabled={state.runningId === b.id}
                         onClick={async (e) => {
                           e.stopPropagation();
@@ -173,7 +197,9 @@ export default function BackupsPage() {
                     </span>
                   </Tooltip>
                   <Tooltip
-                    title={t("backups.deleteTooltip", { defaultValue: "Delete backup" })}
+                    title={t("backups.deleteTooltip", {
+                      defaultValue: "Delete backup",
+                    })}
                     placement="top"
                   >
                     <span>
@@ -184,16 +210,26 @@ export default function BackupsPage() {
                         onClick={async (e) => {
                           e.stopPropagation();
                           const result = await confirm({
-                            title: t("backups.deleteTitle", { defaultValue: "Delete backup" }),
-                            description: t("backups.deleteText", { defaultValue: "This action is permanent!" }),
-                            confirmationText: t("common.delete", { defaultValue: "Delete" }),
-                            cancellationText: t("common.cancel", { defaultValue: "Cancel" }),
+                            title: t("backups.deleteTitle", {
+                              defaultValue: "Delete backup",
+                            }),
+                            description: t("backups.deleteText", {
+                              defaultValue: "This action is permanent!",
+                            }),
+                            confirmationText: t("common.delete", {
+                              defaultValue: "Delete",
+                            }),
+                            cancellationText: t("common.cancel", {
+                              defaultValue: "Cancel",
+                            }),
                             confirmationButtonProps: { color: "error" },
                           });
                           if (result.confirmed) {
                             setState((s) => ({ ...s, deletingId: b.id }));
                             await backupsApi.delete(b.id);
-                            setBackups((prev) => prev.filter((x) => x.id !== b.id));
+                            setBackups((prev) =>
+                              prev.filter((x) => x.id !== b.id),
+                            );
                             setState((s) => ({ ...s, deletingId: null }));
                           }
                         }}

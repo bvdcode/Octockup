@@ -11,6 +11,7 @@ import {
   CardContent,
   MenuItem,
   ButtonGroup,
+  Tooltip,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -90,10 +91,18 @@ export default function ScheduleWizard() {
                 inputProps={{ min: 0 }}
               />
               <ButtonGroup variant="outlined" size="small">
-                <Button onClick={() => setIntervalMinutes("60")}>1h</Button>
-                <Button onClick={() => setIntervalMinutes(String(60 * 24))}>1d</Button>
-                <Button onClick={() => setIntervalMinutes(String(60 * 24 * 7))}>1w</Button>
-                <Button onClick={() => setIntervalMinutes(String(60 * 24 * 30))}>1m</Button>
+                <Tooltip title={t("scheduleWizard.interval1h", { defaultValue: "1 hour" })}>
+                  <Button onClick={() => setIntervalMinutes("60")}>1h</Button>
+                </Tooltip>
+                <Tooltip title={t("scheduleWizard.interval1d", { defaultValue: "1 day" })}>
+                  <Button onClick={() => setIntervalMinutes(String(60 * 24))}>1d</Button>
+                </Tooltip>
+                <Tooltip title={t("scheduleWizard.interval1w", { defaultValue: "1 week" })}>
+                  <Button onClick={() => setIntervalMinutes(String(60 * 24 * 7))}>1w</Button>
+                </Tooltip>
+                <Tooltip title={t("scheduleWizard.interval1m", { defaultValue: "1 month" })}>
+                  <Button onClick={() => setIntervalMinutes(String(60 * 24 * 30))}>1m</Button>
+                </Tooltip>
               </ButtonGroup>
             </Box>
           </Stack>

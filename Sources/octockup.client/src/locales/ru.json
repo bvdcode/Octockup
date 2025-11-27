@@ -124,6 +124,20 @@
       "running": "Выполняется",
       "failed": "Ошибка",
       "completed": "Завершено"
+    },
+    "nextRun": {
+      "label": "След. запуск",
+      "never": "Никогда",
+      "soon": "Скоро",
+      "inMinutes": "Через {{count}} мин",
+      "inHours": "Через {{count}} ч",
+      "tomorrow": "Завтра",
+      "inDays": "Через {{count}} дн.",
+      "inWeeks": "Через {{count}} нед.",
+      "inMonths": "Через {{count}} мес.",
+      "afterCurrent": "После текущего",
+      "scheduled": "Запланировано",
+      "unknown": "Неизвестно"
     }
   },
   "scheduleWizard": {
@@ -132,6 +146,10 @@
     "startAt": "Время запуска",
     "intervalMinutes": "Интервал (минуты, опционально)",
     "createSchedule": "Создать расписание",
-    "createError": "Не удалось создать расписание."
+    "createError": "Не удалось создать расписание.",
+    "interval1h": "1 час",
+    "interval1d": "1 день",
+    "interval1w": "1 неделя",
+    "interval1m": "1 месяц"
   }
 }
