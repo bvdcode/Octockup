@@ -23,7 +23,10 @@ namespace Octockup.Server
             var builder = WebApplication.CreateBuilder(args);
 
             string masterKey = builder.Configuration.GetMasterKey();
-            builder.Configuration["Pepper"] = KeyDerivation.DeriveSubkeyBase64(masterKey, "pepper", 32);
+            builder.Configuration.AddInMemoryCollection(
+            [
+                new KeyValuePair<string, string?>("Pepper", KeyDerivation.DeriveSubkeyBase64(masterKey, "pepper", 32))
+            ]);
             byte[] cryptoKey = KeyDerivation.DeriveSubkey(masterKey, "crypto", 32);
             string sqlitePassword = KeyDerivation.DeriveSubkeyBase64(masterKey, "sqlite", 32);
             string sqlitePath = Helpers.PathHelpers.GetPath("octockup.sqlite");
