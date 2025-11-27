@@ -4,7 +4,7 @@
 [![License](https://badgen.net/github/license/bvdcode/octockup)](LICENSE)
 [![CI](https://github.com/bvdcode/octockup/actions/workflows/docker-image.yml/badge.svg)](https://github.com/bvdcode/octockup/actions)
 [![CodeFactor](https://www.codefactor.io/repository/github/bvdcode/octockup/badge)](https://www.codefactor.io/repository/github/bvdcode/octockup)
-[![Release](https://badgen.net/github/tag/bvdcode/octockup?label=version)](https://github.com/bvdcode/octockup/releases)
+[![Release](https://badgen.net/github/release/bvdcode/octockup?label=version)](https://github.com/bvdcode/octockup/releases)
 [![Docker Pulls](https://badgen.net/docker/pulls/bvdcode/octockup?icon=docker&label=pulls)](https://hub.docker.com/r/bvdcode/octockup)
 [![Docker Image Size](https://badgen.net/docker/size/bvdcode/octockup?icon=docker&label=size)](https://hub.docker.com/r/bvdcode/octockup)
 [![Github last-commit](https://img.shields.io/github/last-commit/bvdcode/octockup)](https://github.com/bvdcode/octockup/commits/main/)
