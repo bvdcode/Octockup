@@ -13,7 +13,7 @@ namespace Octockup.Server.Jobs
     {
         public Guid UserId { get; } = userId;
         public Guid ScheduleId { get; } = scheduleId;
-        public BackupStatus Status { get; set; }
+        public ScheduleStatus Status { get; set; }
         public DateTime Timestamp { get; set; }
         public TimeSpan Elapsed => _stopwatch.Elapsed;
         public string Message { get; set; } = string.Empty;
@@ -23,7 +23,7 @@ namespace Octockup.Server.Jobs
 
         private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
 
-        public async Task SendAsync(int processedFiles, string message, long processedBytes = 0, BackupStatus status = BackupStatus.Running)
+        public async Task SendAsync(int processedFiles, string message, long processedBytes = 0, ScheduleStatus status = ScheduleStatus.Running)
         {
             Status = status;
             Timestamp = DateTime.UtcNow;

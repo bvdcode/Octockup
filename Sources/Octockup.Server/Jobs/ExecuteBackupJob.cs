@@ -42,26 +42,29 @@ namespace Octockup.Server.Jobs
             if (_providers.FirstOrDefault(x => x.Id == next.Backup.Source.BackupModuleId) is not IBackupSource foundSourceProvider)
             {
                 next.ErrorMessage = $"Source provider not found: {next.Backup.Source.BackupModuleId}";
-                next.Status = BackupStatus.Failed;
+                next.Status = ScheduleStatus.Failed;
                 next.FinishedAt = DateTime.UtcNow;
                 await _dbContext.SaveChangesAsync();
                 _logger.LogWarning("{msg}", next.ErrorMessage);
                 await report.SendAsync(0, next.ErrorMessage);
                 return;
             }
+            foundSourceProvider.SetParameters(next.Backup.Source.Parameters);
+
             if (_providers.FirstOrDefault(x => x.Id == next.Backup.Storage.BackupModuleId) is not IBackupStorage foundStorageProvider)
             {
                 next.ErrorMessage = $"Storage provider not found: {next.Backup.Storage.BackupModuleId}";
-                next.Status = BackupStatus.Failed;
+                next.Status = ScheduleStatus.Failed;
                 next.FinishedAt = DateTime.UtcNow;
                 await _dbContext.SaveChangesAsync();
                 _logger.LogWarning("{msg}", next.ErrorMessage);
                 await report.SendAsync(0, next.ErrorMessage);
                 return;
             }
+            foundStorageProvider.SetParameters(next.Backup.Storage.Parameters);
 
             await report.SendAsync(0, "Listing files to backup...");
-            next.Status = BackupStatus.Running;
+            next.Status = ScheduleStatus.Running;
             await _dbContext.SaveChangesAsync();
 
             try
@@ -73,11 +76,11 @@ namespace Octockup.Server.Jobs
             catch (Exception ex)
             {
                 next.ErrorMessage = $"Backup failed: {ex.Message}";
-                next.Status = BackupStatus.Failed;
+                next.Status = ScheduleStatus.Failed;
                 next.FinishedAt = DateTime.UtcNow;
                 await _dbContext.SaveChangesAsync();
                 _logger.LogError(ex, "Schedule {ScheduleId} backup failed", next.Id);
-                await report.SendAsync(report.Processed, next.ErrorMessage, status: BackupStatus.Failed);
+                await report.SendAsync(report.Processed, next.ErrorMessage, status: ScheduleStatus.Failed);
             }
         }
 
@@ -101,21 +104,39 @@ namespace Octockup.Server.Jobs
                 List<string> chunkHashes = [];
                 foreach (Stream chunk in chunker.GetChunks())
                 {
-                    int bytesRead = await chunk.ReadAsync(buffer.AsMemory(0, ChunkSize));
-                    if (bytesRead <= 0)
-                    {
-                        break;
-                    }
+                    chunk.Seek(0, SeekOrigin.Begin);
                     string hash = chunk.Sha256();
-                    chunk.Seek(default, SeekOrigin.Begin);
-                    using var compressedStream = new BrotliStream(chunk, CompressionLevel.Fastest);
-                    using var encryptedStream = await _crypto.EncryptAsync(compressedStream);
+                    chunk.Seek(0, SeekOrigin.Begin);
+
+                    await using var compressed = new MemoryStream();
+                    await using (var brotli = new BrotliStream(compressed, CompressionLevel.Fastest, leaveOpen: true))
+                    {
+                        await chunk.CopyToAsync(brotli, ChunkSize);
+                    }
+                    compressed.Seek(0, SeekOrigin.Begin);
+
+                    using var encryptedStream = new MemoryStream();
+                    await _crypto.EncryptAsync(compressed, encryptedStream);
                     string path = ScheduleHelpers.SplitHash(hash, storage.PathSeparator);
-                    await storage.UploadAsync(path, encryptedStream);
-                    processedBytes += bytesRead;
+                    bool? exists = await storage.ExistsAsync(path);
+                    if (exists.HasValue && exists.Value == false)
+                    {
+                        _logger.LogInformation("Schedule {ScheduleId}: Uploading chunk {ChunkHash} for file {FileName}",
+                            schedule.Id, hash, file.Name);
+                        await storage.UploadAsync(path, encryptedStream);
+                    }
+                    else if (exists.HasValue && exists.Value == true)
+                    {
+                        _logger.LogInformation("Schedule {ScheduleId}: Chunk {ChunkHash} for file {FileName} already exists, skipping upload",
+                            schedule.Id, hash, file.Name);
+                    }
+
+                        processedBytes += chunk.Length;
                     await report.SendAsync(i, $"Uploading chunk: {file.Name} ({hash})", processedBytes: processedBytes);
+
                     chunkHashes.Add(hash);
                 }
+
 
                 // TODO: save snapshot file
 

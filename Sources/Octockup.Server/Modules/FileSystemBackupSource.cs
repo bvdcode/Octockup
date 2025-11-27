@@ -71,9 +71,9 @@ namespace Octockup.Server.Modules
                 yield return new BackupFileInfo
                 {
                     Path = relativePath,
+                    Name = fileInfo.Name,
                     Size = fileInfo.Length,
                     LastModified = fileInfo.LastWriteTimeUtc,
-                    Name = fileInfo.Name + fileInfo.Extension,
                 };
             }
         }

@@ -56,7 +56,7 @@ namespace Octockup.Server.Controllers
             {
                 BackupId = backup.Id,
                 StartAt = request.StartAt,
-                Status = BackupStatus.Created,
+                Status = ScheduleStatus.Created,
                 Interval = request.IntervalMinutes.HasValue ? TimeSpan.FromMinutes(request.IntervalMinutes.Value) : null,
             };
 

@@ -10,7 +10,6 @@ namespace Octockup.Server.Helpers
             DateTime now = DateTime.UtcNow;
 
             var schedules = await _schedules
-                .AsNoTracking()
                 .Include(x => x.Backup)
                 .ThenInclude(b => b.Source)
                 .Include(x => x.Backup)

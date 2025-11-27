@@ -3,7 +3,7 @@
 
 namespace Octockup.Server.Models.Enums
 {
-    public enum BackupStatus
+    public enum ScheduleStatus
     {
         Created = 0,
         Running = 1,

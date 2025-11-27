@@ -10,7 +10,7 @@ namespace Octockup.Server.Database
     {
         public Guid BackupId { get; set; }
         public DateTime? FinishedAt { get; set; }
-        public BackupStatus Status { get; set; }
+        public ScheduleStatus Status { get; set; }
         public DateTime StartAt { get; set; }
         public TimeSpan? Interval { get; set; }
         public string? ErrorMessage { get; set; }
