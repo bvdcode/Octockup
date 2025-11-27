@@ -1,18 +1,27 @@
 ﻿// SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2025 Vadim Belov
 
-using EasyExtensions.Quartz.Attributes;
-using Microsoft.AspNetCore.SignalR;
-using Microsoft.EntityFrameworkCore;
-using Octockup.Server.Abstractions;
-using Octockup.Server.Database;
-using Octockup.Server.Hubs;
-using Octockup.Server.Models.Enums;
 using Quartz;
+using Octockup.Server.Hubs;
+using Octockup.Server.Database;
+using Microsoft.AspNetCore.SignalR;
+using Octockup.Server.Abstractions;
+using Octockup.Server.Models.Enums;
+using Microsoft.EntityFrameworkCore;
+using EasyExtensions.Quartz.Attributes;
 
 namespace Octockup.Server.Jobs
 {
-    public record Sc
+    public record ScheduleReport
+    {
+        public Guid ScheduleId { get; set; }
+        public BackupStatus Status { get; set; }
+        public DateTime Timestamp { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public int Total { get; set; }
+        public int Processed { get; set; }
+        public double Speed { get; set; }
+    }
 
     [JobTrigger(minutes: 1)]
     public class ExecuteBackupJob(
@@ -24,17 +33,28 @@ namespace Octockup.Server.Jobs
         public async Task Execute(IJobExecutionContext context)
         {
             Schedule? next = await GetNextScheduleAsync();
+            if (next == null)
+            {
+                return;
+            }
             for (int i = 0; i < 10000; i++)
             {
                 int randomSleepTime = Random.Shared.Next(1, 5000);
                 ScheduleReport report = new()
                 {
-                    ScheduleId = next?.Id,
-                    Status = BackupStatus.Running,
+                    ScheduleId = next.Id,
                     Timestamp = DateTime.UtcNow,
-                    Message = $"Waiting for next schedule... (sleeping {randomSleepTime} ms)",
+                    Status = BackupStatus.Running,
+                    Message = $"Processing file: {i}.txt...",
+                    Total = 10000,
+                    Processed = i + 1,
+                    Speed = 1000 / (randomSleepTime / 1000.0)
                 };
+                await Task.Delay(randomSleepTime);
+                await _hubContext.Clients.Client(next.Backup.Source.UserId.ToString()).SendAsync("ScheduleReport", report);
+                _logger.LogInformation("Schedule {ScheduleId}: {Message} ({Processed}/{Total})", next.Id, report.Message, report.Processed, report.Total);
             }
+
         }
 
         private async Task<Schedule?> GetNextScheduleAsync()
