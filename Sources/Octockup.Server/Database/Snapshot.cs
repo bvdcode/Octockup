@@ -9,6 +9,4 @@ namespace Octockup.Server.Database
 
         public ICollection<SnapshotFile> Files { get; set; } = [];
     }
-
-    public record SnapshotFile(string Path, long Size, string Hashsum, ICollection<string> ChunkHashes);
 }

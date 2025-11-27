@@ -14,6 +14,5 @@ namespace Octockup.Server.Database
         public Dictionary<string, string> Parameters { get; set; } = [];
 
         public virtual User User { get; set; } = null!;
-        public virtual ICollection<Backup> Backups { get; set; } = [];
     }
 }
