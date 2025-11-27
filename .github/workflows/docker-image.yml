@@ -1,4 +1,4 @@
-name: Build and push Docker Image
+name: Docker Image
 
 on:
   push:
@@ -20,7 +20,19 @@ jobs:
       - name: check repository
         uses: actions/checkout@v4
         with:
-          lfs: 'true'        
+          lfs: "true"
+          fetch-depth: 0
+
+      - name: install and calculate version
+        uses: gittools/actions/gitversion/setup@v0.10.2
+        with:
+          versionSpec: "5.x"
+
+      - name: determine version
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v0.10.2
+        with:
+          useConfigFile: true
 
       - name: login to docker registry
         uses: docker/login-action@v3
@@ -33,8 +45,10 @@ jobs:
         with:
           context: Sources
           push: true
-          tags: bvdcode/octockup:latest
-          file: Sources/Octockup.Server/Dockerfile
+          tags: |
+            bvdcode/cotton:latest
+            bvdcode/cotton:${{ steps.gitversion.outputs.semVer }}
+          file: Sources/Cotton.Server/Dockerfile
 
       - name: login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -48,5 +62,16 @@ jobs:
         with:
           context: Sources
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/octockup:latest
-          file: Sources/Octockup.Server/Dockerfile
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/cotton:latest
+            ghcr.io/${{ github.repository_owner }}/cotton:${{ steps.gitversion.outputs.semVer }}
+          file: Sources/Cotton.Server/Dockerfile
+
+      - name: Create Release
+        if: needs.build.outputs.CommitsSinceVersionSource > 0
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.gitversion.outputs.semVer }}
+          name: Release ${{ steps.gitversion.outputs.semVer }}
+          artifacts: "nupkg/*"
+          token: ${{ secrets.GITHUB_TOKEN }}

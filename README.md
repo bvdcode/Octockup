@@ -1,5 +1,4 @@
 # Octockup
-_IN DEVELOPMENT_
 
 [![License](https://img.shields.io/github/license/bvdcode/octockup)](LICENSE)
 ![Build&Deploy](https://github.com/bvdcode/Octockup/actions/workflows/docker-image.yml/badge.svg) 
@@ -10,7 +9,7 @@ _IN DEVELOPMENT_
 
 >Live: [octockup.splidex.com](https://octockup.splidex.com)
 
-Octockup is an all-in-one client and server application for autobackup that includes both backend and frontend in a single Docker container. It allows you to gather and manage data from various sources, such as YouTube, SSH, FTP, and more, directly through the browser.
+Octockup is an all-in-one client and server application for autobackup that includes both backend and frontend in a single Docker container. It allows you to gather and manage data from various sources, such as YouTube, SSH, FTP, Email, and more, directly through the browser.
 
 ## Key Features
 
@@ -32,14 +31,13 @@ Dockerhub: [Link](https://hub.docker.com/r/bvdcode/octockup)
 services:
   octockup:
     image: bvdcode/octockup:latest
-    container_name: octockup
     ports:
       - 8080:8080
-    restart: always
+    environment:
+      - MASTER_KEY=${OCTOCKUP_MASTER_KEY} # 32 chars master key for encrypting sensitive data in the database
     volumes:
-      - /data/octockup:/app/files
-    # environment:
-      # if necessary use variables below
+      - /data/octockup:/app/data
+      - /data:/app/data/mounts/data:ro
 ```
 3. Start the application using Docker Compose:
 ```bash
