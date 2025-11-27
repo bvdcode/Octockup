@@ -37,8 +37,8 @@ namespace Octockup.Server.Controllers
             return Ok(new
             {
                 id = user.Id,
-                username = user.UsernameRename,
-                displayName = user.UsernameRename,
+                username = user.Username,
+                displayName = user.Username + "@octockup",
             });
         }
 
@@ -98,12 +98,17 @@ namespace Octockup.Server.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> LoginAsync([FromBody] LoginRequest request)
         {
-            var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.UsernameRename == request.Username);
+            var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
             if (user == null)
             {
+                bool multiUserAllowed = Environment.GetEnvironmentVariable("OCTOCKUP_ALLOW_MULTIUSER") == "true";
+                if (!multiUserAllowed)
+                {
+                    return this.ApiUnauthorized("Invalid username or password.");
+                }
                 user = new()
                 {
-                    UsernameRename = request.Username,
+                    Username = request.Username,
                     PasswordPhc = _passwords.Hash(request.Password)
                 };
                 _dbContext.Users.Add(user);
