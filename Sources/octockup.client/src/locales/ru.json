@@ -90,6 +90,8 @@
     "noBackups": "Бэкапов пока нет.",
     "deleteTitle": "Удалить бэкап",
     "deleteText": "Действие необратимо!",
+    "deleteTooltip": "Удалить бэкап",
+    "runOnce": "Запустить разово",
     "modulesTitle": "Модули",
     "noModules": "Нет модулей"
   },
@@ -97,6 +99,7 @@
     "title": "Создать бэкап",
     "source": "Источник",
     "storage": "Хранилище",
+    "to": "в",
     "tag": "Тег (уникальное имя)",
     "ignoredPaths": "Игнорируемые пути (по строке)",
     "ignoredPathsPlaceholder": "path/to/ignore\nlogs\nnode_modules",

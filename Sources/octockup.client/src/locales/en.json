@@ -91,6 +91,8 @@
     "noBackups": "No backups yet.",
     "deleteTitle": "Delete backup",
     "deleteText": "This action is permanent!",
+    "deleteTooltip": "Delete backup",
+    "runOnce": "Run once",
     "modulesTitle": "Modules",
     "noModules": "No modules available"
   },
@@ -98,6 +100,7 @@
     "title": "Create Backup",
     "source": "Source",
     "storage": "Storage",
+    "to": "to",
     "tag": "Tag (unique name)",
     "ignoredPaths": "Ignored paths (one per line)",
     "ignoredPathsPlaceholder": "path/to/ignore\nlogs\nnode_modules",
