@@ -1,4 +1,7 @@
-﻿using Octockup.Server.Models;
+﻿// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2025 Vadim Belov
+
+using Octockup.Server.Models;
 using Octockup.Server.Abstractions;
 
 namespace Octockup.Server.Modules

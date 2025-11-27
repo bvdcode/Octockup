@@ -1,4 +1,7 @@
-﻿using Amazon.S3;
+﻿// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2025 Vadim Belov
+
+using Amazon.S3;
 using Amazon.S3.Model;
 using System.Net.Mime;
 using Octockup.Server.Models;

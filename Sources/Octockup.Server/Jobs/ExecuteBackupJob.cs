@@ -1,4 +1,7 @@
-﻿using Quartz;
+﻿// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2025 Vadim Belov
+
+using Quartz;
 using Octockup.Server.Database;
 using Octockup.Server.Abstractions;
 using EasyExtensions.Quartz.Attributes;
