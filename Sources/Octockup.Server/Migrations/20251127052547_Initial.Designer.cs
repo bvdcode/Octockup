@@ -11,7 +11,7 @@ using Octockup.Server.Database;
 namespace Octockup.Server.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251127005224_Initial")]
+    [Migration("20251127052547_Initial")]
     partial class Initial
     {
         /// <inheritdoc />

@@ -40,7 +40,7 @@ export default function BackupWizard() {
 
   const [sourceId, setSourceId] = useState<string>("");
   const [storageId, setStorageId] = useState<string>("");
-  const [tag, setTag] = useState<string>("");
+  const [tagOverride, setTagOverride] = useState<string>("");
   const [ignoredPathsInput, setIgnoredPathsInput] = useState<string>("");
 
   useEffect(() => {
@@ -61,7 +61,20 @@ export default function BackupWizard() {
   const sources = useMemo(() => modules.filter(m => m.destination === ModuleDestination.Source), [modules]);
   const storages = useMemo(() => modules.filter(m => m.destination === ModuleDestination.Target), [modules]);
 
-  const canCreate = useMemo(() => !!sourceId && !!storageId && !!tag, [sourceId, storageId, tag]);
+  const autoTag = useMemo(() => {
+    if (sourceId && storageId) {
+      const sourceMod = modules.find(m => m.id === sourceId);
+      const storageMod = modules.find(m => m.id === storageId);
+      if (sourceMod && storageMod) {
+        return `${sourceMod.tag} ${t("backupWizard.to")} ${storageMod.tag}`;
+      }
+    }
+    return "";
+  }, [sourceId, storageId, modules, t]);
+
+  const effectiveTag = tagOverride || autoTag;
+
+  const canCreate = useMemo(() => !!sourceId && !!storageId && !!effectiveTag, [sourceId, storageId, effectiveTag]);
 
   if (state.loading) {
     return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
@@ -77,30 +90,36 @@ export default function BackupWizard() {
       <Card variant="outlined">
         <CardContent>
           <Stack spacing={3}>
-            <Box display="flex" gap={4} justifyContent="space-between" flexWrap="wrap">
-              <Paper variant="outlined" sx={{ p: 2, flex: "1 1 320px", textAlign: "center", minWidth: 280 }}>
-                <Box fontSize={72} mb={2}>{getSourceIcon(modules.find(m => m.id === sourceId)?.backupModuleId || "")}</Box>
+            <Box display="flex" gap={2} alignItems="stretch" justifyContent="center" sx={{ flexDirection: { xs: "column", md: "row" } }}>
+              <Paper variant="outlined" sx={{ p: 3, flex: "1 1 auto", textAlign: "center", minWidth: 280, display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "center" }}>
+                <Box sx={{ fontSize: 96, lineHeight: 1, mb: 2, minHeight: 96, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {getSourceIcon(modules.find(m => m.id === sourceId)?.backupModuleId || "")}
+                </Box>
                 <TextField
                   select
                   label={t("backupWizard.source")}
                   value={sourceId}
                   onChange={e => setSourceId(e.target.value)}
                   fullWidth
+                  sx={{ maxWidth: 400 }}
                 >
                   {sources.map(s => (
                     <MenuItem key={s.id} value={s.id}>{s.tag}</MenuItem>
                   ))}
                 </TextField>
               </Paper>
-              <Box display="flex" alignItems="center" justifyContent="center" fontSize={40}>→</Box>
-              <Paper variant="outlined" sx={{ p: 2, flex: "1 1 320px", textAlign: "center", minWidth: 280 }}>
-                <Box fontSize={72} mb={2}>{getSourceIcon(modules.find(m => m.id === storageId)?.backupModuleId || "")}</Box>
+              <Box display="flex" alignItems="center" justifyContent="center" fontSize={48} sx={{ minWidth: 48, py: { xs: 2, md: 0 } }}>→</Box>
+              <Paper variant="outlined" sx={{ p: 3, flex: "1 1 auto", textAlign: "center", minWidth: 280, display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "center" }}>
+                <Box sx={{ fontSize: 96, lineHeight: 1, mb: 2, minHeight: 96, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {getSourceIcon(modules.find(m => m.id === storageId)?.backupModuleId || "")}
+                </Box>
                 <TextField
                   select
                   label={t("backupWizard.storage")}
                   value={storageId}
                   onChange={e => setStorageId(e.target.value)}
                   fullWidth
+                  sx={{ maxWidth: 400 }}
                 >
                   {storages.map(s => (
                     <MenuItem key={s.id} value={s.id}>{s.tag}</MenuItem>
@@ -111,8 +130,9 @@ export default function BackupWizard() {
             <Stack spacing={2}>
               <TextField
                 label={t("backupWizard.tag")}
-                value={tag}
-                onChange={e => setTag(e.target.value)}
+                value={tagOverride}
+                placeholder={autoTag}
+                onChange={e => setTagOverride(e.target.value)}
                 fullWidth
               />
               <TextField
@@ -146,7 +166,7 @@ export default function BackupWizard() {
               const payload: CreateBackupRequest = {
                 sourceId,
                 storageId,
-                tag,
+                tag: effectiveTag,
                 ignoredPaths: ignoredPathsInput.split(/\r?\n/).filter(x => x.trim() !== ""),
               };
               await backupsApi.create(payload);

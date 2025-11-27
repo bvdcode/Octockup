@@ -17,7 +17,10 @@
     "parameters": "Parameters",
     "newSource": "Add New Source",
     "create": "Create Source",
-    "deleteConfirm": "Are you sure you want to delete source '{{tag}}'?"
+    "deleteConfirm": "Are you sure you want to delete source '{{tag}}'?",
+    "deleteTitle": "Delete source",
+    "deleteText": "This action is permanent!",
+    "deleteTooltip": "Delete source"
   },
   "wizard": {
     "back": "Back",
@@ -63,7 +66,10 @@
     "noTypesAvailable": "No types available",
     "newStorage": "Add New Storage",
     "create": "Create Storage",
-    "deleteConfirm": "Are you sure you want to delete storage '{{tag}}'?"
+    "deleteConfirm": "Are you sure you want to delete storage '{{tag}}'?",
+    "deleteTitle": "Delete storage",
+    "deleteText": "This action is permanent!",
+    "deleteTooltip": "Delete storage"
   },
   "storageWizard": {
     "back": "Back",

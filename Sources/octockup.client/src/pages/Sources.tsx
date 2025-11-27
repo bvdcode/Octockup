@@ -8,6 +8,7 @@ import {
   CardContent,
   CircularProgress,
   IconButton,
+  Tooltip,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { confirm } from "material-ui-confirm";
@@ -132,41 +133,43 @@ export function SourcesPage() {
                   position: "relative",
                 }}
               >
-                <IconButton
-                  size="small"
-                  aria-label={t("common.delete")}
-                  sx={{
-                    position: "absolute",
-                    top: 4,
-                    right: 4,
-                  }}
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    const result = await confirm({
-                      title: t("sources.deleteTitle", {
-                        defaultValue: "Delete source",
-                      }),
-                      description: t("sources.deleteText", {
-                        defaultValue: "This action is permanent!",
-                      }),
-                      confirmationText: t("common.delete", {
-                        defaultValue: "Delete",
-                      }),
-                      cancellationText: t("common.cancel", {
-                        defaultValue: "Cancel",
-                      }),
-                      confirmationButtonProps: { color: "error" },
-                    });
-                    if (result.confirmed) {
-                      await api.delete(s.id);
-                      setUserSources((prev) =>
-                        prev.filter((x) => x.id !== s.id),
-                      );
-                    }
-                  }}
-                >
-                  <DeleteOutline fontSize="small" color="primary" />
-                </IconButton>
+                <Tooltip title={t("sources.deleteTooltip", { defaultValue: "Delete source" })} placement="left">
+                  <IconButton
+                    size="small"
+                    aria-label={t("common.delete")}
+                    sx={{
+                      position: "absolute",
+                      top: 4,
+                      right: 4,
+                    }}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      const result = await confirm({
+                        title: t("sources.deleteTitle", {
+                          defaultValue: "Delete source",
+                        }),
+                        description: t("sources.deleteText", {
+                          defaultValue: "This action is permanent!",
+                        }),
+                        confirmationText: t("common.delete", {
+                          defaultValue: "Delete",
+                        }),
+                        cancellationText: t("common.cancel", {
+                          defaultValue: "Cancel",
+                        }),
+                        confirmationButtonProps: { color: "error" },
+                      });
+                      if (result.confirmed) {
+                        await api.delete(s.id);
+                        setUserSources((prev) =>
+                          prev.filter((x) => x.id !== s.id),
+                        );
+                      }
+                    }}
+                  >
+                    <DeleteOutline fontSize="small" color="primary" />
+                  </IconButton>
+                </Tooltip>
                 <CardContent
                   sx={{
                     display: "flex",
