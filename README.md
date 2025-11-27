@@ -63,12 +63,7 @@ docker compose up -d
 ### Environment variables
 
 ```yaml
-CORS_ORIGINS: allowed origins for backend requests
-POSTGRES_HOST: database address
-POSTGRES_PORT: port, ex. 5432
-POSTGRES_DATABASE: database where data will be stored, ex. octockup
-POSTGRES_USERNAME: username to connect
-POSTGRES_PASSWORD: database user password
+MASTER_KEY: A 32-character master key for encrypting sensitive data in the database.
 ```
 
 ## Updating
@@ -89,16 +84,5 @@ To update to the latest version of the application, follow these steps:
 If you have any questions or issues, please create a new issue on GitHub or contact me via email:
 
 octockup-github-support@belov.us
-
-## License
-
-This work is licensed under a
-[Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License][cc-by-nc-sa].
-
-[![CC BY-NC-SA 4.0][cc-by-nc-sa-image]][cc-by-nc-sa]
-
-[cc-by-nc-sa]: http://creativecommons.org/licenses/by-nc-sa/4.0/
-[cc-by-nc-sa-image]: https://licensebuttons.net/l/by-nc-sa/4.0/88x31.png
-[cc-by-nc-sa-shield]: https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg
 
 ---
