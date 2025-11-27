@@ -1,13 +1,15 @@
 # Octockup
 
-[![License](https://img.shields.io/github/license/bvdcode/octockup)](LICENSE)
-![Build&Deploy](https://github.com/bvdcode/Octockup/actions/workflows/docker-image.yml/badge.svg) 
-[![CodeFactor](https://www.codefactor.io/repository/github/bvdcode/Octockup/badge)](https://www.codefactor.io/repository/github/bvdcode/Octockup)
-[![Docker Pulls](https://badgen.net/docker/pulls/bvdcode/octockup?icon=docker&label=pulls)](https://hub.docker.com/r/bvdcode/octockup/)
-[![Docker Image Size](https://badgen.net/docker/size/bvdcode/octockup?icon=docker&label=image%20size)](https://hub.docker.com/r/bvdcode/octockup/)
-![Github last-commit](https://img.shields.io/github/last-commit/bvdcode/Octockup)
+![Status](https://img.shields.io/badge/status-beta-yellow)
+[![License](https://badgen.net/github/license/bvdcode/octockup)](LICENSE)
+[![CI](https://github.com/bvdcode/octockup/actions/workflows/docker-image.yml/badge.svg)](https://github.com/bvdcode/octockup/actions)
+[![CodeFactor](https://www.codefactor.io/repository/github/bvdcode/octockup/badge)](https://www.codefactor.io/repository/github/bvdcode/octockup)
+[![Release](https://badgen.net/github/tag/bvdcode/octockup?label=version)](https://github.com/bvdcode/octockup/releases)
+[![Docker Pulls](https://badgen.net/docker/pulls/bvdcode/octockup?icon=docker&label=pulls)](https://hub.docker.com/r/bvdcode/octockup)
+[![Docker Image Size](https://badgen.net/docker/size/bvdcode/octockup?icon=docker&label=size)](https://hub.docker.com/r/bvdcode/octockup)
+[![Github last-commit](https://img.shields.io/github/last-commit/bvdcode/octockup)](https://github.com/bvdcode/octockup/commits/main/)
 
->Live: [octockup.splidex.com](https://octockup.splidex.com)
+> Live: [octockup.splidex.com](https://octockup.splidex.com)
 
 Octockup is an all-in-one client and server application for autobackup that includes both backend and frontend in a single Docker container. It allows you to gather and manage data from various sources, such as YouTube, SSH, FTP, Email, and more, directly through the browser.
 
@@ -22,11 +24,11 @@ Octockup is an all-in-one client and server application for autobackup that incl
 
 ## Installation
 
-
 Dockerhub: [Link](https://hub.docker.com/r/bvdcode/octockup)
 
 1. Make sure you have Docker and Docker Compose installed.
 2. Create `docker-compose.yml` file:
+
 ```yaml
 services:
   octockup:
@@ -39,11 +41,12 @@ services:
       - /data/octockup:/app/data
       - /data:/app/data/mounts/data:ro
 ```
+
 3. Start the application using Docker Compose:
+
 ```bash
 docker compose up -d
 ```
-
 
 ## Usage
 
@@ -56,7 +59,6 @@ docker compose up -d
 ### Configuration Files
 
 - **`docker-compose.yml`** - Docker Compose configuration for managing the container.
-
 
 ### Environment variables
 
@@ -74,13 +76,13 @@ POSTGRES_PASSWORD: database user password
 To update to the latest version of the application, follow these steps:
 
 1. Update the image:
-    ```bash
-    docker compose pull
-    ```
-3. Restart the application:
-    ```bash
-    docker compose up -d
-    ```
+   ```bash
+   docker compose pull
+   ```
+2. Restart the application:
+   ```bash
+   docker compose up -d
+   ```
 
 ## Support
 
