@@ -4,10 +4,8 @@ import { Folder, HelpOutline } from "@mui/icons-material";
 
 // Mapping of backend source IDs to icons. Extend manually as needed.
 const ICONS: Record<string, React.ReactNode> = {
-  "Octockup.Server.BackupSources.FileSystemBackupSource": <Folder />,
-  "Octockup.Server.BackupStorages.S3BackupStorage": (
-    <Avatar src="/s3.svg" sx={{ p: 1 }} />
-  ),
+  "Octockup.Server.Modules.FileSystemBackupSource": <Folder />,
+  "Octockup.Server.Modules.S3BackupStorage": <Avatar src="/s3.svg" sx={{ p: 1 }} />,
 };
 
 export function getSourceIcon(id: string): React.ReactNode {

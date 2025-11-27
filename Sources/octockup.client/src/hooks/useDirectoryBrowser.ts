@@ -1,14 +1,14 @@
 import { useState, useCallback } from "react";
-import type { BackupSource, BackupStorage } from "../types/api";
+import type { ModuleProviderInfo } from "../types/api";
 
 interface ParamState {
   [key: string]: string;
 }
 
 export function useDirectoryBrowser(
-  moduleMeta: BackupSource | BackupStorage | null,
+  moduleMeta: ModuleProviderInfo | null,
   params: ParamState,
-  typeId: string,
+  providerId: string,
   apiClient: {
     getDirectories: (id: string, parameters: Record<string, string>) => Promise<string[]>;
   },
@@ -20,7 +20,7 @@ export function useDirectoryBrowser(
   const loadDirectories = useCallback(
     async (targetPath: string) => {
       if (!moduleMeta || browserLoading) return;
-      const required = moduleMeta.parameters.filter((p) => p !== "path");
+      const required = moduleMeta.requiredParameters.filter((p) => p !== "path");
       const missing = required.filter(
         (p) => !(params[p] && String(params[p]).length > 0),
       );
@@ -29,7 +29,7 @@ export function useDirectoryBrowser(
       try {
         setBrowserLoading(true);
         const paramsWithPath = { ...params, path: targetPath };
-        const dirs = await apiClient.getDirectories(typeId, paramsWithPath);
+        const dirs = await apiClient.getDirectories(providerId, paramsWithPath);
         setBrowserDirs(dirs || []);
         setBrowserPath(targetPath);
       } catch {
@@ -38,7 +38,7 @@ export function useDirectoryBrowser(
         setBrowserLoading(false);
       }
     },
-    [moduleMeta, browserLoading, params, apiClient, typeId],
+    [moduleMeta, browserLoading, params, apiClient, providerId],
   );
 
   const navigateToDir = useCallback(

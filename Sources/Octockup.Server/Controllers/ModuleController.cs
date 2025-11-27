@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Models.Requests;
 using Microsoft.AspNetCore.Authorization;
 using EasyExtensions.AspNetCore.Extensions;
+using Octockup.Server.Models.Enums;
 
 namespace Octockup.Server.Controllers
 {
@@ -116,10 +117,20 @@ namespace Octockup.Server.Controllers
         }
 
         [Authorize]
-        [HttpGet("/api/v1/modules/providers")]
-        public IEnumerable<ProviderInfo> GetBackupProviders()
+        [HttpGet("/api/v1/modules/providers/{type:required}")]
+        public IEnumerable<ProviderInfo> GetBackupProviders([FromRoute] string type)
         {
-            return _providers.Select(x => new ProviderInfo()
+            return _providers.Where(provider =>
+            {
+                return type.ToLower() switch
+                {
+                    "storage" => provider is IBackupStorage,
+                    "source" => provider is IBackupSource,
+                    _ => false,
+                };
+
+            })
+            .Select(x => new ProviderInfo()
             {
                 Name = x.Name,
                 Id = x.GetType().FullName,

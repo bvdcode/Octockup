@@ -16,8 +16,8 @@ import { useNavigate } from "react-router-dom";
 import { AddCircleOutline } from "@mui/icons-material";
 import { DeleteOutline } from "@mui/icons-material";
 import { getSourceIcon } from "../constants/sourceIcons";
-import { useBackupSourcesApi } from "../api/backupSourcesApi";
-import type { BackupSource, SavedBackupModule } from "../types/api";
+import { useModulesApi } from "../api/modulesApi";
+import type { Module, ModuleProviderInfo, ModuleDestination } from "../types/api";
 
 interface State {
   loading: boolean;
@@ -29,15 +29,15 @@ interface State {
 export function SourcesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const api = useBackupSourcesApi();
+  const api = useModulesApi();
   const [state, setState] = useState<State>({
     loading: true,
     error: null,
     availableLoading: true,
     availableError: null,
   });
-  const [userSources, setUserSources] = useState<SavedBackupModule[]>([]);
-  const [availableSources, setAvailableSources] = useState<BackupSource[]>([]);
+  const [userSources, setUserSources] = useState<Module[]>([]);
+  const [availableSources, setAvailableSources] = useState<ModuleProviderInfo[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -47,7 +47,8 @@ export function SourcesPage() {
       .list()
       .then((data) => {
         if (!active) return;
-        setUserSources(data);
+        // filter sources
+        setUserSources(data.filter((m) => m.Type === ModuleDestination.Source));
         setState((prev) => ({ ...prev, loading: false, error: null }));
       })
       .catch((e) => {
@@ -61,7 +62,7 @@ export function SourcesPage() {
 
     // Load available source types
     api
-      .listAvailable()
+      .listProviders()
       .then((data) => {
         if (!active) return;
         setAvailableSources(data);

@@ -1,17 +1,17 @@
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import type { BackupSource, BackupStorage } from "../types/api";
+import type { ModuleProviderInfo } from "../types/api";
 
 interface ParamState {
   [key: string]: string;
 }
 
 export function useModuleTest(
-  moduleMeta: BackupSource | BackupStorage | null,
+  moduleMeta: ModuleProviderInfo | null,
   params: ParamState,
-  typeId: string,
+  providerId: string,
   apiClient: {
-    test: (id: string, parameters: Record<string, string>) => Promise<unknown>;
+    test: (id: string, parameters: Record<string, string>) => Promise<void>;
   },
 ) {
   const { t } = useTranslation();
@@ -21,7 +21,7 @@ export function useModuleTest(
 
   const validateHttpEndpoint = useCallback((): string | null => {
     if (!moduleMeta) return null;
-    if (!moduleMeta.parameters.includes("httpEndpoint")) return null;
+    if (!moduleMeta.requiredParameters.includes("httpEndpoint")) return null;
     const ep = (params["httpEndpoint"] || "").trim();
     if (!ep) return null;
     if (!/^https?:\/\//i.test(ep)) {
@@ -41,7 +41,7 @@ export function useModuleTest(
       return;
     }
 
-    const required = moduleMeta.parameters || [];
+    const required = moduleMeta.requiredParameters || [];
     const missing = required.filter(
       (p) => !(params[p] && String(params[p]).length > 0),
     );
@@ -52,7 +52,7 @@ export function useModuleTest(
 
     try {
       setTestLoading(true);
-      await apiClient.test(typeId, params);
+      await apiClient.test(providerId, params);
       setTestMessage(t("wizard.testSuccess"));
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -60,7 +60,7 @@ export function useModuleTest(
     } finally {
       setTestLoading(false);
     }
-  }, [moduleMeta, params, typeId, apiClient, t, validateHttpEndpoint]);
+  }, [moduleMeta, params, providerId, apiClient, t, validateHttpEndpoint]);
 
   const resetTest = useCallback(() => {
     setTestMessage(null);

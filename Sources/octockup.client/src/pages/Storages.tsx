@@ -12,11 +12,11 @@ import {
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import type { BackupStorage, SavedBackupModule } from "../types/api";
+import type { Module, ModuleProviderInfo, ModuleDestination } from "../types/api";
 import { AddCircleOutline, DeleteOutline } from "@mui/icons-material";
 import { confirm } from "material-ui-confirm";
 import { getSourceIcon } from "../constants/sourceIcons";
-import { useBackupStoragesApi } from "../api/backupStoragesApi";
+import { useModulesApi } from "../api/modulesApi";
 
 interface State {
   loading: boolean;
@@ -28,17 +28,15 @@ interface State {
 export function StoragesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const api = useBackupStoragesApi();
+  const api = useModulesApi();
   const [state, setState] = useState<State>({
     loading: true,
     error: null,
     availableLoading: true,
     availableError: null,
   });
-  const [userStorages, setUserStorages] = useState<SavedBackupModule[]>([]);
-  const [availableStorages, setAvailableStorages] = useState<BackupStorage[]>(
-    [],
-  );
+  const [userStorages, setUserStorages] = useState<Module[]>([]);
+  const [availableStorages, setAvailableStorages] = useState<ModuleProviderInfo[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -47,7 +45,7 @@ export function StoragesPage() {
       .list()
       .then((data) => {
         if (!active) return;
-        setUserStorages(data);
+        setUserStorages(data.filter((m) => m.Type === ModuleDestination.Target));
         setState((prev) => ({ ...prev, loading: false, error: null }));
       })
       .catch((e) => {
@@ -61,7 +59,7 @@ export function StoragesPage() {
 
     // load available storage types
     api
-      .listAvailable()
+      .listProviders()
       .then((data) => {
         if (!active) return;
         setAvailableStorages(data);

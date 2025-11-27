@@ -1,3 +1,2 @@
-export * from "./backupSourcesApi";
-export * from "./backupStoragesApi";
+export * from "./modulesApi";
 export type * from "../types/api";
