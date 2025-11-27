@@ -39,7 +39,9 @@ export function SourcesPage() {
     availableError: null,
   });
   const [userSources, setUserSources] = useState<Module[]>([]);
-  const [availableSources, setAvailableSources] = useState<ModuleProviderInfo[]>([]);
+  const [availableSources, setAvailableSources] = useState<
+    ModuleProviderInfo[]
+  >([]);
 
   useEffect(() => {
     let active = true;
@@ -50,7 +52,9 @@ export function SourcesPage() {
       .then((data) => {
         if (!active) return;
         // filter sources
-        setUserSources(data.filter((m) => m.destination === ModuleDestination.Source));
+        setUserSources(
+          data.filter((m) => m.destination === ModuleDestination.Source),
+        );
         setState((prev) => ({ ...prev, loading: false, error: null }));
       })
       .catch((e) => {
@@ -64,7 +68,7 @@ export function SourcesPage() {
 
     // Load available source types
     api
-      .listProvidersByType('source')
+      .listProvidersByType("source")
       .then((data) => {
         if (!active) return;
         setAvailableSources(data);
@@ -133,7 +137,12 @@ export function SourcesPage() {
                   position: "relative",
                 }}
               >
-                <Tooltip title={t("sources.deleteTooltip", { defaultValue: "Delete source" })} placement="left">
+                <Tooltip
+                  title={t("sources.deleteTooltip", {
+                    defaultValue: "Delete source",
+                  })}
+                  placement="left"
+                >
                   <IconButton
                     size="small"
                     aria-label={t("common.delete")}
@@ -201,7 +210,7 @@ export function SourcesPage() {
                       fontSize: "0.7rem",
                     }}
                   >
-                    {new Date(s.createdAt).toLocaleDateString()}
+                    {parseUtcDate(s.createdAt)!.toLocaleDateString()}
                   </Typography>
                 </CardContent>
               </Card>

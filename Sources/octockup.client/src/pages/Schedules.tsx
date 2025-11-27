@@ -23,6 +23,7 @@ import { confirm } from "material-ui-confirm";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import type { ScheduleItem } from "../types/api";
+import { parseUtcDate } from "../utils/dateUtils";
 import { useSchedulesApi } from "../api/schedulesApi";
 import { getSourceIcon } from "../constants/sourceIcons";
 
@@ -54,7 +55,7 @@ function calculateNextRun(
   t: (key: string, options?: Record<string, unknown>) => string,
 ): string {
   const now = new Date();
-  const startAt = new Date(item.startAt);
+  const startAt = parseUtcDate(item.startAt)!;
 
   // If no interval (one-time schedule)
   if (!item.interval) {
@@ -98,7 +99,7 @@ function calculateNextRun(
       item.status === BackupStatus.Failed)
   ) {
     nextRun = new Date(
-      new Date(item.finishedAt).getTime() + intervalMinutes * 60000,
+      parseUtcDate(item.finishedAt)!.getTime() + intervalMinutes * 60000,
     );
   } else if (item.status === BackupStatus.Running) {
     // Currently running, next run is after it finishes
@@ -292,7 +293,7 @@ export default function SchedulesPage() {
                     variant="caption"
                     sx={{ color: "text.secondary", fontSize: "0.65rem" }}
                   >
-                    {new Date(it.startAt).toLocaleString()}
+                    {parseUtcDate(it.startAt)!.toLocaleString()}
                     {it.interval
                       ? (() => {
                           const parts = String(it.interval).split(":");

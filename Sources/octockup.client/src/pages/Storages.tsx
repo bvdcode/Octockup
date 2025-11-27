@@ -38,7 +38,9 @@ export function StoragesPage() {
     availableError: null,
   });
   const [userStorages, setUserStorages] = useState<Module[]>([]);
-  const [availableStorages, setAvailableStorages] = useState<ModuleProviderInfo[]>([]);
+  const [availableStorages, setAvailableStorages] = useState<
+    ModuleProviderInfo[]
+  >([]);
 
   useEffect(() => {
     let active = true;
@@ -47,7 +49,9 @@ export function StoragesPage() {
       .list()
       .then((data) => {
         if (!active) return;
-        setUserStorages(data.filter((m) => m.destination === ModuleDestination.Target));
+        setUserStorages(
+          data.filter((m) => m.destination === ModuleDestination.Target),
+        );
         setState((prev) => ({ ...prev, loading: false, error: null }));
       })
       .catch((e) => {
@@ -61,7 +65,7 @@ export function StoragesPage() {
 
     // load available storage types
     api
-      .listProvidersByType('storage')
+      .listProvidersByType("storage")
       .then((data) => {
         if (!active) return;
         setAvailableStorages(data);
@@ -130,7 +134,12 @@ export function StoragesPage() {
                   position: "relative",
                 }}
               >
-                <Tooltip title={t("storages.deleteTooltip", { defaultValue: "Delete storage" })} placement="left">
+                <Tooltip
+                  title={t("storages.deleteTooltip", {
+                    defaultValue: "Delete storage",
+                  })}
+                  placement="left"
+                >
                   <IconButton
                     size="small"
                     aria-label={t("common.delete")}
@@ -199,7 +208,7 @@ export function StoragesPage() {
                       color: "text.secondary",
                     }}
                   >
-                    {new Date(s.createdAt).toLocaleDateString()}
+                    {parseUtcDate(s.createdAt)!.toLocaleDateString()}
                   </Typography>
                 </CardContent>
               </Card>
