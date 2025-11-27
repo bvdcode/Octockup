@@ -37,6 +37,10 @@ class SchedulesApiClient {
   async create(request: CreateScheduleRequest): Promise<void> {
     await this.axios().post("/api/v1/schedules", request);
   }
+
+  async delete(scheduleId: string): Promise<void> {
+    await this.axios().delete(`/api/v1/schedules/${scheduleId}`);
+  }
 }
 
 export function useSchedulesApi(): SchedulesApiClient {

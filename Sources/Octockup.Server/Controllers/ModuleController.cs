@@ -12,7 +12,6 @@ using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Models.Requests;
 using Microsoft.AspNetCore.Authorization;
 using EasyExtensions.AspNetCore.Extensions;
-using Octockup.Server.Models.Enums;
 
 namespace Octockup.Server.Controllers
 {

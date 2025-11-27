@@ -9,9 +9,12 @@ import {
   CardContent,
   CircularProgress,
   Button,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
-import { AddCircleOutline } from "@mui/icons-material";
+import { AddCircleOutline, DeleteOutline } from "@mui/icons-material";
 import { useEffect, useState } from "react";
+import { confirm } from "material-ui-confirm";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { getSourceIcon } from "../constants/sourceIcons";
@@ -19,7 +22,7 @@ import { useSchedulesApi } from "../api/schedulesApi";
 import type { ScheduleItem } from "../types/api";
 import { BackupStatus } from "../types/api";
 
-interface State { loading: boolean; error: string | null; }
+interface State { loading: boolean; error: string | null; deletingId: string | null; }
 
 function statusColor(status: BackupStatus): "default" | "success" | "error" | "warning" | "info" {
   switch (status) {
@@ -80,7 +83,7 @@ export default function SchedulesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const api = useSchedulesApi();
-  const [state, setState] = useState<State>({ loading: true, error: null });
+  const [state, setState] = useState<State>({ loading: true, error: null, deletingId: null });
   const [items, setItems] = useState<ScheduleItem[]>([]);
 
   useEffect(() => {
@@ -140,6 +143,33 @@ export default function SchedulesPage() {
                     {it.interval ? (() => { const parts = String(it.interval).split(":"); const minutes = parts.length >= 2 ? parseInt(parts[0]) * 60 + parseInt(parts[1]) : 0; return ` • ${t("schedules.everyMinutes", { count: minutes })}`; })() : ""}
                   </Typography>
                 </Box>
+                <Tooltip title={t("schedules.deleteTooltip", { defaultValue: "Delete schedule" })} placement="top">
+                  <span>
+                    <IconButton
+                      size="medium"
+                      aria-label={t("common.delete")}
+                      disabled={state.deletingId === it.id}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        const result = await confirm({
+                          title: t("schedules.deleteTitle", { defaultValue: "Delete schedule" }),
+                          description: t("schedules.deleteText", { defaultValue: "This action is permanent!" }),
+                          confirmationText: t("common.delete", { defaultValue: "Delete" }),
+                          cancellationText: t("common.cancel", { defaultValue: "Cancel" }),
+                          confirmationButtonProps: { color: "error" },
+                        });
+                        if (result.confirmed) {
+                          setState((s) => ({ ...s, deletingId: it.id }));
+                          await api.delete(it.id);
+                          setItems((prev) => prev.filter((x) => x.id !== it.id));
+                          setState((s) => ({ ...s, deletingId: null }));
+                        }
+                      }}
+                    >
+                      <DeleteOutline color="primary" />
+                    </IconButton>
+                  </span>
+                </Tooltip>
               </CardContent>
             </Card>
           ))}

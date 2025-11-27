@@ -179,11 +179,11 @@ export default function BackupsPage() {
                           e.stopPropagation();
                           try {
                             setState((s) => ({ ...s, runningId: b.id }));
-                            // Server expects UTC, toISOString() returns UTC
                             await schedulesApi.create({
                               backupId: b.id,
                               startAt: new Date().toISOString(),
                             });
+                            navigate("/schedules");
                           } finally {
                             setState((s) => ({ ...s, runningId: null }));
                           }

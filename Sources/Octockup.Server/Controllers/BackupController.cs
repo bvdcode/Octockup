@@ -50,10 +50,10 @@ namespace Octockup.Server.Controllers
             }
             Backup backup = new()
             {
+                Tag = request.Tag,
                 SourceId = source.Id,
                 StorageId = storage.Id,
-                Tag = request.Tag,
-                IgnoredPaths = request.IgnoredPaths ?? new List<string>()
+                IgnoredPaths = request.IgnoredPaths ?? []
             };
             await _dbContext.Backups.AddAsync(backup);
             await _dbContext.SaveChangesAsync();

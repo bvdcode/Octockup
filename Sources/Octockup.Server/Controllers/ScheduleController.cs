@@ -42,17 +42,40 @@ namespace Octockup.Server.Controllers
             {
                 return this.ApiNotFound("Backup not found: " + request.BackupId);
             }
+            if (request.StartAt.Kind != DateTimeKind.Utc)
+            {
+                return this.ApiBadRequest("StartAt must be in UTC.");
+            }
 
             Schedule schedule = new()
             {
                 BackupId = backup.Id,
                 StartAt = request.StartAt,
-                Interval = request.IntervalMinutes.HasValue ? TimeSpan.FromMinutes(request.IntervalMinutes.Value) : null,
                 Status = BackupStatus.Created,
+                Interval = request.IntervalMinutes.HasValue ? TimeSpan.FromMinutes(request.IntervalMinutes.Value) : null,
             };
             await _dbContext.Schedules.AddAsync(schedule);
             await _dbContext.SaveChangesAsync();
             return Ok(new { message = "Schedule created successfully." });
+        }
+
+        [Authorize]
+        [HttpDelete("/api/v1/schedules/{scheduleId}")]
+        public async Task<IActionResult> DeleteSchedule(Guid scheduleId)
+        {
+            var userId = User.GetUserId();
+            var schedule = await _dbContext.Schedules
+                .Include(s => s.Backup)
+                    .ThenInclude(b => b.Source)
+                .FirstOrDefaultAsync(s => s.Id == scheduleId && s.Backup.Source.UserId == userId);
+            if (schedule == null)
+            {
+                return this.ApiNotFound("Schedule not found: " + scheduleId);
+            }
+
+            _dbContext.Schedules.Remove(schedule);
+            await _dbContext.SaveChangesAsync();
+            return Ok(new { message = "Schedule deleted successfully." });
         }
     }
 }

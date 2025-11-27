@@ -119,6 +119,9 @@
     "newSchedule": "Новое расписание",
     "noSchedules": "Расписок пока нет.",
     "everyMinutes": "каждые {{count}} мин",
+    "deleteTitle": "Удалить расписание",
+    "deleteText": "Действие необратимо!",
+    "deleteTooltip": "Удалить расписание",
     "status": {
       "created": "Создано",
       "running": "Выполняется",

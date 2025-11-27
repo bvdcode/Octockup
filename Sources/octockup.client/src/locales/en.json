@@ -120,6 +120,9 @@
     "newSchedule": "New Schedule",
     "noSchedules": "No schedules yet.",
     "everyMinutes": "every {{count}} min",
+    "deleteTitle": "Delete schedule",
+    "deleteText": "This action is permanent!",
+    "deleteTooltip": "Delete schedule",
     "status": {
       "created": "Created",
       "running": "Running",
