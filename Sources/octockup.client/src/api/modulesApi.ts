@@ -2,7 +2,11 @@ import { useMemo } from "react";
 import type { AxiosInstance } from "axios";
 import { useAxios } from "@bvdcode/react-kit";
 import { ModuleDestination } from "../types/api";
-import type { Module, ModuleProviderInfo, CreateModuleRequest } from "../types/api";
+import type {
+  Module,
+  ModuleProviderInfo,
+  CreateModuleRequest,
+} from "../types/api";
 
 class ModulesApiClient {
   private axiosFactory: () => AxiosInstance;
@@ -21,31 +25,65 @@ class ModulesApiClient {
   }
 
   async listProviders(): Promise<ModuleProviderInfo[]> {
-    const { data } = await this.axios().get<ModuleProviderInfo[]>("/api/v1/modules/providers");
+    const { data } = await this.axios().get<ModuleProviderInfo[]>(
+      "/api/v1/modules/providers",
+    );
     return data;
   }
 
-  async listProvidersByType(type: 'source' | 'storage'): Promise<ModuleProviderInfo[]> {
-    const { data } = await this.axios().get<ModuleProviderInfo[]>(`/api/v1/modules/providers/${encodeURIComponent(type)}`);
+  async listProvidersByType(
+    type: "source" | "storage",
+  ): Promise<ModuleProviderInfo[]> {
+    const { data } = await this.axios().get<ModuleProviderInfo[]>(
+      `/api/v1/modules/providers/${encodeURIComponent(type)}`,
+    );
     return data;
   }
 
-  async create(providerId: string, destination: ModuleDestination, tag: string, backupModuleId: string, parameters: Record<string, string>): Promise<void> {
-    const body: CreateModuleRequest = { destination, tag, backupModuleId, parameters };
-    await this.axios().post(`/api/v1/modules/providers/${encodeURIComponent(providerId)}`, body);
+  async create(
+    providerId: string,
+    destination: ModuleDestination,
+    tag: string,
+    backupModuleId: string,
+    parameters: Record<string, string>,
+  ): Promise<void> {
+    const body: CreateModuleRequest = {
+      destination,
+      tag,
+      backupModuleId,
+      parameters,
+    };
+    await this.axios().post(
+      `/api/v1/modules/providers/${encodeURIComponent(providerId)}`,
+      body,
+    );
   }
 
-  async test(providerId: string, parameters: Record<string, string>): Promise<void> {
-    await this.axios().post(`/api/v1/modules/providers/${encodeURIComponent(providerId)}/test`, { parameters });
+  async test(
+    providerId: string,
+    parameters: Record<string, string>,
+  ): Promise<void> {
+    await this.axios().post(
+      `/api/v1/modules/providers/${encodeURIComponent(providerId)}/test`,
+      { parameters },
+    );
   }
 
-  async getDirectories(providerId: string, parameters: Record<string, string>): Promise<string[]> {
-    const { data } = await this.axios().post<string[]>(`/api/v1/modules/providers/${encodeURIComponent(providerId)}/directories`, { parameters });
+  async getDirectories(
+    providerId: string,
+    parameters: Record<string, string>,
+  ): Promise<string[]> {
+    const { data } = await this.axios().post<string[]>(
+      `/api/v1/modules/providers/${encodeURIComponent(providerId)}/directories`,
+      { parameters },
+    );
     return data;
   }
 
   async delete(moduleId: string): Promise<void> {
-    await this.axios().delete(`/api/v1/modules/${encodeURIComponent(moduleId)}`);
+    await this.axios().delete(
+      `/api/v1/modules/${encodeURIComponent(moduleId)}`,
+    );
   }
 }
 

@@ -15,16 +15,8 @@ class BackupsApiClient {
   }
 
   async list(): Promise<BackupItem[]> {
-    const { data } = await this.axios().get<Array<any>>("/api/v1/backups");
-    return data.map(x => ({
-      id: x.id,
-      tag: x.tag,
-      sourceId: x.sourceId,
-      storageId: x.storageId,
-      ignoredPaths: x.ignoredPaths ?? [],
-      source: x.source,
-      storage: x.storage,
-    }));
+    const result = await this.axios().get<Array<BackupItem>>("/api/v1/backups");
+    return result.data;
   }
 
   async create(request: CreateBackupRequest): Promise<void> {
@@ -32,7 +24,9 @@ class BackupsApiClient {
   }
 
   async delete(backupId: string): Promise<void> {
-    await this.axios().delete(`/api/v1/backups/${encodeURIComponent(backupId)}`);
+    await this.axios().delete(
+      `/api/v1/backups/${encodeURIComponent(backupId)}`,
+    );
   }
 }
 

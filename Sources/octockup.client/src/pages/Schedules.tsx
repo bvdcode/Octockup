@@ -20,12 +20,17 @@ import { useNavigate } from "react-router-dom";
 import type { ScheduleItem } from "../types/api";
 import { useSchedulesApi } from "../api/schedulesApi";
 import { getSourceIcon } from "../constants/sourceIcons";
-import { AddCircleOutline, DeleteOutline } from "@mui/icons-material";
+import {
+  AddCircleOutline,
+  DeleteOutline,
+  StopCircleOutline,
+} from "@mui/icons-material";
 
 interface State {
   loading: boolean;
   error: string | null;
   deletingId: string | null;
+  cancelingId: string | null;
 }
 
 function statusColor(
@@ -144,6 +149,7 @@ export default function SchedulesPage() {
     loading: true,
     error: null,
     deletingId: null,
+    cancelingId: null,
   });
   const [items, setItems] = useState<ScheduleItem[]>([]);
 
@@ -301,48 +307,89 @@ export default function SchedulesPage() {
                       : ""}
                   </Typography>
                 </Box>
-                <Tooltip
-                  title={t("schedules.deleteTooltip", {
-                    defaultValue: "Delete schedule",
-                  })}
-                  placement="top"
-                >
-                  <span>
-                    <IconButton
-                      size="medium"
-                      aria-label={t("common.delete")}
-                      disabled={state.deletingId === it.id}
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        const result = await confirm({
-                          title: t("schedules.deleteTitle", {
-                            defaultValue: "Delete schedule",
-                          }),
-                          description: t("schedules.deleteText", {
-                            defaultValue: "This action is permanent!",
-                          }),
-                          confirmationText: t("common.delete", {
-                            defaultValue: "Delete",
-                          }),
-                          cancellationText: t("common.cancel", {
-                            defaultValue: "Cancel",
-                          }),
-                          confirmationButtonProps: { color: "error" },
-                        });
-                        if (result.confirmed) {
-                          setState((s) => ({ ...s, deletingId: it.id }));
-                          await api.delete(it.id);
-                          setItems((prev) =>
-                            prev.filter((x) => x.id !== it.id),
-                          );
-                          setState((s) => ({ ...s, deletingId: null }));
+                <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+                <Box display="flex" flexDirection="column" gap={0.5}>
+                  <Tooltip
+                    title={t("schedules.deleteTooltip", {
+                      defaultValue: "Delete schedule",
+                    })}
+                    placement="top"
+                  >
+                    <span>
+                      <IconButton
+                        size="small"
+                        aria-label={t("common.delete")}
+                        disabled={state.deletingId === it.id}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const result = await confirm({
+                            title: t("schedules.deleteTitle", {
+                              defaultValue: "Delete schedule",
+                            }),
+                            description: t("schedules.deleteText", {
+                              defaultValue: "This action is permanent!",
+                            }),
+                            confirmationText: t("common.delete", {
+                              defaultValue: "Delete",
+                            }),
+                            cancellationText: t("common.cancel", {
+                              defaultValue: "Cancel",
+                            }),
+                            confirmationButtonProps: { color: "error" },
+                          });
+                          if (result.confirmed) {
+                            setState((s) => ({ ...s, deletingId: it.id }));
+                            await api.delete(it.id);
+                            setItems((prev) =>
+                              prev.filter((x) => x.id !== it.id),
+                            );
+                            setState((s) => ({ ...s, deletingId: null }));
+                          }
+                        }}
+                      >
+                        <DeleteOutline color="primary" />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                  <Tooltip
+                    title={t("schedules.stopTooltip", {
+                      defaultValue: "Stop running schedule",
+                    })}
+                    placement="top"
+                  >
+                    <span>
+                      <IconButton
+                        size="small"
+                        aria-label={t("schedules.stop", {
+                          defaultValue: "Stop",
+                        })}
+                        disabled={
+                          it.status !== BackupStatus.Running ||
+                          state.cancelingId === it.id
                         }
-                      }}
-                    >
-                      <DeleteOutline color="primary" />
-                    </IconButton>
-                  </span>
-                </Tooltip>
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          setState((s) => ({ ...s, cancelingId: it.id }));
+                          try {
+                            await api.cancel(it.id);
+                            // Refresh list or update status locally
+                            setItems((prev) =>
+                              prev.map((x) =>
+                                x.id === it.id
+                                  ? { ...x, status: BackupStatus.Failed }
+                                  : x,
+                              ),
+                            );
+                          } finally {
+                            setState((s) => ({ ...s, cancelingId: null }));
+                          }
+                        }}
+                      >
+                        <StopCircleOutline color="primary" />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                </Box>
               </CardContent>
             </Card>
           ))}

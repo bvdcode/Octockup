@@ -123,6 +123,8 @@
     "deleteTitle": "Delete schedule",
     "deleteText": "This action is permanent!",
     "deleteTooltip": "Delete schedule",
+    "stopTooltip": "Stop running schedule",
+    "stop": "Stop",
     "status": {
       "created": "Created",
       "running": "Running",
