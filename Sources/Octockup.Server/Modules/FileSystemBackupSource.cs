@@ -14,7 +14,7 @@ namespace Octockup.Server.Modules
         public char PathSeparator => Path.DirectorySeparatorChar;
 
         private static readonly string _rootDirectory =
-            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "mounts"));
+            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "data", "mounts"));
 
         private string _baseDirectory = _rootDirectory;
 
