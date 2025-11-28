@@ -26,4 +26,5 @@ RUN dotnet publish "./Octockup.Server.csproj" -c $BUILD_CONFIGURATION -o /app/pu
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+ENV DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE=false
 ENTRYPOINT ["dotnet", "Octockup.Server.dll"]

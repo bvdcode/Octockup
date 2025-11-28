@@ -8,7 +8,7 @@ using EasyExtensions.Quartz.Attributes;
 
 namespace Octockup.Server.Jobs
 {
-    [JobTrigger(minutes: 1)]
+    //[JobTrigger(minutes: 1)]
     public class RetentionJob(
         AppDbContext _dbContext,
         ILogger<RetentionJob> _logger,
