@@ -13,7 +13,8 @@ namespace Octockup.Server.Database
     public class User : BaseEntity<Guid>
     {
         public string Username { get; set; } = string.Empty;
-        public string PasswordPhc { get; set; } = string.Empty;
         public ICollection<Module> Modules { get; set; } = [];
+        public string PasswordPhc { get; set; } = string.Empty;
+        public string EncryptionKey { get; set; } = string.Empty;
     }
 }

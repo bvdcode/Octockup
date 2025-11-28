@@ -16,12 +16,12 @@ using Microsoft.AspNetCore.SignalR;
 using Octockup.Server.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using EasyExtensions.Quartz.Attributes;
+using EasyExtensions.Crypto;
 
 namespace Octockup.Server.Jobs
 {
     [JobTrigger(minutes: 1)]
     public class ExecuteBackupJob(
-        IStreamCipher _crypto,
         AppDbContext _dbContext,
         ILogger<ExecuteBackupJob> _logger,
         IHubContext<EventHub> _hubContext,
@@ -98,6 +98,7 @@ namespace Octockup.Server.Jobs
             List<BackupFileInfo> files)
         {
             long processedBytes = 0;
+            AesGcmStreamCipher _crypto = new();
             for (int i = 0; i < files.Count; i++)
             {
                 var file = files[i];
