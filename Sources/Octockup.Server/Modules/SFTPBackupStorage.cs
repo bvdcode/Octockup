@@ -276,6 +276,7 @@ namespace Octockup.Server.Modules
 
         public void Dispose()
         {
+            GC.SuppressFinalize(this);
             _sftp?.Dispose();
         }
     }
