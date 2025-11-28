@@ -200,14 +200,16 @@ function RunningProgressInfo({
         sx={{ height: 4, borderRadius: 1, mb: 0.5 }}
       />
       <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          noWrap
-          sx={{ flex: 1, mr: 1 }}
-        >
-          {report.message}
-        </Typography>
+        <Tooltip title={report.message} placement="top" arrow>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            noWrap
+            sx={{ flex: 1, mr: 1 }}
+          >
+            {report.message}
+          </Typography>
+        </Tooltip>
         <Typography
           variant="caption"
           color="text.secondary"
