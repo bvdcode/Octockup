@@ -109,8 +109,7 @@ namespace Octockup.Server.Controllers
                 user = new()
                 {
                     Username = request.Username,
-                    PasswordPhc = _passwords.Hash(request.Password),
-                    EncryptionKey = CreateEncryptionKey(request.Password),
+                    PasswordPhc = _passwords.Hash(request.Password)
                 };
                 _dbContext.Users.Add(user);
                 await _dbContext.SaveChangesAsync();
@@ -142,12 +141,6 @@ namespace Octockup.Server.Controllers
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
             });
-        }
-
-        private string CreateEncryptionKey(string password)
-        {
-            // Configuration["CryptoKey"] + user password
-            string cryptoKey = HttpContext.RequestServices.GetRequiredService<IConfiguration>()["CryptoKey"] ?? "";
         }
     }
 }

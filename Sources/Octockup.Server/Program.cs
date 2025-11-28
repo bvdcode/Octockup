@@ -23,13 +23,11 @@ namespace Octockup.Server
             var builder = WebApplication.CreateBuilder(args);
 
             string masterKey = builder.Configuration.GetMasterKey();
-            string cryptoKey = KeyDerivation.DeriveSubkeyBase64(masterKey, "crypto", 32);
-            string pepper = KeyDerivation.DeriveSubkeyBase64(masterKey, "pepper", 32);
             builder.Configuration.AddInMemoryCollection(
             [
-                new KeyValuePair<string, string?>("Pepper", pepper),
-                new KeyValuePair<string, string?>("CryptoKey", cryptoKey)
+                new KeyValuePair<string, string?>("Pepper", KeyDerivation.DeriveSubkeyBase64(masterKey, "pepper", 32))
             ]);
+            byte[] cryptoKey = KeyDerivation.DeriveSubkey(masterKey, "crypto", 32);
             string sqlitePassword = KeyDerivation.DeriveSubkeyBase64(masterKey, "sqlite", 32);
             string sqlitePath = Helpers.PathHelpers.GetPath("octockup.sqlite");
 
@@ -38,6 +36,7 @@ namespace Octockup.Server
                 .AddSqlite<AppDbContext>(connectionString: $"Data Source={sqlitePath};Password={sqlitePassword};")
                 .AddScoped<IBackupProvider, S3BackupStorage>()
                 .AddScoped<IBackupProvider, FileSystemBackupSource>()
+                .AddScoped<IStreamCipher>(sp => new AesGcmStreamCipher(cryptoKey))
                 .AddPbkdf2PasswordHashService()
                 .AddCpuUsageService()
                 .AddQuartzJobs()
