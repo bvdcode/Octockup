@@ -97,6 +97,14 @@ namespace Octockup.Server.Jobs
             ScheduleReport report,
             List<BackupFileInfo> files)
         {
+            Snapshot snapshot = new()
+            {
+                BackupId = schedule.BackupId,
+            };
+
+            await _dbContext.Snapshots.AddAsync(snapshot);
+            await _dbContext.SaveChangesAsync();
+
             long processedBytes = 0;
             for (int i = 0; i < files.Count; i++)
             {
@@ -152,9 +160,10 @@ namespace Octockup.Server.Jobs
                         _stoppingSchedules.Remove(schedule.Id);
                         throw new OperationCanceledException("Backup stopped by user request.");
                     }
+
+
                 }
 
-                // TODO: save snapshot file
                 _logger.LogInformation("Schedule {ScheduleId}: {Message} ({Processed}/{Total})",
                     schedule.Id, report.Message, report.Processed, report.Total);
             }
