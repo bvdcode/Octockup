@@ -30,7 +30,8 @@ export function useDirectoryBrowser(
         setBrowserLoading(true);
         const paramsWithPath = { ...params, path: targetPath };
         const dirs = await apiClient.getDirectories(providerId, paramsWithPath);
-        setBrowserDirs(dirs || []);
+        const sorted = (dirs || []).slice().sort((a, b) => a.localeCompare(b));
+        setBrowserDirs(sorted);
         setBrowserPath(targetPath);
       } catch {
         setBrowserDirs([]);

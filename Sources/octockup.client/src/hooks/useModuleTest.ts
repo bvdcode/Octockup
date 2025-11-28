@@ -55,8 +55,18 @@ export function useModuleTest(
       await apiClient.test(providerId, params);
       setTestMessage(t("wizard.testSuccess"));
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setTestError(msg || t("wizard.testFailed"));
+      let msg = t("wizard.testFailed");
+      if (err && typeof err === "object") {
+        const response = (err as any).response;
+        if (response?.data?.detail) {
+          msg = response.data.detail;
+        } else if ((err as Error).message) {
+          msg = (err as Error).message;
+        }
+      } else if (err instanceof Error) {
+        msg = err.message;
+      }
+      setTestError(msg);
     } finally {
       setTestLoading(false);
     }
