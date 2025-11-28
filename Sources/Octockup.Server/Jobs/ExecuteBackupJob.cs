@@ -3,7 +3,6 @@
 
 using Quartz;
 using System.Buffers;
-using EasyExtensions;
 using Octockup.Server.Hubs;
 using System.IO.Compression;
 using EasyExtensions.Streams;
@@ -14,9 +13,9 @@ using EasyExtensions.Abstractions;
 using Octockup.Server.Models.Enums;
 using Microsoft.AspNetCore.SignalR;
 using Octockup.Server.Abstractions;
+using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using EasyExtensions.Quartz.Attributes;
-using System.Security.Cryptography;
 
 namespace Octockup.Server.Jobs
 {
@@ -79,6 +78,11 @@ namespace Octockup.Server.Jobs
                 var filesToBackup = foundSourceProvider.GetFiles(recursive: true).ToList();
                 report.Total = filesToBackup.Count;
                 await BackupAsync(next, foundSourceProvider, foundStorageProvider, report, filesToBackup);
+                next.Status = ScheduleStatus.Completed;
+                next.FinishedAt = DateTime.UtcNow;
+                await _dbContext.SaveChangesAsync();
+                _logger.LogInformation("Schedule {ScheduleId} backup completed successfully", next.Id);
+                await report.SendAsync(report.Processed, "Backup completed successfully.", status: ScheduleStatus.Completed);
             }
             catch (Exception ex)
             {
@@ -160,7 +164,7 @@ namespace Octockup.Server.Jobs
                                 schedule.Id, hash, file.Name);
                             chunkHashes.Add(hash);
                             processedBytes += chunkLength;
-                            await report.SendAsync(i, $"Uploading: {file.Name}", processedBytes: processedBytes);
+                            await report.SendAsync(i, $"Skipping: {file.Name}", processedBytes: processedBytes);
                             await chunk.DisposeAsync();
                             continue;
                         }
@@ -180,15 +184,17 @@ namespace Octockup.Server.Jobs
 
                         using var encryptedStream = new MemoryStream();
                         await _crypto.EncryptAsync(compressed, encryptedStream);
+                        encryptedStream.Seek(0, SeekOrigin.Begin);
+
                         string path = ScheduleHelpers.SplitHash(hash, storage.PathSeparator);
-                        bool? exists = await storage.ExistsAsync(path);
-                        if (exists.HasValue && exists.Value == false)
+                        bool exists = await storage.ExistsAsync(path) ?? false;
+                        if (!exists)
                         {
                             _logger.LogInformation("Schedule {ScheduleId}: Uploading chunk {ChunkHash} for file {FileName}",
                                 schedule.Id, hash, file.Name);
                             await storage.UploadAsync(path, encryptedStream);
                         }
-                        else if (exists.HasValue && exists.Value == true)
+                        else
                         {
                             _logger.LogInformation("Schedule {ScheduleId}: Chunk {ChunkHash} for file {FileName} already exists, skipping upload",
                                 schedule.Id, hash, file.Name);
@@ -224,8 +230,6 @@ namespace Octockup.Server.Jobs
                     await _dbContext.SnapshotFiles.AddAsync(snapshotFile);
                     await _dbContext.SaveChangesAsync();
 
-                    snapshot.CompletedAt = DateTime.UtcNow;
-                    await _dbContext.SaveChangesAsync();
                     _logger.LogInformation("Schedule {ScheduleId}: {Message} ({Processed}/{Total})",
                         schedule.Id, report.Message, report.Processed, report.Total);
                 }
@@ -234,6 +238,10 @@ namespace Octockup.Server.Jobs
                     ArrayPool<byte>.Shared.Return(buffer);
                 }
             }
+
+
+            snapshot.CompletedAt = DateTime.UtcNow;
+            await _dbContext.SaveChangesAsync();
         }
     }
 }
