@@ -100,8 +100,9 @@ namespace Octockup.Server.Controllers
             var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
             if (user == null)
             {
+                int userCount = await _dbContext.Users.CountAsync();
                 bool multiUserAllowed = Environment.GetEnvironmentVariable("OCTOCKUP_ALLOW_MULTIUSER") == "true";
-                if (!multiUserAllowed)
+                if (!multiUserAllowed && userCount > 0)
                 {
                     return this.ApiUnauthorized("Invalid username or password.");
                 }
