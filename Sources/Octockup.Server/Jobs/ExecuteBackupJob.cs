@@ -125,6 +125,19 @@ namespace Octockup.Server.Jobs
                     }
                     chunk.Seek(0, SeekOrigin.Begin);
                     string hash = chunk.Sha256();
+                    var alreadyUploaded = await _dbContext.SnapshotFiles
+                        .AsNoTracking()
+                        .Where(x => x.Snapshot.BackupId == schedule.BackupId)
+                        .AnyAsync(x => x.ChunkHashes.Contains(hash));
+                    if (alreadyUploaded)
+                    {
+                        chunkHashes.Add(hash);
+                        processedBytes += chunk.Length;
+                        await report.SendAsync(i, $"Uploading: {file.Name}", processedBytes: processedBytes);
+                        ArrayPool<byte>.Shared.Return(buffer);
+                        await chunk.DisposeAsync();
+                        continue;
+                    }
                     chunk.Seek(0, SeekOrigin.Begin);
 
                     await using var compressed = new MemoryStream();
