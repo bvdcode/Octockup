@@ -110,6 +110,7 @@
     "ignoredPaths": "Игнорируемые пути (по строке)",
     "ignoredPathsPlaceholder": "path/to/ignore\nlogs\nnode_modules",
     "noIgnoredPaths": "Нет игнорируемых путей",
+    "applyPreset": "Применить рекомендуемые пути",
     "createBackup": "Создать бэкап",
     "createError": "Не удалось создать бэкап."
   }

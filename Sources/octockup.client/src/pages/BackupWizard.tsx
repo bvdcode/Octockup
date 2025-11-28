@@ -20,6 +20,7 @@ import { useBackupsApi } from "../api/backupsApi";
 import { useModulesApi } from "../api/modulesApi";
 import { useEffect, useMemo, useState } from "react";
 import { getSourceIcon } from "../constants/sourceIcons";
+import { getIgnoredPathsPreset } from "../constants/ignoredPathsPresets";
 import type { Module, CreateBackupRequest } from "../types/api";
 
 interface State {
@@ -240,15 +241,35 @@ export default function BackupWizard() {
                 }}
                 fullWidth
               />
-              <TextField
-                label={t("backupWizard.ignoredPaths")}
-                value={ignoredPathsInput}
-                onChange={(e) => setIgnoredPathsInput(e.target.value)}
-                fullWidth
-                multiline
-                minRows={4}
-                placeholder={t("backupWizard.ignoredPathsPlaceholder")}
-              />
+              <Stack spacing={1}>
+                <Box display="flex" gap={1} alignItems="center">
+                  <TextField
+                    label={t("backupWizard.ignoredPaths")}
+                    value={ignoredPathsInput}
+                    onChange={(e) => setIgnoredPathsInput(e.target.value)}
+                    fullWidth
+                    multiline
+                    minRows={4}
+                    placeholder={t("backupWizard.ignoredPathsPlaceholder")}
+                  />
+                </Box>
+                {sourceId &&
+                  (() => {
+                    const sourceMod = modules.find((m) => m.id === sourceId);
+                    const preset = sourceMod
+                      ? getIgnoredPathsPreset(sourceMod.backupModuleId)
+                      : [];
+                    return preset.length > 0 ? (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => setIgnoredPathsInput(preset.join("\n"))}
+                      >
+                        {t("backupWizard.applyPreset")}
+                      </Button>
+                    ) : null;
+                  })()}
+              </Stack>
               <Stack direction="row" spacing={1} flexWrap="wrap">
                 {ignoredPathsInput
                   .split(/\r?\n/)

@@ -111,6 +111,7 @@
     "ignoredPaths": "Ignored paths (one per line)",
     "ignoredPathsPlaceholder": "path/to/ignore\nlogs\nnode_modules",
     "noIgnoredPaths": "No ignored paths",
+    "applyPreset": "Apply recommended paths",
     "createBackup": "Create Backup",
     "createError": "Failed to create backup."
   }
