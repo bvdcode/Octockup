@@ -126,6 +126,8 @@
     "deleteTooltip": "Delete schedule",
     "stopTooltip": "Stop running schedule",
     "stop": "Stop",
+    "tryAgainTooltip": "Reset error and try again",
+    "tryAgain": "Try Again",
     "status": {
       "created": "Created",
       "running": "Running",

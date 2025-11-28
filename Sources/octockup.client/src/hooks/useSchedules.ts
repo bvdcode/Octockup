@@ -9,6 +9,7 @@ interface SchedulesState {
   error: string | null;
   deletingId: string | null;
   cancelingId: string | null;
+  resettingId: string | null;
 }
 
 interface UseSchedulesReturn {
@@ -17,6 +18,7 @@ interface UseSchedulesReturn {
   state: SchedulesState;
   deleteSchedule: (id: string) => Promise<void>;
   cancelSchedule: (id: string) => Promise<void>;
+  resetError: (id: string) => Promise<void>;
 }
 
 export function useSchedules(): UseSchedulesReturn {
@@ -28,6 +30,7 @@ export function useSchedules(): UseSchedulesReturn {
     error: null,
     deletingId: null,
     cancelingId: null,
+    resettingId: null,
   });
 
   const [items, setItems] = useState<ScheduleItem[]>([]);
@@ -69,6 +72,7 @@ export function useSchedules(): UseSchedulesReturn {
           error: null,
           deletingId: null,
           cancelingId: null,
+          resettingId: null,
         });
       })
       .catch((e) => {
@@ -78,6 +82,7 @@ export function useSchedules(): UseSchedulesReturn {
           error: e?.message || "Failed to load schedules",
           deletingId: null,
           cancelingId: null,
+          resettingId: null,
         });
       });
 
@@ -173,11 +178,26 @@ export function useSchedules(): UseSchedulesReturn {
     }
   };
 
+  const resetError = async (id: string): Promise<void> => {
+    setState((s) => ({ ...s, resettingId: id }));
+    try {
+      await api.resetError(id);
+      setItems((prev) =>
+        prev.map((x) =>
+          x.id === id ? { ...x, status: BackupStatus.Created, errorMessage: null } : x,
+        ),
+      );
+    } finally {
+      setState((s) => ({ ...s, resettingId: null }));
+    }
+  };
+
   return {
     items,
     scheduleReports,
     state,
     deleteSchedule,
     cancelSchedule,
+    resetError,
   };
 }

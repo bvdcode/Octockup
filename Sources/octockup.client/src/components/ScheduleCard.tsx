@@ -13,6 +13,7 @@ import {
   StopCircle,
   DeleteOutline,
   ArrowRightAlt,
+  Replay,
 } from "@mui/icons-material";
 import { BackupStatus } from "../types/api";
 import { confirm } from "material-ui-confirm";
@@ -28,8 +29,10 @@ interface ScheduleCardProps {
   report?: ScheduleReport;
   onDelete: (id: string) => Promise<void>;
   onCancel: (id: string) => Promise<void>;
+  onResetError: (id: string) => Promise<void>;
   isDeleting: boolean;
   isCanceling: boolean;
+  isResetting: boolean;
 }
 
 export function ScheduleCard({
@@ -37,8 +40,10 @@ export function ScheduleCard({
   report,
   onDelete,
   onCancel,
+  onResetError,
   isDeleting,
   isCanceling,
+  isResetting,
 }: ScheduleCardProps) {
   const { t } = useTranslation();
   const progress = report && report.total > 0
@@ -105,8 +110,10 @@ export function ScheduleCard({
           item={item}
           isDeleting={isDeleting}
           isCanceling={isCanceling}
+          isResetting={isResetting}
           onDelete={handleDelete}
           onCancel={handleCancel}
+          onResetError={onResetError}
         />
       </CardContent>
     </Card>
@@ -287,16 +294,25 @@ function ScheduleActions({
   item,
   isDeleting,
   isCanceling,
+  isResetting,
   onDelete,
   onCancel,
+  onResetError,
 }: {
   item: ScheduleItem;
   isDeleting: boolean;
   isCanceling: boolean;
+  isResetting: boolean;
   onDelete: (e: React.MouseEvent) => Promise<void>;
   onCancel: (e: React.MouseEvent) => Promise<void>;
+  onResetError: (id: string) => Promise<void>;
 }) {
   const { t } = useTranslation();
+
+  const handleResetError = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await onResetError(item.id);
+  };
   
   return (
     <Box display="flex" flexDirection="column" gap={0.5}>
@@ -312,20 +328,35 @@ function ScheduleActions({
           </IconButton>
         </span>
       </Tooltip>
-      <Tooltip title={t("schedules.stopTooltip")} placement="top">
-        <span>
-          <IconButton
-            size="small"
-            aria-label={t("schedules.stop")}
-            disabled={
-              item.status !== BackupStatus.Running || isCanceling
-            }
-            onClick={onCancel}
-          >
-            <StopCircle />
-          </IconButton>
-        </span>
-      </Tooltip>
+      {item.status === BackupStatus.Failed ? (
+        <Tooltip title={t("schedules.tryAgainTooltip")} placement="top">
+          <span>
+            <IconButton
+              size="small"
+              aria-label={t("schedules.tryAgain")}
+              disabled={isResetting}
+              onClick={handleResetError}
+            >
+              <Replay color="warning" />
+            </IconButton>
+          </span>
+        </Tooltip>
+      ) : (
+        <Tooltip title={t("schedules.stopTooltip")} placement="top">
+          <span>
+            <IconButton
+              size="small"
+              aria-label={t("schedules.stop")}
+              disabled={
+                item.status !== BackupStatus.Running || isCanceling
+              }
+              onClick={onCancel}
+            >
+              <StopCircle />
+            </IconButton>
+          </span>
+        </Tooltip>
+      )}
     </Box>
   );
 }

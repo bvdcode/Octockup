@@ -18,8 +18,14 @@ import { ScheduleCard } from "../components/ScheduleCard";
 export default function SchedulesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { items, scheduleReports, state, deleteSchedule, cancelSchedule } =
-    useSchedules();
+  const {
+    items,
+    scheduleReports,
+    state,
+    deleteSchedule,
+    cancelSchedule,
+    resetError,
+  } = useSchedules();
 
   if (state.loading) {
     return (
@@ -68,8 +74,10 @@ export default function SchedulesPage() {
               report={scheduleReports[item.id]}
               onDelete={deleteSchedule}
               onCancel={cancelSchedule}
+              onResetError={resetError}
               isDeleting={state.deletingId === item.id}
               isCanceling={state.cancelingId === item.id}
+              isResetting={state.resettingId === item.id}
             />
           ))}
         </Stack>

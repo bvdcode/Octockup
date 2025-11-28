@@ -30,6 +30,10 @@ class SchedulesApiClient {
   async cancel(scheduleId: string): Promise<void> {
     await this.axios().post(`/api/v1/schedules/${scheduleId}/cancel`);
   }
+
+  async resetError(scheduleId: string): Promise<void> {
+    await this.axios().post(`/api/v1/schedules/${scheduleId}/reset-error`);
+  }
 }
 
 export function useSchedulesApi(): SchedulesApiClient {
