@@ -116,6 +116,33 @@ namespace Octockup.Server.Jobs
                 var file = files[i];
                 await report.SendAsync(i, $"Processing: {file.Name}", processedBytes: processedBytes);
 
+                var foundFile = await _dbContext.SnapshotFiles
+                    .AsNoTracking()
+                    .Where(x => x.Snapshot.BackupId == schedule.BackupId)
+                    .FirstOrDefaultAsync(x => x.Path == file.Path);
+                if (foundFile != null && foundFile.Hashsum != null && file.Size == foundFile.Size && file.LastModified == foundFile.LastModified)
+                {
+                    _logger.LogInformation("Schedule {ScheduleId}: File {FileName} unchanged since last snapshot, skipping",
+                        schedule.Id, file.Name);
+                    SnapshotFile snapshotFile = new()
+                    {
+                        Path = file.Path,
+                        Hashsum = foundFile.Hashsum,
+                        Snapshot = snapshot,
+                        Size = file.Size ?? 0,
+                        SnapshotId = snapshot.Id,
+                        ChunkHashes = foundFile.ChunkHashes,
+                        Name = file.Name ?? file.Path,
+                        LastModified = file.LastModified,
+                    };
+                    await _dbContext.SnapshotFiles.AddAsync(snapshotFile);
+                    await _dbContext.SaveChangesAsync();
+
+                    processedBytes += file.Size ?? 0;
+                    await report.SendAsync(i, $"Processing: {file.Name}", processedBytes: processedBytes);
+                    continue;
+                }
+
                 using var stream = await source.GetFileStreamAsync(file);
                 if (stream == Stream.Null)
                 {
@@ -164,7 +191,7 @@ namespace Octockup.Server.Jobs
                                 schedule.Id, hash, file.Name);
                             chunkHashes.Add(hash);
                             processedBytes += chunkLength;
-                            await report.SendAsync(i, $"Skipping: {file.Name}", processedBytes: processedBytes);
+                            await report.SendAsync(i, $"Processing: {file.Name}", processedBytes: processedBytes);
                             await chunk.DisposeAsync();
                             continue;
                         }

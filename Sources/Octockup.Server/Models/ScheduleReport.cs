@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.SignalR;
 using Octockup.Server.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
-namespace Octockup.Server.Jobs
+namespace Octockup.Server.Models
 {
     public class ScheduleReport(Guid userId, Guid scheduleId, IHubContext<EventHub> _hubContext)
     {
