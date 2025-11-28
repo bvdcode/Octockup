@@ -6,7 +6,7 @@ using Octockup.Server.Abstractions;
 
 namespace Octockup.Server.Modules
 {
-    public class FileSystemBackupSource(ILogger<FileSystemBackupSource> _logger) : IBackupSource
+    public class FileSystemBackupSource(ILogger<FileSystemBackupSource> _logger) : IBackupStorage
     {
         public string Name => "File System";
         public string Id => GetType().FullName!;
@@ -130,6 +130,57 @@ namespace Octockup.Server.Modules
                 _logger.LogError(ex, "Failed to open file stream for '{FilePath}'", fullPath);
                 return Task.FromResult(Stream.Null);
             }
+        }
+
+        public Task<bool?> ExistsAsync(string path)
+        {
+            var fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, path));
+            if (!IsSubPathOf(fullPath, _baseDirectory))
+            {
+                throw new ArgumentException($"File path '{path}' escapes the base directory.");
+            }
+            bool exists = File.Exists(fullPath);
+            return Task.FromResult<bool?>(exists);
+        }
+
+        public Task<bool?> DeleteAsync(string path)
+        {
+            var fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, path));
+            if (!IsSubPathOf(fullPath, _baseDirectory))
+            {
+                throw new ArgumentException($"File path '{path}' escapes the base directory.");
+            }
+            if (!File.Exists(fullPath))
+            {
+                return Task.FromResult<bool?>(null);
+            }
+            try
+            {
+                File.Delete(fullPath);
+                return Task.FromResult<bool?>(true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to delete file '{FilePath}'", fullPath);
+                return Task.FromResult<bool?>(false);
+            }
+        }
+
+        public Task UploadAsync(string path, Stream data)
+        {
+            var fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, path));
+            if (!IsSubPathOf(fullPath, _baseDirectory))
+            {
+                throw new ArgumentException($"File path '{path}' escapes the base directory.");
+            }
+            string tempFile = fullPath + ".tmp";
+            Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+            using (var fileStream = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                data.CopyTo(fileStream);
+            }
+            File.Move(tempFile, fullPath, true);
+            return Task.CompletedTask;
         }
     }
 }
