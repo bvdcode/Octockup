@@ -120,11 +120,10 @@ namespace Octockup.Server.Jobs
                 .Distinct()
                 .ToHashSet();
 
-            long processedBytes = 0;
             for (int i = 0; i < files.Count; i++)
             {
                 var file = files[i];
-                await report.SendAsync(i, $"Processing: {file.Name}", processedBytes: processedBytes);
+                await report.SendAsync(i, $"Processing: {file.Name}");
 
                 var foundFile = await _dbContext.SnapshotFiles
                     .AsNoTracking()
@@ -148,8 +147,7 @@ namespace Octockup.Server.Jobs
                     await _dbContext.SnapshotFiles.AddAsync(snapshotFile);
                     await _dbContext.SaveChangesAsync();
 
-                    processedBytes += file.Size ?? 0;
-                    await report.SendAsync(i, $"Processing: {file.Name}", processedBytes: processedBytes);
+                    await report.SendAsync(i, $"Processing: {file.Name}", processedBytes: snapshotFile.Size);
                     continue;
                 }
 
@@ -196,8 +194,7 @@ namespace Octockup.Server.Jobs
                             _logger.LogInformation("Schedule {ScheduleId}: Chunk {ChunkHash} for file {FileName} already uploaded in previous snapshot, skipping upload",
                                 schedule.Id, hash, file.Name);
                             chunkHashes.Add(hash);
-                            processedBytes += chunkLength;
-                            await report.SendAsync(i, $"Processing: {file.Name}", processedBytes: processedBytes);
+                            await report.SendAsync(i, $"Processing: {file.Name}", processedBytes: chunkLength);
                             await chunk.DisposeAsync();
                             continue;
                         }
@@ -234,8 +231,7 @@ namespace Octockup.Server.Jobs
                                 schedule.Id, hash, file.Name);
                         }
 
-                        processedBytes += chunkLength;
-                        await report.SendAsync(i, $"Uploading: {file.Name}", processedBytes: processedBytes);
+                        await report.SendAsync(i, $"Uploading: {file.Name}", processedBytes: chunkLength);
 
                         chunkHashes.Add(hash);
                         if (_stoppingSchedules.Contains(schedule.Id))
@@ -273,7 +269,7 @@ namespace Octockup.Server.Jobs
                 }
             }
 
-
+            await report.SendAsync(report.Processed, "Finalizing snapshot...");
             snapshot.CompletedAt = DateTime.UtcNow;
             await _dbContext.SaveChangesAsync();
         }
