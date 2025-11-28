@@ -36,6 +36,30 @@ namespace Octockup.Server.Controllers
         }
 
         [Authorize]
+        [HttpPost("/api/v1/schedules/{scheduleId:guid}/reset-error")]
+        public async Task<IActionResult> Reschedule(Guid scheduleId)
+        {
+            var userId = User.GetUserId();
+            var schedule = await _dbContext.Schedules
+                .Include(s => s.Backup)
+                    .ThenInclude(b => b.Source)
+                .FirstOrDefaultAsync(s => s.Id == scheduleId && s.Backup.Source.UserId == userId);
+            if (schedule == null)
+            {
+                return this.ApiNotFound("Schedule not found: " + scheduleId);
+            }
+            if (schedule.Status != ScheduleStatus.Failed)
+            {
+                return this.ApiBadRequest("Only schedules in Error status can be reset.");
+            }
+            schedule.Status = ScheduleStatus.Created;
+            schedule.ErrorMessage = null;
+            await _dbContext.SaveChangesAsync();
+            await _scheduler.TriggerJobAsync<ExecuteBackupJob>();
+            return Ok(new { message = "Schedule error reset successfully." });
+        }
+
+        [Authorize]
         [HttpPost("/api/v1/schedules/{scheduleId:guid}/cancel")]
         public async Task<IActionResult> CancelSchedule(Guid scheduleId)
         {
