@@ -110,6 +110,13 @@ namespace Octockup.Server.Jobs
             await _dbContext.Snapshots.AddAsync(snapshot);
             await _dbContext.SaveChangesAsync();
 
+            var uploadedChunks = await _dbContext.SnapshotFiles
+                .AsNoTracking()
+                .Where(x => x.Snapshot.BackupId == schedule.BackupId)
+                .SelectMany(x => x.ChunkHashes)
+                .Distinct()
+                .ToHashSetAsync();
+
             long processedBytes = 0;
             for (int i = 0; i < files.Count; i++)
             {
@@ -180,11 +187,7 @@ namespace Octockup.Server.Jobs
                         }
                         string hash = Convert.ToHexString(chunkHasher.GetHashAndReset()).ToLowerInvariant();
 
-                        var alreadyUploaded = await _dbContext.SnapshotFiles
-                            .AsNoTracking()
-                            .Where(x => x.Snapshot.BackupId == schedule.BackupId)
-                            .AnyAsync(x => x.ChunkHashes.Contains(hash));
-
+                        var alreadyUploaded = uploadedChunks.Contains(hash);
                         if (alreadyUploaded)
                         {
                             _logger.LogInformation("Schedule {ScheduleId}: Chunk {ChunkHash} for file {FileName} already uploaded in previous snapshot, skipping upload",
@@ -220,6 +223,7 @@ namespace Octockup.Server.Jobs
                             _logger.LogInformation("Schedule {ScheduleId}: Uploading chunk {ChunkHash} for file {FileName}",
                                 schedule.Id, hash, file.Name);
                             await storage.UploadAsync(path, encryptedStream);
+                            uploadedChunks.Add(hash);
                         }
                         else
                         {
