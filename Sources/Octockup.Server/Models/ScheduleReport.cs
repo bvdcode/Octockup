@@ -28,7 +28,7 @@ namespace Octockup.Server.Models
             Status = status;
             Timestamp = DateTime.UtcNow;
             Message = message;
-            Processed += processedFiles;
+            Processed = processedFiles;
             Speed = processedBytes / Math.Max(1, _stopwatch.Elapsed.TotalSeconds);
             await _hubContext.Clients.User(UserId.ToString()).SendAsync("ScheduleReport", this);
         }
