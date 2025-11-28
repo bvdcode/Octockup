@@ -156,6 +156,8 @@ namespace Octockup.Server.Jobs
 
                         if (alreadyUploaded)
                         {
+                            _logger.LogInformation("Schedule {ScheduleId}: Chunk {ChunkHash} for file {FileName} already uploaded in previous snapshot, skipping upload",
+                                schedule.Id, hash, file.Name);
                             chunkHashes.Add(hash);
                             processedBytes += chunkLength;
                             await report.SendAsync(i, $"Uploading: {file.Name}", processedBytes: processedBytes);
@@ -217,6 +219,7 @@ namespace Octockup.Server.Jobs
                         SnapshotId = snapshot.Id,
                         ChunkHashes = chunkHashes,
                         Name = file.Name ?? file.Path,
+                        LastModified = file.LastModified,
                     };
                     await _dbContext.SnapshotFiles.AddAsync(snapshotFile);
                     await _dbContext.SaveChangesAsync();
