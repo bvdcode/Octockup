@@ -16,7 +16,6 @@ using Microsoft.AspNetCore.SignalR;
 using Octockup.Server.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using EasyExtensions.Quartz.Attributes;
-using System.Collections.Concurrent;
 
 namespace Octockup.Server.Jobs
 {
@@ -121,7 +120,7 @@ namespace Octockup.Server.Jobs
                     chunk.Seek(0, SeekOrigin.Begin);
 
                     await using var compressed = new MemoryStream();
-                    await using (var brotli = new BrotliStream(compressed, CompressionLevel.Fastest, leaveOpen: true))
+                    await using (var brotli = new BrotliStream(compressed, CompressionLevel.Optimal, leaveOpen: true))
                     {
                         await chunk.CopyToAsync(brotli, ChunkSize);
                     }
