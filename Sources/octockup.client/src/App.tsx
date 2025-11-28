@@ -107,7 +107,7 @@ function App() {
         color="primary"
         aria-label="add"
         sx={{ position: "fixed", bottom: 16, right: 16 }}
-        href="https://github.com/bvdcode/EasyVault"
+        href="https://github.com/bvdcode/octockup"
         target="_blank"
         rel="noopener noreferrer"
       >
