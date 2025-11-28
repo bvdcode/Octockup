@@ -110,12 +110,15 @@ namespace Octockup.Server.Jobs
             await _dbContext.Snapshots.AddAsync(snapshot);
             await _dbContext.SaveChangesAsync();
 
-            var uploadedChunks = await _dbContext.SnapshotFiles
-                .AsNoTracking()
-                .Where(x => x.Snapshot.BackupId == schedule.BackupId)
-                .SelectMany(x => x.ChunkHashes)
+            var uploadedChunks = (await _dbContext.SnapshotFiles
+                    .AsNoTracking()
+                    .Where(x => x.Snapshot.BackupId == schedule.BackupId)
+                    .Select(x => x.ChunkHashes)
+                    .ToListAsync())
+                .Where(list => list != null)
+                .SelectMany(list => list)
                 .Distinct()
-                .ToHashSetAsync();
+                .ToHashSet();
 
             long processedBytes = 0;
             for (int i = 0; i < files.Count; i++)

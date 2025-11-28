@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
-import { BackupStatus } from "../types/api";
-import type { ScheduleItem, ScheduleReport } from "../types/api";
-import { useSchedulesApi } from "../api/schedulesApi";
 import { useSignalR } from "./useSignalR";
+import { BackupStatus } from "../types/api";
+import { useSchedulesApi } from "../api/schedulesApi";
+import { useCallback, useEffect, useState } from "react";
+import type { ScheduleItem, ScheduleReport } from "../types/api";
 
 interface SchedulesState {
   loading: boolean;
@@ -22,21 +22,21 @@ interface UseSchedulesReturn {
 export function useSchedules(): UseSchedulesReturn {
   const api = useSchedulesApi();
   const { connection, isConnected } = useSignalR("/api/v1/event-hub");
-  
+
   const [state, setState] = useState<SchedulesState>({
     loading: true,
     error: null,
     deletingId: null,
     cancelingId: null,
   });
-  
+
   const [items, setItems] = useState<ScheduleItem[]>([]);
   const [scheduleReports, setScheduleReports] = useState<
     Record<string, ScheduleReport>
   >({});
 
   // Load schedules
-  const refetchSchedules = () => {
+  const refetchSchedules = useCallback(() => {
     api
       .list()
       .then((data) => {
@@ -54,11 +54,11 @@ export function useSchedules(): UseSchedulesReturn {
           error: e?.message || "Failed to load schedules",
         }));
       });
-  };
+  }, [api]);
 
   useEffect(() => {
     let active = true;
-    
+
     api
       .list()
       .then((data) => {
@@ -80,7 +80,7 @@ export function useSchedules(): UseSchedulesReturn {
           cancelingId: null,
         });
       });
-    
+
     return () => {
       active = false;
     };
@@ -101,12 +101,11 @@ export function useSchedules(): UseSchedulesReturn {
           if (item.id === report.scheduleId) {
             const wasRunning = item.status === BackupStatus.Running;
             const isNowNotRunning = report.status !== BackupStatus.Running;
-            
-            // Если статус изменился с Running на НЕ Running - делаем рефетч
+
             if (wasRunning && isNowNotRunning) {
               setTimeout(() => refetchSchedules(), 500);
             }
-            
+
             return { ...item, status: report.status };
           }
           return item;
@@ -120,7 +119,35 @@ export function useSchedules(): UseSchedulesReturn {
     return () => {
       connection.off("ScheduleReport", handler);
     };
-  }, [connection, isConnected]);
+  }, [connection, isConnected, refetchSchedules]);
+
+  // Reload schedules on connection errors/reconnect attempts
+  useEffect(() => {
+    if (!connection) return;
+
+    const onReconnecting = () => {
+      // Try to reload; if it hits 401, global auth flow will handle it
+      refetchSchedules();
+    };
+
+    const onClose = () => {
+      refetchSchedules();
+    };
+
+    connection.onreconnecting(onReconnecting);
+    connection.onclose(onClose);
+
+    return () => {
+      connection.off(
+        "reconnecting",
+        onReconnecting as unknown as (...args: unknown[]) => void,
+      );
+      connection.off(
+        "close",
+        onClose as unknown as (...args: unknown[]) => void,
+      );
+    };
+  }, [connection, refetchSchedules]);
 
   const deleteSchedule = async (id: string): Promise<void> => {
     setState((s) => ({ ...s, deletingId: id }));
