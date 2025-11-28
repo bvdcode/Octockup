@@ -54,6 +54,7 @@ namespace Octockup.Server.Controllers
             }
             schedule.Status = ScheduleStatus.Created;
             schedule.ErrorMessage = null;
+            schedule.FinishedAt = null;
             await _dbContext.SaveChangesAsync();
             await _scheduler.TriggerJobAsync<ExecuteBackupJob>();
             return Ok(new { message = "Schedule error reset successfully." });
