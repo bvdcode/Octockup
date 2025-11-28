@@ -11,7 +11,7 @@ using Octockup.Server.Database;
 namespace Octockup.Server.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251127074733_Initial")]
+    [Migration("20251128005732_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -265,13 +265,13 @@ namespace Octockup.Server.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("updated_at");
 
-                    b.Property<string>("UsernameRename")
+                    b.Property<string>("Username")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UsernameRename")
+                    b.HasIndex("Username")
                         .IsUnique();
 
                     b.ToTable("Users");

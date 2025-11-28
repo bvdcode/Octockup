@@ -16,7 +16,7 @@ namespace Octockup.Server.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    UsernameRename = table.Column<string>(type: "TEXT", nullable: false),
+                    Username = table.Column<string>(type: "TEXT", nullable: false),
                     PasswordPhc = table.Column<string>(type: "TEXT", nullable: false),
                     created_at = table.Column<DateTime>(type: "TEXT", nullable: false),
                     updated_at = table.Column<DateTime>(type: "TEXT", nullable: false)
@@ -229,9 +229,9 @@ namespace Octockup.Server.Migrations
                 column: "ScheduleId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Users_UsernameRename",
+                name: "IX_Users_Username",
                 table: "Users",
-                column: "UsernameRename",
+                column: "Username",
                 unique: true);
         }
 
