@@ -33,7 +33,7 @@ namespace Octockup.Server.Jobs
         }
 
         private static readonly List<Guid> _stoppingSchedules = [];
-        private const int ChunkSize = 4 * 1024 * 1024;
+        private const int ChunkSize = 8 * 1024 * 1024;
 
         public async Task Execute(IJobExecutionContext context)
         {
