@@ -36,6 +36,26 @@ export function useSchedules(): UseSchedulesReturn {
   >({});
 
   // Load schedules
+  const refetchSchedules = () => {
+    api
+      .list()
+      .then((data) => {
+        setItems(data);
+        setState((prev) => ({
+          ...prev,
+          loading: false,
+          error: null,
+        }));
+      })
+      .catch((e) => {
+        setState((prev) => ({
+          ...prev,
+          loading: false,
+          error: e?.message || "Failed to load schedules",
+        }));
+      });
+  };
+
   useEffect(() => {
     let active = true;
     
@@ -76,13 +96,23 @@ export function useSchedules(): UseSchedulesReturn {
         [report.scheduleId]: report,
       }));
 
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === report.scheduleId
-            ? { ...item, status: report.status }
-            : item,
-        ),
-      );
+      setItems((prev) => {
+        const updated = prev.map((item) => {
+          if (item.id === report.scheduleId) {
+            const wasRunning = item.status === BackupStatus.Running;
+            const isNowNotRunning = report.status !== BackupStatus.Running;
+            
+            // Если статус изменился с Running на НЕ Running - делаем рефетч
+            if (wasRunning && isNowNotRunning) {
+              setTimeout(() => refetchSchedules(), 500);
+            }
+            
+            return { ...item, status: report.status };
+          }
+          return item;
+        });
+        return updated;
+      });
     };
 
     connection.on("ScheduleReport", handler);

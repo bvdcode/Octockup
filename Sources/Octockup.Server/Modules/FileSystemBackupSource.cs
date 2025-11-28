@@ -6,7 +6,7 @@ using Octockup.Server.Abstractions;
 
 namespace Octockup.Server.Modules
 {
-    public class FileSystemBackupSource : IBackupSource
+    public class FileSystemBackupSource(ILogger<FileSystemBackupSource> _logger) : IBackupSource
     {
         public string Name => "File System";
         public string Id => GetType().FullName!;
@@ -119,8 +119,17 @@ namespace Octockup.Server.Modules
             {
                 throw new ArgumentException($"File path '{file.Path}' escapes the base directory.");
             }
-            Stream stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return Task.FromResult(stream);
+
+            try
+            {
+                Stream stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                return Task.FromResult(stream);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to open file stream for '{FilePath}'", fullPath);
+                return Task.FromResult(Stream.Null);
+            }
         }
     }
 }

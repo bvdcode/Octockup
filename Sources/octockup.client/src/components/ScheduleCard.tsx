@@ -262,6 +262,23 @@ function ScheduleStatus({
           </Typography>
         </>
       )}
+      {item.errorMessage && (
+        <Tooltip title={item.errorMessage} placement="left">
+          <Typography
+            variant="caption"
+            sx={{
+              color: "error.main",
+              fontSize: "0.7rem",
+              maxWidth: 120,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            ⚠ Error
+          </Typography>
+        </Tooltip>
+      )}
     </Box>
   );
 }

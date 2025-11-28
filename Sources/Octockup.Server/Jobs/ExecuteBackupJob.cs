@@ -113,6 +113,12 @@ namespace Octockup.Server.Jobs
                 await report.SendAsync(i, $"Processing: {file.Name}", processedBytes: processedBytes);
 
                 using var stream = await source.GetFileStreamAsync(file);
+                if (stream == Stream.Null)
+                {
+                    _logger.LogWarning("Schedule {ScheduleId}: Unable to get stream for file {FileName}, skipping",
+                        schedule.Id, file.Name);
+                    continue;
+                }
                 using var chunker = new ChunkedStream(stream, ChunkSize);
 
                 byte[] buffer = ArrayPool<byte>.Shared.Rent(ChunkSize);
