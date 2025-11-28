@@ -161,9 +161,24 @@ namespace Octockup.Server.Jobs
                         throw new OperationCanceledException("Backup stopped by user request.");
                     }
 
-
+                    await chunk.DisposeAsync();
                 }
 
+                SnapshotFile snapshotFile = new()
+                {
+                    Path = file.Path,
+                    Hashsum = fileHash,
+                    Snapshot = snapshot,
+                    Size = file.Size ?? 0,
+                    SnapshotId = snapshot.Id,
+                    ChunkHashes = chunkHashes,
+                    Name = file.Name ?? file.Path,
+                };
+                await _dbContext.SnapshotFiles.AddAsync(snapshotFile);
+                await _dbContext.SaveChangesAsync();
+
+                snapshot.CompletedAt = DateTime.UtcNow;
+                await _dbContext.SaveChangesAsync();
                 _logger.LogInformation("Schedule {ScheduleId}: {Message} ({Processed}/{Total})",
                     schedule.Id, report.Message, report.Processed, report.Total);
             }

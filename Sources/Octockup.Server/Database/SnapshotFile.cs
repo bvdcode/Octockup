@@ -9,6 +9,7 @@ namespace Octockup.Server.Database
     {
         public Guid SnapshotId { get; set; }
         public long Size { get; set; }
+        public string Name { get; set; } = string.Empty;
         public string Path { get; set; } = string.Empty;
         public string Hashsum { get; set; } = string.Empty;
         public ICollection<string> ChunkHashes { get; set; } = [];
