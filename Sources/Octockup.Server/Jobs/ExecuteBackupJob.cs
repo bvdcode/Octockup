@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.SignalR;
 using Octockup.Server.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using EasyExtensions.Quartz.Attributes;
+using System.Security.Cryptography;
 
 namespace Octockup.Server.Jobs
 {
@@ -115,85 +116,114 @@ namespace Octockup.Server.Jobs
                 using var chunker = new ChunkedStream(stream, ChunkSize);
 
                 byte[] buffer = ArrayPool<byte>.Shared.Rent(ChunkSize);
-                List<string> chunkHashes = [];
-                foreach (Stream chunk in chunker.GetChunks())
+                try
                 {
-                    if (_stoppingSchedules.Contains(schedule.Id))
+                    // File-level incremental hasher
+                    using var fileHasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+
+                    List<string> chunkHashes = [];
+                    foreach (Stream chunk in chunker.GetChunks())
                     {
-                        _stoppingSchedules.Remove(schedule.Id);
-                        throw new OperationCanceledException("Backup stopped by user request.");
-                    }
-                    chunk.Seek(0, SeekOrigin.Begin);
-                    string hash = chunk.Sha256();
-                    var alreadyUploaded = await _dbContext.SnapshotFiles
-                        .AsNoTracking()
-                        .Where(x => x.Snapshot.BackupId == schedule.BackupId)
-                        .AnyAsync(x => x.ChunkHashes.Contains(hash));
-                    if (alreadyUploaded)
-                    {
-                        chunkHashes.Add(hash);
-                        processedBytes += chunk.Length;
+                        if (_stoppingSchedules.Contains(schedule.Id))
+                        {
+                            _stoppingSchedules.Remove(schedule.Id);
+                            throw new OperationCanceledException("Backup stopped by user request.");
+                        }
+
+                        // Compute chunk hash while also updating the file hasher in a single pass
+                        chunk.Seek(0, SeekOrigin.Begin);
+                        using var chunkHasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+                        int read;
+                        long chunkLength = 0L;
+                        while ((read = await chunk.ReadAsync(buffer.AsMemory(0, Math.Min(buffer.Length, ChunkSize)))) > 0)
+                        {
+                            chunkHasher.AppendData(buffer, 0, read);
+                            fileHasher.AppendData(buffer, 0, read);
+                            chunkLength += read;
+                        }
+                        string hash = Convert.ToHexString(chunkHasher.GetHashAndReset()).ToLowerInvariant();
+
+                        var alreadyUploaded = await _dbContext.SnapshotFiles
+                            .AsNoTracking()
+                            .Where(x => x.Snapshot.BackupId == schedule.BackupId)
+                            .AnyAsync(x => x.ChunkHashes.Contains(hash));
+
+                        if (alreadyUploaded)
+                        {
+                            chunkHashes.Add(hash);
+                            processedBytes += chunkLength;
+                            await report.SendAsync(i, $"Uploading: {file.Name}", processedBytes: processedBytes);
+                            await chunk.DisposeAsync();
+                            continue;
+                        }
+
+                        // Compress the chunk (second pass over in-memory chunk stream)
+                        chunk.Seek(0, SeekOrigin.Begin);
+                        await using var compressed = new MemoryStream();
+                        await using (var brotli = new BrotliStream(compressed, CompressionLevel.Optimal, leaveOpen: true))
+                        {
+                            int r;
+                            while ((r = await chunk.ReadAsync(buffer.AsMemory(0, Math.Min(buffer.Length, ChunkSize)))) > 0)
+                            {
+                                await brotli.WriteAsync(buffer.AsMemory(0, r));
+                            }
+                        }
+                        compressed.Seek(0, SeekOrigin.Begin);
+
+                        using var encryptedStream = new MemoryStream();
+                        await _crypto.EncryptAsync(compressed, encryptedStream);
+                        string path = ScheduleHelpers.SplitHash(hash, storage.PathSeparator);
+                        bool? exists = await storage.ExistsAsync(path);
+                        if (exists.HasValue && exists.Value == false)
+                        {
+                            _logger.LogInformation("Schedule {ScheduleId}: Uploading chunk {ChunkHash} for file {FileName}",
+                                schedule.Id, hash, file.Name);
+                            await storage.UploadAsync(path, encryptedStream);
+                        }
+                        else if (exists.HasValue && exists.Value == true)
+                        {
+                            _logger.LogInformation("Schedule {ScheduleId}: Chunk {ChunkHash} for file {FileName} already exists, skipping upload",
+                                schedule.Id, hash, file.Name);
+                        }
+
+                        processedBytes += chunkLength;
                         await report.SendAsync(i, $"Uploading: {file.Name}", processedBytes: processedBytes);
-                        ArrayPool<byte>.Shared.Return(buffer);
+
+                        chunkHashes.Add(hash);
+                        if (_stoppingSchedules.Contains(schedule.Id))
+                        {
+                            _stoppingSchedules.Remove(schedule.Id);
+                            throw new OperationCanceledException("Backup stopped by user request.");
+                        }
+
                         await chunk.DisposeAsync();
-                        continue;
                     }
-                    chunk.Seek(0, SeekOrigin.Begin);
 
-                    await using var compressed = new MemoryStream();
-                    await using (var brotli = new BrotliStream(compressed, CompressionLevel.Optimal, leaveOpen: true))
+                    // Finalize file hash after all chunks processed
+                    string fileHash = Convert.ToHexString(fileHasher.GetHashAndReset()).ToLowerInvariant();
+
+                    SnapshotFile snapshotFile = new()
                     {
-                        await chunk.CopyToAsync(brotli, ChunkSize);
-                    }
-                    compressed.Seek(0, SeekOrigin.Begin);
+                        Path = file.Path,
+                        Hashsum = fileHash,
+                        Snapshot = snapshot,
+                        Size = file.Size ?? 0,
+                        SnapshotId = snapshot.Id,
+                        ChunkHashes = chunkHashes,
+                        Name = file.Name ?? file.Path,
+                    };
+                    await _dbContext.SnapshotFiles.AddAsync(snapshotFile);
+                    await _dbContext.SaveChangesAsync();
 
-                    using var encryptedStream = new MemoryStream();
-                    await _crypto.EncryptAsync(compressed, encryptedStream);
-                    string path = ScheduleHelpers.SplitHash(hash, storage.PathSeparator);
-                    bool? exists = await storage.ExistsAsync(path);
-                    if (exists.HasValue && exists.Value == false)
-                    {
-                        _logger.LogInformation("Schedule {ScheduleId}: Uploading chunk {ChunkHash} for file {FileName}",
-                            schedule.Id, hash, file.Name);
-                        await storage.UploadAsync(path, encryptedStream);
-                    }
-                    else if (exists.HasValue && exists.Value == true)
-                    {
-                        _logger.LogInformation("Schedule {ScheduleId}: Chunk {ChunkHash} for file {FileName} already exists, skipping upload",
-                            schedule.Id, hash, file.Name);
-                    }
-
-                    processedBytes += chunk.Length;
-                    await report.SendAsync(i, $"Uploading: {file.Name}", processedBytes: processedBytes);
-
-                    chunkHashes.Add(hash);
-                    ArrayPool<byte>.Shared.Return(buffer);
-                    if (_stoppingSchedules.Contains(schedule.Id))
-                    {
-                        _stoppingSchedules.Remove(schedule.Id);
-                        throw new OperationCanceledException("Backup stopped by user request.");
-                    }
-
-                    await chunk.DisposeAsync();
+                    snapshot.CompletedAt = DateTime.UtcNow;
+                    await _dbContext.SaveChangesAsync();
+                    _logger.LogInformation("Schedule {ScheduleId}: {Message} ({Processed}/{Total})",
+                        schedule.Id, report.Message, report.Processed, report.Total);
                 }
-
-                SnapshotFile snapshotFile = new()
+                finally
                 {
-                    Path = file.Path,
-                    Hashsum = fileHash,
-                    Snapshot = snapshot,
-                    Size = file.Size ?? 0,
-                    SnapshotId = snapshot.Id,
-                    ChunkHashes = chunkHashes,
-                    Name = file.Name ?? file.Path,
-                };
-                await _dbContext.SnapshotFiles.AddAsync(snapshotFile);
-                await _dbContext.SaveChangesAsync();
-
-                snapshot.CompletedAt = DateTime.UtcNow;
-                await _dbContext.SaveChangesAsync();
-                _logger.LogInformation("Schedule {ScheduleId}: {Message} ({Processed}/{Total})",
-                    schedule.Id, report.Message, report.Processed, report.Total);
+                    ArrayPool<byte>.Shared.Return(buffer);
+                }
             }
         }
     }
