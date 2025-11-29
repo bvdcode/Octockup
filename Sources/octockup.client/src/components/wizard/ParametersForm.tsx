@@ -1,17 +1,21 @@
 import {
   Card,
-  CardContent,
-  IconButton,
-  InputAdornment,
   Stack,
+  Checkbox,
   TextField,
   Typography,
+  IconButton,
+  CardContent,
+  InputAdornment,
+  FormControlLabel,
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 import type { ClipboardEvent } from "react";
 import { useState } from "react";
 import type { ModuleProviderInfo } from "../../types/api";
+
+const CHECKBOX_PARAMETERS = ["skipPermissionDenied"];
 
 interface ParamState {
   [key: string]: string;
@@ -73,6 +77,29 @@ export function ParametersForm({
           ) : (
             <>
               {moduleMeta.requiredParameters.map((p) => {
+                const isCheckbox = CHECKBOX_PARAMETERS.includes(p);
+
+                if (isCheckbox) {
+                  return (
+                    <FormControlLabel
+                      key={p}
+                      control={
+                        <Checkbox
+                          checked={params[p] === "true"}
+                          onChange={(e) =>
+                            onParamChange(
+                              p,
+                              e.target.checked ? "true" : "false",
+                            )
+                          }
+                          disabled={disabled}
+                        />
+                      }
+                      label={p}
+                    />
+                  );
+                }
+
                 const isPassword = p.toLowerCase().includes("password");
                 const inputType =
                   isPassword && !showPassword[p] ? "password" : "text";
