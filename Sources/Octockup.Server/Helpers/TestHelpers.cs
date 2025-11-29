@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Mvc;
 using Octockup.Server.Controllers;
 using Octockup.Server.Abstractions;
 using EasyExtensions.AspNetCore.Extensions;
-using System.Runtime.CompilerServices;
 
 namespace Octockup.Server.Helpers
 {
