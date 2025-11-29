@@ -35,7 +35,7 @@ namespace Octockup.Server.Helpers
             try
             {
                 source.GetDirectories(recursive: false);
-                var files = source.GetFiles(recursive: false);
+                var files = source.GetFiles(recursive: true);
                 if (!files.Any())
                 {
                     return moduleController.ApiBadRequest("No files found in the backup source to test file stream retrieval.");
