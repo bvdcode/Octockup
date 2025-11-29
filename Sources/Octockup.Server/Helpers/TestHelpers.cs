@@ -40,12 +40,20 @@ namespace Octockup.Server.Helpers
                 {
                     return moduleController.ApiBadRequest("No files found in the backup source to test file stream retrieval.");
                 }
-                using var testStream = await source.GetFileStreamAsync(files.First());
-                if (testStream == null || testStream.Length == 0)
+                int maxTestsCounter = 10;
+                foreach (var file in files)
                 {
-                    return moduleController.ApiBadRequest("Failed to retrieve a valid stream for the test file.");
+                    using var testStream = await source.GetFileStreamAsync(file);
+                    if (testStream != null && testStream.Length == 0)
+                    {
+                        return moduleController.Ok(files);
+                    }
+                    if (--maxTestsCounter <= 0)
+                    {
+                        break;
+                    }
                 }
-                return moduleController.Ok(files);
+                return moduleController.ApiBadRequest("Failed to retrieve a valid stream for the test file: " + files.First().Name);
             }
             catch (Exception ex)
             {
