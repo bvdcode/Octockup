@@ -70,23 +70,6 @@ namespace Octockup.Server.Modules
 
         private static string NormalizeRemotePath(string path) => path.Replace("\\", "/");
 
-        // Enumerate entries lazily without materializing the entire list
-        private static IEnumerable<ISftpFile> EnumerateSync(IAsyncEnumerable<ISftpFile> source)
-        {
-            var e = source.GetAsyncEnumerator(CancellationToken.None);
-            try
-            {
-                while (e.MoveNextAsync().AsTask().GetAwaiter().GetResult())
-                {
-                    yield return e.Current;
-                }
-            }
-            finally
-            {
-                e.DisposeAsync().AsTask().GetAwaiter().GetResult();
-            }
-        }
-
         public async Task<bool?> DeleteAsync(string path)
         {
             ArgumentException.ThrowIfNullOrEmpty(path);
@@ -142,7 +125,7 @@ namespace Octockup.Server.Modules
                 IEnumerable<ISftpFile> entries;
                 try
                 {
-                    entries = EnumerateSync(_sftp.ListDirectoryAsync(full, CancellationToken.None));
+                    entries = _sftp.ListDirectory(full);
                 }
                 catch (SftpPermissionDeniedException) when (_skipPermissionDenied)
                 {
@@ -203,7 +186,7 @@ namespace Octockup.Server.Modules
                 IEnumerable<ISftpFile> entries;
                 try
                 {
-                    entries = EnumerateSync(_sftp.ListDirectoryAsync(full, CancellationToken.None));
+                    entries = _sftp.ListDirectory(full);
                 }
                 catch (SftpPermissionDeniedException) when (_skipPermissionDenied)
                 {
