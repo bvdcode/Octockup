@@ -1,7 +1,7 @@
 import { useSignalR } from "./useSignalR";
 import { BackupStatus } from "../types/api";
 import { useSchedulesApi } from "../api/schedulesApi";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ScheduleItem, ScheduleReport } from "../types/api";
 
 interface SchedulesState {
@@ -21,6 +21,11 @@ interface UseSchedulesReturn {
   resetError: (id: string) => Promise<void>;
 }
 
+function getHttpStatus(e: unknown): number | null {
+  const anyErr = e as any;
+  return anyErr?.response?.status ?? null;
+}
+
 export function useSchedules(): UseSchedulesReturn {
   const api = useSchedulesApi();
   const { connection, isConnected } = useSignalR("/api/v1/event-hub");
@@ -38,26 +43,56 @@ export function useSchedules(): UseSchedulesReturn {
     Record<string, ScheduleReport>
   >({});
 
+  const retryAttemptRef = useRef(0);
+  const retryTimerRef = useRef<number | null>(null);
+
+  const scheduleRetry = useCallback(() => {
+    const attempt = retryAttemptRef.current + 1;
+    retryAttemptRef.current = attempt;
+    const delay = Math.min(30000, 1000 * Math.pow(2, attempt - 1)); // 1s,2s,4s,8s,16s,30s cap
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+    }
+    retryTimerRef.current = setTimeout(() => {
+      refetchSchedules(true);
+    }, delay) as unknown as number;
+  }, []);
+
   // Load schedules
-  const refetchSchedules = useCallback(() => {
-    api
-      .list()
-      .then((data) => {
-        setItems(data);
-        setState((prev) => ({
-          ...prev,
-          loading: false,
-          error: null,
-        }));
-      })
-      .catch((e) => {
-        setState((prev) => ({
-          ...prev,
-          loading: false,
-          error: e?.message || "Failed to load schedules",
-        }));
-      });
-  }, [api]);
+  const refetchSchedules = useCallback(
+    (silentOn5xx = false) => {
+      api
+        .list()
+        .then((data) => {
+          setItems(data);
+          retryAttemptRef.current = 0;
+          if (retryTimerRef.current) {
+            clearTimeout(retryTimerRef.current);
+            retryTimerRef.current = null;
+          }
+          setState((prev) => ({
+            ...prev,
+            loading: false,
+            error: null,
+          }));
+        })
+        .catch((e) => {
+          const status = getHttpStatus(e);
+          if (silentOn5xx && (status === null || status >= 500)) {
+            // keep existing data on screen and retry silently in background
+            scheduleRetry();
+            return;
+          }
+
+          setState((prev) => ({
+            ...prev,
+            loading: false,
+            error: e?.message || "Failed to load schedules",
+          }));
+        });
+    },
+    [api, scheduleRetry],
+  );
 
   useEffect(() => {
     let active = true;
@@ -67,6 +102,7 @@ export function useSchedules(): UseSchedulesReturn {
       .then((data) => {
         if (!active) return;
         setItems(data);
+        retryAttemptRef.current = 0;
         setState({
           loading: false,
           error: null,
@@ -77,6 +113,12 @@ export function useSchedules(): UseSchedulesReturn {
       })
       .catch((e) => {
         if (!active) return;
+        const status = getHttpStatus(e);
+        if (status === null || status >= 500) {
+          // transient: keep loading spinner only on first mount, then retry
+          scheduleRetry();
+          return;
+        }
         setState({
           loading: false,
           error: e?.message || "Failed to load schedules",
@@ -88,8 +130,12 @@ export function useSchedules(): UseSchedulesReturn {
 
     return () => {
       active = false;
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
     };
-  }, [api]);
+  }, [api, scheduleRetry]);
 
   // WebSocket listener for schedule reports
   useEffect(() => {
@@ -108,7 +154,7 @@ export function useSchedules(): UseSchedulesReturn {
             const isNowNotRunning = report.status !== BackupStatus.Running;
 
             if (wasRunning && isNowNotRunning) {
-              setTimeout(() => refetchSchedules(), 500);
+              setTimeout(() => refetchSchedules(true), 500);
             }
 
             return { ...item, status: report.status };
@@ -131,12 +177,12 @@ export function useSchedules(): UseSchedulesReturn {
     if (!connection) return;
 
     const onReconnecting = () => {
-      // Try to reload; if it hits 401, global auth flow will handle it
-      refetchSchedules();
+      // Try to reload silently; if it hits 401, global auth flow will handle it
+      refetchSchedules(true);
     };
 
     const onClose = () => {
-      refetchSchedules();
+      refetchSchedules(true);
     };
 
     connection.onreconnecting(onReconnecting);
