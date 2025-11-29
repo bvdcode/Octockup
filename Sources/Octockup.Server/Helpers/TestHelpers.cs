@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Octockup.Server.Controllers;
 using Octockup.Server.Abstractions;
 using EasyExtensions.AspNetCore.Extensions;
+using System.Runtime.CompilerServices;
 
 namespace Octockup.Server.Helpers
 {
@@ -36,6 +37,15 @@ namespace Octockup.Server.Helpers
             {
                 source.GetDirectories(recursive: false);
                 var files = source.GetFiles(recursive: false);
+                if (!files.Any())
+                {
+                    return moduleController.ApiBadRequest("No files found in the backup source to test file stream retrieval.");
+                }
+                using var testStream = await source.GetFileStreamAsync(files.First());
+                if (testStream == null || testStream.Length == 0)
+                {
+                    return moduleController.ApiBadRequest("Failed to retrieve a valid stream for the test file.");
+                }
                 return moduleController.Ok(files);
             }
             catch (Exception ex)

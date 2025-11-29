@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Models.Requests;
 using Microsoft.AspNetCore.Authorization;
 using EasyExtensions.AspNetCore.Extensions;
+using Octockup.Server.Models.Enums;
 
 namespace Octockup.Server.Controllers
 {
@@ -86,7 +87,9 @@ namespace Octockup.Server.Controllers
 
         [Authorize]
         [HttpPost("/api/v1/modules/providers/{backupProviderId:required}/test")]
-        public async Task<IActionResult> TestBackupProvider([FromRoute] string backupProviderId, [FromBody] CreateModuleRequest request)
+        public async Task<IActionResult> TestBackupProvider(
+            [FromRoute] string backupProviderId,
+            [FromBody] CreateModuleRequest request)
         {
             var foundProvider = _providers.FirstOrDefault(x => x.Id == backupProviderId);
             if (foundProvider == null)
@@ -95,7 +98,7 @@ namespace Octockup.Server.Controllers
             }
 
             foundProvider.SetParameters(request.Parameters);
-            if (foundProvider is IBackupStorage storage)
+            if (foundProvider is IBackupStorage storage && request.Destination == ModuleDestination.Target)
             {
                 return await TestHelpers.TestStorageAsync(this, storage);
             }
