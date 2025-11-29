@@ -34,31 +34,78 @@ namespace Octockup.Server.Helpers
         {
             try
             {
-                source.GetDirectories(recursive: false);
-                var files = source.GetFiles(recursive: true);
-                if (!files.Any())
+                _ = source.GetDirectories(recursive: false).Take(1).ToList();
+
+                const int maxEnumeratedFiles = 100;
+                const int maxTestedFiles = 10;
+
+                var candidates = source
+                    .GetFiles(recursive: true)
+                    .Take(maxEnumeratedFiles)
+                    .ToList();
+
+                if (candidates.Count == 0)
                 {
-                    return moduleController.ApiBadRequest("No files found in the backup source to test file stream retrieval.");
+                    return moduleController.ApiBadRequest(
+                        "No files found in the backup source to test file stream retrieval.");
                 }
-                int maxTestsCounter = 10;
-                foreach (var file in files)
+
+                int tested = 0;
+                foreach (var file in candidates)
                 {
-                    using var testStream = await source.GetFileStreamAsync(file);
-                    if (testStream != null && testStream.Length == 0)
-                    {
-                        return moduleController.Ok(files);
-                    }
-                    if (--maxTestsCounter <= 0)
+                    if (tested >= maxTestedFiles)
                     {
                         break;
                     }
+
+                    Stream? testStream = null;
+                    try
+                    {
+                        testStream = await source.GetFileStreamAsync(file);
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+
+                    if (testStream == null || testStream == Stream.Null)
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        var buffer = new byte[1024];
+                        int read = 0;
+
+                        if (testStream.CanRead)
+                        {
+                            read = await testStream.ReadAsync(buffer.AsMemory(0, buffer.Length));
+                        }
+
+                        if (read >= 0)
+                        {
+                            return moduleController.Ok(candidates);
+                        }
+                    }
+                    finally
+                    {
+                        testStream.Dispose();
+                    }
+
+                    tested++;
                 }
-                return moduleController.ApiBadRequest("Failed to retrieve a valid stream for the test file: " + files.First().Name);
+
+                return moduleController.ApiBadRequest(
+                    "Failed to retrieve a readable stream from the backup source in the first "
+                    + maxTestedFiles + " files.");
             }
             catch (Exception ex)
             {
-                return moduleController.ApiBadRequest("Failed to connect to backup source with provided parameters: " + ex.Message);
+                return moduleController.ApiBadRequest(
+                    "Failed to connect to backup source with provided parameters: " + ex.Message);
             }
         }
+
     }
 }
