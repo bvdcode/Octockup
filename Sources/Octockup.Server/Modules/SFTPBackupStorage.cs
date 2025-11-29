@@ -180,9 +180,16 @@ namespace Octockup.Server.Modules
             EnsureConnected();
             ArgumentNullException.ThrowIfNull(_sftp);
 
-            IEnumerable<BackupFileInfo> Walk(string currentRelative)
+            var queue = new Queue<string>();
+            queue.Enqueue(string.Empty);
+
+            var seenDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            while (queue.Count > 0)
             {
-                string full = NormalizeRemotePath(GetRemotePath(currentRelative));
+                var currentRelative = queue.Dequeue();
+                var full = NormalizeRemotePath(GetRemotePath(currentRelative));
+
                 IEnumerable<ISftpFile> entries;
                 try
                 {
@@ -191,49 +198,36 @@ namespace Octockup.Server.Modules
                 catch (SftpPermissionDeniedException) when (_skipPermissionDenied)
                 {
                     _logger.LogWarning("Permission denied when accessing SFTP directory: {Path}", full);
-                    yield break;
+                    continue;
                 }
 
                 foreach (var entry in entries)
                 {
                     if (entry.Name == "." || entry.Name == "..")
-                    {
                         continue;
-                    }
 
                     if (entry.IsSymbolicLink)
-                    {
                         continue;
-                    }
 
-                    if (entry.UserId == 0 &&
-                        entry.OwnerCanRead &&
-                        !entry.GroupCanRead &&
-                        !entry.OthersCanRead)
-                    {
-                        continue;
-                    }
+                    var rel = string.IsNullOrEmpty(currentRelative)
+                        ? entry.Name
+                        : currentRelative + PathSeparator + entry.Name;
 
                     if (entry.IsDirectory)
                     {
-                        if (recursive)
+                        if (recursive && seenDirs.Add(rel))
                         {
-                            var next = string.IsNullOrEmpty(currentRelative)
-                                ? entry.Name
-                                : currentRelative + PathSeparator + entry.Name;
-
-                            foreach (var sub in Walk(next))
-                            {
-                                yield return sub;
-                            }
+                            queue.Enqueue(rel);
                         }
 
                         continue;
                     }
 
-                    var rel = string.IsNullOrEmpty(currentRelative)
-                        ? entry.Name
-                        : currentRelative + PathSeparator + entry.Name;
+                    if (_skipPermissionDenied && IsClearlyInaccessible(entry))
+                    {
+                        _logger.LogDebug("Skipping likely inaccessible file: {Name}", entry.FullName);
+                        continue;
+                    }
 
                     if (!recursive && rel.Contains(PathSeparator))
                     {
@@ -249,13 +243,7 @@ namespace Octockup.Server.Modules
                     };
                 }
             }
-
-            foreach (var f in Walk(string.Empty))
-            {
-                yield return f;
-            }
         }
-
 
         public async Task<Stream> GetFileStreamAsync(BackupFileInfo file)
         {
@@ -278,7 +266,7 @@ namespace Octockup.Server.Modules
                 ms.Dispose();
                 return Stream.Null;
             }
-        }   
+        }
 
         public Task UploadAsync(string path, Stream data)
         {
@@ -320,6 +308,28 @@ namespace Octockup.Server.Modules
         {
             GC.SuppressFinalize(this);
             _sftp?.Dispose();
+        }
+
+        private static bool IsClearlyInaccessible(ISftpFile entry)
+        {
+            if (entry.IsSymbolicLink)
+            {
+                return true;
+            }
+
+            // Typical root-only file like /swap.img:
+            // - owner is root
+            // - only owner can read
+            // - group and others cannot read
+            if (entry.UserId == 0 &&
+                entry.OwnerCanRead &&
+                !entry.GroupCanRead &&
+                !entry.OthersCanRead)
+            {
+                return true;
+            }
+
+            return false;
         }
     }
 }
