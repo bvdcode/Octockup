@@ -36,6 +36,12 @@ namespace Octockup.Server.Modules
                 ForcePathStyle = true,
                 ServiceURL = parameters["httpEndpoint"],
                 AuthenticationRegion = parameters["region"],
+                RequestChecksumCalculation = _validateChecksums
+                    ? Amazon.Runtime.RequestChecksumCalculation.WHEN_SUPPORTED
+                    : Amazon.Runtime.RequestChecksumCalculation.WHEN_REQUIRED,
+                ResponseChecksumValidation = _validateChecksums
+                    ? Amazon.Runtime.ResponseChecksumValidation.WHEN_SUPPORTED
+                    : Amazon.Runtime.ResponseChecksumValidation.WHEN_REQUIRED
             };
 
             _validateChecksums = parameters.TryGetValue("validateChecksums", out var validateStr) &&
@@ -92,7 +98,6 @@ namespace Octockup.Server.Modules
             {
                 Key = key,
                 BucketName = _bucket,
-                ChecksumMode = new ChecksumMode("DISABLED")
             });
 
             return result.ResponseStream;
@@ -109,7 +114,6 @@ namespace Octockup.Server.Modules
             {
                 Key = key,
                 BucketName = _bucket,
-                ChecksumMode = new ChecksumMode("DISABLED")
             };
 
             try
