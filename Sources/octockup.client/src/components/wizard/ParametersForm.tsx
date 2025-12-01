@@ -9,13 +9,13 @@ import {
   InputAdornment,
   FormControlLabel,
 } from "@mui/material";
-import { Visibility, VisibilityOff } from "@mui/icons-material";
-import { useTranslation } from "react-i18next";
-import type { ClipboardEvent } from "react";
 import { useState } from "react";
+import type { ClipboardEvent } from "react";
+import { useTranslation } from "react-i18next";
 import type { ModuleProviderInfo } from "../../types/api";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
 
-const CHECKBOX_PARAMETERS = ["skipPermissionDenied"];
+const CHECKBOX_PARAMETERS = ["skipPermissionDenied", "validateChecksums"];
 
 interface ParamState {
   [key: string]: string;

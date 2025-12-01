@@ -5,6 +5,8 @@ interface ParamState {
   [key: string]: string;
 }
 
+const CHECKBOX_PARAMETERS = ["skipPermissionDenied"];
+
 export function useWizardForm(moduleMeta: ModuleProviderInfo | null) {
   const [params, setParams] = useState<ParamState>({});
   const [tag, setTag] = useState<string>("");
@@ -13,7 +15,9 @@ export function useWizardForm(moduleMeta: ModuleProviderInfo | null) {
   const initializeParams = useCallback(() => {
     if (!moduleMeta) return;
     const initial: ParamState = {};
-    moduleMeta.requiredParameters.forEach((p) => (initial[p] = ""));
+    moduleMeta.requiredParameters.forEach((p) => {
+      initial[p] = CHECKBOX_PARAMETERS.includes(p) ? "false" : "";
+    });
     setParams(initial);
   }, [moduleMeta]);
 

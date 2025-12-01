@@ -18,11 +18,13 @@ namespace Octockup.Server.Modules
         private string? _path;
         private string? _bucket;
         private AmazonS3Client? _s3;
+        private bool _validateChecksums = false;
 
         public IEnumerable<string> RequiredParameters =>
         [
             "accessKey", "secretKey", "bucket",
-            "region", "httpEndpoint", "path"
+            "region", "httpEndpoint", "path",
+            "validateChecksums"
         ];
 
         public void SetParameters(Dictionary<string, string> parameters)
@@ -36,6 +38,9 @@ namespace Octockup.Server.Modules
                 AuthenticationRegion = parameters["region"],
             };
 
+            _validateChecksums = parameters.TryGetValue("validateChecksums", out var validateStr) &&
+                                 bool.TryParse(validateStr, out var validateBool) &&
+                                 validateBool;
             _path = parameters["path"].Trim().Trim('/');
             _bucket = parameters["bucket"];
 
