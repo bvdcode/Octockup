@@ -85,8 +85,9 @@ namespace Octockup.Server.Modules
 
             var result = await _s3.GetObjectAsync(new GetObjectRequest
             {
+                Key = key,
                 BucketName = _bucket,
-                Key = key
+                ChecksumMode = new ChecksumMode("DISABLED")
             });
 
             return result.ResponseStream;
@@ -101,8 +102,9 @@ namespace Octockup.Server.Modules
 
             var req = new GetObjectMetadataRequest
             {
+                Key = key,
                 BucketName = _bucket,
-                Key = key
+                ChecksumMode = new ChecksumMode("DISABLED")
             };
 
             try
