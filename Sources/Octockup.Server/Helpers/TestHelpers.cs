@@ -51,6 +51,7 @@ namespace Octockup.Server.Helpers
                 }
 
                 int tested = 0;
+                string? lastError = null;
                 foreach (var file in candidates)
                 {
                     if (tested >= maxTestedFiles)
@@ -63,8 +64,9 @@ namespace Octockup.Server.Helpers
                     {
                         testStream = await source.GetFileStreamAsync(file);
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                        lastError = ex.Message;
                         continue;
                     }
 
@@ -98,7 +100,7 @@ namespace Octockup.Server.Helpers
 
                 return moduleController.ApiBadRequest(
                     "Failed to retrieve a readable stream from the backup source in the first "
-                    + maxTestedFiles + " files.");
+                    + maxTestedFiles + " files: " + (lastError ?? "no files could be read."));
             }
             catch (Exception ex)
             {

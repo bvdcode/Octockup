@@ -218,20 +218,26 @@ namespace Octockup.Server.Modules
                 foreach (var obj in response.S3Objects)
                 {
                     if (obj.Key.EndsWith(PathSeparator))
+                    {
                         continue;
+                    }
 
                     var relativeKey = ToRelativeKey(obj.Key, basePrefix);
                     if (string.IsNullOrEmpty(relativeKey))
+                    {
                         continue;
+                    }
 
                     if (!recursive && relativeKey.Contains(PathSeparator))
+                    {
                         continue;
+                    }
 
                     var info = new BackupFileInfo
                     {
+                        Size = obj.Size,
                         Path = relativeKey,
                         Name = Path.GetFileName(relativeKey),
-                        Size = obj.Size,
                         LastModified = obj.LastModified?.ToUniversalTime()
                     };
 
