@@ -51,7 +51,8 @@ namespace Octockup.Server.Helpers
                 }
 
                 int tested = 0;
-                string? lastError = null;
+                var errors = new List<string>();
+                
                 foreach (var file in candidates)
                 {
                     if (tested >= maxTestedFiles)
@@ -63,20 +64,14 @@ namespace Octockup.Server.Helpers
                     try
                     {
                         testStream = await source.GetFileStreamAsync(file);
-                    }
-                    catch (Exception ex)
-                    {
-                        lastError = ex.Message;
-                        continue;
-                    }
+                        
+                        if (testStream == null || testStream == Stream.Null)
+                        {
+                            errors.Add($"File '{file.Path}': returned null or empty stream");
+                            tested++;
+                            continue;
+                        }
 
-                    if (testStream == null || testStream == Stream.Null)
-                    {
-                        continue;
-                    }
-
-                    try
-                    {
                         var buffer = new byte[1024];
                         int read = 0;
 
@@ -84,23 +79,38 @@ namespace Octockup.Server.Helpers
                         {
                             read = await testStream.ReadAsync(buffer.AsMemory(0, buffer.Length));
                         }
+                        else
+                        {
+                            errors.Add($"File '{file.Path}': stream is not readable");
+                            tested++;
+                            continue;
+                        }
 
                         if (read >= 0)
                         {
                             return moduleController.Ok(candidates);
                         }
                     }
+                    catch (Exception ex)
+                    {
+                        errors.Add($"File '{file.Path}': {ex.Message}");
+                        tested++;
+                        continue;
+                    }
                     finally
                     {
-                        testStream.Dispose();
+                        testStream?.Dispose();
                     }
 
                     tested++;
                 }
 
+                var errorMessage = errors.Count > 0 
+                    ? string.Join("; ", errors.Take(3))
+                    : "no files could be read";
+
                 return moduleController.ApiBadRequest(
-                    "Failed to retrieve a readable stream from the backup source in the first "
-                    + maxTestedFiles + " files: " + (lastError ?? "no files could be read."));
+                    $"Failed to retrieve a readable stream from the backup source in the first {maxTestedFiles} files: {errorMessage}");
             }
             catch (Exception ex)
             {
