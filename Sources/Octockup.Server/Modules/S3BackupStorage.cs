@@ -9,7 +9,7 @@ using Octockup.Server.Abstractions;
 
 namespace Octockup.Server.Modules
 {
-    public class S3BackupStorage : IBackupStorage
+    public class S3BackupStorage(ILogger<S3BackupStorage> _logger) : IBackupStorage
     {
         public char PathSeparator => '/';
         public string Id => GetType().FullName!;
@@ -94,13 +94,35 @@ namespace Octockup.Server.Modules
 
             var key = GetFullKey(path);
 
-            var result = await _s3.GetObjectAsync(new GetObjectRequest
+            try
             {
-                Key = key,
-                BucketName = _bucket,
-            });
+                var result = await _s3.GetObjectAsync(new GetObjectRequest
+                {
+                    Key = key,
+                    BucketName = _bucket,
+                    ChecksumMode = new ChecksumMode("DISABLED")
+                });
 
-            return result.ResponseStream;
+                return result.ResponseStream;
+            }
+            catch (ArgumentOutOfRangeException ex)
+            {
+                if (ex.Message.Contains("hex") && !_validateChecksums)
+                {
+                    _logger.LogWarning("Checksum error detected while downloading file {FilePath}. Bypassing checksum validation through presigned URL.", path);
+                    string presignedUrl = _s3.GetPreSignedURL(new GetPreSignedUrlRequest
+                    {
+                        Key = key,
+                        BucketName = _bucket,
+                        Expires = DateTime.UtcNow.AddHours(1)
+                    });
+                    var httpClient = new HttpClient();
+                    var response = await httpClient.GetAsync(presignedUrl);
+                    response.EnsureSuccessStatusCode();
+                    return await response.Content.ReadAsStreamAsync();
+                }
+                throw;
+            }
         }
 
         public async Task<bool?> ExistsAsync(string path)
@@ -292,7 +314,7 @@ namespace Octockup.Server.Modules
         {
             ArgumentException.ThrowIfNullOrEmpty(path);
             ArgumentNullException.ThrowIfNull(_s3);
-            
+
             var key = GetFullKey(path);
             var result = await _s3.DeleteObjectAsync(_bucket, key);
             return result.HttpStatusCode == System.Net.HttpStatusCode.NoContent;
