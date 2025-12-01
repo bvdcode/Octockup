@@ -52,6 +52,14 @@ namespace Octockup.Server.Modules
                 : _path!.TrimEnd('/') + PathSeparator;
         }
 
+        private string GetFullKey(string relativePath)
+        {
+            var basePrefix = GetBasePrefix();
+            return string.IsNullOrEmpty(basePrefix)
+                ? relativePath.Trim(PathSeparator)
+                : basePrefix + relativePath.Trim(PathSeparator);
+        }
+
         private string ToRelativeKey(string fullKey, string basePrefix)
         {
             if (string.IsNullOrEmpty(basePrefix))
@@ -73,7 +81,7 @@ namespace Octockup.Server.Modules
             ArgumentException.ThrowIfNullOrEmpty(path);
             ArgumentNullException.ThrowIfNull(_s3);
 
-            var key = string.IsNullOrEmpty(_path) ? path : $"{_path}/{path}";
+            var key = GetFullKey(path);
 
             var result = await _s3.GetObjectAsync(new GetObjectRequest
             {
@@ -84,12 +92,12 @@ namespace Octockup.Server.Modules
             return result.ResponseStream;
         }
 
-        public Task<bool?> ExistsAsync(string path)
+        public async Task<bool?> ExistsAsync(string path)
         {
             ArgumentException.ThrowIfNullOrEmpty(path);
             ArgumentNullException.ThrowIfNull(_s3);
 
-            var key = string.IsNullOrEmpty(_path) ? path : $"{_path}/{path}";
+            var key = GetFullKey(path);
 
             var req = new GetObjectMetadataRequest
             {
@@ -99,15 +107,13 @@ namespace Octockup.Server.Modules
 
             try
             {
-                var res = _s3.GetObjectMetadataAsync(req).Result;
+                var res = await _s3.GetObjectMetadataAsync(req);
                 bool? result = res.HttpStatusCode == System.Net.HttpStatusCode.OK;
-                return Task.FromResult(result);
+                return result;
             }
-            catch (AggregateException ex) when (
-                ex.InnerException is AmazonS3Exception s3Ex &&
-                s3Ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            catch (AmazonS3Exception s3Ex) when (s3Ex.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
-                return Task.FromResult<bool?>(false);
+                return false;
             }
         }
 
@@ -257,7 +263,7 @@ namespace Octockup.Server.Modules
             ArgumentException.ThrowIfNullOrEmpty(path);
             ArgumentNullException.ThrowIfNull(_s3);
 
-            var key = string.IsNullOrEmpty(_path) ? path : $"{_path}/{path}";
+            var key = GetFullKey(path);
 
             PutObjectRequest req = new()
             {
@@ -275,7 +281,8 @@ namespace Octockup.Server.Modules
         {
             ArgumentException.ThrowIfNullOrEmpty(path);
             ArgumentNullException.ThrowIfNull(_s3);
-            var key = string.IsNullOrEmpty(_path) ? path : $"{_path}/{path}";
+            
+            var key = GetFullKey(path);
             var result = await _s3.DeleteObjectAsync(_bucket, key);
             return result.HttpStatusCode == System.Net.HttpStatusCode.NoContent;
         }
