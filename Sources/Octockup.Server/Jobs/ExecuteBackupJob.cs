@@ -23,6 +23,7 @@ namespace Octockup.Server.Jobs
     public class ExecuteBackupJob(
         IStreamCipher _crypto,
         AppDbContext _dbContext,
+        IServiceProvider _serviceProvider,
         ILogger<ExecuteBackupJob> _logger,
         IHubContext<EventHub> _hubContext,
         IEnumerable<IBackupProvider> _providers) : IJob
@@ -45,7 +46,7 @@ namespace Octockup.Server.Jobs
             Guid userId = next.Backup.Source.UserId;
             ScheduleReport report = new(userId, next.Id, _hubContext);
 
-            if (_providers.FirstOrDefault(x => x.Id == next.Backup.Source.BackupModuleId) is not IBackupSource foundSourceProvider)
+            if (_providers.FirstOrDefault(x => x.Id == next.Backup.Source.BackupModuleId) is not IBackupSource foundSourceTypeProvider)
             {
                 next.ErrorMessage = $"Source provider not found: {next.Backup.Source.BackupModuleId}";
                 next.Status = ScheduleStatus.Failed;
@@ -55,9 +56,10 @@ namespace Octockup.Server.Jobs
                 await report.SendAsync(0, next.ErrorMessage);
                 return;
             }
+            IBackupSource foundSourceProvider = (IBackupSource)_serviceProvider.GetRequiredService(foundSourceTypeProvider.GetType());
             foundSourceProvider.SetParameters(next.Backup.Source.Parameters);
 
-            if (_providers.FirstOrDefault(x => x.Id == next.Backup.Storage.BackupModuleId) is not IBackupStorage foundStorageProvider)
+            if (_providers.FirstOrDefault(x => x.Id == next.Backup.Storage.BackupModuleId) is not IBackupStorage foundStorageTypeProvider)
             {
                 next.ErrorMessage = $"Storage provider not found: {next.Backup.Storage.BackupModuleId}";
                 next.Status = ScheduleStatus.Failed;
@@ -67,6 +69,7 @@ namespace Octockup.Server.Jobs
                 await report.SendAsync(0, next.ErrorMessage);
                 return;
             }
+            IBackupStorage foundStorageProvider = (IBackupStorage)_serviceProvider.GetRequiredService(foundStorageTypeProvider.GetType());
             foundStorageProvider.SetParameters(next.Backup.Storage.Parameters);
 
             await report.SendAsync(0, "Listing files to backup...");
