@@ -19,6 +19,7 @@ namespace Octockup.Server.Controllers
     [ApiController]
     public class ModuleController(
         AppDbContext _dbContext,
+        ILogger<ModuleController> _logger,
         IEnumerable<IBackupProvider> _providers) : ControllerBase
     {
         [Authorize]
@@ -100,11 +101,11 @@ namespace Octockup.Server.Controllers
             foundProvider.SetParameters(request.Parameters);
             if (foundProvider is IBackupStorage storage && request.Destination == ModuleDestination.Target)
             {
-                return await TestHelpers.TestStorageAsync(this, storage);
+                return await TestHelpers.TestStorageAsync(this, storage, _logger);
             }
             if (foundProvider is IBackupSource source)
             {
-                return await TestHelpers.TestSourceAsync(this, source);
+                return await TestHelpers.TestSourceAsync(this, source, _logger);
             }
             return this.ApiBadRequest("Provider is not able to pass backup storage/source tests.");
         }

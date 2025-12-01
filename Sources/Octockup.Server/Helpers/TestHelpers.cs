@@ -10,7 +10,7 @@ namespace Octockup.Server.Helpers
 {
     public static class TestHelpers
     {
-        public static async Task<IActionResult> TestStorageAsync(ControllerBase controller, IBackupStorage storage)
+        public static async Task<IActionResult> TestStorageAsync(ControllerBase controller, IBackupStorage storage, ILogger logger)
         {
             try
             {
@@ -19,6 +19,7 @@ namespace Octockup.Server.Helpers
                 var result = storage.GetFiles(recursive: false);
                 if (!result.Any(x => x.Name == testFileName))
                 {
+                    logger.LogWarning("Test file was not found in the storage after upload.");
                     return controller.ApiBadRequest("Test file was not found after upload.");
                 }
                 await storage.DeleteAsync(testFileName);
@@ -26,11 +27,12 @@ namespace Octockup.Server.Helpers
             }
             catch (Exception ex)
             {
+                logger.LogError(ex, "Error during storage connection test.");
                 return controller.ApiBadRequest("Failed to connect to backup storage with provided parameters: " + ex.Message);
             }
         }
 
-        public static async Task<IActionResult> TestSourceAsync(ModuleController moduleController, IBackupSource source)
+        public static async Task<IActionResult> TestSourceAsync(ModuleController moduleController, IBackupSource source, ILogger<ModuleController> logger)
         {
             try
             {
@@ -46,8 +48,8 @@ namespace Octockup.Server.Helpers
 
                 if (candidates.Count == 0)
                 {
-                    return moduleController.ApiBadRequest(
-                        "No files found in the backup source to test file stream retrieval.");
+                    logger.LogWarning("No files found in the backup source during connection test.");
+                    return moduleController.ApiBadRequest("No files found in the backup source to test file stream retrieval.");
                 }
 
                 int tested = 0;
@@ -67,6 +69,7 @@ namespace Octockup.Server.Helpers
                         
                         if (testStream == null || testStream == Stream.Null)
                         {
+                            logger.LogWarning("File '{FilePath}' returned null or empty stream during connection test.", file.Path);
                             errors.Add($"File '{file.Path}': returned null or empty stream");
                             tested++;
                             continue;
@@ -81,6 +84,7 @@ namespace Octockup.Server.Helpers
                         }
                         else
                         {
+                            logger.LogWarning("File '{FilePath}' stream is not readable during connection test.", file.Path);
                             errors.Add($"File '{file.Path}': stream is not readable");
                             tested++;
                             continue;
@@ -93,6 +97,7 @@ namespace Octockup.Server.Helpers
                     }
                     catch (Exception ex)
                     {
+                        logger.LogWarning(ex, "Error reading file '{FilePath}' during connection test.", file.Path);
                         errors.Add($"File '{file.Path}': {ex.Message}");
                         tested++;
                         continue;
@@ -109,13 +114,12 @@ namespace Octockup.Server.Helpers
                     ? string.Join("; ", errors.Take(3))
                     : "no files could be read";
 
-                return moduleController.ApiBadRequest(
-                    $"Failed to retrieve a readable stream from the backup source in the first {maxTestedFiles} files: {errorMessage}");
+                return moduleController.ApiBadRequest($"Failed to retrieve a readable stream from the backup source in the first {maxTestedFiles} files: {errorMessage}");
             }
             catch (Exception ex)
             {
-                return moduleController.ApiBadRequest(
-                    "Failed to connect to backup source with provided parameters: " + ex.Message);
+                logger.LogError(ex, "Error during backup source connection test.");
+                return moduleController.ApiBadRequest("Failed to connect to backup source with provided parameters: " + ex.Message);
             }
         }
 
