@@ -16,6 +16,7 @@ namespace Octockup.Server.Database
 
         public virtual Module Source { get; set; } = null!;
         public virtual Module Storage { get; set; } = null!;
+        public virtual ICollection<Snapshot> Snapshots { get; set; } = [];
         public virtual ICollection<Schedule> Schedules { get; set; } = [];
     }
 }

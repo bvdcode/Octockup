@@ -23,6 +23,7 @@ namespace Octockup.Server.Controllers
                 .AsNoTracking()
                 .Include(x => x.Source)
                 .Include(x => x.Storage)
+                .Include(x => x.Snapshots)
                 .Where(x => x.Source.UserId == userId)
                 .ProjectToType<BackupDto>()
                 .ToListAsync();
