@@ -56,7 +56,7 @@ namespace Octockup.Server.Jobs
                 await report.SendAsync(0, next.ErrorMessage);
                 return;
             }
-            IBackupSource foundSourceProvider = (IBackupSource)_serviceProvider.GetRequiredService(foundSourceTypeProvider.GetType());
+            IBackupSource foundSourceProvider = (IBackupSource)ActivatorUtilities.CreateInstance(_serviceProvider, foundSourceTypeProvider.GetType());
             foundSourceProvider.SetParameters(next.Backup.Source.Parameters);
 
             if (_providers.FirstOrDefault(x => x.Id == next.Backup.Storage.BackupModuleId) is not IBackupStorage foundStorageTypeProvider)
@@ -69,7 +69,7 @@ namespace Octockup.Server.Jobs
                 await report.SendAsync(0, next.ErrorMessage);
                 return;
             }
-            IBackupStorage foundStorageProvider = (IBackupStorage)_serviceProvider.GetRequiredService(foundStorageTypeProvider.GetType());
+            IBackupStorage foundStorageProvider = (IBackupStorage)ActivatorUtilities.CreateInstance(_serviceProvider, foundStorageTypeProvider.GetType());
             foundStorageProvider.SetParameters(next.Backup.Storage.Parameters);
 
             await report.SendAsync(0, "Listing files to backup...");
