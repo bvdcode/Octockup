@@ -42,6 +42,7 @@ interface BackupModuleWizardProps {
     test: (
       providerId: string,
       parameters: Record<string, string>,
+      destination: ModuleDestination,
     ) => Promise<void>;
     getDirectories: (
       providerId: string,
@@ -92,7 +93,17 @@ export default function BackupModuleWizard({
     providerId,
     apiClient,
   );
-  const test = useModuleTest(moduleMeta, params, providerId, apiClient);
+  const destination =
+    moduleType === "source"
+      ? ModuleDestination.Source
+      : ModuleDestination.Target;
+  const test = useModuleTest(
+    moduleMeta,
+    params,
+    providerId,
+    destination,
+    apiClient,
+  );
 
   const [creating, setCreating] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);

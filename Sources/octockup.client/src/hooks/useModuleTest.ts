@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import type { ModuleProviderInfo } from "../types/api";
+import type { ModuleProviderInfo, ModuleDestination } from "../types/api";
 
 interface ParamState {
   [key: string]: string;
@@ -10,8 +10,13 @@ export function useModuleTest(
   moduleMeta: ModuleProviderInfo | null,
   params: ParamState,
   providerId: string,
+  destination: ModuleDestination,
   apiClient: {
-    test: (id: string, parameters: Record<string, string>) => Promise<void>;
+    test: (
+      id: string,
+      parameters: Record<string, string>,
+      destination: ModuleDestination,
+    ) => Promise<void>;
   },
 ) {
   const { t } = useTranslation();
@@ -52,16 +57,17 @@ export function useModuleTest(
 
     try {
       setTestLoading(true);
-      await apiClient.test(providerId, params);
+      await apiClient.test(providerId, params, destination);
       setTestMessage(t("wizard.testSuccess"));
     } catch (err: unknown) {
       let msg = t("wizard.testFailed");
       if (err && typeof err === "object") {
-        const response = (err as any).response;
+        const response = (err as { response?: { data?: { detail?: string } } })
+          .response;
         if (response?.data?.detail) {
           msg = response.data.detail;
-        } else if ((err as Error).message) {
-          msg = (err as Error).message;
+        } else if ("message" in err && typeof err.message === "string") {
+          msg = err.message;
         }
       } else if (err instanceof Error) {
         msg = err.message;
@@ -70,7 +76,15 @@ export function useModuleTest(
     } finally {
       setTestLoading(false);
     }
-  }, [moduleMeta, params, providerId, apiClient, t, validateHttpEndpoint]);
+  }, [
+    moduleMeta,
+    params,
+    providerId,
+    destination,
+    apiClient,
+    t,
+    validateHttpEndpoint,
+  ]);
 
   const resetTest = useCallback(() => {
     setTestMessage(null);
