@@ -127,6 +127,12 @@ namespace Octockup.Server.Jobs
             {
                 var file = files[i];
                 await report.SendAsync(i, $"Processing: {file.Name}");
+                if (schedule.Backup.IgnoredPaths != null && ScheduleHelpers.IsPathIgnored(file.Path, schedule.Backup.IgnoredPaths))
+                {
+                    _logger.LogInformation("Schedule {ScheduleId}: File {FileName} is ignored by path rules, skipping",
+                        schedule.Id, file.Name);
+                    continue;
+                }
 
                 var foundFile = await _dbContext.SnapshotFiles
                     .AsNoTracking()
