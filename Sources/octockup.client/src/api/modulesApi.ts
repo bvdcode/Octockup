@@ -62,10 +62,11 @@ class ModulesApiClient {
   async test(
     providerId: string,
     parameters: Record<string, string>,
+    destination: ModuleDestination,
   ): Promise<void> {
     await this.axios().post(
       `/api/v1/modules/providers/${encodeURIComponent(providerId)}/test`,
-      { parameters },
+      { parameters, destination },
     );
   }
 

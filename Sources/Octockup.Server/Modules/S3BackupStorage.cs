@@ -172,10 +172,29 @@ namespace Octockup.Server.Modules
                         ContinuationToken = continuationToken
                     };
 
-                    var response = _s3.ListObjectsV2Async(request).Result;
-
-                    foreach (var prefix in response.CommonPrefixes)
+                    ListObjectsV2Response? response = null;
+                    try
                     {
+                        response = _s3.ListObjectsV2Async(request).GetAwaiter().GetResult();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "S3 list request failed for prefix {Prefix}", basePrefix);
+                        break;
+                    }
+
+                    if (response == null)
+                    {
+                        break;
+                    }
+
+                    var prefixes = response.CommonPrefixes ?? Enumerable.Empty<string>();
+
+                    foreach (var prefix in prefixes)
+                    {
+                        if (string.IsNullOrEmpty(prefix))
+                            continue;
+
                         var relative = ToRelativeKey(prefix, basePrefix);
                         if (!string.IsNullOrEmpty(relative))
                         {
@@ -203,10 +222,29 @@ namespace Octockup.Server.Modules
                         ContinuationToken = continuationToken
                     };
 
-                    var response = _s3.ListObjectsV2Async(request).Result;
-
-                    foreach (var obj in response.S3Objects)
+                    ListObjectsV2Response? response = null;
+                    try
                     {
+                        response = _s3.ListObjectsV2Async(request).GetAwaiter().GetResult();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "S3 list request failed for prefix {Prefix}", basePrefix);
+                        break;
+                    }
+
+                    if (response == null)
+                    {
+                        break;
+                    }
+
+                    var objects = response.S3Objects ?? Enumerable.Empty<S3Object>();
+
+                    foreach (var obj in objects)
+                    {
+                        if (obj == null || string.IsNullOrEmpty(obj.Key))
+                            continue;
+
                         var relativeKey = ToRelativeKey(obj.Key, basePrefix);
                         if (string.IsNullOrEmpty(relativeKey))
                             continue;
@@ -252,10 +290,31 @@ namespace Octockup.Server.Modules
                     ContinuationToken = continuationToken
                 };
 
-                var response = _s3.ListObjectsV2Async(request).Result;
-
-                foreach (var obj in response.S3Objects)
+                ListObjectsV2Response? response = null;
+                try
                 {
+                    response = _s3.ListObjectsV2Async(request).GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "S3 list request failed for prefix {Prefix}", basePrefix);
+                    break;
+                }
+
+                if (response == null)
+                {
+                    break;
+                }
+
+                var objects = response.S3Objects ?? Enumerable.Empty<S3Object>();
+
+                foreach (var obj in objects)
+                {
+                    if (obj == null || string.IsNullOrEmpty(obj.Key))
+                    {
+                        continue;
+                    }
+
                     if (obj.Key.EndsWith(PathSeparator))
                     {
                         continue;
