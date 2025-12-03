@@ -84,11 +84,15 @@ namespace Octockup.Server.Helpers
             return $"{hash[..2]}{pathSeparator}{hash.Substring(2, 2)}{pathSeparator}{hash[4..]}.br.oct";
         }
 
-        public static bool IsPathIgnored(string path, ICollection<string> ignoredPaths)
+        public static bool IsPathIgnored(string path, string? fileName, ICollection<string> ignoredPaths)
         {
             foreach (var ignored in ignoredPaths)
             {
                 if (path.StartsWith(ignored, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+                if (fileName != null && fileName.Equals(ignored, StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
