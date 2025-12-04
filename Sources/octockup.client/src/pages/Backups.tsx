@@ -9,12 +9,14 @@ import {
   IconButton,
   CardContent,
   CircularProgress,
+  Divider,
 } from "@mui/material";
 import {
   PlayArrow,
   DeleteOutline,
   ArrowRightAlt,
   AddCircleOutline,
+  ArrowDownward,
 } from "@mui/icons-material";
 import { useEffect, useState } from "react";
 import { confirm } from "material-ui-confirm";
@@ -125,12 +127,20 @@ export default function BackupsPage() {
                   "&:last-child": { pb: 2 },
                 }}
               >
-                <Box display="flex" alignItems="center" gap={0.5}>
+                <Box
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  flexDirection={{
+                    xs: "column",
+                    sm: "row",
+                  }}
+                >
                   <Box
-                    fontSize={40}
+                    fontSize={36}
                     sx={{
-                      width: 40,
-                      height: 40,
+                      width: 36,
+                      height: 36,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -138,12 +148,23 @@ export default function BackupsPage() {
                   >
                     {getSourceIcon(b.source.backupModuleId)}
                   </Box>
-                  <ArrowRightAlt />
-                  <Box
-                    fontSize={40}
+                  <ArrowRightAlt
                     sx={{
-                      width: 40,
-                      height: 40,
+                      display: { xs: "none", sm: "block" },
+                      mx: 1,
+                      my: { xs: 1, sm: 0 },
+                    }}
+                  />
+                  <ArrowDownward
+                    sx={{
+                      display: { xs: "block", sm: "none" },
+                    }}
+                  />
+                  <Box
+                    fontSize={36}
+                    sx={{
+                      width: 36,
+                      height: 36,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -163,63 +184,60 @@ export default function BackupsPage() {
                     {b.source.tag} → {b.storage.tag}
                   </Typography>
                 </Box>
-                <Box display="flex" gap={1}>
+                <Divider orientation="vertical" flexItem />
+                <Box display="flex" gap={1} flexDirection="column">
                   <Tooltip title={t("backups.runOnce")} placement="top">
-                    <span>
-                      <IconButton
-                        size="medium"
-                        aria-label={t("backups.runOnce")}
-                        disabled={state.runningId === b.id}
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          try {
-                            setState((s) => ({ ...s, runningId: b.id }));
-                            await schedulesApi.create({
-                              backupId: b.id,
-                              startAt: new Date().toISOString(),
-                            });
-                            navigate("/schedules");
-                          } finally {
-                            setState((s) => ({ ...s, runningId: null }));
-                          }
-                        }}
-                      >
-                        {state.runningId === b.id ? (
-                          <CircularProgress size={20} />
-                        ) : (
-                          <PlayArrow color="success" />
-                        )}
-                      </IconButton>
-                    </span>
+                    <IconButton
+                      size="medium"
+                      aria-label={t("backups.runOnce")}
+                      disabled={state.runningId === b.id}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          setState((s) => ({ ...s, runningId: b.id }));
+                          await schedulesApi.create({
+                            backupId: b.id,
+                            startAt: new Date().toISOString(),
+                          });
+                          navigate("/schedules");
+                        } finally {
+                          setState((s) => ({ ...s, runningId: null }));
+                        }
+                      }}
+                    >
+                      {state.runningId === b.id ? (
+                        <CircularProgress size={20} />
+                      ) : (
+                        <PlayArrow color="success" />
+                      )}
+                    </IconButton>
                   </Tooltip>
                   <Tooltip title={t("backups.deleteTooltip")} placement="top">
-                    <span>
-                      <IconButton
-                        size="medium"
-                        aria-label={t("common.delete")}
-                        disabled={state.deletingId === b.id}
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          const result = await confirm({
-                            title: t("backups.deleteTitle"),
-                            description: t("backups.deleteText"),
-                            confirmationText: t("common.delete"),
-                            cancellationText: t("common.cancel"),
-                            confirmationButtonProps: { color: "error" },
-                          });
-                          if (result.confirmed) {
-                            setState((s) => ({ ...s, deletingId: b.id }));
-                            await backupsApi.delete(b.id);
-                            setBackups((prev) =>
-                              prev.filter((x) => x.id !== b.id),
-                            );
-                            setState((s) => ({ ...s, deletingId: null }));
-                          }
-                        }}
-                      >
-                        <DeleteOutline color="primary" />
-                      </IconButton>
-                    </span>
+                    <IconButton
+                      size="medium"
+                      aria-label={t("common.delete")}
+                      disabled={state.deletingId === b.id}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        const result = await confirm({
+                          title: t("backups.deleteTitle"),
+                          description: t("backups.deleteText"),
+                          confirmationText: t("common.delete"),
+                          cancellationText: t("common.cancel"),
+                          confirmationButtonProps: { color: "error" },
+                        });
+                        if (result.confirmed) {
+                          setState((s) => ({ ...s, deletingId: b.id }));
+                          await backupsApi.delete(b.id);
+                          setBackups((prev) =>
+                            prev.filter((x) => x.id !== b.id),
+                          );
+                          setState((s) => ({ ...s, deletingId: null }));
+                        }
+                      }}
+                    >
+                      <DeleteOutline color="primary" />
+                    </IconButton>
                   </Tooltip>
                 </Box>
               </CardContent>
