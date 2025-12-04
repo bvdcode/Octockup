@@ -102,7 +102,16 @@
     "noModules": "Нет модулей",
     "snapshots": "Снапшотов: {{count}}",
     "totalFiles": "Файлов: {{count}}",
-    "totalSize": "Размер: {{size}}"
+    "totalSize": "Размер: {{size}}",
+    "showSnapshots": "Показать снапшоты"
+  },
+  "snapshots": {
+    "title": "Снапшоты",
+    "noSnapshots": "Снапшотов пока нет.",
+    "completedAt": "Завершён",
+    "filesCount": "Файлов",
+    "totalSize": "Размер",
+    "inProgress": "В процессе..."
   },
   "backupWizard": {
     "title": "Создать бэкап",

@@ -17,6 +17,7 @@ import StorageWizard from "./pages/StorageWizard";
 import { AppShell, type TokenPair, type UserInfo } from "@bvdcode/react-kit";
 import SchedulesPage from "./pages/Schedules";
 import ScheduleWizard from "./pages/ScheduleWizard";
+import SnapshotsPage from "./pages/Snapshots";
 import { Fab } from "@mui/material";
 
 function App() {
@@ -90,6 +91,10 @@ function App() {
           {
             route: "/backups/new",
             component: <BackupWizard />,
+          },
+          {
+            route: "/backups/:backupId/snapshots",
+            component: <SnapshotsPage />,
           },
           {
             icon: <Schedule />,

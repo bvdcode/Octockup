@@ -102,7 +102,16 @@
     "noModules": "No modules available",
     "snapshots": "Snapshots: {{count}}",
     "totalFiles": "Files: {{count}}",
-    "totalSize": "Size: {{size}}"
+    "totalSize": "Size: {{size}}",
+    "showSnapshots": "Show snapshots"
+  },
+  "snapshots": {
+    "title": "Snapshots",
+    "noSnapshots": "No snapshots yet.",
+    "completedAt": "Completed At",
+    "filesCount": "Files",
+    "totalSize": "Size",
+    "inProgress": "In progress..."
   },
   "backupWizard": {
     "title": "Create Backup",

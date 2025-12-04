@@ -17,6 +17,7 @@ import {
   ArrowRightAlt,
   AddCircleOutline,
   ArrowDownward,
+  BackupTable,
 } from "@mui/icons-material";
 import { useEffect, useState } from "react";
 import { confirm } from "material-ui-confirm";
@@ -236,7 +237,16 @@ export default function BackupsPage() {
                   )}
                 </Box>
                 <Divider orientation="vertical" flexItem />
-                <Box display="flex" gap={1} flexDirection="column">
+                <Box display="flex" flexDirection="column">
+                  <Tooltip title={t("backups.showSnapshots")} placement="top">
+                    <IconButton
+                      size="medium"
+                      aria-label={t("backups.showSnapshots")}
+                      onClick={() => navigate(`/backups/${b.id}/snapshots`)}
+                    >
+                      <BackupTable color="warning" />
+                    </IconButton>
+                  </Tooltip>
                   <Tooltip title={t("backups.runOnce")} placement="top">
                     <IconButton
                       size="medium"
