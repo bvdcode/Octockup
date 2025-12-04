@@ -3,9 +3,8 @@
 export const IGNORED_PATHS_PRESETS: Record<string, string[]> = {
   "Octockup.Server.Modules.SFTPBackupStorage": [
     "/tmp",
-    "/var/tmp",
     "/run",
-    "/run/lock",
+    "/var/tmp",
     "/var/lock",
     "",
     "/var/lib/docker/containers/*/*-json.log",
@@ -19,14 +18,15 @@ export const IGNORED_PATHS_PRESETS: Record<string, string[]> = {
     "",
     "/var/log",
     "/var/cache",
-    "/var/cache/apt",
-    "/var/cache/yum",
-    "/var/cache/dnf",
-    "/var/cache/apk",
-    "/var/cache/pacman/pkg",
     "",
     "/var/lib/systemd",
     "/run/sshd",
+    "",
+    "/swapfile",
+    "/swap.img",
+    "/dev",
+    "/proc",
+
   ],
 };
 
