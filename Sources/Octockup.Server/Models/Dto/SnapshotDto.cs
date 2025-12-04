@@ -6,5 +6,7 @@ namespace Octockup.Server.Models.Dto
     {
         public Guid BackupId { get; set; }
         public DateTime? CompletedAt { get; set; }
+        public int FilesCount { get; internal set; }
+        public long TotalSize { get; internal set; }
     }
 }
