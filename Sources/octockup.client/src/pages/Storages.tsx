@@ -121,14 +121,21 @@ export function StoragesPage() {
             </CardContent>
           </Card>
         ) : (
-          <Stack direction="row" spacing={2} flexWrap="wrap">
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "repeat(auto-fill, minmax(140px, 1fr))",
+                sm: "repeat(auto-fill, minmax(160px, 1fr))",
+              },
+              gap: 2,
+            }}
+          >
             {userStorages.map((s) => (
               <Card
                 key={s.tag}
                 sx={{
-                  width: 160,
                   height: 140,
-                  flex: "0 0 160px",
                   display: "flex",
                   alignItems: "stretch",
                   justifyContent: "center",
@@ -201,7 +208,7 @@ export function StoragesPage() {
                 </CardContent>
               </Card>
             ))}
-          </Stack>
+          </Box>
         )}
       </Box>
       <Divider />
@@ -209,14 +216,21 @@ export function StoragesPage() {
         <Typography variant="h6" gutterBottom>
           {t("storages.addNew")}
         </Typography>
-        <Stack direction="row" spacing={2} flexWrap="wrap">
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "repeat(auto-fill, minmax(140px, 1fr))",
+              sm: "repeat(auto-fill, minmax(160px, 1fr))",
+            },
+            gap: 2,
+          }}
+        >
           {availableStorages.map((s) => (
             <Card
               key={s.id}
               sx={{
-                width: 160,
                 height: 140,
-                flex: "0 0 160px",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
@@ -262,7 +276,7 @@ export function StoragesPage() {
               </Typography>
             </Stack>
           )}
-        </Stack>
+        </Box>
       </Box>
     </Stack>
   );
