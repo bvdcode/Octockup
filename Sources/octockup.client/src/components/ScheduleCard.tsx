@@ -86,13 +86,6 @@ export function ScheduleCard({
     await onCancel(item.id);
   };
 
-  const renderIntervalInfo = () => {
-    if (!item.interval) return "";
-
-    const minutes = parseInterval(item.interval);
-    return ` • ${t("schedules.everyMinutes", { count: minutes })}`;
-  };
-
   return (
     <Card
       sx={(theme) => ({
@@ -124,8 +117,6 @@ export function ScheduleCard({
         />
 
         <ScheduleInfo item={item} report={report} progress={progress} />
-
-        <ScheduleStatus item={item} renderIntervalInfo={renderIntervalInfo} />
 
         <Divider orientation="vertical" flexItem />
 
@@ -209,6 +200,15 @@ function ScheduleInfo({
   report?: ScheduleReport;
   progress: number;
 }) {
+  const { t } = useTranslation();
+
+  const renderIntervalInfo = () => {
+    if (!item.interval) {
+      return "";
+    }
+    const minutes = parseInterval(item.interval);
+    return ` • ${t("schedules.everyMinutes", { count: minutes })}`;
+  };
   return (
     <Box
       sx={{
@@ -225,6 +225,39 @@ function ScheduleInfo({
       {report && item.status === BackupStatus.Running && (
         <RunningProgressInfo report={report} progress={progress} />
       )}
+      <Box sx={{ mt: 0.5 }}>
+        {item.status !== BackupStatus.Running && (
+          <Box display="flex" alignItems="center" gap={0.5}>
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+                display: "block",
+                fontSize: "0.7rem",
+              }}
+            >
+              {t("schedules.nextRun.label")}: {formatNextRun(item, t)}
+            </Typography>
+
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+                display: "block",
+                fontSize: "0.7rem",
+              }}
+            >
+              {renderIntervalInfo()}
+            </Typography>
+          </Box>
+        )}
+        <Typography
+          variant="caption"
+          sx={{ color: "text.secondary", display: "block", fontSize: "0.7rem" }}
+        >
+          {parseUtcDate(item.startAt)!.toLocaleDateString()}
+        </Typography>
+      </Box>
     </Box>
   );
 }
@@ -277,59 +310,6 @@ function RunningProgressInfo({
   );
 }
 
-function ScheduleStatus({
-  item,
-  renderIntervalInfo,
-}: {
-  item: ScheduleItem;
-  renderIntervalInfo: () => string;
-}) {
-  const { t } = useTranslation();
-
-  return (
-    <Box
-      display="flex"
-      flexDirection="column"
-      gap={0.5}
-      alignItems="flex-end"
-      minWidth={120}
-      sx={{ display: { xs: "none", md: "flex" } }}
-    >
-      {item.status !== BackupStatus.Running && (
-        <>
-          <Typography variant="caption" sx={{ color: "text.secondary" }}>
-            {t("schedules.nextRun.label")}: {formatNextRun(item, t)}
-          </Typography>
-          <Typography
-            variant="caption"
-            sx={{ color: "text.secondary", fontSize: "0.65rem" }}
-          >
-            {parseUtcDate(item.startAt)!.toLocaleString()}
-            {renderIntervalInfo()}
-          </Typography>
-        </>
-      )}
-      {item.errorMessage && (
-        <Tooltip title={item.errorMessage} placement="left">
-          <Typography
-            variant="caption"
-            sx={{
-              color: "error.main",
-              fontSize: "0.7rem",
-              maxWidth: 120,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            ⚠ Error
-          </Typography>
-        </Tooltip>
-      )}
-    </Box>
-  );
-}
-
 function ScheduleActions({
   item,
   isDeleting,
@@ -366,13 +346,14 @@ function ScheduleActions({
         onClick={() => {
           confirm({
             title: t("schedules.currentStatus"),
-            description: statusLabel,
+            description:
+              statusLabel + (item.errorMessage ? `: ${item.errorMessage}` : ""),
             hideCancelButton: true,
             confirmationText: t("common.ok"),
           });
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center" }}>
+        <Box sx={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
           {getStatusIcon(item.status)}
         </Box>
       </Tooltip>
