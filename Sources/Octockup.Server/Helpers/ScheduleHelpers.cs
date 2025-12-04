@@ -88,6 +88,10 @@ namespace Octockup.Server.Helpers
         {
             foreach (var ignored in ignoredPaths)
             {
+                if (string.IsNullOrWhiteSpace(ignored))
+                {
+                    continue;
+                }
                 if (path.StartsWith(ignored, StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
