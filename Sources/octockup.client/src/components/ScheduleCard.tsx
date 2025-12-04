@@ -14,6 +14,7 @@ import {
   DeleteOutline,
   ArrowRightAlt,
   Replay,
+  ArrowDownward,
 } from "@mui/icons-material";
 import { BackupStatus } from "../types/api";
 import { confirm } from "material-ui-confirm";
@@ -21,7 +22,11 @@ import { useTranslation } from "react-i18next";
 import type { ScheduleItem, ScheduleReport } from "../types/api";
 import { parseUtcDate } from "../utils/dateUtils";
 import { formatSpeed, formatElapsed } from "../utils/formatUtils";
-import { statusColor, formatNextRun, parseInterval } from "../utils/scheduleUtils";
+import {
+  statusColor,
+  formatNextRun,
+  parseInterval,
+} from "../utils/scheduleUtils";
 import { getSourceIcon } from "../constants/sourceIcons";
 
 interface ScheduleCardProps {
@@ -46,9 +51,8 @@ export function ScheduleCard({
   isResetting,
 }: ScheduleCardProps) {
   const { t } = useTranslation();
-  const progress = report && report.total > 0
-    ? (report.processed / report.total) * 100
-    : 0;
+  const progress =
+    report && report.total > 0 ? (report.processed / report.total) * 100 : 0;
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -71,7 +75,7 @@ export function ScheduleCard({
 
   const renderIntervalInfo = () => {
     if (!item.interval) return "";
-    
+
     const minutes = parseInterval(item.interval);
     return ` • ${t("schedules.everyMinutes", { count: minutes })}`;
   };
@@ -92,20 +96,13 @@ export function ScheduleCard({
           sourceIcon={getSourceIcon(item.backup.source.backupModuleId)}
           storageIcon={getSourceIcon(item.backup.storage.backupModuleId)}
         />
-        
-        <ScheduleInfo
-          item={item}
-          report={report}
-          progress={progress}
-        />
-        
-        <ScheduleStatus
-          item={item}
-          renderIntervalInfo={renderIntervalInfo}
-        />
-        
-        <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
-        
+
+        <ScheduleInfo item={item} report={report} progress={progress} />
+
+        <ScheduleStatus item={item} renderIntervalInfo={renderIntervalInfo} />
+
+        <Divider orientation="vertical" flexItem />
+
         <ScheduleActions
           item={item}
           isDeleting={isDeleting}
@@ -128,7 +125,15 @@ function ScheduleIcons({
   storageIcon: React.ReactNode;
 }) {
   return (
-    <Box display="flex" alignItems="center" justifyContent="center">
+    <Box
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      flexDirection={{
+        xs: "column",
+        sm: "row",
+      }}
+    >
       <Box
         fontSize={36}
         sx={{
@@ -141,7 +146,18 @@ function ScheduleIcons({
       >
         {sourceIcon}
       </Box>
-      <ArrowRightAlt />
+      <ArrowRightAlt
+        sx={{
+          display: { xs: "none", sm: "block" },
+          mx: 1,
+          my: { xs: 1, sm: 0 },
+        }}
+      />
+      <ArrowDownward
+        sx={{
+          display: { xs: "block", sm: "none" },
+        }}
+      />
       <Box
         fontSize={36}
         sx={{
@@ -168,7 +184,12 @@ function ScheduleInfo({
   progress: number;
 }) {
   return (
-    <Box sx={{ flex: 1, minWidth: 0 }}>
+    <Box
+      sx={{
+        flex: 1,
+        minWidth: 0,
+      }}
+    >
       <Typography variant="subtitle1" noWrap title={item.backup.tag}>
         {item.backup.tag}
       </Typography>
@@ -176,10 +197,7 @@ function ScheduleInfo({
         {item.backup.source.tag} → {item.backup.storage.tag}
       </Typography>
       {report && item.status === BackupStatus.Running && (
-        <RunningProgressInfo
-          report={report}
-          progress={progress}
-        />
+        <RunningProgressInfo report={report} progress={progress} />
       )}
     </Box>
   );
@@ -241,7 +259,7 @@ function ScheduleStatus({
   renderIntervalInfo: () => string;
 }) {
   const { t } = useTranslation();
-  
+
   return (
     <Box
       display="flex"
@@ -250,18 +268,16 @@ function ScheduleStatus({
       alignItems="flex-end"
       minWidth={120}
     >
-        <Chip
-          size="small"
-          label={t(
-            `schedules.status.${BackupStatus[item.status].toLowerCase()}`,
-          )}
-          color={statusColor(item.status)}
-        />
-        {item.status !== BackupStatus.Running && (
-          <>
-            <Typography variant="caption" sx={{ color: "text.secondary" }}>
-              {t("schedules.nextRun.label")}: {formatNextRun(item, t)}
-            </Typography>
+      <Chip
+        size="small"
+        label={t(`schedules.status.${BackupStatus[item.status].toLowerCase()}`)}
+        color={statusColor(item.status)}
+      />
+      {item.status !== BackupStatus.Running && (
+        <>
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
+            {t("schedules.nextRun.label")}: {formatNextRun(item, t)}
+          </Typography>
           <Typography
             variant="caption"
             sx={{ color: "text.secondary", fontSize: "0.65rem" }}
@@ -315,7 +331,7 @@ function ScheduleActions({
     e.stopPropagation();
     await onResetError(item.id);
   };
-  
+
   return (
     <Box display="flex" flexDirection="column" gap={0.5}>
       <Tooltip title={t("schedules.deleteTooltip")} placement="top">
@@ -349,9 +365,7 @@ function ScheduleActions({
             <IconButton
               size="small"
               aria-label={t("schedules.stop")}
-              disabled={
-                item.status !== BackupStatus.Running || isCanceling
-              }
+              disabled={item.status !== BackupStatus.Running || isCanceling}
               onClick={onCancel}
             >
               <StopCircle />
