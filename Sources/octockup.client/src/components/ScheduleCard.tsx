@@ -1,7 +1,6 @@
 import {
   Box,
   Card,
-  Chip,
   Tooltip,
   Divider,
   Typography,
@@ -10,11 +9,15 @@ import {
   LinearProgress,
 } from "@mui/material";
 import {
+  Replay,
+  Pending,
   StopCircle,
+  CheckCircle,
+  ErrorOutline,
   DeleteOutline,
   ArrowRightAlt,
-  Replay,
   ArrowDownward,
+  HourglassEmpty,
 } from "@mui/icons-material";
 import { BackupStatus } from "../types/api";
 import { confirm } from "material-ui-confirm";
@@ -22,12 +25,22 @@ import { useTranslation } from "react-i18next";
 import type { ScheduleItem, ScheduleReport } from "../types/api";
 import { parseUtcDate } from "../utils/dateUtils";
 import { formatSpeed, formatElapsed } from "../utils/formatUtils";
-import {
-  statusColor,
-  formatNextRun,
-  parseInterval,
-} from "../utils/scheduleUtils";
+import { formatNextRun, parseInterval } from "../utils/scheduleUtils";
 import { getSourceIcon } from "../constants/sourceIcons";
+
+function getStatusIcon(status: BackupStatus) {
+  switch (status) {
+    case BackupStatus.Completed:
+      return <CheckCircle sx={{ color: "success.main" }} />;
+    case BackupStatus.Failed:
+      return <ErrorOutline sx={{ color: "error.main" }} />;
+    case BackupStatus.Running:
+      return <Pending sx={{ color: "info.main" }} />;
+    case BackupStatus.Created:
+    default:
+      return <HourglassEmpty sx={{ color: "warning.main" }} />;
+  }
+}
 
 interface ScheduleCardProps {
   item: ScheduleItem;
@@ -81,7 +94,20 @@ export function ScheduleCard({
   };
 
   return (
-    <Card sx={{ display: "flex" }}>
+    <Card
+      sx={(theme) => ({
+        display: "flex",
+        borderLeft: `3px solid ${
+          item.status === BackupStatus.Completed
+            ? theme.palette.success.main
+            : item.status === BackupStatus.Failed
+              ? theme.palette.error.main
+              : item.status === BackupStatus.Running
+                ? theme.palette.info.main
+                : theme.palette.warning.main
+        }`,
+      })}
+    >
       <CardContent
         sx={{
           display: "flex",
@@ -267,12 +293,8 @@ function ScheduleStatus({
       gap={0.5}
       alignItems="flex-end"
       minWidth={120}
+      sx={{ display: { xs: "none", md: "flex" } }}
     >
-      <Chip
-        size="small"
-        label={t(`schedules.status.${BackupStatus[item.status].toLowerCase()}`)}
-        color={statusColor(item.status)}
-      />
       {item.status !== BackupStatus.Running && (
         <>
           <Typography variant="caption" sx={{ color: "text.secondary" }}>
@@ -332,8 +354,18 @@ function ScheduleActions({
     await onResetError(item.id);
   };
 
+  const statusLabel = t(
+    `schedules.status.${BackupStatus[item.status].toLowerCase()}`,
+  );
+
   return (
-    <Box display="flex" flexDirection="column" gap={0.5}>
+    <Box display="flex" flexDirection="column" gap={0.5} alignItems="center">
+      <Tooltip title={statusLabel} placement="top">
+        <Box sx={{ display: "flex", alignItems: "center" }}>
+          {getStatusIcon(item.status)}
+        </Box>
+      </Tooltip>
+
       <Tooltip title={t("schedules.deleteTooltip")} placement="top">
         <span>
           <IconButton
