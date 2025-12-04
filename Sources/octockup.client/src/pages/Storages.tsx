@@ -4,22 +4,28 @@ import {
   Stack,
   Alert,
   Divider,
+  Tooltip,
+  Snackbar,
+  IconButton,
   Typography,
   CardContent,
   CircularProgress,
-  IconButton,
-  Tooltip,
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import {
+  useState,
+  useEffect,
+  type ChangeEvent,
+  type KeyboardEvent,
+} from "react";
+import { confirm } from "material-ui-confirm";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { ModuleDestination } from "../types/api";
-import type { Module, ModuleProviderInfo } from "../types/api";
-import { AddCircleOutline, DeleteOutline } from "@mui/icons-material";
-import { confirm } from "material-ui-confirm";
-import { getSourceIcon } from "../constants/sourceIcons";
 import { useModulesApi } from "../api/modulesApi";
 import { parseUtcDate } from "../utils/dateUtils";
+import { getSourceIcon } from "../constants/sourceIcons";
+import type { Module, ModuleProviderInfo } from "../types/api";
+import { AddCircleOutline, DeleteOutline } from "@mui/icons-material";
 
 interface State {
   loading: boolean;
@@ -42,6 +48,37 @@ export function StoragesPage() {
   const [availableStorages, setAvailableStorages] = useState<
     ModuleProviderInfo[]
   >([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTag, setEditingTag] = useState<string>("");
+  const [snackbar, setSnackbar] = useState<string | null>(null);
+
+  const handleDoubleClick = (module: Module) => {
+    setEditingId(module.id);
+    setEditingTag(module.tag);
+  };
+
+  const handleRename = async (moduleId: string) => {
+    if (
+      !editingTag.trim() ||
+      editingTag === userStorages.find((s) => s.id === moduleId)?.tag
+    ) {
+      setEditingId(null);
+      return;
+    }
+    try {
+      await api.rename(moduleId, editingTag.trim());
+      setUserStorages((prev) =>
+        prev.map((s) =>
+          s.id === moduleId ? { ...s, tag: editingTag.trim() } : s,
+        ),
+      );
+      setEditingId(null);
+    } catch (e) {
+      const error = e as { response?: { data?: { message?: string } } };
+      setSnackbar(error?.response?.data?.message || "Failed to rename");
+      setEditingId(null);
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -185,14 +222,50 @@ export function StoragesPage() {
                   <Box sx={{ fontSize: 32 }}>
                     {getSourceIcon(s.backupModuleId)}
                   </Box>
-                  <Typography
-                    variant="subtitle2"
-                    noWrap
-                    title={s.tag}
-                    sx={{ textAlign: "center", maxWidth: 140 }}
-                  >
-                    {s.tag}
-                  </Typography>
+                  {editingId === s.id ? (
+                    <Box
+                      component="input"
+                      autoFocus
+                      value={editingTag}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                        setEditingTag(e.target.value)
+                      }
+                      onBlur={() => handleRename(s.id)}
+                      onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+                        if (e.key === "Enter") handleRename(s.id);
+                        if (e.key === "Escape") setEditingId(null);
+                      }}
+                      sx={{
+                        textAlign: "center",
+                        maxWidth: 140,
+                        fontSize: "0.875rem",
+                        fontWeight: 500,
+                        border: "1px solid",
+                        borderColor: "primary.main",
+                        borderRadius: 1,
+                        px: 0.5,
+                        py: 0.25,
+                        outline: "none",
+                      }}
+                    />
+                  ) : (
+                    <Typography
+                      variant="subtitle2"
+                      noWrap
+                      title={s.tag}
+                      sx={{
+                        textAlign: "center",
+                        maxWidth: 140,
+                        cursor: "text",
+                      }}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        handleDoubleClick(s);
+                      }}
+                    >
+                      {s.tag}
+                    </Typography>
+                  )}
                   <Typography
                     variant="caption"
                     noWrap
@@ -278,6 +351,12 @@ export function StoragesPage() {
           )}
         </Box>
       </Box>
+      <Snackbar
+        open={snackbar !== null}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar(null)}
+        message={snackbar}
+      />
     </Stack>
   );
 }

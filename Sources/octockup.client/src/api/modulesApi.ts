@@ -86,6 +86,13 @@ class ModulesApiClient {
       `/api/v1/modules/${encodeURIComponent(moduleId)}`,
     );
   }
+
+  async rename(moduleId: string, newTag: string): Promise<void> {
+    await this.axios().patch(
+      `/api/v1/modules/${encodeURIComponent(moduleId)}/rename`,
+      { newTag },
+    );
+  }
 }
 
 export function useModulesApi(): ModulesApiClient {
