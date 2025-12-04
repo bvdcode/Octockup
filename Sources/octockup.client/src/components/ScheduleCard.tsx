@@ -101,10 +101,10 @@ export function ScheduleCard({
           item.status === BackupStatus.Completed
             ? theme.palette.success.main
             : item.status === BackupStatus.Failed
-              ? theme.palette.error.main
-              : item.status === BackupStatus.Running
-                ? theme.palette.info.main
-                : theme.palette.warning.main
+            ? theme.palette.error.main
+            : item.status === BackupStatus.Running
+            ? theme.palette.info.main
+            : theme.palette.warning.main
         }`,
       })}
     >
@@ -360,7 +360,18 @@ function ScheduleActions({
 
   return (
     <Box display="flex" flexDirection="column" gap={0.5} alignItems="center">
-      <Tooltip title={statusLabel} placement="top">
+      <Tooltip
+        title={statusLabel}
+        placement="top"
+        onClick={() => {
+          confirm({
+            title: t("schedules.currentStatus"),
+            description: statusLabel,
+            hideCancelButton: true,
+            confirmationText: t("common.ok"),
+          });
+        }}
+      >
         <Box sx={{ display: "flex", alignItems: "center" }}>
           {getStatusIcon(item.status)}
         </Box>

@@ -1,5 +1,6 @@
 {
   "common": {
+    "ok": "OK",
     "back": "Back",
     "cancel": "Cancel",
     "delete": "Delete",
@@ -128,6 +129,7 @@
     "stop": "Stop",
     "tryAgainTooltip": "Reset error and try again",
     "tryAgain": "Try Again",
+    "currentStatus": "Current status",
     "status": {
       "created": "Created",
       "running": "Running",
