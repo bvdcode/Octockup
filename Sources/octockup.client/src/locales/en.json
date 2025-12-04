@@ -59,7 +59,7 @@
     "storageCreatedSuccess": "Storage created successfully!",
     "invalidHttpEndpoint": "httpEndpoint must start with http:// or https://"
   },
-  
+
   "storages": {
     "title": "Your Storages",
     "noStorages": "No storages configured yet.",
@@ -83,15 +83,13 @@
     "typeNotFound": "Storage type not found.",
     "loadError": "Failed to load storage metadata.",
     "enterValue": "Enter value for {{param}}",
-    "storageCreated": "Storage prepared (stub). Check console."
-    ,
+    "storageCreated": "Storage prepared (stub). Check console.",
     "testConnection": "Test connection",
     "testing": "Testing...",
     "testSuccess": "Connection test successful.",
     "testFailed": "Connection test failed.",
     "fillParameters": "Please fill all parameters before testing."
-  }
-  ,
+  },
   "backups": {
     "title": "Your Backups",
     "newBackup": "New Backup",
@@ -101,7 +99,10 @@
     "deleteTooltip": "Delete backup",
     "runOnce": "Run once",
     "modulesTitle": "Modules",
-    "noModules": "No modules available"
+    "noModules": "No modules available",
+    "snapshots": "Snapshots: {{count}}",
+    "totalFiles": "Files: {{count}}",
+    "totalSize": "Size: {{size}}"
   },
   "backupWizard": {
     "title": "Create Backup",
@@ -115,8 +116,7 @@
     "applyPreset": "Apply recommended paths",
     "createBackup": "Create Backup",
     "createError": "Failed to create backup."
-  }
-  ,
+  },
   "schedules": {
     "title": "Your Schedules",
     "newSchedule": "New Schedule",

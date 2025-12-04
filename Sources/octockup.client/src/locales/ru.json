@@ -99,7 +99,10 @@
     "deleteTooltip": "Удалить бэкап",
     "runOnce": "Запустить разово",
     "modulesTitle": "Модули",
-    "noModules": "Нет модулей"
+    "noModules": "Нет модулей",
+    "snapshots": "Снапшотов: {{count}}",
+    "totalFiles": "Файлов: {{count}}",
+    "totalSize": "Размер: {{size}}"
   },
   "backupWizard": {
     "title": "Создать бэкап",

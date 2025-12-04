@@ -25,7 +25,9 @@ import { useNavigate } from "react-router-dom";
 import type { BackupItem } from "../types/api";
 import { useBackupsApi } from "../api/backupsApi";
 import { useSchedulesApi } from "../api/schedulesApi";
+import { useSnapshotsApi, type SnapshotDto } from "../api/snapshotsApi";
 import { getSourceIcon } from "../constants/sourceIcons";
+import { formatSize } from "../utils/formatUtils";
 
 interface State {
   loading: boolean;
@@ -39,6 +41,7 @@ export default function BackupsPage() {
   const navigate = useNavigate();
   const backupsApi = useBackupsApi();
   const schedulesApi = useSchedulesApi();
+  const snapshotsApi = useSnapshotsApi();
   const [state, setState] = useState<State>({
     loading: true,
     error: null,
@@ -46,14 +49,32 @@ export default function BackupsPage() {
     runningId: null,
   });
   const [backups, setBackups] = useState<BackupItem[]>([]);
+  const [snapshots, setSnapshots] = useState<Record<string, SnapshotDto[]>>({});
 
   useEffect(() => {
     let active = true;
     backupsApi
       .list()
-      .then((backupList) => {
+      .then(async (backupList) => {
         if (!active) return;
         setBackups(backupList);
+
+        // Fetch snapshots for each backup
+        const snapshotPromises = backupList.map((backup) =>
+          snapshotsApi
+            .listByBackup(backup.id)
+            .then((data) => ({ backupId: backup.id, data }))
+            .catch(() => ({ backupId: backup.id, data: [] })),
+        );
+
+        const snapshotResults = await Promise.all(snapshotPromises);
+        const snapshotsMap: Record<string, SnapshotDto[]> = {};
+        snapshotResults.forEach((result) => {
+          snapshotsMap[result.backupId] = result.data;
+        });
+
+        if (!active) return;
+        setSnapshots(snapshotsMap);
         setState((s) => ({ ...s, loading: false }));
       })
       .catch((e) => {
@@ -67,7 +88,7 @@ export default function BackupsPage() {
     return () => {
       active = false;
     };
-  }, [backupsApi]);
+  }, [backupsApi, snapshotsApi]);
 
   if (state.loading) {
     return (
@@ -183,6 +204,36 @@ export default function BackupsPage() {
                   >
                     {b.source.tag} → {b.storage.tag}
                   </Typography>
+                  {snapshots[b.id] && snapshots[b.id].length > 0 && (
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                        display: "block",
+                        mt: 0.5,
+                      }}
+                    >
+                      {t("backups.snapshots", {
+                        count: snapshots[b.id].length,
+                      })}{" "}
+                      •{" "}
+                      {t("backups.totalFiles", {
+                        count: snapshots[b.id].reduce(
+                          (sum, s) => sum + s.filesCount,
+                          0,
+                        ),
+                      })}{" "}
+                      •{" "}
+                      {t("backups.totalSize", {
+                        size: formatSize(
+                          snapshots[b.id].reduce(
+                            (sum, s) => sum + s.totalSize,
+                            0,
+                          ),
+                        ),
+                      })}
+                    </Typography>
+                  )}
                 </Box>
                 <Divider orientation="vertical" flexItem />
                 <Box display="flex" gap={1} flexDirection="column">
