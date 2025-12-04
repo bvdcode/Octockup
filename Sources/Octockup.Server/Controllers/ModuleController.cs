@@ -8,11 +8,11 @@ using Microsoft.AspNetCore.Mvc;
 using Octockup.Server.Database;
 using Octockup.Server.Models.Dto;
 using Octockup.Server.Abstractions;
+using Octockup.Server.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Models.Requests;
 using Microsoft.AspNetCore.Authorization;
 using EasyExtensions.AspNetCore.Extensions;
-using Octockup.Server.Models.Enums;
 
 namespace Octockup.Server.Controllers
 {
@@ -22,6 +22,26 @@ namespace Octockup.Server.Controllers
         ILogger<ModuleController> _logger,
         IEnumerable<IBackupProvider> _providers) : ControllerBase
     {
+        [Authorize]
+        [HttpPatch("/api/v1/modules/{moduleId:guid}/rename")]
+        public async Task<IActionResult> RenameModule([FromRoute] Guid moduleId, [FromBody] RenameModuleRequest request)
+        {
+            var found = await _dbContext.Modules.FindAsync(moduleId);
+            if (found == null)
+            {
+                return this.ApiNotFound("Module not found: " + moduleId);
+            }
+            bool tagExists = await _dbContext.Modules
+                .AnyAsync(x => x.UserId == found.UserId && x.Tag == request.NewTag && x.Id != moduleId);
+            if (tagExists)
+            {
+                return this.ApiConflict("Module with the same tag already exists: " + request.NewTag);
+            }
+            found.Tag = request.NewTag;
+            await _dbContext.SaveChangesAsync();
+            return Ok(new { message = "Module renamed successfully." });
+        }
+
         [Authorize]
         [HttpDelete("/api/v1/modules/{moduleId:guid}")]
         public async Task<IActionResult> DeleteUserBackupStorage([FromRoute] Guid moduleId)
