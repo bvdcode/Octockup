@@ -31,24 +31,5 @@ namespace Octockup.Server.Controllers
             }
             return Ok(result);
         }
-
-        [Authorize]
-        [HttpDelete("/api/v1/snapshots/{snapshotId:guid}")]
-        public IActionResult DeleteSnapshot([FromRoute] Guid snapshotId)
-        {
-            var snapshot = _dbContext.Snapshots
-                .FirstOrDefault(s => s.Id == snapshotId);
-            if (snapshot == null)
-            {
-                return NotFound();
-            }
-            var files = _dbContext.SnapshotFiles
-                .Where(sf => sf.SnapshotId == snapshotId)
-                .ToList();
-            _dbContext.SnapshotFiles.RemoveRange(files);
-            _dbContext.Snapshots.Remove(snapshot);
-            _dbContext.SaveChanges();
-            return NoContent();
-        }
     }
 }
