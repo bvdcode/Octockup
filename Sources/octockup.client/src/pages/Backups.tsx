@@ -26,9 +26,10 @@ import { useNavigate } from "react-router-dom";
 import type { BackupItem } from "../types/api";
 import { useBackupsApi } from "../api/backupsApi";
 import { useSchedulesApi } from "../api/schedulesApi";
-import { useSnapshotsApi, type SnapshotDto } from "../api/snapshotsApi";
+import { useSnapshotsApi } from "../api/snapshotsApi";
 import { getSourceIcon } from "../constants/sourceIcons";
 import { formatSize } from "../utils/formatUtils";
+import { useSnapshotsStore } from "../stores/snapshotsStore";
 
 interface State {
   loading: boolean;
@@ -43,6 +44,7 @@ export default function BackupsPage() {
   const backupsApi = useBackupsApi();
   const schedulesApi = useSchedulesApi();
   const snapshotsApi = useSnapshotsApi();
+  const { snapshots, setSnapshots } = useSnapshotsStore();
   const [state, setState] = useState<State>({
     loading: true,
     error: null,
@@ -50,33 +52,33 @@ export default function BackupsPage() {
     runningId: null,
   });
   const [backups, setBackups] = useState<BackupItem[]>([]);
-  const [snapshots, setSnapshots] = useState<Record<string, SnapshotDto[]>>({});
 
   useEffect(() => {
     let active = true;
+    
+    // Load backups immediately
     backupsApi
       .list()
-      .then(async (backupList) => {
+      .then((backupList) => {
         if (!active) return;
         setBackups(backupList);
+        setState((s) => ({ ...s, loading: false }));
 
-        // Fetch snapshots for each backup
-        const snapshotPromises = backupList.map((backup) =>
+        // Always fetch fresh snapshots in background for each backup
+        backupList.forEach((backup) => {
           snapshotsApi
             .listByBackup(backup.id)
-            .then((data) => ({ backupId: backup.id, data }))
-            .catch(() => ({ backupId: backup.id, data: [] })),
-        );
-
-        const snapshotResults = await Promise.all(snapshotPromises);
-        const snapshotsMap: Record<string, SnapshotDto[]> = {};
-        snapshotResults.forEach((result) => {
-          snapshotsMap[result.backupId] = result.data;
+            .then((data) => {
+              if (active) {
+                setSnapshots(backup.id, data);
+              }
+            })
+            .catch(() => {
+              if (active) {
+                setSnapshots(backup.id, []);
+              }
+            });
         });
-
-        if (!active) return;
-        setSnapshots(snapshotsMap);
-        setState((s) => ({ ...s, loading: false }));
       })
       .catch((e) => {
         if (!active) return;
@@ -86,10 +88,11 @@ export default function BackupsPage() {
           error: e?.message || "Failed to load backups",
         }));
       });
+      
     return () => {
       active = false;
     };
-  }, [backupsApi, snapshotsApi]);
+  }, [backupsApi, snapshotsApi, setSnapshots]);
 
   if (state.loading) {
     return (
