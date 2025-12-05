@@ -97,7 +97,7 @@ namespace Octockup.Server.Controllers
             }
             try
             {
-                var result = source.GetDirectories(recursive: false);
+                var result = source.GetDirectories(recursive: false, ignoredPaths: null);
                 return Ok(result);
             }
             catch (Exception ex)

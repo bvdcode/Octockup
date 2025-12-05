@@ -8,7 +8,7 @@ namespace Octockup.Server.Abstractions
     public interface IBackupSource : IBackupProvider
     {
         Task<Stream> GetFileStreamAsync(BackupFileInfo file);
-        IEnumerable<string> GetDirectories(bool recursive = false);
-        IEnumerable<BackupFileInfo> GetFiles(bool recursive = false);
+        IEnumerable<string> GetDirectories(bool recursive = false, ICollection<string>? ignoredPaths = null);
+        IEnumerable<BackupFileInfo> GetFiles(bool recursive = false, ICollection<string>? ignoredPaths = null);
     }
 }

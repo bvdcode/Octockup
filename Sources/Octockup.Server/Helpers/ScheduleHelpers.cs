@@ -53,29 +53,40 @@ namespace Octockup.Server.Helpers
             // Periodic job
             TimeSpan interval = s.Interval.Value;
 
-            // First run never happened → scheduled at StartAt
-            if (s.FinishedAt is null)
-            {
-                return s.StartAt > now ? s.StartAt : now;
-            }
-
             // If StartAt is in the future
             if (s.StartAt > now)
             {
                 return s.StartAt;
             }
 
-            // Calculate next interval tick
-            var elapsed = now - s.StartAt;
-            if (elapsed.TotalMilliseconds < 0)
+            // If currently running or never finished, cannot determine next run precisely
+            if (s.FinishedAt is null)
             {
-                elapsed = TimeSpan.Zero;
+                // If never started, next run is at StartAt or now
+                return s.StartAt > now ? s.StartAt : now;
             }
 
-            long k = elapsed.Ticks / interval.Ticks;
-            DateTime next = s.StartAt.AddTicks(interval.Ticks * (k + 1));
+            // Calculate next run based on when it last finished
+            DateTime lastFinished = s.FinishedAt.Value;
 
-            return next;
+            // Next run should be: last finished time + interval
+            DateTime nextRun = lastFinished.Add(interval);
+
+            // If the calculated next run is still in the past (e.g., server was down),
+            // calculate the nearest future tick from StartAt
+            if (nextRun <= now)
+            {
+                var elapsed = now - s.StartAt;
+                if (elapsed.TotalMilliseconds < 0)
+                {
+                    elapsed = TimeSpan.Zero;
+                }
+
+                long k = elapsed.Ticks / interval.Ticks;
+                nextRun = s.StartAt.AddTicks(interval.Ticks * (k + 1));
+            }
+
+            return nextRun;
         }
 
         public static string SplitHash(string hash, char pathSeparator)

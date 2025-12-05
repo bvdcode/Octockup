@@ -5,6 +5,7 @@ using Amazon.S3;
 using Amazon.S3.Model;
 using System.Net.Mime;
 using Octockup.Server.Models;
+using Octockup.Server.Helpers;
 using Octockup.Server.Abstractions;
 
 namespace Octockup.Server.Modules
@@ -150,7 +151,7 @@ namespace Octockup.Server.Modules
             }
         }
 
-        public IEnumerable<string> GetDirectories(bool recursive = false)
+        public IEnumerable<string> GetDirectories(bool recursive = false, ICollection<string>? ignoredPaths = null)
         {
             ArgumentNullException.ThrowIfNull(_s3);
             ArgumentException.ThrowIfNullOrEmpty(_bucket);
@@ -198,6 +199,12 @@ namespace Octockup.Server.Modules
                         var relative = ToRelativeKey(prefix, basePrefix);
                         if (!string.IsNullOrEmpty(relative))
                         {
+                            // Check if directory is ignored
+                            if (ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + relative, null, ignoredPaths))
+                            {
+                                _logger.LogDebug("Skipping ignored S3 directory: {Name}", relative);
+                                continue;
+                            }
                             result.Add(relative);
                         }
                     }
@@ -254,11 +261,24 @@ namespace Octockup.Server.Modules
                             continue;
 
                         var current = segments[0];
+
+                        // Check each directory segment
+                        if (ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + current, null, ignoredPaths))
+                        {
+                            continue;
+                        }
+
                         result.Add(current);
 
                         for (int i = 1; i < segments.Length - 1; i++)
                         {
                             current = current + PathSeparator + segments[i];
+
+                            if (ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + current, null, ignoredPaths))
+                            {
+                                break;
+                            }
+
                             result.Add(current);
                         }
                     }
@@ -272,7 +292,7 @@ namespace Octockup.Server.Modules
             }
         }
 
-        public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false)
+        public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false, ICollection<string>? ignoredPaths = null)
         {
             ArgumentNullException.ThrowIfNull(_s3);
             ArgumentException.ThrowIfNullOrEmpty(_bucket);
@@ -329,6 +349,17 @@ namespace Octockup.Server.Modules
                     if (!recursive && relativeKey.Contains(PathSeparator))
                     {
                         continue;
+                    }
+
+                    // Check if file or its parent directories are ignored
+                    if (ignoredPaths != null)
+                    {
+                        var fileName = Path.GetFileName(relativeKey);
+                        if (ScheduleHelpers.IsPathIgnored(PathSeparator + relativeKey, fileName, ignoredPaths))
+                        {
+                            _logger.LogDebug("Skipping ignored S3 file: {Name}", relativeKey);
+                            continue;
+                        }
                     }
 
                     var info = new BackupFileInfo

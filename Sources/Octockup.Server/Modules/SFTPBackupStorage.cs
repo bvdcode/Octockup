@@ -3,6 +3,7 @@ using Renci.SshNet.Sftp;
 using Renci.SshNet.Common;
 using Octockup.Server.Models;
 using Octockup.Server.Abstractions;
+using Octockup.Server.Helpers;
 
 namespace Octockup.Server.Modules
 {
@@ -112,7 +113,7 @@ namespace Octockup.Server.Modules
                 return null;
             }
         }
-        public IEnumerable<string> GetDirectories(bool recursive = false)
+        public IEnumerable<string> GetDirectories(bool recursive = false, ICollection<string>? ignoredPaths = null)
         {
             EnsureConnected();
             ArgumentNullException.ThrowIfNull(_sftp);
@@ -122,6 +123,14 @@ namespace Octockup.Server.Modules
             IEnumerable<string> Walk(string currentRelative)
             {
                 string full = NormalizeRemotePath(GetRemotePath(currentRelative));
+
+                // Check if current path is ignored before listing
+                if (ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + currentRelative, null, ignoredPaths))
+                {
+                    _logger.LogDebug("Skipping ignored directory: {Path}", full);
+                    yield break;
+                }
+
                 IEnumerable<ISftpFile> entries;
                 try
                 {
@@ -154,6 +163,13 @@ namespace Octockup.Server.Modules
                         ? entry.Name
                         : currentRelative + PathSeparator + entry.Name;
 
+                    // Check if this subdirectory is ignored
+                    if (ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + rel, null, ignoredPaths))
+                    {
+                        _logger.LogDebug("Skipping ignored subdirectory: {Name}", rel);
+                        continue;
+                    }
+
                     if (seen.Add(rel))
                     {
                         yield return rel;
@@ -175,7 +191,7 @@ namespace Octockup.Server.Modules
             }
         }
 
-        public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false)
+        public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false, ICollection<string>? ignoredPaths = null)
         {
             EnsureConnected();
             ArgumentNullException.ThrowIfNull(_sftp);
@@ -189,6 +205,14 @@ namespace Octockup.Server.Modules
             {
                 var currentRelative = queue.Dequeue();
                 var full = NormalizeRemotePath(GetRemotePath(currentRelative));
+
+                // Check if current directory is ignored before listing
+                if (!string.IsNullOrEmpty(currentRelative) && ignoredPaths != null && 
+                    ScheduleHelpers.IsPathIgnored(PathSeparator + currentRelative, null, ignoredPaths))
+                {
+                    _logger.LogDebug("Skipping ignored directory during file enumeration: {Path}", full);
+                    continue;
+                }
 
                 IEnumerable<ISftpFile> entries;
                 try
@@ -215,6 +239,13 @@ namespace Octockup.Server.Modules
 
                     if (entry.IsDirectory)
                     {
+                        // Check if subdirectory is ignored before recursing
+                        if (ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + rel, null, ignoredPaths))
+                        {
+                            _logger.LogDebug("Skipping ignored subdirectory during file enumeration: {Name}", rel);
+                            continue;
+                        }
+
                         if (recursive && seenDirs.Add(rel))
                         {
                             queue.Enqueue(rel);
@@ -231,6 +262,13 @@ namespace Octockup.Server.Modules
 
                     if (!recursive && rel.Contains(PathSeparator))
                     {
+                        continue;
+                    }
+
+                    // Check if file itself is ignored
+                    if (ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + rel, entry.Name, ignoredPaths))
+                    {
+                        _logger.LogDebug("Skipping ignored file: {Name}", rel);
                         continue;
                     }
 

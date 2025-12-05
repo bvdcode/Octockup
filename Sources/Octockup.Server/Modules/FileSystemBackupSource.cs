@@ -2,6 +2,7 @@
 // Copyright (c) 2025 Vadim Belov
 
 using Octockup.Server.Models;
+using Octockup.Server.Helpers;
 using Octockup.Server.Abstractions;
 
 namespace Octockup.Server.Modules
@@ -50,7 +51,7 @@ namespace Octockup.Server.Modules
             Directory.CreateDirectory(_baseDirectory);
         }
 
-        public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false)
+        public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false, ICollection<string>? ignoredPaths = null)
         {
             Directory.CreateDirectory(_rootDirectory);
             Directory.CreateDirectory(_baseDirectory);
@@ -67,6 +68,13 @@ namespace Octockup.Server.Modules
             {
                 var fileInfo = new FileInfo(file);
                 var relativePath = Path.GetRelativePath(_baseDirectory, file);
+
+                // Check if file or its path is ignored
+                if (ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + relativePath, fileInfo.Name, ignoredPaths))
+                {
+                    _logger.LogDebug("Skipping ignored file: {Name}", relativePath);
+                    continue;
+                }
                 
                 yield return new BackupFileInfo
                 {
@@ -78,7 +86,7 @@ namespace Octockup.Server.Modules
             }
         }
 
-        public IEnumerable<string> GetDirectories(bool recursive = false)
+        public IEnumerable<string> GetDirectories(bool recursive = false, ICollection<string>? ignoredPaths = null)
         {
             Directory.CreateDirectory(_rootDirectory);
             Directory.CreateDirectory(_baseDirectory);
@@ -94,6 +102,14 @@ namespace Octockup.Server.Modules
             foreach (var dir in directories)
             {
                 var relativePath = Path.GetRelativePath(_baseDirectory, dir);
+
+                // Check if directory is ignored
+                if (ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + relativePath, null, ignoredPaths))
+                {
+                    _logger.LogDebug("Skipping ignored directory: {Name}", relativePath);
+                    continue;
+                }
+
                 yield return relativePath;
             }
         }
