@@ -99,7 +99,7 @@ namespace Octockup.Server.Modules
                     var fetched = root.GetSubfolders();
                     subfolders = fetched is IReadOnlyList<IMailFolder> ro
                         ? ro
-                        : new List<IMailFolder>(fetched);
+                        : [.. fetched];
                 }
                 catch (Exception ex)
                 {
@@ -151,11 +151,33 @@ namespace Octockup.Server.Modules
 
                     var total = openedFolder.Count;
                     _logger.LogInformation("Enumerating {Total} emails in folder {Folder} in batches of {Batch}", total, folder.FullName, _batchSize);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to process IMAP folder: {Folder}", folder.FullName);
+                }
+                finally
+                {
+                    // We will close after yielding below; do not close here
+                }
 
-                    for (var start = 0; start < total; start += _batchSize)
+                if (openedFolder != null && openedFolder.IsOpen)
+                {
+                    for (var start = 0; start < openedFolder.Count; start += _batchSize)
                     {
-                        var end = Math.Min(start + _batchSize - 1, total - 1);
-                        var summaries = openedFolder.Fetch(start, end, MessageSummaryItems.UniqueId | MessageSummaryItems.InternalDate | MessageSummaryItems.Size);
+                        var end = Math.Min(start + _batchSize - 1, openedFolder.Count - 1);
+                        IReadOnlyList<IMessageSummary> summaries;
+                        try
+                        {
+                            var fetched = openedFolder.Fetch(start, end, MessageSummaryItems.UniqueId | MessageSummaryItems.InternalDate | MessageSummaryItems.Size);
+                            summaries = fetched is IReadOnlyList<IMessageSummary> ro ? ro : [.. fetched];
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to fetch summaries for {Folder} range {Start}-{End}", folder.FullName, start, end);
+                            break;
+                        }
+
                         foreach (var summary in summaries)
                         {
                             var uid = summary.UniqueId;
@@ -179,16 +201,10 @@ namespace Octockup.Server.Modules
                             };
                         }
                     }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to process IMAP folder: {Folder}", folder.FullName);
-                }
-                finally
-                {
+
                     try
                     {
-                        openedFolder?.Close();
+                        openedFolder.Close();
                     }
                     catch
                     {
