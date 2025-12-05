@@ -46,9 +46,11 @@ export function useModuleTest(
       return;
     }
 
+    const CHECKBOX_PARAMS = ["skipPermissionDenied", "validateChecksums"];
     const required = moduleMeta.requiredParameters || [];
+    // Don't require checkbox parameters to be filled for testing
     const missing = required.filter(
-      (p) => !(params[p] && String(params[p]).length > 0),
+      (p) => !CHECKBOX_PARAMS.includes(p) && !(params[p] && String(params[p]).length > 0),
     );
     if (missing.length > 0) {
       setTestError(t("wizard.fillParameters"));

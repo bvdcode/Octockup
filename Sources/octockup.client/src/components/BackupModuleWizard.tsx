@@ -127,10 +127,16 @@ export default function BackupModuleWizard({
       });
   }, [apiClient]);
 
-  // Reset test state when params change (except path)
+  // Reset test state when params change (except path and checkboxes)
   const handleParamChange = (name: string, value: string) => {
     updateParam(name, value);
-    test.resetTest();
+    
+    // Don't reset test for checkbox parameters (they don't affect connection)
+    const CHECKBOX_PARAMS = ["skipPermissionDenied", "validateChecksums"];
+    if (!CHECKBOX_PARAMS.includes(name)) {
+      test.resetTest();
+    }
+    
     if (name !== "path" && moduleMeta?.requiredParameters.includes("path")) {
       browser.resetBrowser();
     }
@@ -146,13 +152,25 @@ export default function BackupModuleWizard({
     if (rawLines[rawLines.length - 1] === "") rawLines.pop();
     const lines = rawLines;
     const keys = moduleMeta.requiredParameters || [];
-    if (lines.length !== keys.length) return;
+    
+    // Allow paste if lines count is less than or equal to params count
+    // Skip checkbox parameters when matching
+    const CHECKBOX_PARAMS = ["skipPermissionDenied", "validateChecksums"];
+    const nonCheckboxKeys = keys.filter(k => !CHECKBOX_PARAMS.includes(k));
+    
+    // Only proceed if we have at least one line and not more than available fields
+    if (lines.length === 0 || lines.length > nonCheckboxKeys.length) return;
 
     e.preventDefault();
     const next: Record<string, string> = { ...params };
-    keys.forEach((k, i) => {
-      next[k] = lines[i];
+    
+    // Fill only the number of lines we have, matching to non-checkbox parameters
+    nonCheckboxKeys.forEach((k, i) => {
+      if (i < lines.length) {
+        next[k] = lines[i];
+      }
     });
+    
     bulkUpdateParams(next);
     test.resetTest();
 
