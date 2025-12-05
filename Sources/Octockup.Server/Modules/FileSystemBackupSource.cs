@@ -11,14 +11,16 @@ namespace Octockup.Server.Modules
     {
         public string Name => "File System";
         public string Id => GetType().FullName!;
-        public IEnumerable<string> RequiredParameters => ["path"];
+        public IEnumerable<string> RequiredParameters => ["path", "password"];
         public char PathSeparator => Path.DirectorySeparatorChar;
 
         private static readonly string _rootDirectory =
             Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "data", "mounts"));
 
+        private string? _password;
         private string _baseDirectory = _rootDirectory;
         private ICollection<string>? _ignoredPaths;
+        private const string PasswordFileName = ".password";
 
         public void SetParameters(Dictionary<string, string> parameters)
         {
@@ -47,6 +49,10 @@ namespace Octockup.Server.Modules
             {
                 throw new ArgumentException($"Path '{path}' escapes the base directory.");
             }
+            if (parameters.TryGetValue("password", out var password))
+            {
+                _password = password;
+            }
 
             _baseDirectory = combined;
             Directory.CreateDirectory(_baseDirectory);
@@ -59,6 +65,7 @@ namespace Octockup.Server.Modules
 
         public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false)
         {
+            CheckPassword();
             Directory.CreateDirectory(_rootDirectory);
             Directory.CreateDirectory(_baseDirectory);
 
@@ -81,7 +88,7 @@ namespace Octockup.Server.Modules
                     _logger.LogDebug("Skipping ignored file: {Name}", relativePath);
                     continue;
                 }
-                
+
                 yield return new BackupFileInfo
                 {
                     Path = relativePath,
@@ -94,6 +101,7 @@ namespace Octockup.Server.Modules
 
         public IEnumerable<string> GetDirectories(bool recursive = false)
         {
+            CheckPassword();
             Directory.CreateDirectory(_rootDirectory);
             Directory.CreateDirectory(_baseDirectory);
 
@@ -136,6 +144,7 @@ namespace Octockup.Server.Modules
 
         public Task<Stream> GetFileStreamAsync(BackupFileInfo file)
         {
+            CheckPassword();
             var fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, file.Path));
             if (!IsSubPathOf(fullPath, _baseDirectory))
             {
@@ -156,6 +165,7 @@ namespace Octockup.Server.Modules
 
         public Task<bool?> ExistsAsync(string path)
         {
+            CheckPassword();
             var fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, path));
             if (!IsSubPathOf(fullPath, _baseDirectory))
             {
@@ -167,6 +177,7 @@ namespace Octockup.Server.Modules
 
         public Task<bool?> DeleteAsync(string path)
         {
+            CheckPassword();
             var fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, path));
             if (!IsSubPathOf(fullPath, _baseDirectory))
             {
@@ -190,6 +201,7 @@ namespace Octockup.Server.Modules
 
         public Task UploadAsync(string path, Stream data)
         {
+            CheckPassword();
             var fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, path));
             if (!IsSubPathOf(fullPath, _baseDirectory))
             {
@@ -203,6 +215,26 @@ namespace Octockup.Server.Modules
             }
             File.Move(tempFile, fullPath, true);
             return Task.CompletedTask;
+        }
+
+        private void CheckPassword()
+        {
+            string pathToPasswordFile = Path.Combine(_baseDirectory, PasswordFileName);
+            if (!File.Exists(pathToPasswordFile))
+            {
+                // No password file means no password protection
+                return;
+            }
+            var storedPassword = File.ReadAllText(pathToPasswordFile).Trim();
+            if (string.IsNullOrEmpty(storedPassword))
+            {
+                // Empty password file means no password protection
+                return;
+            }
+            if (_password != storedPassword)
+            {
+                throw new UnauthorizedAccessException("Invalid password for accessing the file system backup source.");
+            }
         }
     }
 }
