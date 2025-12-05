@@ -20,8 +20,49 @@ export function statusColor(
 
 export function parseInterval(interval: string | null): number {
   if (!interval) return 0;
-  const parts = String(interval).split(":");
+  const intervalStr = String(interval);
+  
+  // Handle TimeSpan format: "d.HH:mm:ss" or "HH:mm:ss"
+  if (intervalStr.includes(".")) {
+    const [dayPart, timePart] = intervalStr.split(".");
+    const days = parseInt(dayPart);
+    const timeParts = timePart.split(":");
+    const hours = parseInt(timeParts[0]) || 0;
+    const minutes = parseInt(timeParts[1]) || 0;
+    return days * 24 * 60 + hours * 60 + minutes;
+  }
+  
+  // Handle time format: "HH:mm:ss"
+  const parts = intervalStr.split(":");
   return parts.length >= 2 ? parseInt(parts[0]) * 60 + parseInt(parts[1]) : 0;
+}
+
+export function formatInterval(
+  interval: string | null,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  if (!interval) return "";
+  const minutes = parseInterval(interval);
+  
+  // Convert to different time units
+  const days = Math.floor(minutes / (24 * 60));
+  const hours = Math.floor((minutes % (24 * 60)) / 60);
+  const mins = minutes % 60;
+  
+  // Return human-readable format
+  if (days > 0) {
+    if (days === 1) return t("schedules.interval1d");
+    if (days === 7) return t("schedules.interval1w");
+    if (days === 30) return t("schedules.interval1m");
+    return t("schedules.intervalDays", { count: days });
+  }
+  
+  if (hours > 0) {
+    if (hours === 1) return t("schedules.interval1h");
+    return t("schedules.intervalHours", { count: hours });
+  }
+  
+  return t("schedules.intervalMinutes", { count: mins });
 }
 
 export function calculateNextRunTime(

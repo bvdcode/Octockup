@@ -25,7 +25,7 @@ import { useTranslation } from "react-i18next";
 import type { ScheduleItem, ScheduleReport } from "../types/api";
 import { parseUtcDate } from "../utils/dateUtils";
 import { formatSpeed, formatElapsed } from "../utils/formatUtils";
-import { formatNextRun, parseInterval } from "../utils/scheduleUtils";
+import { formatNextRun, formatInterval } from "../utils/scheduleUtils";
 import { getSourceIcon } from "../constants/sourceIcons";
 
 function getStatusIcon(status: BackupStatus) {
@@ -206,8 +206,7 @@ function ScheduleInfo({
     if (!item.interval) {
       return "";
     }
-    const minutes = parseInterval(item.interval);
-    return ` • ${t("schedules.everyMinutes", { count: minutes })}`;
+    return ` • ${formatInterval(item.interval, t)}`;
   };
   return (
     <Box

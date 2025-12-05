@@ -139,6 +139,13 @@
     "tryAgainTooltip": "Сбросить ошибку и попробовать снова",
     "tryAgain": "Попробовать снова",
     "currentStatus": "Текущий статус",
+    "interval1h": "каждый час",
+    "interval1d": "каждый день",
+    "interval1w": "каждую неделю",
+    "interval1m": "каждый месяц",
+    "intervalHours": "каждые {{count}} ч",
+    "intervalDays": "каждые {{count}} дн.",
+    "intervalMinutes": "каждые {{count}} мин",
     "status": {
       "created": "Создано",
       "running": "Выполняется",

@@ -139,6 +139,13 @@
     "tryAgainTooltip": "Reset error and try again",
     "tryAgain": "Try Again",
     "currentStatus": "Current status",
+    "interval1h": "every hour",
+    "interval1d": "every day",
+    "interval1w": "every week",
+    "interval1m": "every month",
+    "intervalHours": "every {{count}} h",
+    "intervalDays": "every {{count}} days",
+    "intervalMinutes": "every {{count}} min",
     "status": {
       "created": "Created",
       "running": "Running",
