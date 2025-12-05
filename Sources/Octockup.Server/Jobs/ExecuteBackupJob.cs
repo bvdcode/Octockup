@@ -116,6 +116,7 @@ namespace Octockup.Server.Jobs
             await _dbContext.Snapshots.AddAsync(snapshot);
             await _dbContext.SaveChangesAsync();
 
+            using LazyLoader<BackupFileInfo> loader = new(lazyFiles);
             var uploadedChunks = (await _dbContext.SnapshotFiles
                     .AsNoTracking()
                     .Where(x => x.Snapshot.BackupId == schedule.BackupId)
@@ -125,8 +126,6 @@ namespace Octockup.Server.Jobs
                 .SelectMany(list => list)
                 .Distinct()
                 .ToHashSet();
-
-            LazyLoader<BackupFileInfo> loader = new(lazyFiles);
 
             int counter = 0;
             foreach (var file in loader)
@@ -285,6 +284,7 @@ namespace Octockup.Server.Jobs
                 }
             }
 
+            report.Total = loader.Total;
             await report.SendAsync(report.Processed, "Finalizing snapshot...");
             snapshot.CompletedAt = DateTime.UtcNow;
             await _dbContext.SaveChangesAsync();
