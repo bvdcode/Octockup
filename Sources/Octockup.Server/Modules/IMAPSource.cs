@@ -13,7 +13,7 @@ namespace Octockup.Server.Modules
         public string Name => "IMAP Email";
         public char PathSeparator => '/';
 
-        public IEnumerable<string> RequiredParameters => ["host", "port", "username", "password", "useSsl", "path", "ignoredPaths"];
+        public IEnumerable<string> RequiredParameters => ["host", "port", "username", "password", "useSsl", "path"];
 
         private string? _host;
         private int _port;
@@ -23,6 +23,7 @@ namespace Octockup.Server.Modules
         private ICollection<string>? _ignoredPaths;
         private ImapClient? _client;
         private int _batchSize = 10; // default batch size for message enumeration
+        private string? _rootPath;
 
         public void SetParameters(Dictionary<string, string> parameters)
         {
@@ -44,6 +45,9 @@ namespace Octockup.Server.Modules
             {
                 _batchSize = bs;
             }
+
+            // Optional root path parameter
+            parameters.TryGetValue("path", out _rootPath);
         }
 
         public void SetIgnoredPaths(ICollection<string>? ignoredPaths)
@@ -88,31 +92,26 @@ namespace Octockup.Server.Modules
             }
             else
             {
-                // Ensure Inbox is opened before accessing subfolders
+                var root = GetRootFolder();
+                IReadOnlyList<IMailFolder> subfolders;
                 try
                 {
-                    _client.Inbox.Open(FolderAccess.ReadOnly);
+                    var fetched = root.GetSubfolders();
+                    subfolders = fetched is IReadOnlyList<IMailFolder> ro
+                        ? ro
+                        : new List<IMailFolder>(fetched);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to open Inbox for listing subfolders");
+                    _logger.LogWarning(ex, "Failed to list IMAP root subfolders");
+                    yield break;
                 }
-                folders = _client.Inbox.GetSubfolders();
-                try
-                {
-                    _client.Inbox.Close();
-                }
-                catch
-                {
-                    // ignore
-                }
+                folders = subfolders;
             }
             
             foreach (var folder in folders)
             {
-                // Skip special system folders if ignored
                 var folderPath = "/" + folder.FullName;
-                
                 if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(folderPath, folder.Name, _ignoredPaths))
                 {
                     _logger.LogDebug("Skipping ignored IMAP folder: {Folder}", folderPath);
@@ -144,7 +143,6 @@ namespace Octockup.Server.Modules
                 }
 
                 IMailFolder? openedFolder = null;
-                List<BackupFileInfo> folderFiles = [];
 
                 try
                 {
@@ -157,7 +155,6 @@ namespace Octockup.Server.Modules
                     for (var start = 0; start < total; start += _batchSize)
                     {
                         var end = Math.Min(start + _batchSize - 1, total - 1);
-                        // Fetch summaries for the batch range
                         var summaries = openedFolder.Fetch(start, end, MessageSummaryItems.UniqueId | MessageSummaryItems.InternalDate | MessageSummaryItems.Size);
                         foreach (var summary in summaries)
                         {
@@ -173,13 +170,13 @@ namespace Octockup.Server.Modules
                                 continue;
                             }
 
-                            folderFiles.Add(new BackupFileInfo
+                            yield return new BackupFileInfo
                             {
                                 Path = filePath,
                                 Name = fileName,
                                 Size = summary.Size,
                                 LastModified = summary.InternalDate?.UtcDateTime
-                            });
+                            };
                         }
                     }
                 }
@@ -197,11 +194,6 @@ namespace Octockup.Server.Modules
                     {
                         // ignore
                     }
-                }
-
-                foreach (var file in folderFiles)
-                {
-                    yield return file;
                 }
             }
         }
@@ -356,6 +348,16 @@ namespace Octockup.Server.Modules
             _client?.Disconnect(true);
             _client?.Dispose();
             GC.SuppressFinalize(this);
+        }
+
+        private IMailFolder GetRootFolder()
+        {
+            if (string.IsNullOrWhiteSpace(_rootPath) || _rootPath == "/")
+            {
+                return _client!.GetFolder(_client.PersonalNamespaces[0]);
+            }
+
+            return _client!.GetFolder(_rootPath.TrimStart('/'));
         }
     }
 }
