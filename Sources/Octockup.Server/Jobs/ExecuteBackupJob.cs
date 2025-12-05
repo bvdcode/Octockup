@@ -78,7 +78,10 @@ namespace Octockup.Server.Jobs
 
             try
             {
-                var filesToBackup = foundSourceProvider.GetFiles(recursive: true, ignoredPaths: next.Backup.IgnoredPaths).ToList();
+                // Set ignored paths before enumerating files
+                foundSourceProvider.SetIgnoredPaths(next.Backup.IgnoredPaths);
+                
+                var filesToBackup = foundSourceProvider.GetFiles(recursive: true).ToList();
                 report.Total = filesToBackup.Count;
                 await BackupAsync(next, foundSourceProvider, foundStorageProvider, report, filesToBackup);
                 next.Status = ScheduleStatus.Completed;

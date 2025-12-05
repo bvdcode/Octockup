@@ -16,7 +16,7 @@ namespace Octockup.Server.Helpers
             {
                 const string testFileName = "path_test_connection.txt";
                 await storage.UploadAsync(testFileName, Stream.Null);
-                var result = storage.GetFiles(recursive: false, ignoredPaths: null);
+                var result = storage.GetFiles(recursive: false);
                 if (!result.Any(x => x.Name == testFileName))
                 {
                     logger.LogWarning("Test file was not found in the storage after upload.");
@@ -36,13 +36,13 @@ namespace Octockup.Server.Helpers
         {
             try
             {
-                _ = source.GetDirectories(recursive: false, ignoredPaths: null).Take(1).ToList();
+                _ = source.GetDirectories(recursive: false).Take(1).ToList();
 
                 const int maxEnumeratedFiles = 100;
                 const int maxTestedFiles = 10;
 
                 var candidates = source
-                    .GetFiles(recursive: true, ignoredPaths: null)
+                    .GetFiles(recursive: true)
                     .Take(maxEnumeratedFiles)
                     .ToList();
 

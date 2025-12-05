@@ -7,8 +7,14 @@ namespace Octockup.Server.Abstractions
 {
     public interface IBackupSource : IBackupProvider
     {
+        /// <summary>
+        /// Sets the list of paths to ignore during file enumeration.
+        /// Should be called after SetParameters and before GetFiles/GetDirectories.
+        /// </summary>
+        void SetIgnoredPaths(ICollection<string>? ignoredPaths);
+
         Task<Stream> GetFileStreamAsync(BackupFileInfo file);
-        IEnumerable<string> GetDirectories(bool recursive = false, ICollection<string>? ignoredPaths = null);
-        IEnumerable<BackupFileInfo> GetFiles(bool recursive = false, ICollection<string>? ignoredPaths = null);
+        IEnumerable<string> GetDirectories(bool recursive = false);
+        IEnumerable<BackupFileInfo> GetFiles(bool recursive = false);
     }
 }

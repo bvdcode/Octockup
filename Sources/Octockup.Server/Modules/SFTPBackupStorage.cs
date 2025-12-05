@@ -20,6 +20,7 @@ namespace Octockup.Server.Modules
         private string? _path;
         private SftpClient? _sftp;
         private bool _skipPermissionDenied = false;
+        private ICollection<string>? _ignoredPaths;
 
         public void SetParameters(Dictionary<string, string> parameters)
         {
@@ -35,6 +36,11 @@ namespace Octockup.Server.Modules
             {
                 ConnectionInfo = { Timeout = TimeSpan.FromSeconds(30) }
             };
+        }
+
+        public void SetIgnoredPaths(ICollection<string>? ignoredPaths)
+        {
+            _ignoredPaths = ignoredPaths;
         }
 
         private void EnsureConnected()
@@ -113,7 +119,7 @@ namespace Octockup.Server.Modules
                 return null;
             }
         }
-        public IEnumerable<string> GetDirectories(bool recursive = false, ICollection<string>? ignoredPaths = null)
+        public IEnumerable<string> GetDirectories(bool recursive = false)
         {
             EnsureConnected();
             ArgumentNullException.ThrowIfNull(_sftp);
@@ -124,8 +130,8 @@ namespace Octockup.Server.Modules
             {
                 string full = NormalizeRemotePath(GetRemotePath(currentRelative));
 
-                // Check if current path is ignored before listing
-                if (ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + currentRelative, null, ignoredPaths))
+                // Check if current path is ignored before listing (use full absolute path)
+                if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(full, null, _ignoredPaths))
                 {
                     _logger.LogDebug("Skipping ignored directory: {Path}", full);
                     yield break;
@@ -162,11 +168,13 @@ namespace Octockup.Server.Modules
                     var rel = string.IsNullOrEmpty(currentRelative)
                         ? entry.Name
                         : currentRelative + PathSeparator + entry.Name;
+                    
+                    var fullEntryPath = full.TrimEnd(PathSeparator) + PathSeparator + entry.Name;
 
-                    // Check if this subdirectory is ignored
-                    if (ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + rel, null, ignoredPaths))
+                    // Check if this subdirectory is ignored (use full absolute path)
+                    if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(fullEntryPath, null, _ignoredPaths))
                     {
-                        _logger.LogDebug("Skipping ignored subdirectory: {Name}", rel);
+                        _logger.LogDebug("Skipping ignored subdirectory: {Name}", fullEntryPath);
                         continue;
                     }
 
@@ -191,7 +199,7 @@ namespace Octockup.Server.Modules
             }
         }
 
-        public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false, ICollection<string>? ignoredPaths = null)
+        public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false)
         {
             EnsureConnected();
             ArgumentNullException.ThrowIfNull(_sftp);
@@ -207,8 +215,9 @@ namespace Octockup.Server.Modules
                 var full = NormalizeRemotePath(GetRemotePath(currentRelative));
 
                 // Check if current directory is ignored before listing
-                if (!string.IsNullOrEmpty(currentRelative) && ignoredPaths != null && 
-                    ScheduleHelpers.IsPathIgnored(PathSeparator + currentRelative, null, ignoredPaths))
+                // Use FULL path for ignore check, not relative to _path
+                if (!string.IsNullOrEmpty(full) && _ignoredPaths != null && 
+                    ScheduleHelpers.IsPathIgnored(full, null, _ignoredPaths))
                 {
                     _logger.LogDebug("Skipping ignored directory during file enumeration: {Path}", full);
                     continue;
@@ -236,13 +245,15 @@ namespace Octockup.Server.Modules
                     var rel = string.IsNullOrEmpty(currentRelative)
                         ? entry.Name
                         : currentRelative + PathSeparator + entry.Name;
+                    
+                    var fullEntryPath = full.TrimEnd(PathSeparator) + PathSeparator + entry.Name;
 
                     if (entry.IsDirectory)
                     {
-                        // Check if subdirectory is ignored before recursing
-                        if (ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + rel, null, ignoredPaths))
+                        // Check if subdirectory is ignored before recursing (use full path)
+                        if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(fullEntryPath, null, _ignoredPaths))
                         {
-                            _logger.LogDebug("Skipping ignored subdirectory during file enumeration: {Name}", rel);
+                            _logger.LogDebug("Skipping ignored subdirectory during file enumeration: {Name}", fullEntryPath);
                             continue;
                         }
 
@@ -265,10 +276,10 @@ namespace Octockup.Server.Modules
                         continue;
                     }
 
-                    // Check if file itself is ignored
-                    if (ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + rel, entry.Name, ignoredPaths))
+                    // Check if file itself is ignored (use full path)
+                    if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(fullEntryPath, entry.Name, _ignoredPaths))
                     {
-                        _logger.LogDebug("Skipping ignored file: {Name}", rel);
+                        _logger.LogDebug("Skipping ignored file: {Name}", fullEntryPath);
                         continue;
                     }
 

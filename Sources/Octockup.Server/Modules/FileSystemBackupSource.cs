@@ -18,6 +18,7 @@ namespace Octockup.Server.Modules
             Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "data", "mounts"));
 
         private string _baseDirectory = _rootDirectory;
+        private ICollection<string>? _ignoredPaths;
 
         public void SetParameters(Dictionary<string, string> parameters)
         {
@@ -51,7 +52,12 @@ namespace Octockup.Server.Modules
             Directory.CreateDirectory(_baseDirectory);
         }
 
-        public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false, ICollection<string>? ignoredPaths = null)
+        public void SetIgnoredPaths(ICollection<string>? ignoredPaths)
+        {
+            _ignoredPaths = ignoredPaths;
+        }
+
+        public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false)
         {
             Directory.CreateDirectory(_rootDirectory);
             Directory.CreateDirectory(_baseDirectory);
@@ -70,7 +76,7 @@ namespace Octockup.Server.Modules
                 var relativePath = Path.GetRelativePath(_baseDirectory, file);
 
                 // Check if file or its path is ignored
-                if (ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + relativePath, fileInfo.Name, ignoredPaths))
+                if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + relativePath, fileInfo.Name, _ignoredPaths))
                 {
                     _logger.LogDebug("Skipping ignored file: {Name}", relativePath);
                     continue;
@@ -86,7 +92,7 @@ namespace Octockup.Server.Modules
             }
         }
 
-        public IEnumerable<string> GetDirectories(bool recursive = false, ICollection<string>? ignoredPaths = null)
+        public IEnumerable<string> GetDirectories(bool recursive = false)
         {
             Directory.CreateDirectory(_rootDirectory);
             Directory.CreateDirectory(_baseDirectory);
@@ -104,7 +110,7 @@ namespace Octockup.Server.Modules
                 var relativePath = Path.GetRelativePath(_baseDirectory, dir);
 
                 // Check if directory is ignored
-                if (ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + relativePath, null, ignoredPaths))
+                if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + relativePath, null, _ignoredPaths))
                 {
                     _logger.LogDebug("Skipping ignored directory: {Name}", relativePath);
                     continue;

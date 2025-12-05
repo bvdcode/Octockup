@@ -6,6 +6,7 @@ export const IGNORED_PATHS_PRESETS: Record<string, string[]> = {
     "/run",
     "/dev",
     "/proc",
+    "/sys",
     "/var/tmp",
     "/var/lock",
     "/var/log",
