@@ -13,7 +13,7 @@ namespace Octockup.Server.Modules
         public string Name => "IMAP Email";
         public char PathSeparator => '/';
 
-        public IEnumerable<string> RequiredParameters => ["host", "port", "username", "password", "useSsl"];
+        public IEnumerable<string> RequiredParameters => ["host", "port", "username", "password", "useSsl", "path", "ignoredPaths"];
 
         private string? _host;
         private int _port;
@@ -234,7 +234,7 @@ namespace Octockup.Server.Modules
                     var fetchedSubfolders = folder.GetSubfolders();
                     subfolders = fetchedSubfolders is IReadOnlyList<IMailFolder> ro
                         ? ro
-                        : fetchedSubfolders.ToList();
+                        : [.. fetchedSubfolders];
                 }
                 catch (Exception ex)
                 {
