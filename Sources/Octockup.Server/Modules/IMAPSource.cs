@@ -24,6 +24,7 @@ namespace Octockup.Server.Modules
         private int _batchSize = 10;
         private string? _rootPath;
         private readonly SemaphoreSlim _imapLock = new(1, 1);
+        private char? _serverDirectorySeparator;
 
         public void SetParameters(Dictionary<string, string> parameters)
         {
@@ -56,7 +57,6 @@ namespace Octockup.Server.Modules
 
         private async Task EnsureConnectedAsync()
         {
-            // serialize connect/authenticate operations to avoid races
             await _imapLock.WaitAsync();
             try
             {
@@ -76,6 +76,10 @@ namespace Octockup.Server.Modules
                     await _client.ConnectAsync(_host, _port, _useSsl);
                     await _client.AuthenticateAsync(_username, _password);
                     _logger.LogInformation("Successfully connected to IMAP server {Host}:{Port}", _host, _port);
+                    
+                    // Cache the directory separator from the server
+                    var personalNamespace = _client.GetFolder(_client.PersonalNamespaces[0]);
+                    _serverDirectorySeparator = personalNamespace.DirectorySeparator;
                 }
                 catch (Exception ex)
                 {
@@ -188,14 +192,27 @@ namespace Octockup.Server.Modules
                 yield break;
             }
 
-            if (!visitedFolders.Contains(_client.Inbox.FullName))
+            string inboxFullName;
+            IMailFolder inboxFolder;
+            _imapLock.Wait();
+            try
             {
-                foreach (var file in EnumerateFolderFiles(_client.Inbox))
+                inboxFolder = _client.Inbox;
+                inboxFullName = inboxFolder.FullName;
+            }
+            finally
+            {
+                _imapLock.Release();
+            }
+
+            if (!visitedFolders.Contains(inboxFullName))
+            {
+                foreach (var file in EnumerateFolderFiles(inboxFolder))
                 {
                     yield return file;
                 }
 
-                visitedFolders.Add(_client.Inbox.FullName);
+                visitedFolders.Add(inboxFullName);
             }
 
             if (!recursive)
@@ -210,7 +227,7 @@ namespace Octockup.Server.Modules
                     continue;
                 }
 
-                if (string.Equals(folder.FullName, _client.Inbox.FullName, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(folder.FullName, inboxFullName, StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }
@@ -292,9 +309,17 @@ namespace Octockup.Server.Modules
                             }
 
                             var fileName = $"{uid.Id}.eml";
-                            var filePath = string.IsNullOrEmpty(openedFolder.FullName)
+
+                            // Normalize folder path to always use '/' separator, regardless of server's separator
+                            var normalizedFolderPath = string.IsNullOrEmpty(openedFolder.FullName)
+                                ? string.Empty
+                                : (_serverDirectorySeparator.HasValue && _serverDirectorySeparator.Value != '/')
+                                    ? openedFolder.FullName.Replace(_serverDirectorySeparator.Value, '/')
+                                    : openedFolder.FullName;
+
+                            var filePath = string.IsNullOrEmpty(normalizedFolderPath)
                                 ? fileName
-                                : $"{openedFolder.FullName}/{fileName}";
+                                : $"{normalizedFolderPath}/{fileName}";
 
                             if (_ignoredPaths != null &&
                                 ScheduleHelpers.IsPathIgnored("/" + filePath, fileName, _ignoredPaths))
@@ -405,9 +430,19 @@ namespace Octockup.Server.Modules
                 await _imapLock.WaitAsync();
                 try
                 {
-                    var folder = string.IsNullOrEmpty(folderPath)
-                        ? _client.Inbox
-                        : _client.GetFolder(folderPath);
+                    IMailFolder folder;
+                    if (string.IsNullOrEmpty(folderPath))
+                    {
+                        folder = _client.Inbox;
+                    }
+                    else
+                    {
+                        // Convert normalized '/' path back to server's directory separator
+                        var serverFolderPath = (_serverDirectorySeparator.HasValue && _serverDirectorySeparator.Value != '/')
+                            ? folderPath.Replace('/', _serverDirectorySeparator.Value)
+                            : folderPath;
+                        folder = _client.GetFolder(serverFolderPath);
+                    }
 
                     await folder.OpenAsync(FolderAccess.ReadOnly);
                     var message = await folder.GetMessageAsync(uid);
@@ -440,12 +475,24 @@ namespace Octockup.Server.Modules
 
         private IMailFolder GetRootFolder()
         {
-            if (string.IsNullOrWhiteSpace(_rootPath) || _rootPath == "/")
+            _imapLock.Wait();
+            try
             {
-                return _client!.GetFolder(_client.PersonalNamespaces[0]);
-            }
+                if (string.IsNullOrWhiteSpace(_rootPath) || _rootPath == "/")
+                {
+                    return _client!.GetFolder(_client.PersonalNamespaces[0]);
+                }
 
-            return _client!.GetFolder(_rootPath.TrimStart('/'));
+                // User-configured rootPath uses '/', convert to server separator if needed
+                var serverRoot = (_serverDirectorySeparator.HasValue && _serverDirectorySeparator.Value != '/')
+                    ? _rootPath.TrimStart('/').Replace('/', _serverDirectorySeparator.Value)
+                    : _rootPath.TrimStart('/');
+                return _client!.GetFolder(serverRoot);
+            }
+            finally
+            {
+                _imapLock.Release();
+            }
         }
     }
 }
