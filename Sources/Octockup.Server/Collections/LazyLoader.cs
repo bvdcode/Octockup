@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Runtime.ExceptionServices;
 
 namespace Octockup.Server.Collections
 {
@@ -47,7 +48,7 @@ namespace Octockup.Server.Collections
                     {
                         if (_loadingException is not null)
                         {
-                            throw new InvalidOperationException("Error while loading lazy collection.", _loadingException);
+                            ExceptionDispatchInfo.Capture(_loadingException).Throw();
                         }
 
                         yield break;
