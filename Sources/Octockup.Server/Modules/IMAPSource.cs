@@ -250,15 +250,26 @@ namespace Octockup.Server.Modules
                 yield break;
             }
 
+            // Skip folders with empty names
+            if (string.IsNullOrWhiteSpace(folder.FullName))
+            {
+                _logger.LogDebug("Skipping folder with empty name");
+                yield break;
+            }
+
             IMailFolder? openedFolder = null;
+            List<BackupFileInfo> results = [];
 
             try
             {
-                openedFolder = folder;
-
                 _imapLock.Wait();
                 try
                 {
+                    // Get a fresh reference to the folder to avoid stale references
+                    openedFolder = string.IsNullOrEmpty(folder.FullName)
+                        ? _client!.Inbox
+                        : _client!.GetFolder(folder.FullName);
+
                     if (!openedFolder.IsOpen)
                     {
                         openedFolder.Open(FolderAccess.ReadOnly);
@@ -297,7 +308,7 @@ namespace Octockup.Server.Modules
                                 openedFolder.FullName,
                                 start,
                                 end);
-                            yield break;
+                            break;
                         }
 
                         foreach (var summary in summaries)
@@ -328,13 +339,13 @@ namespace Octockup.Server.Modules
                                 continue;
                             }
 
-                            yield return new BackupFileInfo
+                            results.Add(new BackupFileInfo
                             {
                                 Path = filePath,
                                 Name = fileName,
                                 Size = summary.Size,
                                 LastModified = summary.InternalDate?.UtcDateTime
-                            };
+                            });
                         }
                     }
                 }
@@ -357,9 +368,20 @@ namespace Octockup.Server.Modules
                     }
                 }
             }
-            finally
+            catch (ImapCommandException ex) when (ex.Message.Contains("Unknown Mailbox"))
             {
-                // no-op
+                _logger.LogWarning("Folder {Folder} does not exist or is not accessible, skipping", folder.FullName);
+                yield break;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error enumerating folder {Folder}", folder.FullName);
+                yield break;
+            }
+
+            foreach (var result in results)
+            {
+                yield return result;
             }
         }
 
