@@ -22,6 +22,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { ModuleDestination } from "../types/api";
 import type { ModuleProviderInfo } from "../types/api";
 import { useDirectoryBrowser } from "../hooks/useDirectoryBrowser";
+import { CHECKBOX_PARAMETERS } from "../constants/checkboxParameters";
 
 type ModuleType = "source" | "storage" | "target";
 
@@ -132,8 +133,7 @@ export default function BackupModuleWizard({
     updateParam(name, value);
     
     // Don't reset test for checkbox parameters (they don't affect connection)
-    const CHECKBOX_PARAMS = ["skipPermissionDenied", "validateChecksums"];
-    if (!CHECKBOX_PARAMS.includes(name)) {
+    if (!CHECKBOX_PARAMETERS.includes(name)) {
       test.resetTest();
     }
     
@@ -155,8 +155,7 @@ export default function BackupModuleWizard({
     
     // Allow paste if lines count is less than or equal to params count
     // Skip checkbox parameters when matching
-    const CHECKBOX_PARAMS = ["skipPermissionDenied", "validateChecksums"];
-    const nonCheckboxKeys = keys.filter(k => !CHECKBOX_PARAMS.includes(k));
+    const nonCheckboxKeys = keys.filter(k => !CHECKBOX_PARAMETERS.includes(k));
     
     // Only proceed if we have at least one line and not more than available fields
     if (lines.length === 0 || lines.length > nonCheckboxKeys.length) return;

@@ -1,11 +1,10 @@
 import { useState, useCallback } from "react";
 import type { ModuleProviderInfo } from "../types/api";
+import { CHECKBOX_PARAMETERS } from "../constants/checkboxParameters";
 
 interface ParamState {
   [key: string]: string;
 }
-
-const CHECKBOX_PARAMETERS = ["skipPermissionDenied"];
 
 export function useWizardForm(moduleMeta: ModuleProviderInfo | null) {
   const [params, setParams] = useState<ParamState>({});

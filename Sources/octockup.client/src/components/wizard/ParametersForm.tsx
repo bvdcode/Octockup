@@ -14,8 +14,7 @@ import type { ClipboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { ModuleProviderInfo } from "../../types/api";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
-
-const CHECKBOX_PARAMETERS = ["skipPermissionDenied", "validateChecksums"];
+import { CHECKBOX_PARAMETERS } from "../../constants/checkboxParameters";
 
 interface ParamState {
   [key: string]: string;
