@@ -5,6 +5,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using EasyExtensions.EntityFrameworkCore.Database;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Octockup.Server.Database
 {
@@ -17,6 +18,18 @@ namespace Octockup.Server.Database
         public DbSet<Snapshot> Snapshots => Set<Snapshot>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<SnapshotFile> SnapshotFiles => Set<SnapshotFile>();
+
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+        {
+            base.ConfigureConventions(configurationBuilder);
+
+            // Global DateTime converter: always store as UTC in SQLite, always read as UTC
+            configurationBuilder.Properties<DateTime>()
+                .HaveConversion<UtcDateTimeConverter>();
+
+            configurationBuilder.Properties<DateTime?>()
+                .HaveConversion<UtcNullableDateTimeConverter>();
+        }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -50,6 +63,56 @@ namespace Octockup.Server.Database
                         : JsonSerializer.Deserialize<Dictionary<string, string>>(v)!
                 )
                 .Metadata.SetValueComparer(dictComparer);
+        }
+
+        /// <summary>
+        /// Ensures DateTime values are always stored and retrieved as UTC in SQLite.
+        /// Throws if attempting to save non-UTC DateTime.
+        /// </summary>
+        private class UtcDateTimeConverter : ValueConverter<DateTime, string>
+        {
+            public UtcDateTimeConverter()
+                : base(
+                    v => ConvertToUtcString(v),
+                    v => DateTime.Parse(v).ToUniversalTime())
+            {
+            }
+
+            private static string ConvertToUtcString(DateTime value)
+            {
+                if (value.Kind != DateTimeKind.Utc)
+                {
+                    throw new InvalidOperationException($"Attempted to save non-UTC DateTime ({value.Kind}): {value}. All DateTime values must be UTC.");
+                }
+                return value.ToString("o");
+            }
+        }
+
+        /// <summary>
+        /// Ensures nullable DateTime values are always stored and retrieved as UTC in SQLite.
+        /// Throws if attempting to save non-UTC DateTime.
+        /// </summary>
+        private class UtcNullableDateTimeConverter : ValueConverter<DateTime?, string?>
+        {
+            public UtcNullableDateTimeConverter()
+                : base(
+                    v => ConvertToUtcString(v),
+                    v => v != null ? DateTime.Parse(v).ToUniversalTime() : null)
+            {
+            }
+
+            private static string? ConvertToUtcString(DateTime? value)
+            {
+                if (!value.HasValue)
+                {
+                    return null;
+                }
+                if (value.Value.Kind != DateTimeKind.Utc)
+                {
+                    throw new InvalidOperationException($"Attempted to save non-UTC DateTime ({value.Value.Kind}): {value.Value}. All DateTime values must be UTC.");
+                }
+                return value.Value.ToString("o");
+            }
         }
     }
 }
