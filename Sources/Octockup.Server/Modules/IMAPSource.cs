@@ -1,5 +1,4 @@
 ﻿using MailKit;
-using MimeKit;
 using MailKit.Net.Imap;
 using Octockup.Server.Models;
 using Octockup.Server.Helpers;
@@ -22,7 +21,7 @@ namespace Octockup.Server.Modules
         private bool _useSsl;
         private ICollection<string>? _ignoredPaths;
         private ImapClient? _client;
-        private int _batchSize = 10; // default batch size for message enumeration
+        private int _batchSize = 10;
         private string? _rootPath;
 
         public void SetParameters(Dictionary<string, string> parameters)
@@ -34,19 +33,18 @@ namespace Octockup.Server.Modules
             _useSsl = parameters.TryGetValue("useSsl", out var sslStr) &&
                       bool.TryParse(sslStr, out var ssl) && ssl;
 
-            // Default to SSL if not specified
             if (!parameters.ContainsKey("useSsl"))
             {
                 _useSsl = true;
             }
 
-            // Optional batch size parameter
-            if (parameters.TryGetValue("batchSize", out var batchStr) && int.TryParse(batchStr, out var bs) && bs > 0)
+            if (parameters.TryGetValue("batchSize", out var batchStr) &&
+                int.TryParse(batchStr, out var bs) &&
+                bs > 0)
             {
                 _batchSize = bs;
             }
 
-            // Optional root path parameter
             parameters.TryGetValue("path", out _rootPath);
         }
 
@@ -63,7 +61,10 @@ namespace Octockup.Server.Modules
             }
 
             _client?.Dispose();
-            _client = new ImapClient();
+            _client = new ImapClient
+            {
+                Timeout = 60_000
+            };
 
             try
             {
@@ -83,16 +84,22 @@ namespace Octockup.Server.Modules
         public IEnumerable<string> GetDirectories(bool recursive = false)
         {
             EnsureConnectedAsync().GetAwaiter().GetResult();
-            if (_client == null) yield break;
+            if (_client == null)
+            {
+                yield break;
+            }
 
             IEnumerable<IMailFolder> folders;
+
             if (recursive)
             {
-                folders = GetAllFoldersRecursive(_client.PersonalNamespaces[0]);
+                var root = GetRootFolder();
+                folders = GetAllFoldersRecursive(root);
             }
             else
             {
                 var root = GetRootFolder();
+
                 IReadOnlyList<IMailFolder> subfolders;
                 try
                 {
@@ -106,13 +113,15 @@ namespace Octockup.Server.Modules
                     _logger.LogWarning(ex, "Failed to list IMAP root subfolders");
                     yield break;
                 }
+
                 folders = subfolders;
             }
-            
+
             foreach (var folder in folders)
             {
                 var folderPath = "/" + folder.FullName;
-                if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(folderPath, folder.Name, _ignoredPaths))
+                if (_ignoredPaths != null &&
+                    ScheduleHelpers.IsPathIgnored(folderPath, folder.Name, _ignoredPaths))
                 {
                     _logger.LogDebug("Skipping ignored IMAP folder: {Folder}", folderPath);
                     continue;
@@ -125,110 +134,182 @@ namespace Octockup.Server.Modules
         public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false)
         {
             EnsureConnectedAsync().GetAwaiter().GetResult();
-            if (_client == null) yield break;
-
-            var folders = recursive 
-                ? GetAllFoldersRecursive(_client.PersonalNamespaces[0])
-                : [_client.Inbox];
-
-            foreach (var folder in folders)
+            if (_client == null)
             {
-                var folderPath = "/" + folder.FullName;
+                yield break;
+            }
 
-                // Check if folder is ignored
-                if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(folderPath, folder.Name, _ignoredPaths))
+            var visitedFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var root = GetRootFolder();
+
+            if (!string.IsNullOrWhiteSpace(_rootPath) && _rootPath != "/")
+            {
+                if (recursive)
                 {
-                    _logger.LogDebug("Skipping ignored IMAP folder during file enumeration: {Folder}", folderPath);
+                    foreach (var folder in GetAllFoldersRecursive(root))
+                    {
+                        if (!visitedFolders.Add(folder.FullName))
+                        {
+                            continue;
+                        }
+
+                        foreach (var file in EnumerateFolderFiles(folder))
+                        {
+                            yield return file;
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (var file in EnumerateFolderFiles(root))
+                    {
+                        yield return file;
+                    }
+                }
+
+                yield break;
+            }
+
+            if (!visitedFolders.Contains(_client.Inbox.FullName))
+            {
+                foreach (var file in EnumerateFolderFiles(_client.Inbox))
+                {
+                    yield return file;
+                }
+
+                visitedFolders.Add(_client.Inbox.FullName);
+            }
+
+            if (!recursive)
+            {
+                yield break;
+            }
+
+            foreach (var folder in GetAllFoldersRecursive(root))
+            {
+                if (!visitedFolders.Add(folder.FullName))
+                {
                     continue;
                 }
 
-                IMailFolder? openedFolder = null;
-
-                try
+                if (string.Equals(folder.FullName, _client.Inbox.FullName, StringComparison.OrdinalIgnoreCase))
                 {
-                    openedFolder = _client.GetFolder(folder.FullName);
-                    openedFolder.Open(FolderAccess.ReadOnly);
-
-                    var total = openedFolder.Count;
-                    _logger.LogInformation("Enumerating {Total} emails in folder {Folder} in batches of {Batch}", total, folder.FullName, _batchSize);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to process IMAP folder: {Folder}", folder.FullName);
-                }
-                finally
-                {
-                    // We will close after yielding below; do not close here
+                    continue;
                 }
 
-                if (openedFolder != null && openedFolder.IsOpen)
+                foreach (var file in EnumerateFolderFiles(folder))
                 {
-                    for (var start = 0; start < openedFolder.Count; start += _batchSize)
-                    {
-                        var end = Math.Min(start + _batchSize - 1, openedFolder.Count - 1);
-                        IReadOnlyList<IMessageSummary> summaries;
-                        try
-                        {
-                            var fetched = openedFolder.Fetch(start, end, MessageSummaryItems.UniqueId | MessageSummaryItems.InternalDate | MessageSummaryItems.Size);
-                            summaries = fetched is IReadOnlyList<IMessageSummary> ro ? ro : [.. fetched];
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(ex, "Failed to fetch summaries for {Folder} range {Start}-{End}", folder.FullName, start, end);
-                            break;
-                        }
-
-                        foreach (var summary in summaries)
-                        {
-                            var uid = summary.UniqueId;
-                            var fileName = $"{uid.Id}.eml";
-                            var filePath = string.IsNullOrEmpty(folder.FullName)
-                                ? fileName
-                                : $"{folder.FullName}/{fileName}";
-
-                            if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored("/" + filePath, fileName, _ignoredPaths))
-                            {
-                                _logger.LogDebug("Skipping ignored email: {File}", filePath);
-                                continue;
-                            }
-
-                            yield return new BackupFileInfo
-                            {
-                                Path = filePath,
-                                Name = fileName,
-                                Size = summary.Size,
-                                LastModified = summary.InternalDate?.UtcDateTime
-                            };
-                        }
-                    }
-
-                    try
-                    {
-                        openedFolder.Close();
-                    }
-                    catch
-                    {
-                        // ignore
-                    }
+                    yield return file;
                 }
             }
         }
 
-        private IEnumerable<IMailFolder> GetAllFoldersRecursive(FolderNamespace ns)
+        private IEnumerable<BackupFileInfo> EnumerateFolderFiles(IMailFolder folder)
         {
-            var queue = new Queue<IMailFolder>();
-            var rootFolder = _client!.GetFolder(ns);
+            var folderPath = "/" + folder.FullName;
 
-            // Open the root folder before accessing subfolders
+            if (_ignoredPaths != null &&
+                ScheduleHelpers.IsPathIgnored(folderPath, folder.Name, _ignoredPaths))
+            {
+                _logger.LogDebug("Skipping ignored IMAP folder during file enumeration: {Folder}", folderPath);
+                yield break;
+            }
+
+            IMailFolder? openedFolder = null;
+
             try
             {
-                rootFolder.Open(FolderAccess.ReadOnly);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to open root namespace folder for recursion");
-            }
+                openedFolder = folder;
+                if (!openedFolder.IsOpen)
+                {
+                    openedFolder.Open(FolderAccess.ReadOnly);
+                }
 
+                var total = openedFolder.Count;
+                _logger.LogInformation(
+                    "Enumerating {Total} emails in folder {Folder} in batches of {Batch}",
+                    total,
+                    openedFolder.FullName,
+                    _batchSize);
+
+                for (var start = 0; start < total; start += _batchSize)
+                {
+                    var end = Math.Min(start + _batchSize - 1, total - 1);
+
+                    IReadOnlyList<IMessageSummary> summaries;
+                    try
+                    {
+                        var fetched = openedFolder.Fetch(
+                            start,
+                            end,
+                            MessageSummaryItems.UniqueId |
+                            MessageSummaryItems.InternalDate |
+                            MessageSummaryItems.Size);
+
+                        summaries = fetched is IReadOnlyList<IMessageSummary> ro
+                            ? ro
+                            : [.. fetched];
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(
+                            ex,
+                            "Failed to fetch summaries for {Folder} range {Start}-{End}",
+                            openedFolder.FullName,
+                            start,
+                            end);
+                        yield break;
+                    }
+
+                    foreach (var summary in summaries)
+                    {
+                        var uid = summary.UniqueId;
+                        if (uid.IsValid == false)
+                        {
+                            continue;
+                        }
+
+                        var fileName = $"{uid.Id}.eml";
+                        var filePath = string.IsNullOrEmpty(openedFolder.FullName)
+                            ? fileName
+                            : $"{openedFolder.FullName}/{fileName}";
+
+                        if (_ignoredPaths != null &&
+                            ScheduleHelpers.IsPathIgnored("/" + filePath, fileName, _ignoredPaths))
+                        {
+                            _logger.LogDebug("Skipping ignored email: {File}", filePath);
+                            continue;
+                        }
+
+                        yield return new BackupFileInfo
+                        {
+                            Path = filePath,
+                            Name = fileName,
+                            Size = summary.Size,
+                            LastModified = summary.InternalDate?.UtcDateTime
+                        };
+                    }
+                }
+            }
+            finally
+            {
+                try
+                {
+                    if (openedFolder != null && openedFolder.IsOpen)
+                    {
+                        openedFolder.Close();
+                    }
+                }
+                catch
+                {
+                    // ignore
+                }
+            }
+        }
+
+        private IEnumerable<IMailFolder> GetAllFoldersRecursive(IMailFolder rootFolder)
+        {
+            var queue = new Queue<IMailFolder>();
             queue.Enqueue(rootFolder);
 
             while (queue.Count > 0)
@@ -239,10 +320,10 @@ namespace Octockup.Server.Modules
                 IReadOnlyList<IMailFolder> subfolders;
                 try
                 {
-                    var fetchedSubfolders = folder.GetSubfolders();
-                    subfolders = fetchedSubfolders is IReadOnlyList<IMailFolder> ro
+                    var fetched = folder.GetSubfolders();
+                    subfolders = fetched is IReadOnlyList<IMailFolder> ro
                         ? ro
-                        : [.. fetchedSubfolders];
+                        : [.. fetched];
                 }
                 catch (Exception ex)
                 {
@@ -252,26 +333,7 @@ namespace Octockup.Server.Modules
 
                 foreach (var subfolder in subfolders)
                 {
-                    // Try opening each subfolder to avoid 'folder not open' when recursing
-                    try
-                    {
-                        subfolder.Open(FolderAccess.ReadOnly);
-                    }
-                    catch
-                    {
-                        // ignore open failures; still enqueue to attempt traversal
-                    }
                     queue.Enqueue(subfolder);
-                }
-
-                // Close folder after processing to avoid holding locks
-                try
-                {
-                    folder.Close();
-                }
-                catch
-                {
-                    // ignore
                 }
             }
         }
@@ -286,14 +348,12 @@ namespace Octockup.Server.Modules
 
             try
             {
-                // Parse folder and UID from path: "FolderName/123.eml"
                 var parts = file.Path.Split('/');
-                var fileName = parts[^1]; // "123.eml"
-                var folderPath = parts.Length > 1 
-                    ? string.Join("/", parts[..^1]) 
+                var fileName = parts[^1];
+                var folderPath = parts.Length > 1
+                    ? string.Join("/", parts[..^1])
                     : string.Empty;
 
-                // Extract UID from filename
                 var uidStr = fileName.Replace(".eml", "");
                 if (!uint.TryParse(uidStr, out var uidValue))
                 {
@@ -303,7 +363,6 @@ namespace Octockup.Server.Modules
 
                 var uid = new UniqueId(uidValue);
 
-                // Open folder and get message
                 var folder = string.IsNullOrEmpty(folderPath)
                     ? _client.Inbox
                     : _client.GetFolder(folderPath);
@@ -312,7 +371,6 @@ namespace Octockup.Server.Modules
                 var message = await folder.GetMessageAsync(uid);
                 await folder.CloseAsync();
 
-                // Write message to memory stream in EML format
                 var ms = new MemoryStream();
                 await message.WriteToAsync(ms);
                 ms.Position = 0;
@@ -324,39 +382,6 @@ namespace Octockup.Server.Modules
                 _logger.LogError(ex, "Failed to download email: {Path}", file.Path);
                 return Stream.Null;
             }
-        }
-
-        /// <summary>
-        /// Estimates email size based on message content.
-        /// Not 100% accurate but good enough for progress reporting.
-        /// </summary>
-        private static long EstimateEmailSize(MimeMessage message)
-        {
-            long size = 0;
-
-            // Estimate headers (~2KB average)
-            size += 2048;
-
-            // Estimate body
-            if (!string.IsNullOrEmpty(message.TextBody))
-            {
-                size += message.TextBody.Length;
-            }
-            if (!string.IsNullOrEmpty(message.HtmlBody))
-            {
-                size += message.HtmlBody.Length;
-            }
-
-            // Estimate attachments
-            foreach (var attachment in message.Attachments)
-            {
-                if (attachment is MimePart part && part.Content != null)
-                {
-                    size += part.Content.Stream.Length;
-                }
-            }
-
-            return size;
         }
 
         public void Dispose()

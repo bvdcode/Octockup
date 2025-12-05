@@ -16,6 +16,7 @@ using Octockup.Server.Abstractions;
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using EasyExtensions.Quartz.Attributes;
+using Octockup.Server.Collections;
 
 namespace Octockup.Server.Jobs
 {
@@ -81,8 +82,7 @@ namespace Octockup.Server.Jobs
                 // Set ignored paths before enumerating files
                 foundSourceProvider.SetIgnoredPaths(next.Backup.IgnoredPaths);
                 
-                var filesToBackup = foundSourceProvider.GetFiles(recursive: true).ToList();
-                report.Total = filesToBackup.Count;
+                var filesToBackup = foundSourceProvider.GetFiles(recursive: true);
                 await BackupAsync(next, foundSourceProvider, foundStorageProvider, report, filesToBackup);
                 next.Status = ScheduleStatus.Completed;
                 next.FinishedAt = DateTime.UtcNow;
@@ -106,7 +106,7 @@ namespace Octockup.Server.Jobs
             IBackupSource source,
             IBackupStorage storage,
             ScheduleReport report,
-            List<BackupFileInfo> files)
+            IEnumerable<BackupFileInfo> lazyFiles)
         {
             Snapshot snapshot = new()
             {
@@ -126,10 +126,14 @@ namespace Octockup.Server.Jobs
                 .Distinct()
                 .ToHashSet();
 
-            for (int i = 0; i < files.Count; i++)
+            LazyLoader<BackupFileInfo> loader = new(lazyFiles);
+
+            int counter = 0;
+            foreach (var file in loader)
             {
-                var file = files[i];
-                await report.SendAsync(i, $"Processing: {file.Name}");
+                counter++;
+                report.Total = loader.Total;
+                await report.SendAsync(counter, $"Processing: {file.Name}");
                 if (schedule.Backup.IgnoredPaths != null && ScheduleHelpers.IsPathIgnored(file.Path, file.Name, schedule.Backup.IgnoredPaths))
                 {
                     _logger.LogInformation("Schedule {ScheduleId}: File {FileName} is ignored by path rules, skipping",
@@ -159,7 +163,7 @@ namespace Octockup.Server.Jobs
                     await _dbContext.SnapshotFiles.AddAsync(snapshotFile);
                     await _dbContext.SaveChangesAsync();
 
-                    await report.SendAsync(i, $"Processing: {file.Name}", processedBytes: snapshotFile.Size);
+                    await report.SendAsync(counter, $"Processing: {file.Name}", processedBytes: snapshotFile.Size);
                     continue;
                 }
 
@@ -206,7 +210,7 @@ namespace Octockup.Server.Jobs
                             _logger.LogInformation("Schedule {ScheduleId}: Chunk {ChunkHash} for file {FileName} already uploaded in previous snapshot, skipping upload",
                                 schedule.Id, hash, file.Name);
                             chunkHashes.Add(hash);
-                            await report.SendAsync(i, $"Processing: {file.Name}", processedBytes: chunkLength);
+                            await report.SendAsync(counter, $"Processing: {file.Name}", processedBytes: chunkLength);
                             await chunk.DisposeAsync();
                             continue;
                         }
@@ -243,7 +247,7 @@ namespace Octockup.Server.Jobs
                                 schedule.Id, hash, file.Name);
                         }
 
-                        await report.SendAsync(i, $"Uploading: {file.Name}", processedBytes: chunkLength);
+                        await report.SendAsync(counter, $"Uploading: {file.Name}", processedBytes: chunkLength);
 
                         chunkHashes.Add(hash);
                         if (_stoppingSchedules.Contains(schedule.Id))
