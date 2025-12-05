@@ -151,13 +151,17 @@ export default function BackupModuleWizard({
     if (rawLines.length === 0) return;
     if (rawLines[rawLines.length - 1] === "") rawLines.pop();
     const lines = rawLines;
+    
+    // Ignore smart paste for single line - let browser handle it normally
+    if (lines.length === 1) return;
+    
     const keys = moduleMeta.requiredParameters || [];
     
     // Allow paste if lines count is less than or equal to params count
     // Skip checkbox parameters when matching
     const nonCheckboxKeys = keys.filter(k => !CHECKBOX_PARAMETERS.includes(k));
     
-    // Only proceed if we have at least one line and not more than available fields
+    // Only proceed if we have multiple lines and not more than available fields
     if (lines.length === 0 || lines.length > nonCheckboxKeys.length) return;
 
     e.preventDefault();
