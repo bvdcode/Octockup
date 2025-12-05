@@ -23,6 +23,7 @@ namespace Octockup.Server.Modules
         private ImapClient? _client;
         private int _batchSize = 10;
         private string? _rootPath;
+        private readonly SemaphoreSlim _imapLock = new(1, 1);
 
         public void SetParameters(Dictionary<string, string> parameters)
         {
@@ -55,29 +56,38 @@ namespace Octockup.Server.Modules
 
         private async Task EnsureConnectedAsync()
         {
-            if (_client != null && _client.IsConnected && _client.IsAuthenticated)
-            {
-                return;
-            }
-
-            _client?.Dispose();
-            _client = new ImapClient
-            {
-                Timeout = 60_000
-            };
-
+            // serialize connect/authenticate operations to avoid races
+            await _imapLock.WaitAsync();
             try
             {
-                await _client.ConnectAsync(_host, _port, _useSsl);
-                await _client.AuthenticateAsync(_username, _password);
-                _logger.LogInformation("Successfully connected to IMAP server {Host}:{Port}", _host, _port);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to connect to IMAP server {Host}:{Port}", _host, _port);
+                if (_client != null && _client.IsConnected && _client.IsAuthenticated)
+                {
+                    return;
+                }
+
                 _client?.Dispose();
-                _client = null;
-                throw;
+                _client = new ImapClient
+                {
+                    Timeout = 60_000
+                };
+
+                try
+                {
+                    await _client.ConnectAsync(_host, _port, _useSsl);
+                    await _client.AuthenticateAsync(_username, _password);
+                    _logger.LogInformation("Successfully connected to IMAP server {Host}:{Port}", _host, _port);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to connect to IMAP server {Host}:{Port}", _host, _port);
+                    _client?.Dispose();
+                    _client = null;
+                    throw;
+                }
+            }
+            finally
+            {
+                _imapLock.Release();
             }
         }
 
@@ -103,10 +113,18 @@ namespace Octockup.Server.Modules
                 IReadOnlyList<IMailFolder> subfolders;
                 try
                 {
-                    var fetched = root.GetSubfolders();
-                    subfolders = fetched is IReadOnlyList<IMailFolder> ro
-                        ? ro
-                        : [.. fetched];
+                    _imapLock.Wait();
+                    try
+                    {
+                        var fetched = root.GetSubfolders();
+                        subfolders = fetched is IReadOnlyList<IMailFolder> ro
+                            ? ro
+                            : [.. fetched];
+                    }
+                    finally
+                    {
+                        _imapLock.Release();
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -220,90 +238,103 @@ namespace Octockup.Server.Modules
             try
             {
                 openedFolder = folder;
-                if (!openedFolder.IsOpen)
+
+                _imapLock.Wait();
+                try
                 {
-                    openedFolder.Open(FolderAccess.ReadOnly);
+                    if (!openedFolder.IsOpen)
+                    {
+                        openedFolder.Open(FolderAccess.ReadOnly);
+                    }
+
+                    var total = openedFolder.Count;
+                    _logger.LogInformation(
+                        "Enumerating {Total} emails in folder {Folder} in batches of {Batch}",
+                        total,
+                        openedFolder.FullName,
+                        _batchSize);
+
+                    for (var start = 0; start < total; start += _batchSize)
+                    {
+                        var end = Math.Min(start + _batchSize - 1, total - 1);
+
+                        IReadOnlyList<IMessageSummary> summaries;
+                        try
+                        {
+                            var fetched = openedFolder.Fetch(
+                                start,
+                                end,
+                                MessageSummaryItems.UniqueId |
+                                MessageSummaryItems.InternalDate |
+                                MessageSummaryItems.Size);
+
+                            summaries = fetched is IReadOnlyList<IMessageSummary> ro
+                                ? ro
+                                : [.. fetched];
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(
+                                ex,
+                                "Failed to fetch summaries for {Folder} range {Start}-{End}",
+                                openedFolder.FullName,
+                                start,
+                                end);
+                            yield break;
+                        }
+
+                        foreach (var summary in summaries)
+                        {
+                            var uid = summary.UniqueId;
+                            if (uid.IsValid == false)
+                            {
+                                continue;
+                            }
+
+                            var fileName = $"{uid.Id}.eml";
+                            var filePath = string.IsNullOrEmpty(openedFolder.FullName)
+                                ? fileName
+                                : $"{openedFolder.FullName}/{fileName}";
+
+                            if (_ignoredPaths != null &&
+                                ScheduleHelpers.IsPathIgnored("/" + filePath, fileName, _ignoredPaths))
+                            {
+                                _logger.LogDebug("Skipping ignored email: {File}", filePath);
+                                continue;
+                            }
+
+                            yield return new BackupFileInfo
+                            {
+                                Path = filePath,
+                                Name = fileName,
+                                Size = summary.Size,
+                                LastModified = summary.InternalDate?.UtcDateTime
+                            };
+                        }
+                    }
                 }
-
-                var total = openedFolder.Count;
-                _logger.LogInformation(
-                    "Enumerating {Total} emails in folder {Folder} in batches of {Batch}",
-                    total,
-                    openedFolder.FullName,
-                    _batchSize);
-
-                for (var start = 0; start < total; start += _batchSize)
+                finally
                 {
-                    var end = Math.Min(start + _batchSize - 1, total - 1);
-
-                    IReadOnlyList<IMessageSummary> summaries;
                     try
                     {
-                        var fetched = openedFolder.Fetch(
-                            start,
-                            end,
-                            MessageSummaryItems.UniqueId |
-                            MessageSummaryItems.InternalDate |
-                            MessageSummaryItems.Size);
-
-                        summaries = fetched is IReadOnlyList<IMessageSummary> ro
-                            ? ro
-                            : [.. fetched];
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(
-                            ex,
-                            "Failed to fetch summaries for {Folder} range {Start}-{End}",
-                            openedFolder.FullName,
-                            start,
-                            end);
-                        yield break;
-                    }
-
-                    foreach (var summary in summaries)
-                    {
-                        var uid = summary.UniqueId;
-                        if (uid.IsValid == false)
+                        if (openedFolder != null && openedFolder.IsOpen)
                         {
-                            continue;
+                            openedFolder.Close();
                         }
-
-                        var fileName = $"{uid.Id}.eml";
-                        var filePath = string.IsNullOrEmpty(openedFolder.FullName)
-                            ? fileName
-                            : $"{openedFolder.FullName}/{fileName}";
-
-                        if (_ignoredPaths != null &&
-                            ScheduleHelpers.IsPathIgnored("/" + filePath, fileName, _ignoredPaths))
-                        {
-                            _logger.LogDebug("Skipping ignored email: {File}", filePath);
-                            continue;
-                        }
-
-                        yield return new BackupFileInfo
-                        {
-                            Path = filePath,
-                            Name = fileName,
-                            Size = summary.Size,
-                            LastModified = summary.InternalDate?.UtcDateTime
-                        };
+                    }
+                    catch
+                    {
+                        // ignore
+                    }
+                    finally
+                    {
+                        _imapLock.Release();
                     }
                 }
             }
             finally
             {
-                try
-                {
-                    if (openedFolder != null && openedFolder.IsOpen)
-                    {
-                        openedFolder.Close();
-                    }
-                }
-                catch
-                {
-                    // ignore
-                }
+                // no-op
             }
         }
 
@@ -320,10 +351,18 @@ namespace Octockup.Server.Modules
                 IReadOnlyList<IMailFolder> subfolders;
                 try
                 {
-                    var fetched = folder.GetSubfolders();
-                    subfolders = fetched is IReadOnlyList<IMailFolder> ro
-                        ? ro
-                        : [.. fetched];
+                    _imapLock.Wait();
+                    try
+                    {
+                        var fetched = folder.GetSubfolders();
+                        subfolders = fetched is IReadOnlyList<IMailFolder> ro
+                            ? ro
+                            : [.. fetched];
+                    }
+                    finally
+                    {
+                        _imapLock.Release();
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -363,19 +402,27 @@ namespace Octockup.Server.Modules
 
                 var uid = new UniqueId(uidValue);
 
-                var folder = string.IsNullOrEmpty(folderPath)
-                    ? _client.Inbox
-                    : _client.GetFolder(folderPath);
+                await _imapLock.WaitAsync();
+                try
+                {
+                    var folder = string.IsNullOrEmpty(folderPath)
+                        ? _client.Inbox
+                        : _client.GetFolder(folderPath);
 
-                await folder.OpenAsync(FolderAccess.ReadOnly);
-                var message = await folder.GetMessageAsync(uid);
-                await folder.CloseAsync();
+                    await folder.OpenAsync(FolderAccess.ReadOnly);
+                    var message = await folder.GetMessageAsync(uid);
+                    await folder.CloseAsync();
 
-                var ms = new MemoryStream();
-                await message.WriteToAsync(ms);
-                ms.Position = 0;
+                    var ms = new MemoryStream();
+                    await message.WriteToAsync(ms);
+                    ms.Position = 0;
 
-                return ms;
+                    return ms;
+                }
+                finally
+                {
+                    _imapLock.Release();
+                }
             }
             catch (Exception ex)
             {
