@@ -13,7 +13,7 @@ namespace Octockup.Server.Modules
         public string Name => "IMAP Email";
         public char PathSeparator => '/';
 
-        public IEnumerable<string> RequiredParameters => ["host", "port", "username", "password", "useSsl", "path"];
+        public IEnumerable<string> RequiredParameters => ["host", "port", "username", "password", "path", "useSsl"];
 
         private string? _host;
         private int _port;
