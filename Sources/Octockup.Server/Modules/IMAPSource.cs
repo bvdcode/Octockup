@@ -75,9 +75,32 @@ namespace Octockup.Server.Modules
             EnsureConnectedAsync().GetAwaiter().GetResult();
             if (_client == null) yield break;
 
-            var folders = recursive
-                ? GetAllFoldersRecursive(_client.PersonalNamespaces[0])
-                : _client.Inbox.GetSubfolders();
+            IEnumerable<IMailFolder> folders;
+            if (recursive)
+            {
+                folders = GetAllFoldersRecursive(_client.PersonalNamespaces[0]);
+            }
+            else
+            {
+                // Ensure Inbox is opened before accessing subfolders
+                try
+                {
+                    _client.Inbox.Open(FolderAccess.ReadOnly);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to open Inbox for listing subfolders");
+                }
+                folders = _client.Inbox.GetSubfolders();
+                try
+                {
+                    _client.Inbox.Close();
+                }
+                catch
+                {
+                    // ignore
+                }
+            }
             
             foreach (var folder in folders)
             {
@@ -115,7 +138,7 @@ namespace Octockup.Server.Modules
                 }
 
                 IMailFolder? openedFolder = null;
-                List<BackupFileInfo> folderFiles = new();
+                List<BackupFileInfo> folderFiles = [];
 
                 try
                 {
@@ -155,7 +178,14 @@ namespace Octockup.Server.Modules
                 }
                 finally
                 {
-                    openedFolder?.Close();
+                    try
+                    {
+                        openedFolder?.Close();
+                    }
+                    catch
+                    {
+                        // ignore
+                    }
                 }
 
                 foreach (var file in folderFiles)
@@ -169,6 +199,17 @@ namespace Octockup.Server.Modules
         {
             var queue = new Queue<IMailFolder>();
             var rootFolder = _client!.GetFolder(ns);
+
+            // Open the root folder before accessing subfolders
+            try
+            {
+                rootFolder.Open(FolderAccess.ReadOnly);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to open root namespace folder for recursion");
+            }
+
             queue.Enqueue(rootFolder);
 
             while (queue.Count > 0)
@@ -176,10 +217,42 @@ namespace Octockup.Server.Modules
                 var folder = queue.Dequeue();
                 yield return folder;
 
-                var subfolders = folder.GetSubfolders();
+                IReadOnlyList<IMailFolder> subfolders;
+                try
+                {
+                    var fetchedSubfolders = folder.GetSubfolders();
+                    subfolders = fetchedSubfolders is IReadOnlyList<IMailFolder> ro
+                        ? ro
+                        : fetchedSubfolders.ToList();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to get subfolders for {Folder}", folder.FullName);
+                    continue;
+                }
+
                 foreach (var subfolder in subfolders)
                 {
+                    // Try opening each subfolder to avoid 'folder not open' when recursing
+                    try
+                    {
+                        subfolder.Open(FolderAccess.ReadOnly);
+                    }
+                    catch
+                    {
+                        // ignore open failures; still enqueue to attempt traversal
+                    }
                     queue.Enqueue(subfolder);
+                }
+
+                // Close folder after processing to avoid holding locks
+                try
+                {
+                    folder.Close();
+                }
+                catch
+                {
+                    // ignore
                 }
             }
         }
