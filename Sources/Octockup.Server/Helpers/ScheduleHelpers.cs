@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Database;
+using Octockup.Server.Models.Enums;
 
 namespace Octockup.Server.Helpers
 {
@@ -21,8 +22,16 @@ namespace Octockup.Server.Helpers
 
             foreach (var sch in schedules)
             {
+                // Never pick a currently running schedule
+                if (sch.Status == ScheduleStatus.Running)
+                    continue;
+
                 DateTime? nextRun = CalculateNextRun(sch, now);
                 if (nextRun == null)
+                    continue;
+
+                // Only consider schedules due to run now or earlier
+                if (nextRun > now)
                     continue;
 
                 if (bestTime == null || nextRun < bestTime)
@@ -43,7 +52,7 @@ namespace Octockup.Server.Helpers
                 // Not started yet → next start
                 if (s.FinishedAt is null)
                 {
-                    return s.StartAt > now ? s.StartAt : now;
+                    return s.StartAt;
                 }
 
                 // already executed → no more runs
@@ -53,40 +62,20 @@ namespace Octockup.Server.Helpers
             // Periodic job
             TimeSpan interval = s.Interval.Value;
 
-            // If StartAt is in the future
+            // If StartAt is in the future → not started yet
             if (s.StartAt > now)
             {
                 return s.StartAt;
             }
 
-            // If currently running or never finished, cannot determine next run precisely
+            // If never finished yet → first run = StartAt
             if (s.FinishedAt is null)
             {
-                // If never started, next run is at StartAt or now
-                return s.StartAt > now ? s.StartAt : now;
+                return s.StartAt;
             }
 
-            // Calculate next run based on when it last finished
-            DateTime lastFinished = s.FinishedAt.Value;
-
-            // Next run should be: last finished time + interval
-            DateTime nextRun = lastFinished.Add(interval);
-
-            // If the calculated next run is still in the past (e.g., server was down),
-            // calculate the nearest future tick from StartAt
-            if (nextRun <= now)
-            {
-                var elapsed = now - s.StartAt;
-                if (elapsed.TotalMilliseconds < 0)
-                {
-                    elapsed = TimeSpan.Zero;
-                }
-
-                long k = elapsed.Ticks / interval.Ticks;
-                nextRun = s.StartAt.AddTicks(interval.Ticks * (k + 1));
-            }
-
-            return nextRun;
+            // Next run strictly from last finish
+            return s.FinishedAt.Value.Add(interval);
         }
 
         public static string SplitHash(string hash, char pathSeparator)
