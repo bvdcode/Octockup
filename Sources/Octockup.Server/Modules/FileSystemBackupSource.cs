@@ -11,7 +11,8 @@ namespace Octockup.Server.Modules
     {
         public string Name => "File System";
         public string Id => GetType().FullName!;
-        public IEnumerable<string> RequiredParameters => ["path", "password"];
+        public IEnumerable<string> RequiredParameters => GetRequiredParameters();
+
         public char PathSeparator => Path.DirectorySeparatorChar;
 
         private static readonly string _rootDirectory =
@@ -215,6 +216,16 @@ namespace Octockup.Server.Modules
             }
             File.Move(tempFile, fullPath, true);
             return Task.CompletedTask;
+        }
+
+        private IEnumerable<string> GetRequiredParameters()
+        {
+            bool hasPasswordFile = File.Exists(Path.Combine(_baseDirectory, PasswordFileName));
+            if (hasPasswordFile)
+            {
+                return ["path", "password"];
+            }
+            return ["path"];
         }
 
         private void CheckPassword()
