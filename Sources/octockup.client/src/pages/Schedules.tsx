@@ -27,7 +27,7 @@ export default function SchedulesPage() {
     resetError,
   } = useSchedules();
 
-  if (state.loading) {
+  if (state.loading && items.length === 0) {
     return (
       <Box display="flex" justifyContent="center" p={4}>
         <CircularProgress />
@@ -35,7 +35,7 @@ export default function SchedulesPage() {
     );
   }
 
-  if (state.error) {
+  if (state.error && items.length === 0) {
     return (
       <Box p={2}>
         <Alert severity="error">{state.error}</Alert>
@@ -47,6 +47,7 @@ export default function SchedulesPage() {
 
   return (
     <Stack spacing={3}>
+      {state.error && <Alert severity="error">{state.error}</Alert>}
       <Box display="flex" alignItems="center" justifyContent="space-between">
         <Typography variant="h5">{t("schedules.title")}</Typography>
         <Button

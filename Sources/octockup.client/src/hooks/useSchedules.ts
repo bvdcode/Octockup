@@ -84,14 +84,24 @@ export function useSchedules(): UseSchedulesReturn {
             return;
           }
 
-          setState((prev) => ({
-            ...prev,
-            loading: false,
-            error: e?.message || "Failed to load schedules",
-          }));
+          setState((prev) => {
+            // If we already have items, just show error but keep data visible
+            if (items.length > 0) {
+              return {
+                ...prev,
+                error: e?.message || "Failed to refresh schedules",
+              };
+            }
+            // If no items yet, show full error state
+            return {
+              ...prev,
+              loading: false,
+              error: e?.message || "Failed to load schedules",
+            };
+          });
         });
     },
-    [api, scheduleRetry],
+    [api, scheduleRetry, items.length],
   );
 
   useEffect(() => {
