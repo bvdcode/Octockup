@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Octockup.Tests
 {
-    public class Tests
+    public class SFTPBackupStorageTestsTests
     {
         private SFTPBackupStorage _storage;
 
