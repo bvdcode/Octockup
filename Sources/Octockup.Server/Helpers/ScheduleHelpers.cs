@@ -24,15 +24,21 @@ namespace Octockup.Server.Helpers
             {
                 // Never pick a currently running schedule
                 if (sch.Status == ScheduleStatus.Running)
+                {
                     continue;
+                }
 
                 DateTime? nextRun = CalculateNextRun(sch, now);
                 if (nextRun == null)
+                {
                     continue;
+                }
 
                 // Only consider schedules due to run now or earlier
                 if (nextRun > now)
+                {
                     continue;
+                }
 
                 if (bestTime == null || nextRun < bestTime)
                 {
@@ -44,15 +50,21 @@ namespace Octockup.Server.Helpers
             return best;
         }
 
-        public static DateTime? CalculateNextRun(Schedule s, DateTime now)
+        public static DateTime? CalculateNextRun(Schedule schedule, DateTime now)
         {
+            if (schedule.Status == ScheduleStatus.Running)
+            {
+                // Currently running → interrupted, run now
+                return DateTime.UtcNow;
+            }
+
             // One-time job (Interval = null)
-            if (s.Interval is null)
+            if (schedule.Interval is null)
             {
                 // Not started yet → next start
-                if (s.FinishedAt is null)
+                if (schedule.FinishedAt is null)
                 {
-                    return s.StartAt;
+                    return schedule.StartAt;
                 }
 
                 // already executed → no more runs
@@ -60,22 +72,22 @@ namespace Octockup.Server.Helpers
             }
 
             // Periodic job
-            TimeSpan interval = s.Interval.Value;
+            TimeSpan interval = schedule.Interval.Value;
 
             // If StartAt is in the future → not started yet
-            if (s.StartAt > now)
+            if (schedule.StartAt > now)
             {
-                return s.StartAt;
+                return schedule.StartAt;
             }
 
             // If never finished yet → first run = StartAt
-            if (s.FinishedAt is null)
+            if (schedule.FinishedAt is null)
             {
-                return s.StartAt;
+                return schedule.StartAt;
             }
 
             // Next run strictly from last finish
-            return s.FinishedAt.Value.Add(interval);
+            return schedule.FinishedAt.Value.Add(interval);
         }
 
         public static string SplitHash(string hash, char pathSeparator)
