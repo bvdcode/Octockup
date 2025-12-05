@@ -1,7 +1,6 @@
 ﻿using MailKit;
 using MimeKit;
 using MailKit.Net.Imap;
-using MailKit.Search;
 using Octockup.Server.Models;
 using Octockup.Server.Helpers;
 using Octockup.Server.Abstractions;
@@ -23,6 +22,7 @@ namespace Octockup.Server.Modules
         private bool _useSsl;
         private ICollection<string>? _ignoredPaths;
         private ImapClient? _client;
+        private int _batchSize = 10; // default batch size for message enumeration
 
         public void SetParameters(Dictionary<string, string> parameters)
         {
@@ -37,6 +37,12 @@ namespace Octockup.Server.Modules
             if (!parameters.ContainsKey("useSsl"))
             {
                 _useSsl = true;
+            }
+
+            // Optional batch size parameter
+            if (parameters.TryGetValue("batchSize", out var batchStr) && int.TryParse(batchStr, out var bs) && bs > 0)
+            {
+                _batchSize = bs;
             }
         }
 
@@ -124,7 +130,7 @@ namespace Octockup.Server.Modules
 
             var folders = recursive 
                 ? GetAllFoldersRecursive(_client.PersonalNamespaces[0])
-                : new[] { _client.Inbox };
+                : [_client.Inbox];
 
             foreach (var folder in folders)
             {
@@ -145,31 +151,36 @@ namespace Octockup.Server.Modules
                     openedFolder = _client.GetFolder(folder.FullName);
                     openedFolder.Open(FolderAccess.ReadOnly);
 
-                    var uids = openedFolder.Search(SearchQuery.All);
-                    _logger.LogInformation("Found {Count} emails in folder {Folder}", uids.Count, folder.FullName);
+                    var total = openedFolder.Count;
+                    _logger.LogInformation("Enumerating {Total} emails in folder {Folder} in batches of {Batch}", total, folder.FullName, _batchSize);
 
-                    foreach (var uid in uids)
+                    for (var start = 0; start < total; start += _batchSize)
                     {
-                        var message = openedFolder.GetMessage(uid);
-                        var fileName = $"{uid.Id}.eml";
-                        var filePath = string.IsNullOrEmpty(folder.FullName) 
-                            ? fileName 
-                            : $"{folder.FullName}/{fileName}";
-
-                        // Check if specific email is ignored
-                        if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored("/" + filePath, fileName, _ignoredPaths))
+                        var end = Math.Min(start + _batchSize - 1, total - 1);
+                        // Fetch summaries for the batch range
+                        var summaries = openedFolder.Fetch(start, end, MessageSummaryItems.UniqueId | MessageSummaryItems.InternalDate | MessageSummaryItems.Size);
+                        foreach (var summary in summaries)
                         {
-                            _logger.LogDebug("Skipping ignored email: {File}", filePath);
-                            continue;
+                            var uid = summary.UniqueId;
+                            var fileName = $"{uid.Id}.eml";
+                            var filePath = string.IsNullOrEmpty(folder.FullName)
+                                ? fileName
+                                : $"{folder.FullName}/{fileName}";
+
+                            if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored("/" + filePath, fileName, _ignoredPaths))
+                            {
+                                _logger.LogDebug("Skipping ignored email: {File}", filePath);
+                                continue;
+                            }
+
+                            folderFiles.Add(new BackupFileInfo
+                            {
+                                Path = filePath,
+                                Name = fileName,
+                                Size = summary.Size,
+                                LastModified = summary.InternalDate?.UtcDateTime
+                            });
                         }
-
-                        folderFiles.Add(new BackupFileInfo
-                        {
-                            Path = filePath,
-                            Name = fileName,
-                            Size = EstimateEmailSize(message),
-                            LastModified = message.Date.UtcDateTime
-                        });
                     }
                 }
                 catch (Exception ex)
