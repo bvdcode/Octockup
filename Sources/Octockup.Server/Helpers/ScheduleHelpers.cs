@@ -92,7 +92,7 @@ namespace Octockup.Server.Helpers
                 {
                     continue;
                 }
-                if (path.StartsWith(ignored, StringComparison.OrdinalIgnoreCase))
+                if (path.StartsWith(ignored, StringComparison.OrdinalIgnoreCase) || path.StartsWith(ignored[1..], StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
