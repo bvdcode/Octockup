@@ -18,6 +18,7 @@ namespace Octockup.Server.Database
         public DbSet<Snapshot> Snapshots => Set<Snapshot>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<SnapshotFile> SnapshotFiles => Set<SnapshotFile>();
+        public DbSet<UploadedHash> UploadedHashes => Set<UploadedHash>();
 
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
         {
