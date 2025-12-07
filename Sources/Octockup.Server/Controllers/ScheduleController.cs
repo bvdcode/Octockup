@@ -65,6 +65,7 @@ namespace Octockup.Server.Controllers
         public async Task<IActionResult> CancelSchedule(Guid scheduleId)
         {
             ExecuteBackupJob.StopRunningBackup(scheduleId);
+            await _scheduler.TriggerJobAsync<ExecuteBackupJob>();
             return Ok(new { message = "Schedule cancellation requested." });
         }
 
