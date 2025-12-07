@@ -1,6 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Octockup.Server.Database;
+﻿using Octockup.Server.Database;
 using Octockup.Server.Models.Enums;
+using Microsoft.EntityFrameworkCore;
 
 namespace Octockup.Server.Helpers
 {

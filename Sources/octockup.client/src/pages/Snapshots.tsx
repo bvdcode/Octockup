@@ -1,26 +1,26 @@
 import {
   Box,
   Card,
+  Paper,
   Stack,
   Alert,
-  Button,
-  Typography,
-  CardContent,
-  CircularProgress,
   Table,
+  Button,
+  TableRow,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
-  TableRow,
-  Paper,
+  Typography,
+  CardContent,
+  TableContainer,
+  CircularProgress,
 } from "@mui/material";
-import { ArrowBack } from "@mui/icons-material";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ArrowBack } from "@mui/icons-material";
+import { formatSize } from "../utils/formatUtils";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSnapshotsApi, type SnapshotDto } from "../api/snapshotsApi";
-import { formatSize } from "../utils/formatUtils";
 
 interface State {
   loading: boolean;
