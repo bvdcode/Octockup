@@ -22,10 +22,9 @@ namespace Octockup.Server.Helpers
 
             foreach (var sch in schedules)
             {
-                // Never pick a currently running schedule
                 if (sch.Status == ScheduleStatus.Running)
                 {
-                    continue;
+                    return sch;
                 }
 
                 DateTime? nextRun = CalculateNextRun(sch, now);
