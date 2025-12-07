@@ -11,6 +11,20 @@ namespace Octockup.Server.Controllers
     public class SnapshotController(AppDbContext _dbContext) : ControllerBase
     {
         [Authorize]
+        [HttpGet("/api/v1/snapshots/{snapshotId:guid}/files")]
+        public IActionResult GetSnapshot([FromRoute] Guid snapshotId)
+        {
+            var snapshotFiles = _dbContext.SnapshotFiles
+                .AsNoTracking()
+                .Where(sf => sf.SnapshotId == snapshotId)
+                .OrderBy(sf => sf.Path)
+                .ThenBy(sf => sf.Name)
+                .ToList()
+                .Adapt<List<SnapshotFileDto>>();
+            return Ok(snapshotFiles);
+        }
+
+        [Authorize]
         [HttpDelete("/api/v1/snapshots/{snapshotId:guid}")]
         public async Task<IActionResult> DeleteSnapshot([FromRoute] Guid snapshotId)
         {
