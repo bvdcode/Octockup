@@ -26,6 +26,8 @@ export const IGNORED_PATHS_PRESETS: Record<string, string[]> = {
     "/var/lib/docker/containers/*/*-json.log",
     "",
     "/usr/src",
+    "/usr/bin",
+    "/usr/sbin",
     "/usr/include",
     "/usr/lib/python3/dist-packages"
   ],
