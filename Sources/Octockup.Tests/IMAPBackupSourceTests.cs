@@ -60,7 +60,7 @@ namespace Octockup.Tests
 
         private class TestContextLogger<T> : ILogger<T>
         {
-            public IDisposable BeginScope<TState>(TState state) => NullScope.Instance;
+            IDisposable ILogger.BeginScope<TState>(TState state) => NullScope.Instance;
 
             public bool IsEnabled(LogLevel logLevel) => true;
 

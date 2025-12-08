@@ -9,10 +9,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Octockup.Server.Models
 {
-    public class ScheduleReport(Guid userId, Guid scheduleId, IHubContext<EventHub> _hubContext)
+    public class ScheduleReport(Guid userId, Guid scheduleId, Guid backupId, IHubContext<EventHub> _hubContext)
     {
         public long ProcessedBytes { get; private set; }
         public Guid UserId { get; } = userId;
+        public Guid BackupId { get; } = backupId;
         public Guid ScheduleId { get; } = scheduleId;
         public ScheduleStatus Status { get; private set; }
         public DateTime Timestamp { get; private set; }

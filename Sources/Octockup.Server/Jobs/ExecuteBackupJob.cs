@@ -45,7 +45,7 @@ namespace Octockup.Server.Jobs
                 return;
             }
             Guid userId = next.Backup.Source.UserId;
-            ScheduleReport report = new(userId, next.Id, _hubContext);
+            ScheduleReport report = new(userId, next.Id, next.BackupId, _hubContext);
 
             if (_providers.FirstOrDefault(x => x.Id == next.Backup.Source.BackupModuleId) is not IBackupSource foundSourceTypeProvider)
             {
