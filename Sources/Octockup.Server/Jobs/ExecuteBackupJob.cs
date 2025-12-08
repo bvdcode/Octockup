@@ -209,17 +209,6 @@ namespace Octockup.Server.Jobs
                             _logger.LogInformation("Schedule {ScheduleId}: Chunk {ChunkHash} for file {FileName} already uploaded in previous snapshot, skipping upload",
                                 schedule.Id, hash, file.Name);
                             chunkHashes.Add(hash);
-                            bool chunkRecorded = await _dbContext.UploadedHashes.AnyAsync(x => x.Hash == hash);
-                            if (!chunkRecorded)
-                            {
-                                var uploadedHash = new UploadedHash
-                                {
-                                    Hash = hash,
-                                    ModuleId = schedule.Backup.StorageId,
-                                };
-                                await _dbContext.UploadedHashes.AddAsync(uploadedHash);
-                                await _dbContext.SaveChangesAsync();
-                            }
                             await report.SendAsync(counter, $"Processing: {file.Name}", processedBytes: chunkLength);
                             await chunk.DisposeAsync();
                             continue;
@@ -257,6 +246,19 @@ namespace Octockup.Server.Jobs
                                 schedule.Id, hash, file.Name);
                         }
 
+                        bool chunkRecorded = await _dbContext.UploadedHashes.AnyAsync(x => x.Hash == hash);
+                        if (!chunkRecorded)
+                        {
+                            var uploadedHash = new UploadedHash
+                            {
+                                Hash = hash,
+                                OriginalSize = chunkLength,
+                                StoredSize = encryptedStream.Length,
+                                ModuleId = schedule.Backup.StorageId,
+                            };
+                            await _dbContext.UploadedHashes.AddAsync(uploadedHash);
+                            await _dbContext.SaveChangesAsync();
+                        }
                         await report.SendAsync(counter, $"Uploading: {file.Name}", processedBytes: chunkLength);
 
                         chunkHashes.Add(hash);
