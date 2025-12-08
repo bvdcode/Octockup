@@ -1,36 +1,24 @@
-﻿using Octockup.Server.Abstractions;
-using Octockup.Server.Database;
+﻿using Octockup.Server.Models;
 using Octockup.Server.Helpers;
-using Octockup.Server.Models;
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
+using Octockup.Server.Database;
+using Octockup.Server.Abstractions;
 
 namespace Octockup.Server.Streams
 {
-    public sealed class SnapshotConcatStream : Stream
+    public sealed class SnapshotConcatStream(
+        IBackupStorage storage,
+        IReadOnlyList<string> hashes,
+        SnapshotFile snapshotFile,
+        CancellationToken cancellationToken = default) : Stream
     {
-        private readonly IBackupStorage _storage;
-        private readonly IReadOnlyList<string> _hashes;
-        private readonly SnapshotFile _snapshotFile;
-        private readonly CancellationToken _cancellationToken;
+        private readonly IBackupStorage _storage = storage ?? throw new ArgumentNullException(nameof(storage));
+        private readonly IReadOnlyList<string> _hashes = hashes ?? throw new ArgumentNullException(nameof(hashes));
+        private readonly SnapshotFile _snapshotFile = snapshotFile ?? throw new ArgumentNullException(nameof(snapshotFile));
+        private readonly CancellationToken _cancellationToken = cancellationToken;
 
         private int _currentIndex = -1;
         private Stream? _currentChunkStream;
         private long _position;
-
-        public SnapshotConcatStream(
-            IBackupStorage storage,
-            IReadOnlyList<string> hashes,
-            SnapshotFile snapshotFile,
-            CancellationToken cancellationToken = default)
-        {
-            _storage = storage ?? throw new ArgumentNullException(nameof(storage));
-            _hashes = hashes ?? throw new ArgumentNullException(nameof(hashes));
-            _snapshotFile = snapshotFile ?? throw new ArgumentNullException(nameof(snapshotFile));
-            _cancellationToken = cancellationToken;
-        }
 
         public override bool CanRead => true;
         public override bool CanSeek => false;
@@ -56,7 +44,7 @@ namespace Octockup.Server.Streams
             }
 
             string hash = _hashes[_currentIndex];
-            string path = PathHelpers.GetPath(hash);
+            string path = ScheduleHelpers.SplitHash(hash, storage.PathSeparator);
 
             bool? exists = await _storage.ExistsAsync(path).ConfigureAwait(false);
             if (exists != true)
@@ -113,6 +101,10 @@ namespace Octockup.Server.Streams
                     }
                 }
 
+                if (_currentChunkStream == null)
+                {
+                    break;
+                }
                 int read = await _currentChunkStream
                     .ReadAsync(buffer, ct)
                     .ConfigureAwait(false);
@@ -125,7 +117,7 @@ namespace Octockup.Server.Streams
 
                 totalRead += read;
                 _position += read;
-                buffer = buffer.Slice(read);
+                buffer = buffer[read..];
 
                 break;
             }
@@ -135,7 +127,7 @@ namespace Octockup.Server.Streams
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            return ReadAsync(buffer.AsMemory(offset, count)).GetAwaiter().GetResult();
+            return ReadAsync(buffer.AsMemory(offset, count)).AsTask().GetAwaiter().GetResult();
         }
 
         public override long Seek(long offset, SeekOrigin origin) =>
