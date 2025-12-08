@@ -302,17 +302,15 @@ namespace Octockup.Server.Modules
             EnsureConnected();
             var remote = NormalizeRemotePath(GetRemotePath(file.Path));
 
-            var ms = new MemoryStream();
             try
             {
-                await _sftp.DownloadFileAsync(remote, ms, CancellationToken.None);
-                ms.Position = 0;
-                return ms;
+                // Return a streaming reader to avoid buffering whole file in memory
+                var stream = _sftp.OpenRead(remote);
+                return stream ?? Stream.Null;
             }
             catch (SftpPermissionDeniedException ex) when (_skipPermissionDenied)
             {
                 _logger.LogWarning(ex, "Permission denied when downloading file from SFTP: {Path}", remote);
-                ms.Dispose();
                 return Stream.Null;
             }
         }
