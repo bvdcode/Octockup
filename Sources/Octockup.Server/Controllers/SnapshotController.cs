@@ -1,5 +1,5 @@
 ﻿using Mapster;
-using System.IO.Compression;
+using MimeKit;
 using Octockup.Server.Streams;
 using Microsoft.AspNetCore.Mvc;
 using Octockup.Server.Database;
@@ -64,7 +64,7 @@ namespace Octockup.Server.Controllers
                 HttpContext.RequestAborted
             );
 
-            var contentType = "application/octet-stream"; // или snapshotFile.ContentType, если есть
+            string contentType = MimeTypes.GetMimeType(snapshotFile.Name) ?? "application/octet-stream";
             var result = new FileStreamResult(stream, contentType)
             {
                 FileDownloadName = snapshotFile.Name,
