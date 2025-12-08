@@ -33,11 +33,11 @@ export const IGNORED_PATHS_PRESETS: Record<string, string[]> = {
     "/var/lib/docker/containers/*/*-json.log",
     "",
     "/usr/src",
+    "/usr/lib",
     "/usr/bin",
     "/usr/sbin",
     "/usr/share",
     "/usr/include",
-    "/usr/lib/python3/dist-packages",
   ],
 };
 
