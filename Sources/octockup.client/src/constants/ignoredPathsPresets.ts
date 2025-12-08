@@ -28,8 +28,9 @@ export const IGNORED_PATHS_PRESETS: Record<string, string[]> = {
     "/usr/src",
     "/usr/bin",
     "/usr/sbin",
+    "/usr/share",
     "/usr/include",
-    "/usr/lib/python3/dist-packages"
+    "/usr/lib/python3/dist-packages",
   ],
 };
 
