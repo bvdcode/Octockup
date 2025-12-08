@@ -87,3 +87,13 @@ export interface ScheduleReport {
   speed: number;
   elapsed?: string;
 }
+
+export interface SnapshotFileDto {
+  id: string;
+  size: number;
+  snapshotId: string;
+  lastModified?: string | null;
+  name: string;
+  path: string;
+  hashsum: string;
+}

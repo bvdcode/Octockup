@@ -18,6 +18,7 @@ import { AppShell, type TokenPair, type UserInfo } from "@bvdcode/react-kit";
 import SchedulesPage from "./pages/Schedules";
 import ScheduleWizard from "./pages/ScheduleWizard";
 import SnapshotsPage from "./pages/Snapshots";
+import SnapshotFilesPage from "./pages/SnapshotFiles";
 import { Fab } from "@mui/material";
 
 function App() {
@@ -95,6 +96,10 @@ function App() {
           {
             route: "/backups/:backupId/snapshots",
             component: <SnapshotsPage />,
+          },
+          {
+            route: "/backups/:backupId/snapshots/:snapshotId/files",
+            component: <SnapshotFilesPage />,
           },
           {
             icon: <Schedule />,

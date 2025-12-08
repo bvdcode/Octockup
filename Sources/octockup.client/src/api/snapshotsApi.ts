@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { AxiosInstance } from "axios";
 import { useAxios } from "@bvdcode/react-kit";
+import type { SnapshotFileDto } from "../types/api";
 
 export interface SnapshotDto {
   id: string;
@@ -25,6 +26,13 @@ class SnapshotsApiClient {
     const result = await this.axios().get<Array<SnapshotDto>>(
       "/api/v1/snapshots",
       { params: { backupId } },
+    );
+    return result.data;
+  }
+
+  async getFiles(snapshotId: string): Promise<SnapshotFileDto[]> {
+    const result = await this.axios().get<Array<SnapshotFileDto>>(
+      `/api/v1/snapshots/${snapshotId}/files`,
     );
     return result.data;
   }

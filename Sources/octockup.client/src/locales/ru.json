@@ -113,6 +113,14 @@
     "totalSize": "Размер",
     "inProgress": "В процессе..."
   },
+  "snapshotFiles": {
+    "title": "Файлы снапшота",
+    "noFiles": "В этом снапшоте нет файлов.",
+    "name": "Имя",
+    "path": "Путь",
+    "size": "Размер",
+    "lastModified": "Дата изменения"
+  },
   "backupWizard": {
     "title": "Создать бэкап",
     "source": "Источник",

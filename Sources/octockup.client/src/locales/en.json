@@ -113,6 +113,14 @@
     "totalSize": "Size",
     "inProgress": "In progress..."
   },
+  "snapshotFiles": {
+    "title": "Snapshot Files",
+    "noFiles": "No files in this snapshot.",
+    "name": "Name",
+    "path": "Path",
+    "size": "Size",
+    "lastModified": "Last Modified"
+  },
   "backupWizard": {
     "title": "Create Backup",
     "source": "Source",
