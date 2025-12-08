@@ -119,7 +119,8 @@
     "name": "Name",
     "path": "Path",
     "size": "Size",
-    "lastModified": "Last Modified"
+    "lastModified": "Last Modified",
+    "download": "Download"
   },
   "backupWizard": {
     "title": "Create Backup",

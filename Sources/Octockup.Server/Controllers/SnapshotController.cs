@@ -2,14 +2,41 @@
 using Microsoft.AspNetCore.Mvc;
 using Octockup.Server.Database;
 using Octockup.Server.Models.Dto;
+using Octockup.Server.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Octockup.Server.Controllers
 {
     [ApiController]
-    public class SnapshotController(AppDbContext _dbContext) : ControllerBase
+    public class SnapshotController(AppDbContext _dbContext, IEnumerable<IBackupProvider> _providers) : ControllerBase
     {
+        [Authorize]
+        [HttpGet("/api/v1/snapshots/{snapshotId:guid}/files/{fileId:guid}/download")]
+        public IActionResult DownloadSnapshotFile([FromRoute] Guid snapshotId, [FromRoute] Guid fileId)
+        {
+            var snapshotFile = _dbContext.SnapshotFiles
+                .AsNoTracking()
+                .Include(sf => sf.Snapshot)
+                    .ThenInclude(s => s.Backup)
+                        .ThenInclude(b => b.Storage)
+                .FirstOrDefault(sf => sf.SnapshotId == snapshotId && sf.Id == fileId);
+            if (snapshotFile == null)
+            {
+                return NotFound();
+            }
+
+            var foundProvider = _providers.FirstOrDefault(p => p.Id == snapshotFile.Snapshot.Backup.Storage.BackupModuleId);
+            if (foundProvider == null)
+            {
+                return NotFound();
+            }
+            foundProvider.SetParameters(snapshotFile.Snapshot.Backup.Storage.Parameters);
+
+            ICollection<string> hashes = snapshotFile.ChunkHashes;
+
+        }
+
         [Authorize]
         [HttpGet("/api/v1/snapshots/{snapshotId:guid}/files")]
         public IActionResult GetSnapshot([FromRoute] Guid snapshotId)

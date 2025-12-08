@@ -119,7 +119,8 @@
     "name": "Имя",
     "path": "Путь",
     "size": "Размер",
-    "lastModified": "Дата изменения"
+    "lastModified": "Дата изменения",
+    "download": "Скачать"
   },
   "backupWizard": {
     "title": "Создать бэкап",
