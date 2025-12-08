@@ -107,6 +107,8 @@ export default function SnapshotFilesPage() {
       width: 80,
       sortable: false,
       filterable: false,
+      align: "center",
+      headerAlign: "center",
       renderCell: (params) => (
         <IconButton
           size="small"
