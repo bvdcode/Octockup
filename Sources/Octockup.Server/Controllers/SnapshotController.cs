@@ -1,17 +1,20 @@
 ﻿using Mapster;
-using Octockup.Server.Models;
-using Octockup.Server.Helpers;
-using Microsoft.AspNetCore.Mvc;
-using Octockup.Server.Database;
-using Octockup.Server.Models.Dto;
-using Octockup.Server.Abstractions;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Octockup.Server.Abstractions;
+using Octockup.Server.Database;
+using Octockup.Server.Helpers;
+using Octockup.Server.Models;
+using Octockup.Server.Models.Dto;
+using Octockup.Server.Streams;
 
 namespace Octockup.Server.Controllers
 {
     [ApiController]
-    public class SnapshotController(AppDbContext _dbContext, IEnumerable<IBackupProvider> _providers) : ControllerBase
+    public class SnapshotController(
+        AppDbContext _dbContext,
+        IEnumerable<IBackupProvider> _providers) : ControllerBase
     {
         [Authorize]
         [HttpGet("/api/v1/snapshots/{snapshotId:guid}/files/{fileId:guid}/download")]
@@ -29,13 +32,16 @@ namespace Octockup.Server.Controllers
                 return NotFound();
             }
 
-            var provider = _providers.FirstOrDefault(p => p.Id == snapshotFile.Snapshot.Backup.Storage.BackupModuleId);
+            var provider = _providers
+                .FirstOrDefault(p => p.Id == snapshotFile.Snapshot.Backup.Storage.BackupModuleId);
+
             if (provider == null)
             {
                 return NotFound();
             }
 
             provider.SetParameters(snapshotFile.Snapshot.Backup.Storage.Parameters);
+
             if (provider is not IBackupStorage storage)
             {
                 return BadRequest("Storage provider is not a backup storage");
@@ -47,37 +53,20 @@ namespace Octockup.Server.Controllers
                 return NotFound("No chunks for this file.");
             }
 
-            Response.ContentType = "application/octet-stream";
-            Response.Headers.ContentDisposition = $"attachment; filename=\"{snapshotFile.Name}\"";
-            Response.ContentLength = snapshotFile.Size;
+            var stream = new SnapshotConcatStream(
+                storage,
+                hashes,
+                snapshotFile,
+                HttpContext.RequestAborted
+            );
 
-            foreach (var hash in hashes)
-            {
-                var path = PathHelpers.GetPath(hash);
-                bool? exists = await storage.ExistsAsync(path);
-                if (exists != true)
-                {
-                    return NotFound($"Chunk {hash} not found.");
-                }
-            }
+            const string contentType = "application/octet-stream";
 
-            foreach (var hash in hashes)
-            {
-                var path = ScheduleHelpers.SplitHash(hash, storage.PathSeparator);
-                var fileInfo = new BackupFileInfo
-                {
-                    Path = path,
-                    Name = snapshotFile.Name,
-                    Size = snapshotFile.Size,
-                    LastModified = snapshotFile.LastModified,
-                };
-
-                await using var chunkStream = await storage.GetFileStreamAsync(fileInfo);
-                await chunkStream.CopyToAsync(Response.Body, HttpContext.RequestAborted);
-                await Response.Body.FlushAsync();
-            }
-
-            return new EmptyResult();
+            return File(
+                stream,
+                contentType,
+                fileDownloadName: snapshotFile.Name
+            );
         }
 
 
