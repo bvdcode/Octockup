@@ -70,7 +70,7 @@ namespace Octockup.Server.Controllers
             var result = new FileStreamResult(decompressedStream, contentType)
             {
                 FileDownloadName = snapshotFile.Name,
-                EnableRangeProcessing = true,
+                EnableRangeProcessing = false,
             };
 
             return result;

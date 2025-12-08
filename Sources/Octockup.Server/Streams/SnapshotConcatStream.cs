@@ -20,7 +20,7 @@ namespace Octockup.Server.Streams
         public override bool CanSeek => false;
         public override bool CanWrite => false;
 
-        public override long Length => _snapshotFile.Size;
+        public override long Length => throw new NotSupportedException("Length is not supported for encrypted/compressed streams.");
 
         public override long Position
         {
@@ -75,7 +75,7 @@ namespace Octockup.Server.Streams
 
         public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
         {
-            if (_position >= Length)
+            if (buffer.IsEmpty)
             {
                 return 0;
             }
@@ -117,8 +117,6 @@ namespace Octockup.Server.Streams
                     totalRead += read;
                     _position += read;
                     buffer = buffer[read..];
-
-                    // continue reading to fill buffer and cross chunk boundaries
                 }
             }
             catch (OperationCanceledException)
