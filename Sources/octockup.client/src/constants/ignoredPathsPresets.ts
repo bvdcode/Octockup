@@ -11,6 +11,7 @@ export const IGNORED_PATHS_PRESETS: Record<string, string[]> = {
     "/var/lock",
     "/var/log",
     "/var/cache",
+    "/etc/apt",
     "",
     "/swapfile",
     "/swap.img",
