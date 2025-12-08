@@ -1,19 +1,20 @@
 ﻿using Mapster;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Octockup.Server.Abstractions;
-using Octockup.Server.Database;
-using Octockup.Server.Helpers;
-using Octockup.Server.Models;
-using Octockup.Server.Models.Dto;
 using Octockup.Server.Streams;
+using Microsoft.AspNetCore.Mvc;
+using Octockup.Server.Database;
+using Octockup.Server.Models.Dto;
+using EasyExtensions.Abstractions;
+using Octockup.Server.Abstractions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
+using System.IO.Compression;
 
 namespace Octockup.Server.Controllers
 {
     [ApiController]
     public class SnapshotController(
         AppDbContext _dbContext,
+        IStreamCipher _streamCipher,
         IEnumerable<IBackupProvider> _providers) : ControllerBase
     {
         [Authorize]
@@ -62,11 +63,11 @@ namespace Octockup.Server.Controllers
 
             const string contentType = "application/octet-stream";
 
-            return File(
-                stream,
-                contentType,
-                fileDownloadName: snapshotFile.Name
-            );
+            // decompress from brotli (wrap) using Brotli methods
+            BrotliStream decompressedStream = new(stream, CompressionMode.Decompress);
+            Stream decryptedStream = await _streamCipher.DecryptAsync(decompressedStream);
+
+            return File(decryptedStream, contentType, fileDownloadName: snapshotFile.Name);
         }
 
 
