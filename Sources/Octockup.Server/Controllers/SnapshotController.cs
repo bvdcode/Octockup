@@ -22,12 +22,12 @@ namespace Octockup.Server.Controllers
         [HttpGet("/api/v1/snapshots/{snapshotId:guid}/files/{fileId:guid}/download")]
         public async Task<IActionResult> DownloadSnapshotFile([FromRoute] Guid snapshotId, [FromRoute] Guid fileId)
         {
-            var snapshotFile = _dbContext.SnapshotFiles
+            var snapshotFile = await _dbContext.SnapshotFiles
                 .AsNoTracking()
                 .Include(sf => sf.Snapshot)
                     .ThenInclude(s => s.Backup)
                         .ThenInclude(b => b.Storage)
-                .FirstOrDefault(sf => sf.SnapshotId == snapshotId && sf.Id == fileId);
+                .FirstOrDefaultAsync(sf => sf.SnapshotId == snapshotId && sf.Id == fileId);
 
             if (snapshotFile == null)
             {
@@ -60,14 +60,12 @@ namespace Octockup.Server.Controllers
                 storage,
                 hashes,
                 snapshotFile,
+                _streamCipher,
                 HttpContext.RequestAborted
             );
 
-            const string contentType = "application/octet-stream";
-            Stream decryptedStream = await _streamCipher.DecryptAsync(stream);
-            BrotliStream decompressedStream = new(decryptedStream, CompressionMode.Decompress, leaveOpen: false);
-
-            var result = new FileStreamResult(decompressedStream, contentType)
+            var contentType = "application/octet-stream"; // или snapshotFile.ContentType, если есть
+            var result = new FileStreamResult(stream, contentType)
             {
                 FileDownloadName = snapshotFile.Name,
                 EnableRangeProcessing = false,
@@ -75,7 +73,6 @@ namespace Octockup.Server.Controllers
 
             return result;
         }
-
 
         [Authorize]
         [HttpGet("/api/v1/snapshots/{snapshotId:guid}/files")]

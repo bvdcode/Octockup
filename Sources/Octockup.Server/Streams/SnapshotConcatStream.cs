@@ -1,6 +1,8 @@
-﻿using Octockup.Server.Models;
+﻿using System.IO.Compression;
+using Octockup.Server.Models;
 using Octockup.Server.Helpers;
 using Octockup.Server.Database;
+using EasyExtensions.Abstractions;
 using Octockup.Server.Abstractions;
 
 namespace Octockup.Server.Streams
@@ -10,9 +12,11 @@ namespace Octockup.Server.Streams
         IBackupStorage _storage,
         IReadOnlyList<string> _hashes,
         SnapshotFile _snapshotFile,
+        IStreamCipher _crypto,
         CancellationToken _cancellationToken = default) : Stream
     {
         private int _currentIndex = -1;
+
         private Stream? _currentChunkStream;
         private long _position;
 
@@ -20,7 +24,7 @@ namespace Octockup.Server.Streams
         public override bool CanSeek => false;
         public override bool CanWrite => false;
 
-        public override long Length => throw new NotSupportedException("Length is not supported for encrypted/compressed streams.");
+        public override long Length => _snapshotFile.Size;
 
         public override long Position
         {
@@ -40,7 +44,13 @@ namespace Octockup.Server.Streams
             }
 
             string hash = _hashes[_currentIndex];
-            _logger.LogInformation("Loading chunk {Index}/{Total} with hash {Hash}", _currentIndex + 1, _hashes.Count, hash);
+            _logger.LogInformation(
+                "Loading chunk {Index}/{Total} with hash {Hash}",
+                _currentIndex + 1,
+                _hashes.Count,
+                hash
+            );
+
             string path = ScheduleHelpers.SplitHash(hash, _storage.PathSeparator);
 
             bool? exists = await _storage.ExistsAsync(path).ConfigureAwait(false);
@@ -52,15 +62,26 @@ namespace Octockup.Server.Streams
             var fileInfo = new BackupFileInfo
             {
                 Path = path,
-                Name = _snapshotFile.Name,
-                Size = _snapshotFile.Size,
+                Name = hash,
+                Size = null,
                 LastModified = _snapshotFile.LastModified,
             };
 
-            _currentChunkStream = await _storage
+            var encryptedChunkStream = await _storage
                 .GetFileStreamAsync(fileInfo)
                 .ConfigureAwait(false);
 
+            Stream decrypted = await _crypto
+                .DecryptAsync(encryptedChunkStream)
+                .ConfigureAwait(false);
+
+            var decompressed = new BrotliStream(
+                decrypted,
+                CompressionMode.Decompress,
+                leaveOpen: false
+            );
+
+            _currentChunkStream = decompressed;
             return true;
         }
 
@@ -73,15 +94,21 @@ namespace Octockup.Server.Streams
             }
         }
 
-        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        public override async ValueTask<int> ReadAsync(
+            Memory<byte> buffer,
+            CancellationToken cancellationToken = default)
         {
-            if (buffer.IsEmpty)
+            if (_position >= Length || buffer.IsEmpty)
             {
                 return 0;
             }
 
             int totalRead = 0;
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationToken, cancellationToken);
+
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+                _cancellationToken,
+                cancellationToken
+            );
             var ct = linkedCts.Token;
 
             try
@@ -95,7 +122,7 @@ namespace Octockup.Server.Streams
                         bool moved = await MoveToNextChunkAsync().ConfigureAwait(false);
                         if (!moved)
                         {
-                            break;
+                            break; // реально конец файла
                         }
                     }
 
@@ -110,6 +137,7 @@ namespace Octockup.Server.Streams
 
                     if (read == 0)
                     {
+                        // этот чанк закончился — переходим к следующему
                         await DisposeCurrentChunkAsync().ConfigureAwait(false);
                         continue;
                     }
@@ -117,11 +145,21 @@ namespace Octockup.Server.Streams
                     totalRead += read;
                     _position += read;
                     buffer = buffer[read..];
+
+                    if (_position >= Length)
+                    {
+                        break;
+                    }
                 }
             }
             catch (OperationCanceledException)
             {
-                _logger.LogInformation("Read canceled at position {Position} (chunk {Index}/{Total}).", _position, Math.Min(_currentIndex + 1, _hashes.Count), _hashes.Count);
+                _logger.LogInformation(
+                    "Read canceled at position {Position} (chunk {Index}/{Total}).",
+                    _position,
+                    Math.Min(_currentIndex + 1, _hashes.Count),
+                    _hashes.Count
+                );
                 throw;
             }
 
@@ -130,7 +168,10 @@ namespace Octockup.Server.Streams
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            return ReadAsync(buffer.AsMemory(offset, count)).AsTask().GetAwaiter().GetResult();
+            return ReadAsync(buffer.AsMemory(offset, count))
+                .AsTask()
+                .GetAwaiter()
+                .GetResult();
         }
 
         public override long Seek(long offset, SeekOrigin origin) =>
