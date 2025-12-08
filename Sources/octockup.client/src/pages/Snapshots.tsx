@@ -61,14 +61,6 @@ export default function SnapshotsPage() {
     };
   }, [backupId, snapshotsApi]);
 
-  if (state.loading && snapshots.length === 0) {
-    return (
-      <Box display="flex" justifyContent="center" p={4}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   if (state.error && snapshots.length === 0) {
     return (
       <Box p={2}>
@@ -90,7 +82,11 @@ export default function SnapshotsPage() {
         </Button>
         <Typography variant="h5">{t("snapshots.title")}</Typography>
       </Box>
-      {snapshots.length === 0 ? (
+      {state.loading && snapshots.length === 0 ? (
+        <Box display="flex" justifyContent="center" p={4}>
+          <CircularProgress />
+        </Box>
+      ) : snapshots.length === 0 ? (
         <Card>
           <CardContent>
             <Typography color="text.secondary">

@@ -63,8 +63,7 @@ namespace Octockup.Server.Controllers
 
             foreach (var hash in hashes)
             {
-                var path = PathHelpers.GetPath(hash);
-
+                var path = ScheduleHelpers.SplitHash(hash, storage.PathSeparator);
                 var fileInfo = new BackupFileInfo
                 {
                     Path = path,

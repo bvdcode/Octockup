@@ -120,7 +120,8 @@
     "path": "Path",
     "size": "Size",
     "lastModified": "Last Modified",
-    "download": "Download"
+    "download": "Download",
+    "searchPlaceholder": "Search by path..."
   },
   "backupWizard": {
     "title": "Create Backup",

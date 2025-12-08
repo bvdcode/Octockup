@@ -3,9 +3,9 @@ import {
   Stack,
   Alert,
   Button,
+  TextField,
   IconButton,
   Typography,
-  CircularProgress,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -36,6 +36,7 @@ export default function SnapshotFilesPage() {
     error: snapshotId ? null : "Snapshot ID is missing",
   });
   const [files, setFiles] = useState<SnapshotFileDto[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     if (!snapshotId) return;
@@ -64,6 +65,10 @@ export default function SnapshotFilesPage() {
     const url = `/api/v1/snapshots/${snapshotId}/files/${fileId}/download?access_token=${accessToken}`;
     window.open(url, "_blank");
   };
+
+  const filteredFiles = files.filter((file) =>
+    file.path.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const columns: GridColDef<SnapshotFileDto>[] = [
     {
@@ -114,14 +119,6 @@ export default function SnapshotFilesPage() {
     },
   ];
 
-  if (state.loading && files.length === 0) {
-    return (
-      <Box display="flex" justifyContent="center" p={4}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   if (state.error && files.length === 0) {
     return (
       <Box p={2}>
@@ -143,13 +140,26 @@ export default function SnapshotFilesPage() {
         </Button>
         <Typography variant="h5">{t("snapshotFiles.title")}</Typography>
       </Box>
+      <TextField
+        fullWidth
+        variant="outlined"
+        placeholder={t("snapshotFiles.searchPlaceholder")}
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+      />
       <Box sx={{ height: 600, width: "100%" }}>
         <DataGrid
-          rows={files}
+          rows={filteredFiles}
           columns={columns}
+          loading={state.loading}
           pageSizeOptions={[25, 50, 100]}
           initialState={{
             pagination: { paginationModel: { pageSize: 25 } },
+            columns: {
+              columnVisibilityModel: {
+                name: false,
+              },
+            },
           }}
           disableRowSelectionOnClick
           sx={{
