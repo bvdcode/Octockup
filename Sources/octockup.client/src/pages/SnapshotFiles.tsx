@@ -10,6 +10,7 @@ import {
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatSize } from "../utils/formatUtils";
+import { useAuthStore } from "@bvdcode/react-kit";
 import type { SnapshotFileDto } from "../types/api";
 import { useSnapshotsApi } from "../api/snapshotsApi";
 import { ArrowBack, Download } from "@mui/icons-material";
@@ -29,6 +30,7 @@ export default function SnapshotFilesPage() {
     snapshotId: string;
   }>();
   const snapshotsApi = useSnapshotsApi();
+  const accessToken = useAuthStore((s) => s.accessToken);
   const [state, setState] = useState<State>({
     loading: !snapshotId,
     error: snapshotId ? null : "Snapshot ID is missing",
@@ -59,16 +61,6 @@ export default function SnapshotFilesPage() {
   }, [snapshotId, snapshotsApi]);
 
   const handleDownload = (fileId: string) => {
-    const authData = localStorage.getItem("auth");
-    let accessToken = "";
-    if (authData) {
-      try {
-        const parsed = JSON.parse(authData);
-        accessToken = parsed.accessToken || "";
-      } catch {
-        // ignore
-      }
-    }
     const url = `/api/v1/snapshots/${snapshotId}/files/${fileId}/download?access_token=${accessToken}`;
     window.open(url, "_blank");
   };
