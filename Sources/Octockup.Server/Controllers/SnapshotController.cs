@@ -64,7 +64,7 @@ namespace Octockup.Server.Controllers
             const string contentType = "application/octet-stream";
             Stream decryptedStream = await _streamCipher.DecryptAsync(stream);
             BrotliStream decompressedStream = new(decryptedStream, CompressionMode.Decompress);
-            return File(decryptedStream, contentType, fileDownloadName: snapshotFile.Name);
+            return File(decompressedStream, contentType, fileDownloadName: snapshotFile.Name);
         }
 
 
