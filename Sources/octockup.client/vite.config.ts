@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "http://localhost:5112",
+        target: "https://octockup.belov.us",
         changeOrigin: true,
         secure: false,
         ws: true,
