@@ -84,36 +84,47 @@ namespace Octockup.Server.Streams
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationToken, cancellationToken);
             var ct = linkedCts.Token;
 
-            while (!buffer.IsEmpty)
+            try
             {
-                if (_currentChunkStream == null)
+                while (!buffer.IsEmpty)
                 {
-                    bool moved = await MoveToNextChunkAsync().ConfigureAwait(false);
-                    if (!moved)
+                    ct.ThrowIfCancellationRequested();
+
+                    if (_currentChunkStream == null)
+                    {
+                        bool moved = await MoveToNextChunkAsync().ConfigureAwait(false);
+                        if (!moved)
+                        {
+                            break;
+                        }
+                    }
+
+                    if (_currentChunkStream == null)
                     {
                         break;
                     }
+
+                    int read = await _currentChunkStream
+                        .ReadAsync(buffer, ct)
+                        .ConfigureAwait(false);
+
+                    if (read == 0)
+                    {
+                        await DisposeCurrentChunkAsync().ConfigureAwait(false);
+                        continue;
+                    }
+
+                    totalRead += read;
+                    _position += read;
+                    buffer = buffer[read..];
+
+                    // continue reading to fill buffer and cross chunk boundaries
                 }
-
-                if (_currentChunkStream == null)
-                {
-                    break;
-                }
-                int read = await _currentChunkStream
-                    .ReadAsync(buffer, ct)
-                    .ConfigureAwait(false);
-
-                if (read == 0)
-                {
-                    await DisposeCurrentChunkAsync().ConfigureAwait(false);
-                    continue;
-                }
-
-                totalRead += read;
-                _position += read;
-                buffer = buffer[read..];
-
-                break;
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Read canceled at position {Position} (chunk {Index}/{Total}).", _position, Math.Min(_currentIndex + 1, _hashes.Count), _hashes.Count);
+                throw;
             }
 
             return totalRead;
