@@ -24,6 +24,10 @@ export const IGNORED_PATHS_PRESETS: Record<string, string[]> = {
     "/var/lib/docker/buildkit",
     "/var/lib/docker/overlay2",
     "/var/lib/docker/containers/*/*-json.log",
+    "",
+    "/usr/src",
+    "/usr/include",
+    "/usr/lib/python3/dist-packages"
   ],
 };
 
