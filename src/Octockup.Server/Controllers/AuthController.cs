@@ -71,6 +71,13 @@ namespace Octockup.Server.Controllers
         [HttpPost("refresh")]
         public async Task<AuthResponse> RefreshTokenAsync([FromBody] RefreshRequest request)
         {
+            if (string.IsNullOrEmpty(request.RefreshToken))
+            {
+                if (Request.Cookies.TryGetValue("refresh_token", out var cookieToken))
+                {
+                    request.RefreshToken = cookieToken;
+                }
+            }
             var foundToken = _dbContext.RefreshTokens.FirstOrDefault(x => x.Token == request.RefreshToken && x.RevokedAt == null);
             if (foundToken == null)
             {
@@ -87,6 +94,13 @@ namespace Octockup.Server.Controllers
             _dbContext.RefreshTokens.Add(newSession);
             foundToken.RevokedAt = DateTime.UtcNow;
             await _dbContext.SaveChangesAsync();
+            Response.Cookies.Append("refresh_token", refreshToken, new CookieOptions()
+            {
+                Secure = true,
+                HttpOnly = true,
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTimeOffset.UtcNow.AddDays(30),
+            });
             return new AuthResponse()
             {
                 AccessToken = accessToken,
@@ -136,6 +150,13 @@ namespace Octockup.Server.Controllers
             await _dbContext.SaveChangesAsync();
             string accessToken = _tokens.CreateToken(x => x.Add(JwtRegisteredClaimNames.Sub, user.Id.ToString()));
             _logger.LogInformation("User '{user}' logged in", request.Username);
+            Response.Cookies.Append("refresh_token", refreshToken, new CookieOptions()
+            {
+                Secure = true,
+                HttpOnly = true,
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTimeOffset.UtcNow.AddDays(30),
+            });
             return Ok(new AuthResponse()
             {
                 AccessToken = accessToken,
