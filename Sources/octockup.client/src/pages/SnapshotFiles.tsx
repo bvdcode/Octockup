@@ -32,7 +32,7 @@ export default function SnapshotFilesPage() {
   const snapshotsApi = useSnapshotsApi();
   const accessToken = useAuthStore((s) => s.accessToken);
   const [state, setState] = useState<State>({
-    loading: !snapshotId,
+    loading: true,
     error: snapshotId ? null : "Snapshot ID is missing",
   });
   const [files, setFiles] = useState<SnapshotFileDto[]>([]);

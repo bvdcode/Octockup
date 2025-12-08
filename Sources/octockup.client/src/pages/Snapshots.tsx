@@ -33,7 +33,7 @@ export default function SnapshotsPage() {
   const { backupId } = useParams<{ backupId: string }>();
   const snapshotsApi = useSnapshotsApi();
   const [state, setState] = useState<State>({
-    loading: !backupId,
+    loading: true,
     error: backupId ? null : "Backup ID is missing",
   });
   const [snapshots, setSnapshots] = useState<SnapshotDto[]>([]);
