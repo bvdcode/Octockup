@@ -103,7 +103,7 @@ export default function SnapshotFilesPage() {
     },
     {
       field: "actions",
-      headerName: "",
+      headerName: t("snapshotFiles.download"),
       width: 80,
       sortable: false,
       filterable: false,
