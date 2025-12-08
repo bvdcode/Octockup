@@ -214,31 +214,46 @@ namespace Octockup.Server.Jobs
                             continue;
                         }
 
-                        // Compress the chunk (second pass over in-memory chunk stream)
-                        chunk.Seek(0, SeekOrigin.Begin);
-                        await using var compressed = new MemoryStream();
-                        await using (var brotli = new BrotliStream(compressed, CompressionLevel.Optimal, leaveOpen: true))
-                        {
-                            int r;
-                            while ((r = await chunk.ReadAsync(buffer.AsMemory(0, Math.Min(buffer.Length, ChunkSize)))) > 0)
-                            {
-                                await brotli.WriteAsync(buffer.AsMemory(0, r));
-                            }
-                        }
-                        compressed.Seek(0, SeekOrigin.Begin);
-
-                        using var encryptedStream = new MemoryStream();
-                        await _crypto.EncryptAsync(compressed, encryptedStream);
-                        encryptedStream.Seek(0, SeekOrigin.Begin);
-
                         string path = ScheduleHelpers.SplitHash(hash, storage.PathSeparator);
                         bool exists = await storage.ExistsAsync(path) ?? false;
                         if (!exists)
                         {
                             _logger.LogInformation("Schedule {ScheduleId}: Uploading chunk {ChunkHash} for file {FileName}",
                                 schedule.Id, hash, file.Name);
+
+                            // Compress the chunk (second pass over in-memory chunk stream)
+                            chunk.Seek(0, SeekOrigin.Begin);
+                            await using var compressed = new MemoryStream();
+                            await using (var brotli = new BrotliStream(compressed, CompressionLevel.Optimal, leaveOpen: true))
+                            {
+                                int r;
+                                while ((r = await chunk.ReadAsync(buffer.AsMemory(0, Math.Min(buffer.Length, ChunkSize)))) > 0)
+                                {
+                                    await brotli.WriteAsync(buffer.AsMemory(0, r));
+                                }
+                            }
+                            compressed.Seek(0, SeekOrigin.Begin);
+
+                            // Encrypt and upload the chunk
+                            using var encryptedStream = new MemoryStream();
+                            await _crypto.EncryptAsync(compressed, encryptedStream);
+                            encryptedStream.Seek(0, SeekOrigin.Begin);
                             await storage.UploadAsync(path, encryptedStream);
                             uploadedChunks.Add(hash);
+
+                            bool chunkRecorded = await _dbContext.UploadedHashes.AnyAsync(x => x.Hash == hash);
+                            if (!chunkRecorded)
+                            {
+                                var uploadedHash = new UploadedHash
+                                {
+                                    Hash = hash,
+                                    OriginalSize = chunkLength,
+                                    StoredSize = encryptedStream.Length,
+                                    ModuleId = schedule.Backup.StorageId,
+                                };
+                                await _dbContext.UploadedHashes.AddAsync(uploadedHash);
+                                await _dbContext.SaveChangesAsync();
+                            }
                         }
                         else
                         {
@@ -246,19 +261,6 @@ namespace Octockup.Server.Jobs
                                 schedule.Id, hash, file.Name);
                         }
 
-                        bool chunkRecorded = await _dbContext.UploadedHashes.AnyAsync(x => x.Hash == hash);
-                        if (!chunkRecorded)
-                        {
-                            var uploadedHash = new UploadedHash
-                            {
-                                Hash = hash,
-                                OriginalSize = chunkLength,
-                                StoredSize = encryptedStream.Length,
-                                ModuleId = schedule.Backup.StorageId,
-                            };
-                            await _dbContext.UploadedHashes.AddAsync(uploadedHash);
-                            await _dbContext.SaveChangesAsync();
-                        }
                         await report.SendAsync(counter, $"Uploading: {file.Name}", processedBytes: chunkLength);
 
                         chunkHashes.Add(hash);
