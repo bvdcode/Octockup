@@ -15,6 +15,7 @@ namespace Octockup.Server.Controllers
     public class SnapshotController(
         AppDbContext _dbContext,
         IStreamCipher _streamCipher,
+        ILogger<SnapshotController> _logger,
         IEnumerable<IBackupProvider> _providers) : ControllerBase
     {
         [Authorize]
@@ -55,6 +56,7 @@ namespace Octockup.Server.Controllers
             }
 
             var stream = new SnapshotConcatStream(
+                _logger,
                 storage,
                 hashes,
                 snapshotFile,

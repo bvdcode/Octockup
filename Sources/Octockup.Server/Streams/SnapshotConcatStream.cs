@@ -6,16 +6,12 @@ using Octockup.Server.Abstractions;
 namespace Octockup.Server.Streams
 {
     public sealed class SnapshotConcatStream(
-        IBackupStorage storage,
-        IReadOnlyList<string> hashes,
-        SnapshotFile snapshotFile,
-        CancellationToken cancellationToken = default) : Stream
+        ILogger _logger,
+        IBackupStorage _storage,
+        IReadOnlyList<string> _hashes,
+        SnapshotFile _snapshotFile,
+        CancellationToken _cancellationToken = default) : Stream
     {
-        private readonly IBackupStorage _storage = storage ?? throw new ArgumentNullException(nameof(storage));
-        private readonly IReadOnlyList<string> _hashes = hashes ?? throw new ArgumentNullException(nameof(hashes));
-        private readonly SnapshotFile _snapshotFile = snapshotFile ?? throw new ArgumentNullException(nameof(snapshotFile));
-        private readonly CancellationToken _cancellationToken = cancellationToken;
-
         private int _currentIndex = -1;
         private Stream? _currentChunkStream;
         private long _position;
@@ -44,7 +40,8 @@ namespace Octockup.Server.Streams
             }
 
             string hash = _hashes[_currentIndex];
-            string path = ScheduleHelpers.SplitHash(hash, storage.PathSeparator);
+            _logger.LogInformation("Loading chunk {Index}/{Total} with hash {Hash}", _currentIndex + 1, _hashes.Count, hash);
+            string path = ScheduleHelpers.SplitHash(hash, _storage.PathSeparator);
 
             bool? exists = await _storage.ExistsAsync(path).ConfigureAwait(false);
             if (exists != true)
@@ -76,9 +73,7 @@ namespace Octockup.Server.Streams
             }
         }
 
-        public override async ValueTask<int> ReadAsync(
-            Memory<byte> buffer,
-            CancellationToken cancellationToken = default)
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
         {
             if (_position >= Length)
             {
@@ -86,8 +81,7 @@ namespace Octockup.Server.Streams
             }
 
             int totalRead = 0;
-            using var linkedCts = CancellationTokenSource
-                .CreateLinkedTokenSource(_cancellationToken, cancellationToken);
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationToken, cancellationToken);
             var ct = linkedCts.Token;
 
             while (!buffer.IsEmpty)
