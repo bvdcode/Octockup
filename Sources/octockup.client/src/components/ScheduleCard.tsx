@@ -341,7 +341,7 @@ function ScheduleActions({
     <Box display="flex" flexDirection="column" gap={0.5} alignItems="center">
       <Tooltip
         title={statusLabel}
-        placement="top"
+        placement="left"
         onClick={() => {
           confirm({
             title: t("schedules.currentStatus"),
@@ -357,7 +357,7 @@ function ScheduleActions({
         </Box>
       </Tooltip>
 
-      <Tooltip title={t("schedules.deleteTooltip")} placement="top">
+      <Tooltip title={t("schedules.deleteTooltip")} placement="left">
         <span>
           <IconButton
             size="small"
@@ -370,7 +370,7 @@ function ScheduleActions({
         </span>
       </Tooltip>
       {item.status === BackupStatus.Failed ? (
-        <Tooltip title={t("schedules.tryAgainTooltip")} placement="top">
+        <Tooltip title={t("schedules.tryAgainTooltip")} placement="left">
           <span>
             <IconButton
               size="small"
@@ -383,7 +383,7 @@ function ScheduleActions({
           </span>
         </Tooltip>
       ) : (
-        <Tooltip title={t("schedules.stopTooltip")} placement="top">
+        <Tooltip title={t("schedules.stopTooltip")} placement="left">
           <span>
             <IconButton
               size="small"
