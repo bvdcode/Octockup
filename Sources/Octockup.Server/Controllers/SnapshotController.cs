@@ -1,4 +1,5 @@
 ﻿using Mapster;
+using System.IO.Compression;
 using Octockup.Server.Streams;
 using Microsoft.AspNetCore.Mvc;
 using Octockup.Server.Database;
@@ -7,7 +8,6 @@ using EasyExtensions.Abstractions;
 using Octockup.Server.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
-using System.IO.Compression;
 
 namespace Octockup.Server.Controllers
 {
@@ -65,8 +65,15 @@ namespace Octockup.Server.Controllers
 
             const string contentType = "application/octet-stream";
             Stream decryptedStream = await _streamCipher.DecryptAsync(stream);
-            BrotliStream decompressedStream = new(decryptedStream, CompressionMode.Decompress);
-            return File(decompressedStream, contentType, fileDownloadName: snapshotFile.Name);
+            BrotliStream decompressedStream = new(decryptedStream, CompressionMode.Decompress, leaveOpen: false);
+
+            var result = new FileStreamResult(decompressedStream, contentType)
+            {
+                FileDownloadName = snapshotFile.Name,
+                EnableRangeProcessing = true,
+            };
+
+            return result;
         }
 
 
