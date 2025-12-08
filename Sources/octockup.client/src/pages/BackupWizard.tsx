@@ -1,7 +1,6 @@
 import {
   Box,
   Card,
-  Chip,
   Paper,
   Stack,
   Alert,
@@ -269,19 +268,6 @@ export default function BackupWizard() {
                       </Button>
                     ) : null;
                   })()}
-              </Stack>
-              <Stack direction="row" spacing={1} flexWrap="wrap">
-                {ignoredPathsInput
-                  .split(/\r?\n/)
-                  .filter((x) => x.trim() !== "")
-                  .map((p) => (
-                    <Chip key={p} label={p} size="small" />
-                  ))}
-                {ignoredPathsInput.trim() === "" && (
-                  <Typography variant="caption" color="text.secondary">
-                    {t("backupWizard.noIgnoredPaths")}
-                  </Typography>
-                )}
               </Stack>
             </Stack>
           </Stack>
