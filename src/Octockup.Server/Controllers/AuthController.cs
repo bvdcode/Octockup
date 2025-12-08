@@ -163,5 +163,20 @@ namespace Octockup.Server.Controllers
                 RefreshToken = refreshToken,
             });
         }
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> LogoutAsync()
+        {
+            string refreshToken = Request.Cookies["refresh_token"] ?? string.Empty;
+            var foundToken = await _dbContext.RefreshTokens.FirstOrDefaultAsync(x => x.Token == refreshToken && x.RevokedAt == null);
+            if (foundToken != null)
+            {
+                foundToken.RevokedAt = DateTime.UtcNow;
+                _dbContext.RefreshTokens.Update(foundToken);
+                await _dbContext.SaveChangesAsync();
+            }
+            Response.Cookies.Delete("refresh_token");
+            return Ok("Logged out successfully.");
+        }
     }
 }
