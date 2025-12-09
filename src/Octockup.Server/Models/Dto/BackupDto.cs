@@ -11,5 +11,6 @@ namespace Octockup.Server.Models.Dto
         public ModuleDto Source { get; set; } = null!;
         public ModuleDto Storage { get; set; } = null!;
         public ICollection<SnapshotDto> Snapshots { get; set; } = [];
+        public ICollection<ScheduleDto> Schedules { get; set; } = [];
     }
 }

@@ -84,6 +84,7 @@ namespace Octockup.Server.Controllers
                 .Include(x => x.Source)
                 .Include(x => x.Storage)
                 .Include(x => x.Snapshots)
+                .Include(x => x.Schedules)
                 .Where(x => x.Source.UserId == userId)
                 .ProjectToType<BackupDto>()
                 .ToListAsync();
