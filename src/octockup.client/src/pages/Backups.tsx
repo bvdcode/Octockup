@@ -330,6 +330,9 @@ export default function BackupsPage() {
                                 new Date(b.completedAt!).getTime() -
                                 new Date(a.completedAt!).getTime(),
                             )[0];
+                          const completedSnapshots = b.snapshots.filter(
+                            (s) => s.completedAt,
+                          );
 
                           return (
                             <>
@@ -358,7 +361,7 @@ export default function BackupsPage() {
                                 sx={{ color: "text.secondary" }}
                               >
                                 {t("backups.snapshots", {
-                                  count: b.snapshots.length,
+                                  count: completedSnapshots.length,
                                 })}
                               </Typography>
                               {lastSnapshot && (
