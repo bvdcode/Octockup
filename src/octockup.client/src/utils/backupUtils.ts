@@ -28,7 +28,7 @@ export function getBackupOverallStatus(
 
   // Find all schedules for this backup from reports (real-time)
   const backupSchedules = Object.entries(scheduleToBackupMap)
-    .filter(([_, bId]) => bId === backupId)
+    .filter(([, bId]) => bId === backupId)
     .map(([scheduleId]) => scheduleReports[scheduleId])
     .filter(Boolean);
 
