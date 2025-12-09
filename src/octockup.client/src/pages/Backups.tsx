@@ -34,6 +34,7 @@ import { useSignalR } from "../hooks/useSignalR";
 import { BackupStatus } from "../types/api";
 import { formatRelativeTime, parseUtcDate } from "../utils/dateUtils";
 import { getBackupOverallStatus } from "../utils/backupUtils";
+import { EditableModuleTag } from "../components/EditableModuleTag";
 
 interface State {
   loading: boolean;
@@ -147,6 +148,13 @@ export default function BackupsPage() {
       connection.off("ScheduleReport", handler);
     };
   }, [connection, isConnected]);
+
+  const handleRename = async (backupId: string, newTag: string) => {
+    await backupsApi.rename(backupId, newTag);
+    setBackups((prev) =>
+      prev.map((b) => (b.id === backupId ? { ...b, tag: newTag } : b)),
+    );
+  };
 
   if (state.loading && backups.length === 0) {
     return (
@@ -277,9 +285,10 @@ export default function BackupsPage() {
                         gap={1}
                         minWidth={0}
                       >
-                        <Typography variant="subtitle1" noWrap title={b.tag}>
-                          {b.tag}
-                        </Typography>
+                        <EditableModuleTag
+                          tag={b.tag}
+                          onRename={(newTag) => handleRename(b.id, newTag)}
+                        />
                         <Divider orientation="vertical" flexItem />
                         <Typography
                           variant="caption"
@@ -295,7 +304,7 @@ export default function BackupsPage() {
                         t={t}
                       />
                     </Box>
-                    <Box display="flex" gap={2} mt={0.5}>
+                    <Box display="flex" alignItems="center" gap={1} flexWrap="wrap" mt={0.5}>
                       <Typography
                         variant="caption"
                         sx={{ color: "text.secondary" }}
@@ -305,84 +314,45 @@ export default function BackupsPage() {
                           relativeTime: formatRelativeTime(b.createdAt, t),
                         })}
                       </Typography>
-                      {b.snapshots &&
-                        b.snapshots.length > 0 &&
-                        (() => {
-                          const lastSnapshot = b.snapshots
-                            .filter((s) => s.completedAt)
-                            .sort(
-                              (a, b) =>
-                                new Date(b.completedAt!).getTime() -
-                                new Date(a.completedAt!).getTime(),
-                            )[0];
-                          if (lastSnapshot) {
-                            return (
-                              <Box display="flex" alignItems="center" gap={2}>
+                      {b.snapshots && b.snapshots.length > 0 && (() => {
+                        const lastSnapshot = b.snapshots
+                          .filter((s) => s.completedAt)
+                          .sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime())[0];
+                        const totalFiles = b.snapshots.reduce((sum, s) => sum + s.filesCount, 0);
+                        const totalSize = b.snapshots.reduce((sum, s) => sum + s.totalSize, 0);
+                        
+                        return (
+                          <>
+                            {lastSnapshot && (
+                              <>
                                 <Divider orientation="vertical" flexItem />
                                 <Typography
                                   variant="caption"
                                   sx={{ color: "text.secondary" }}
-                                  title={parseUtcDate(
-                                    lastSnapshot.completedAt,
-                                  )?.toLocaleString()}
+                                  title={parseUtcDate(lastSnapshot.completedAt)?.toLocaleString()}
                                 >
                                   {t("backups.lastBackup", {
-                                    relativeTime: formatRelativeTime(
-                                      lastSnapshot.completedAt,
-                                      t,
-                                    ),
+                                    relativeTime: formatRelativeTime(lastSnapshot.completedAt, t),
                                   })}
                                 </Typography>
-                              </Box>
-                            );
-                          }
-                          return null;
-                        })()}
+                              </>
+                            )}
+                            <Divider orientation="vertical" flexItem />
+                            <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                              {t("backups.snapshots", { count: b.snapshots.length })}
+                            </Typography>
+                            <Divider orientation="vertical" flexItem />
+                            <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                              {t("backups.totalFiles", { count: totalFiles })}
+                            </Typography>
+                            <Divider orientation="vertical" flexItem />
+                            <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                              {t("backups.totalSize", { size: formatSize(totalSize) })}
+                            </Typography>
+                          </>
+                        );
+                      })()}
                     </Box>
-                    {b.snapshots && b.snapshots.length > 0 && (
-                      <Box display="flex" gap={1}>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color: "text.secondary",
-                          }}
-                        >
-                          {t("backups.snapshots", {
-                            count: b.snapshots.length,
-                          })}
-                        </Typography>
-                        <Divider orientation="vertical" flexItem />
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color: "text.secondary",
-                          }}
-                        >
-                          {t("backups.totalFiles", {
-                            count: b.snapshots.reduce(
-                              (sum, s) => sum + s.filesCount,
-                              0,
-                            ),
-                          })}
-                        </Typography>
-                        <Divider orientation="vertical" flexItem />
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color: "text.secondary",
-                          }}
-                        >
-                          {t("backups.totalSize", {
-                            size: formatSize(
-                              b.snapshots.reduce(
-                                (sum, s) => sum + s.totalSize,
-                                0,
-                              ),
-                            ),
-                          })}
-                        </Typography>
-                      </Box>
-                    )}
                     {(() => {
                       // Find report for this backup using scheduleToBackupMap
                       const report = Object.entries(scheduleReports).find(

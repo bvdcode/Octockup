@@ -304,6 +304,13 @@ namespace Octockup.Server.Jobs
             await report.SendAsync(report.Processed, "Finalizing snapshot...");
             snapshot.CompletedAt = DateTime.UtcNow;
             await _dbContext.SaveChangesAsync();
+            snapshot.TotalSize = await _dbContext.SnapshotFiles
+                .Where(x => x.SnapshotId == snapshot.Id)
+                .SumAsync(x => (long?)x.Size) ?? 0L;
+            snapshot.FilesCount = await _dbContext.SnapshotFiles
+                .Where(x => x.SnapshotId == snapshot.Id)
+                .CountAsync();
+            await _dbContext.SaveChangesAsync();
         }
     }
 }

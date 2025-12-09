@@ -28,6 +28,13 @@ class BackupsApiClient {
       `/api/v1/backups/${encodeURIComponent(backupId)}`,
     );
   }
+
+  async rename(backupId: string, newTag: string): Promise<void> {
+    await this.axios().patch(
+      `/api/v1/backups/${encodeURIComponent(backupId)}/rename`,
+      { newTag },
+    );
+  }
 }
 
 export function useBackupsApi(): BackupsApiClient {
