@@ -64,10 +64,11 @@
   },
   "backupStatus": {
     "running": "Выполняется",
+    "failed": "Ошибка",
+    "warning": "Внимание",
     "scheduled": "Запланирован",
     "success": "Успешно",
-    "idle": "Неактивен",
-    "failed": "Ошибка"
+    "idle": "Неактивен"
   },
   "sources": {
     "title": "Ваши источники",

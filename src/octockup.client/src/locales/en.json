@@ -40,10 +40,11 @@
   },
   "backupStatus": {
     "running": "Running",
+    "failed": "Failed",
+    "warning": "Warning",
     "scheduled": "Scheduled",
     "success": "Success",
-    "idle": "Idle",
-    "failed": "Failed"
+    "idle": "Idle"
   },
   "sources": {
     "title": "Your Sources",

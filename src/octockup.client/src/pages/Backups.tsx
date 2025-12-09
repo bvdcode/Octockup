@@ -64,8 +64,9 @@ function BackupStatusChip({
 
   const statusColors = {
     running: "info",
-    scheduled: "warning",
     failed: "error",
+    warning: "warning",
+    scheduled: "warning",
     success: "success",
     idle: "default",
   } as const;
@@ -210,23 +211,37 @@ export default function BackupsPage() {
           {backups
             .slice()
             .sort((a, b) => {
-              // Find if backup has active schedule
-              const aHasActiveSchedule = Object.entries(scheduleReports).some(
-                ([scheduleId, r]) =>
-                  scheduleToBackupMap[scheduleId] === a.id &&
-                  r.status === BackupStatus.Running,
+              // Get statuses for both backups
+              const statusA = getBackupOverallStatus(
+                a,
+                scheduleToBackupMap,
+                scheduleReports,
               );
-              const bHasActiveSchedule = Object.entries(scheduleReports).some(
-                ([scheduleId, r]) =>
-                  scheduleToBackupMap[scheduleId] === b.id &&
-                  r.status === BackupStatus.Running,
+              const statusB = getBackupOverallStatus(
+                b,
+                scheduleToBackupMap,
+                scheduleReports,
               );
 
-              // Active backups first
-              if (aHasActiveSchedule && !bHasActiveSchedule) return -1;
-              if (!aHasActiveSchedule && bHasActiveSchedule) return 1;
+              // Define priority order (lower number = higher priority, shown first)
+              const priorityMap: Record<string, number> = {
+                running: 1,
+                failed: 2,
+                warning: 3,
+                scheduled: 4,
+                success: 5,
+                idle: 6,
+              };
 
-              // Then sort by creation date (newest first)
+              const priorityA = priorityMap[statusA] || 999;
+              const priorityB = priorityMap[statusB] || 999;
+
+              // Sort by priority
+              if (priorityA !== priorityB) {
+                return priorityA - priorityB;
+              }
+
+              // If same priority, sort by creation date (newest first)
               return (
                 new Date(b.createdAt || 0).getTime() -
                 new Date(a.createdAt || 0).getTime()
@@ -249,10 +264,12 @@ export default function BackupsPage() {
                   borderLeft: `3px solid ${
                     status === "running"
                       ? theme.palette.info.main
-                      : status === "scheduled"
-                      ? theme.palette.warning.main
                       : status === "failed"
                       ? theme.palette.error.main
+                      : status === "warning"
+                      ? theme.palette.warning.main
+                      : status === "scheduled"
+                      ? theme.palette.warning.light
                       : status === "success"
                       ? theme.palette.success.main
                       : theme.palette.grey[300]
