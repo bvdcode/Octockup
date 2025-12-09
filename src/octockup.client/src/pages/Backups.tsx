@@ -146,6 +146,17 @@ export default function BackupsPage() {
         ...prev,
         [report.scheduleId]: report,
       }));
+
+      // Update mapping if new schedule appeared
+      setScheduleToBackupMap((prev) => {
+        if (!prev[report.scheduleId]) {
+          return {
+            ...prev,
+            [report.scheduleId]: report.backupId,
+          };
+        }
+        return prev;
+      });
     };
 
     connection.on("ScheduleReport", handler);

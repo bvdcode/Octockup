@@ -104,6 +104,7 @@ export interface CreateScheduleRequest {
 
 export interface ScheduleReport {
   scheduleId: string;
+  backupId: string;
   timestamp: string;
   status: BackupStatus;
   message: string;
