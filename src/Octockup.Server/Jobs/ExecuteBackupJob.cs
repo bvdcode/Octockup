@@ -202,12 +202,12 @@ namespace Octockup.Server.Jobs
                             chunkLength += read;
                         }
                         string hash = Convert.ToHexString(chunkHasher.GetHashAndReset()).ToLowerInvariant();
+                        string shortHash = hash[^8..];
 
                         var alreadyUploaded = uploadedChunks.Contains(hash);
                         if (alreadyUploaded)
                         {
-                            _logger.LogInformation("Schedule {ScheduleId}: Chunk {ChunkHash} for file {FileName} already uploaded in previous snapshot, skipping upload",
-                                schedule.Id, hash, file.Name);
+                            _logger.LogInformation("Chunk {shortHash} for file {FileName} already uploaded in previous snapshot, skipping upload", shortHash, file.Name);
                             chunkHashes.Add(hash);
                             await report.SendAsync(counter, $"Processing: {file.Name}", processedBytes: chunkLength);
                             await chunk.DisposeAsync();
@@ -218,8 +218,8 @@ namespace Octockup.Server.Jobs
                         bool exists = await storage.ExistsAsync(path) ?? false;
                         if (!exists)
                         {
-                            _logger.LogInformation("Schedule {ScheduleId}: Uploading chunk {ChunkHash} for file {FileName}",
-                                schedule.Id, hash, file.Name);
+                            string size = $"{(chunkLength / (1024.0 * 1024.0)):F2} MB";
+                            _logger.LogInformation("Uploading chunk {shortHash} for file {FileName}, size: {size}", shortHash, file.Name, size);
 
                             // Compress the chunk (second pass over in-memory chunk stream)
                             chunk.Seek(0, SeekOrigin.Begin);
@@ -259,8 +259,7 @@ namespace Octockup.Server.Jobs
                         }
                         else
                         {
-                            _logger.LogInformation("Schedule {ScheduleId}: Chunk {ChunkHash} for file {FileName} already exists, skipping upload",
-                                schedule.Id, hash, file.Name);
+                            _logger.LogInformation("Chunk {shortHash} for file {FileName} already exists, skipping upload", shortHash, file.Name);
                         }
 
                         await report.SendAsync(counter, $"Uploading: {file.Name}", processedBytes: chunkLength);
