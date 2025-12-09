@@ -9,6 +9,7 @@ using EasyExtensions.Streams;
 using Octockup.Server.Models;
 using Octockup.Server.Helpers;
 using Octockup.Server.Database;
+using Octockup.Server.Collections;
 using EasyExtensions.Abstractions;
 using Octockup.Server.Models.Enums;
 using Microsoft.AspNetCore.SignalR;
@@ -16,7 +17,6 @@ using Octockup.Server.Abstractions;
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using EasyExtensions.Quartz.Attributes;
-using Octockup.Server.Collections;
 
 namespace Octockup.Server.Jobs
 {

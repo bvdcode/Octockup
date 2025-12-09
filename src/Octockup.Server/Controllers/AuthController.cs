@@ -13,6 +13,9 @@ using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authorization;
 using EasyExtensions.AspNetCore.Extensions;
 using EasyExtensions.AspNetCore.Authorization.Abstractions;
+using EasyExtensions.Models;
+using EasyExtensions.AspNetCore.Authorization.Models.Dto;
+using EasyExtensions.EntityFrameworkCore.Database;
 
 namespace Octockup.Server.Controllers
 {
@@ -69,7 +72,7 @@ namespace Octockup.Server.Controllers
         }
 
         [HttpPost("refresh")]
-        public async Task<AuthResponse> RefreshTokenAsync([FromBody] RefreshRequest request)
+        public async Task<TokenPairResponseDto> RefreshTokenAsync([FromBody] RefreshTokenRequestDto request)
         {
             if (string.IsNullOrEmpty(request.RefreshToken))
             {
@@ -81,7 +84,7 @@ namespace Octockup.Server.Controllers
             var foundToken = _dbContext.RefreshTokens.FirstOrDefault(x => x.Token == request.RefreshToken && x.RevokedAt == null);
             if (foundToken == null)
             {
-                return new AuthResponse();
+                return new TokenPairResponseDto();
             }
             string accessToken = _tokens.CreateToken(x => x.Add(JwtRegisteredClaimNames.Sub, foundToken.UserId.ToString()));
             string refreshToken = StringHelpers.CreateRandomString(64);
@@ -101,7 +104,7 @@ namespace Octockup.Server.Controllers
                 SameSite = SameSiteMode.Strict,
                 Expires = DateTimeOffset.UtcNow.AddDays(30),
             });
-            return new AuthResponse()
+            return new TokenPairResponseDto()
             {
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
@@ -109,7 +112,7 @@ namespace Octockup.Server.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> LoginAsync([FromBody] LoginRequest request)
+        public async Task<IActionResult> LoginAsync([FromBody] LoginRequestDto request)
         {
             var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
             if (user == null)
@@ -157,7 +160,7 @@ namespace Octockup.Server.Controllers
                 SameSite = SameSiteMode.Strict,
                 Expires = DateTimeOffset.UtcNow.AddDays(30),
             });
-            return Ok(new AuthResponse()
+            return Ok(new TokenPairResponseDto()
             {
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
