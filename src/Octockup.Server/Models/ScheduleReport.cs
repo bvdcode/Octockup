@@ -15,7 +15,7 @@ namespace Octockup.Server.Models
         private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
         private readonly Timer _periodicSendTimer;
         private readonly SemaphoreSlim _sendLock = new(1, 1);
-        private DateTime _lastSendTime = DateTime.UtcNow;
+        private const int MinUpdateIntervalMs = 500;
         private long _pendingBytes;
         private bool _disposed;
 
@@ -37,7 +37,7 @@ namespace Octockup.Server.Models
             ScheduleId = scheduleId;
             BackupId = backupId;
             _hubContext = hubContext;
-            _periodicSendTimer = new Timer(async _ => await SendPendingUpdatesAsync(), null, TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(200));
+            _periodicSendTimer = new Timer(async _ => await SendPendingUpdatesAsync(), null, TimeSpan.FromMilliseconds(MinUpdateIntervalMs), TimeSpan.FromMilliseconds(MinUpdateIntervalMs));
         }
 
         public void UpdateProgress(int processedFiles, string message, long processedBytes = 0)
@@ -64,12 +64,6 @@ namespace Octockup.Server.Models
                 return;
             }
 
-            var timeSinceLastSend = DateTime.UtcNow - _lastSendTime;
-            if (timeSinceLastSend.TotalMilliseconds < 200)
-            {
-                return;
-            }
-
             await SendNowAsync();
         }
 
@@ -91,8 +85,6 @@ namespace Octockup.Server.Models
 
                 Timestamp = DateTime.UtcNow;
                 Speed = ProcessedBytes / Math.Max(1, _stopwatch.Elapsed.TotalSeconds);
-                _lastSendTime = DateTime.UtcNow;
-
                 await _hubContext.Clients.User(UserId.ToString()).SendAsync("ScheduleReport", this);
             }
             finally
