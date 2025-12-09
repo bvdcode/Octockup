@@ -37,7 +37,7 @@ namespace Octockup.Server.Models
             ScheduleId = scheduleId;
             BackupId = backupId;
             _hubContext = hubContext;
-            _periodicSendTimer = new Timer(async _ => await SendPendingUpdatesAsync(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+            _periodicSendTimer = new Timer(async _ => await SendPendingUpdatesAsync(), null, TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(200));
         }
 
         public void UpdateProgress(int processedFiles, string message, long processedBytes = 0)
@@ -65,7 +65,7 @@ namespace Octockup.Server.Models
             }
 
             var timeSinceLastSend = DateTime.UtcNow - _lastSendTime;
-            if (timeSinceLastSend.TotalSeconds < 1)
+            if (timeSinceLastSend.TotalMilliseconds < 200)
             {
                 return;
             }
