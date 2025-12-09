@@ -118,7 +118,7 @@ export default function SnapshotsPage() {
                   <TableCell component="th" scope="row">
                     {snapshot.completedAt
                       ? new Date(snapshot.completedAt).toLocaleString()
-                      : t("snapshots.inProgress")}
+                      : t("snapshots.never")}
                   </TableCell>
                   <TableCell align="right">
                     {snapshot.filesCount.toLocaleString()}

@@ -4,20 +4,19 @@ import {
   Stack,
   Alert,
   Button,
+  Divider,
   Tooltip,
   Typography,
   IconButton,
   CardContent,
   CircularProgress,
-  Divider,
 } from "@mui/material";
 import {
   PlayArrow,
-  DeleteOutline,
-  ArrowRightAlt,
-  AddCircleOutline,
-  ArrowDownward,
   BackupTable,
+  ArrowDownward,
+  DeleteOutline,
+  AddCircleOutline,
 } from "@mui/icons-material";
 import { useEffect, useState } from "react";
 import { confirm } from "material-ui-confirm";
@@ -25,10 +24,10 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import type { BackupItem } from "../types/api";
 import { useBackupsApi } from "../api/backupsApi";
+import { formatSize } from "../utils/formatUtils";
 import { useSchedulesApi } from "../api/schedulesApi";
 import { useSnapshotsApi } from "../api/snapshotsApi";
 import { getSourceIcon } from "../constants/sourceIcons";
-import { formatSize } from "../utils/formatUtils";
 import { useSnapshotsStore } from "../stores/snapshotsStore";
 
 interface State {
@@ -55,7 +54,7 @@ export default function BackupsPage() {
 
   useEffect(() => {
     let active = true;
-    
+
     // Load backups immediately
     backupsApi
       .list()
@@ -88,7 +87,7 @@ export default function BackupsPage() {
           error: e?.message || "Failed to load backups",
         }));
       });
-      
+
     return () => {
       active = false;
     };
@@ -157,10 +156,7 @@ export default function BackupsPage() {
                   display="flex"
                   alignItems="center"
                   justifyContent="center"
-                  flexDirection={{
-                    xs: "column",
-                    sm: "row",
-                  }}
+                  flexDirection="column"
                 >
                   <Box
                     fontSize={36}
@@ -174,18 +170,7 @@ export default function BackupsPage() {
                   >
                     {getSourceIcon(b.source.backupModuleId)}
                   </Box>
-                  <ArrowRightAlt
-                    sx={{
-                      display: { xs: "none", sm: "block" },
-                      mx: 1,
-                      my: { xs: 1, sm: 0 },
-                    }}
-                  />
-                  <ArrowDownward
-                    sx={{
-                      display: { xs: "block", sm: "none" },
-                    }}
-                  />
+                  <ArrowDownward />
                   <Box
                     fontSize={36}
                     sx={{

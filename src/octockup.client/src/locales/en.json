@@ -111,7 +111,8 @@
     "completedAt": "Completed At",
     "filesCount": "Files",
     "totalSize": "Size",
-    "inProgress": "In progress..."
+    "inProgress": "In progress...",
+    "never": "Never"
   },
   "snapshotFiles": {
     "title": "Snapshot Files",

@@ -111,7 +111,8 @@
     "completedAt": "Завершён",
     "filesCount": "Файлов",
     "totalSize": "Размер",
-    "inProgress": "В процессе..."
+    "inProgress": "В процессе...",
+    "never": "Никогда"
   },
   "snapshotFiles": {
     "title": "Файлы снапшота",
