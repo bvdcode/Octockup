@@ -44,7 +44,7 @@ export function EditableModuleTag({ tag, onRename }: EditableModuleTagProps) {
         }}
         sx={{
           textAlign: "center",
-          maxWidth: 140,
+          maxWidth: 250,
           fontSize: "0.875rem",
           fontWeight: 500,
           border: "1px solid",
@@ -65,7 +65,7 @@ export function EditableModuleTag({ tag, onRename }: EditableModuleTagProps) {
       title={tag}
       sx={{
         textAlign: "center",
-        maxWidth: 140,
+        maxWidth: 250,
         cursor: "text",
       }}
       onDoubleClick={(e) => {
