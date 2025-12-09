@@ -592,7 +592,6 @@ export default function BackupsPage() {
                                   backupId: b.id,
                                   startAt: new Date().toISOString(),
                                 });
-                                navigate("/schedules");
                               } finally {
                                 setState((s) => ({ ...s, runningId: null }));
                               }
