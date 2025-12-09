@@ -11,6 +11,7 @@ namespace Octockup.Server.Database
         public DateTime? CompletedAt { get; set; }
         public virtual Backup Backup { get; set; } = null!;
         public long TotalSize { get; set; }
+        public int FilesCount { get; set; }
 
         public ICollection<SnapshotFile> Files { get; set; } = [];
     }

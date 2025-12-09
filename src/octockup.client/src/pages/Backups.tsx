@@ -330,14 +330,6 @@ export default function BackupsPage() {
                                 new Date(b.completedAt!).getTime() -
                                 new Date(a.completedAt!).getTime(),
                             )[0];
-                          const totalFiles = b.snapshots.reduce(
-                            (sum, s) => sum + s.filesCount,
-                            0,
-                          );
-                          const totalSize = b.snapshots.reduce(
-                            (sum, s) => sum + s.totalSize,
-                            0,
-                          );
 
                           return (
                             <>
@@ -369,22 +361,28 @@ export default function BackupsPage() {
                                   count: b.snapshots.length,
                                 })}
                               </Typography>
-                              <Divider orientation="vertical" flexItem />
-                              <Typography
-                                variant="caption"
-                                sx={{ color: "text.secondary" }}
-                              >
-                                {t("backups.totalFiles", { count: totalFiles })}
-                              </Typography>
-                              <Divider orientation="vertical" flexItem />
-                              <Typography
-                                variant="caption"
-                                sx={{ color: "text.secondary" }}
-                              >
-                                {t("backups.totalSize", {
-                                  size: formatSize(totalSize),
-                                })}
-                              </Typography>
+                              {lastSnapshot && (
+                                <>
+                                  <Divider orientation="vertical" flexItem />
+                                  <Typography
+                                    variant="caption"
+                                    sx={{ color: "text.secondary" }}
+                                  >
+                                    {t("backups.totalFiles", {
+                                      count: lastSnapshot.filesCount,
+                                    })}
+                                  </Typography>
+                                  <Divider orientation="vertical" flexItem />
+                                  <Typography
+                                    variant="caption"
+                                    sx={{ color: "text.secondary" }}
+                                  >
+                                    {t("backups.totalSize", {
+                                      size: formatSize(lastSnapshot.totalSize),
+                                    })}
+                                  </Typography>
+                                </>
+                              )}
                             </>
                           );
                         })()}

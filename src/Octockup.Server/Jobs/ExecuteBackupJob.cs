@@ -289,6 +289,8 @@ namespace Octockup.Server.Jobs
                         LastModified = file.LastModified,
                     };
                     await _dbContext.SnapshotFiles.AddAsync(snapshotFile);
+                    snapshot.TotalSize += snapshotFile.Size;
+                    snapshot.FilesCount += 1;
                     await _dbContext.SaveChangesAsync();
 
                     _logger.LogInformation("Schedule {ScheduleId}: {Message} ({Processed}/{Total})",
