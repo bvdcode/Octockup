@@ -142,10 +142,38 @@ export default function BackupsPage() {
     if (!connection || !isConnected) return;
 
     const handler = (report: ScheduleReport) => {
-      setScheduleReports((prev) => ({
-        ...prev,
-        [report.scheduleId]: report,
-      }));
+      setScheduleReports((prev) => {
+        const prevReport = prev[report.scheduleId];
+        
+        // If status changed from Running to Completed/Failed, reload backups
+        if (
+          prevReport?.status === BackupStatus.Running &&
+          report.status !== BackupStatus.Running
+        ) {
+          // Reload backups after a short delay to ensure backend updated
+          setTimeout(() => {
+            backupsApi.list().then((backupList) => {
+              setBackups(backupList);
+              
+              // Update mapping
+              const mapping: Record<string, string> = {};
+              backupList.forEach((backup) => {
+                backup.schedules?.forEach((schedule) => {
+                  mapping[schedule.id] = schedule.backupId;
+                });
+              });
+              setScheduleToBackupMap(mapping);
+            }).catch(() => {
+              // Silent fail
+            });
+          }, 500);
+        }
+
+        return {
+          ...prev,
+          [report.scheduleId]: report,
+        };
+      });
 
       // Update mapping if new schedule appeared
       setScheduleToBackupMap((prev) => {
@@ -164,7 +192,7 @@ export default function BackupsPage() {
     return () => {
       connection.off("ScheduleReport", handler);
     };
-  }, [connection, isConnected]);
+  }, [connection, isConnected, backupsApi]);
 
   const handleRename = async (backupId: string, newTag: string) => {
     await backupsApi.rename(backupId, newTag);
