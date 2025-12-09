@@ -132,6 +132,12 @@ namespace Octockup.Server.Jobs
                 .Distinct()
                 .ToHashSet();
 
+            // Cache all previous snapshot files by path
+            var previousFiles = await _dbContext.SnapshotFiles
+                .AsNoTracking()
+                .Where(x => x.Snapshot.BackupId == schedule.BackupId)
+                .ToDictionaryAsync(x => x.Path);
+
             int counter = 0;
             CheckIfStopped(schedule.Id);
             foreach (var file in loader)
@@ -147,10 +153,7 @@ namespace Octockup.Server.Jobs
                 }
 
                 CheckIfStopped(schedule.Id);
-                var foundFile = await _dbContext.SnapshotFiles
-                    .AsNoTracking()
-                    .Where(x => x.Snapshot.BackupId == schedule.BackupId)
-                    .FirstOrDefaultAsync(x => x.Path == file.Path);
+                previousFiles.TryGetValue(file.Path, out var foundFile);
                 if (foundFile != null && foundFile.Hashsum != null && file.Size == foundFile.Size && file.LastModified == foundFile.LastModified)
                 {
                     _logger.LogInformation("Schedule {ScheduleId}: File {FileName} unchanged since last snapshot, skipping",
