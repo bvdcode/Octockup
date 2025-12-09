@@ -42,7 +42,7 @@ class BackupsApiClient {
   ): Promise<void> {
     await this.axios().patch(
       `/api/v1/backups/${encodeURIComponent(backupId)}/ignored-paths`,
-      { ignoredPaths },
+      ignoredPaths,
     );
   }
 }
