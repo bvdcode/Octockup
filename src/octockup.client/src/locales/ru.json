@@ -162,6 +162,7 @@
     "deleteText": "Действие необратимо!",
     "deleteTooltip": "Удалить бэкап",
     "runOnce": "Запустить разово",
+    "stop": "Остановить бэкап",
     "ignoredPaths": "Игнорируемые пути",
     "modulesTitle": "Модули",
     "noModules": "Нет модулей",

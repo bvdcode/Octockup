@@ -138,6 +138,7 @@
     "deleteText": "This action is permanent!",
     "deleteTooltip": "Delete backup",
     "runOnce": "Run once",
+    "stop": "Stop backup",
     "ignoredPaths": "Ignored paths",
     "modulesTitle": "Modules",
     "noModules": "No modules available",

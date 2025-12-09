@@ -20,6 +20,7 @@ import {
   DeleteOutline,
   AddCircleOutline,
   FilterAlt,
+  StopCircle,
 } from "@mui/icons-material";
 import { useEffect, useState } from "react";
 import { confirm } from "material-ui-confirm";
@@ -41,6 +42,7 @@ interface State {
   loading: boolean;
   deletingId: string | null;
   runningId: string | null;
+  cancelingId: string | null;
 }
 
 interface BackupStatusChipProps {
@@ -91,6 +93,7 @@ export default function BackupsPage() {
     loading: true,
     deletingId: null,
     runningId: null,
+    cancelingId: null,
   });
   const [backups, setBackups] = useState<BackupItem[]>([]);
   const [scheduleReports, setScheduleReports] = useState<
@@ -542,39 +545,68 @@ export default function BackupsPage() {
                         <FilterAlt color="info" />
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title={t("backups.runOnce")} placement="top">
-                      <IconButton
-                        size="small"
-                        aria-label={t("backups.runOnce")}
-                        disabled={
-                          state.runningId === b.id ||
-                          Object.entries(scheduleReports).some(
-                            ([scheduleId, r]) =>
-                              scheduleToBackupMap[scheduleId] === b.id &&
-                              r.status === BackupStatus.Running,
-                          )
-                        }
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          try {
-                            setState((s) => ({ ...s, runningId: b.id }));
-                            await schedulesApi.create({
-                              backupId: b.id,
-                              startAt: new Date().toISOString(),
-                            });
-                            navigate("/schedules");
-                          } finally {
-                            setState((s) => ({ ...s, runningId: null }));
-                          }
-                        }}
-                      >
-                        {state.runningId === b.id ? (
-                          <CircularProgress size={20} />
-                        ) : (
-                          <PlayArrow color="success" />
-                        )}
-                      </IconButton>
-                    </Tooltip>
+                    {(() => {
+                      // Find running schedule for this backup
+                      const runningSchedule = Object.entries(scheduleReports).find(
+                        ([scheduleId, r]) =>
+                          scheduleToBackupMap[scheduleId] === b.id &&
+                          r.status === BackupStatus.Running,
+                      );
+                      const isRunning = !!runningSchedule;
+
+                      return isRunning ? (
+                        <Tooltip title={t("backups.stop")} placement="top">
+                          <IconButton
+                            size="small"
+                            aria-label={t("backups.stop")}
+                            disabled={state.cancelingId === b.id}
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              const scheduleId = runningSchedule[0];
+                              setState((s) => ({ ...s, cancelingId: b.id }));
+                              try {
+                                await schedulesApi.cancel(scheduleId);
+                              } finally {
+                                setState((s) => ({ ...s, cancelingId: null }));
+                              }
+                            }}
+                          >
+                            {state.cancelingId === b.id ? (
+                              <CircularProgress size={20} />
+                            ) : (
+                              <StopCircle color="error" />
+                            )}
+                          </IconButton>
+                        </Tooltip>
+                      ) : (
+                        <Tooltip title={t("backups.runOnce")} placement="top">
+                          <IconButton
+                            size="small"
+                            aria-label={t("backups.runOnce")}
+                            disabled={state.runningId === b.id}
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              try {
+                                setState((s) => ({ ...s, runningId: b.id }));
+                                await schedulesApi.create({
+                                  backupId: b.id,
+                                  startAt: new Date().toISOString(),
+                                });
+                                navigate("/schedules");
+                              } finally {
+                                setState((s) => ({ ...s, runningId: null }));
+                              }
+                            }}
+                          >
+                            {state.runningId === b.id ? (
+                              <CircularProgress size={20} />
+                            ) : (
+                              <PlayArrow color="success" />
+                            )}
+                          </IconButton>
+                        </Tooltip>
+                      );
+                    })()}
                     <Tooltip title={t("backups.deleteTooltip")} placement="top">
                       <IconButton
                         size="small"
