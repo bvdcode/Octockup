@@ -24,19 +24,21 @@ export function getBackupOverallStatus(
   scheduleToBackupMap: Record<string, string>,
   scheduleReports: Record<string, ScheduleReport>,
 ): BackupOverallStatus {
-  const backupId = backup.id;
+  // Priority 1: Check for running schedules from backup.schedules OR scheduleReports
+  const hasRunningInSchedules = (backup.schedules || []).some(
+    (schedule) => schedule.status === BackupStatus.Running,
+  );
 
-  // Find all schedules for this backup from reports (real-time)
   const backupSchedules = Object.entries(scheduleToBackupMap)
-    .filter(([, bId]) => bId === backupId)
+    .filter(([, bId]) => bId === backup.id)
     .map(([scheduleId]) => scheduleReports[scheduleId])
     .filter(Boolean);
 
-  // Priority 1: Check for running schedules (highest priority)
-  const hasRunning = backupSchedules.some(
+  const hasRunningInReports = backupSchedules.some(
     (report) => report.status === BackupStatus.Running,
   );
-  if (hasRunning) {
+
+  if (hasRunningInSchedules || hasRunningInReports) {
     return "running";
   }
 
