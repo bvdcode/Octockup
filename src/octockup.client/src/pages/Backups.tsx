@@ -229,10 +229,29 @@ export default function BackupsPage() {
                     </Box>
                   </Box>
                   <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Box display="flex" alignItems="center" gap={1} mb={0.5}>
-                      <Typography variant="subtitle1" noWrap title={b.tag}>
-                        {b.tag}
-                      </Typography>
+                    <Box
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="space-between"
+                      gap={1}
+                    >
+                      <Box
+                        display="flex"
+                        alignItems="center"
+                        gap={1}
+                        minWidth={0}
+                      >
+                        <Typography variant="subtitle1" noWrap title={b.tag}>
+                          {b.tag}
+                        </Typography>
+                        <Divider orientation="vertical" flexItem />
+                        <Typography
+                          variant="caption"
+                          sx={{ color: "text.secondary" }}
+                        >
+                          {b.source.tag} → {b.storage.tag}
+                        </Typography>
+                      </Box>
                       {(() => {
                         const status = getBackupOverallStatus(
                           b.id,
@@ -255,12 +274,6 @@ export default function BackupsPage() {
                         );
                       })()}
                     </Box>
-                    <Typography
-                      variant="caption"
-                      sx={{ color: "text.secondary" }}
-                    >
-                      {b.source.tag} → {b.storage.tag}
-                    </Typography>
                     <Box display="flex" gap={2} mt={0.5}>
                       <Typography
                         variant="caption"
