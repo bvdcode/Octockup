@@ -21,7 +21,8 @@ export function parseUtcDate(
 }
 
 /**
- * Formats a date as a relative time string (e.g., "2 minutes ago", "yesterday", "last week")
+ * Formats a date as a relative time string (e.g., "2 minutes ago", "in 5 minutes", "yesterday", "tomorrow")
+ * Works for both past and future dates
  */
 export function formatRelativeTime(date: Date | string | null | undefined, t: (key: string, options?: any) => string): string {
   if (!date) return t("common.never");
@@ -30,30 +31,56 @@ export function formatRelativeTime(date: Date | string | null | undefined, t: (k
   if (!dateObj) return t("common.never");
   
   const now = new Date();
-  const diffMs = now.getTime() - dateObj.getTime();
-  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMs = dateObj.getTime() - now.getTime();
+  const isPast = diffMs < 0;
+  const absDiffMs = Math.abs(diffMs);
+  
+  const diffSeconds = Math.floor(absDiffMs / 1000);
   const diffMinutes = Math.floor(diffSeconds / 60);
   const diffHours = Math.floor(diffMinutes / 60);
   const diffDays = Math.floor(diffHours / 24);
+  const diffWeeks = Math.floor(diffDays / 7);
+  const diffMonths = Math.floor(diffDays / 30);
+  const diffYears = Math.floor(diffDays / 365);
   
+  // Very soon (less than 1 minute)
   if (diffSeconds < 60) {
-    return t("time.justNow");
-  } else if (diffMinutes < 60) {
-    return t("time.minutesAgo", { count: diffMinutes });
+    return isPast ? t("time.justNow") : t("time.soon");
+  }
+  
+  // Past times
+  if (isPast) {
+    if (diffMinutes < 60) {
+      return t("time.minutesAgo", { count: diffMinutes });
+    } else if (diffHours < 24) {
+      return t("time.hoursAgo", { count: diffHours });
+    } else if (diffDays === 1) {
+      return t("time.yesterday");
+    } else if (diffDays < 7) {
+      return t("time.daysAgo", { count: diffDays });
+    } else if (diffWeeks < 4) {
+      return diffWeeks === 1 ? t("time.weeksAgo", { count: 1 }) : t("time.weeksAgo", { count: diffWeeks });
+    } else if (diffMonths < 12) {
+      return diffMonths === 1 ? t("time.monthsAgo", { count: 1 }) : t("time.monthsAgo", { count: diffMonths });
+    } else {
+      return diffYears === 1 ? t("time.yearsAgo", { count: 1 }) : t("time.yearsAgo", { count: diffYears });
+    }
+  }
+  
+  // Future times
+  if (diffMinutes < 60) {
+    return t("time.inMinutes", { count: diffMinutes });
   } else if (diffHours < 24) {
-    return t("time.hoursAgo", { count: diffHours });
+    return t("time.inHours", { count: diffHours });
   } else if (diffDays === 1) {
-    return t("time.yesterday");
+    return t("time.tomorrow");
   } else if (diffDays < 7) {
-    return t("time.daysAgo", { count: diffDays });
-  } else if (diffDays < 30) {
-    const weeks = Math.floor(diffDays / 7);
-    return t("time.weeksAgo", { count: weeks });
-  } else if (diffDays < 365) {
-    const months = Math.floor(diffDays / 30);
-    return t("time.monthsAgo", { count: months });
+    return t("time.inDays", { count: diffDays });
+  } else if (diffWeeks < 4) {
+    return diffWeeks === 1 ? t("time.inWeeks", { count: 1 }) : t("time.inWeeks", { count: diffWeeks });
+  } else if (diffMonths < 12) {
+    return diffMonths === 1 ? t("time.inMonths", { count: 1 }) : t("time.inMonths", { count: diffMonths });
   } else {
-    const years = Math.floor(diffDays / 365);
-    return t("time.yearsAgo", { count: years });
+    return diffYears === 1 ? t("time.inYears", { count: 1 }) : t("time.inYears", { count: diffYears });
   }
 }

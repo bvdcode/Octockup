@@ -18,6 +18,37 @@ namespace Octockup.Server.Controllers
     public class BackupController(AppDbContext _dbContext) : ControllerBase
     {
         [Authorize]
+        [HttpPatch("/api/v1/backups/{backupId:guid}/rename")]
+        public async Task<IActionResult> RenameBackup([FromRoute] Guid backupId, [FromBody] RenameModuleRequest request)
+        {
+            var backup = await _dbContext.Backups.FindAsync(backupId);
+            if (backup == null)
+            {
+                return this.ApiNotFound("Backup not found: " + backupId);
+            }
+            var userId = User.GetUserId();
+            var source = await _dbContext.Modules.FirstOrDefaultAsync(m => m.Id == backup.SourceId && m.UserId == userId && m.Destination == ModuleDestination.Source);
+            if (source == null)
+            {
+                return this.ApiNotFound("Source module not found for backup: " + backupId);
+            }
+            var storage = await _dbContext.Modules.FirstOrDefaultAsync(m => m.Id == backup.StorageId && m.UserId == userId && m.Destination == ModuleDestination.Target);
+            if (storage == null)
+            {
+                return this.ApiNotFound("Storage module not found for backup: " + backupId);
+            }
+            var existsTag = await _dbContext.Backups.AnyAsync(b => b.Tag == request.NewTag && b.Id != backupId);
+            if (existsTag)
+            {
+                return this.ApiBadRequest("Tag already exists: " + request.NewTag);
+            }
+            backup.Tag = request.NewTag;
+            _dbContext.Backups.Update(backup);
+            await _dbContext.SaveChangesAsync();
+            return Ok(new { message = "Backup renamed successfully." });
+        }
+
+        [Authorize]
         [HttpGet("/api/v1/backups")]
         public async Task<IEnumerable<BackupDto>> GetUserBackups()
         {

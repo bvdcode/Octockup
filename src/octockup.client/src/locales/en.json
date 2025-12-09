@@ -9,6 +9,7 @@
   },
   "time": {
     "justNow": "just now",
+    "soon": "soon",
     "minutesAgo_one": "{{count}} minute ago",
     "minutesAgo_other": "{{count}} minutes ago",
     "hoursAgo_one": "{{count}} hour ago",
@@ -21,7 +22,20 @@
     "monthsAgo_one": "last month",
     "monthsAgo_other": "{{count}} months ago",
     "yearsAgo_one": "last year",
-    "yearsAgo_other": "{{count}} years ago"
+    "yearsAgo_other": "{{count}} years ago",
+    "inMinutes_one": "in {{count}} minute",
+    "inMinutes_other": "in {{count}} minutes",
+    "inHours_one": "in {{count}} hour",
+    "inHours_other": "in {{count}} hours",
+    "tomorrow": "tomorrow",
+    "inDays_one": "in {{count}} day",
+    "inDays_other": "in {{count}} days",
+    "inWeeks_one": "next week",
+    "inWeeks_other": "in {{count}} weeks",
+    "inMonths_one": "next month",
+    "inMonths_other": "in {{count}} months",
+    "inYears_one": "next year",
+    "inYears_other": "in {{count}} years"
   },
   "backupStatus": {
     "running": "Running",
