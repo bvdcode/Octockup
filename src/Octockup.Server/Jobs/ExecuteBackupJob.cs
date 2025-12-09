@@ -235,9 +235,11 @@ namespace Octockup.Server.Jobs
                             compressed.Seek(0, SeekOrigin.Begin);
 
                             // Encrypt and upload the chunk
+                            long storedSize;
                             using var encryptedStream = new MemoryStream();
                             await _crypto.EncryptAsync(compressed, encryptedStream);
                             encryptedStream.Seek(0, SeekOrigin.Begin);
+                            storedSize = encryptedStream.Length;
                             await storage.UploadAsync(path, encryptedStream);
                             uploadedChunks.Add(hash);
 
@@ -248,7 +250,7 @@ namespace Octockup.Server.Jobs
                                 {
                                     Hash = hash,
                                     OriginalSize = chunkLength,
-                                    StoredSize = encryptedStream.Length,
+                                    StoredSize = storedSize,
                                     ModuleId = schedule.Backup.StorageId,
                                 };
                                 await _dbContext.UploadedHashes.AddAsync(uploadedHash);
