@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Octockup.Server.Models
 {
-    public class ScheduleReport(Guid userId, Guid scheduleId, Guid backupId, IHubContext<EventHub> _hubContext)
+    public class ScheduleReport(Guid userId, Guid scheduleId, Guid backupId, IHubContext<EventHub> _hubContext) : IAsyncDisposable
     {
         public long ProcessedBytes { get; private set; }
         public Guid UserId { get; } = userId;
@@ -24,6 +24,33 @@ namespace Octockup.Server.Models
         public int Total { get; set; }
 
         private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
+        private readonly CancellationTokenSource _backgroundTaskCts = new();
+        private Task? _backgroundTask;
+
+        public void StartBackgroundReporting()
+        {
+            _backgroundTask = BackgroundReportingTask(_backgroundTaskCts.Token);
+        }
+
+        private async Task BackgroundReportingTask(CancellationToken cancellationToken)
+        {
+            try
+            {
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    await Task.Delay(500, cancellationToken);
+                    if (!cancellationToken.IsCancellationRequested)
+                    {
+                        Speed = ProcessedBytes / Math.Max(1, _stopwatch.Elapsed.TotalSeconds);
+                        await _hubContext.Clients.User(UserId.ToString()).SendAsync("ScheduleReport", this, cancellationToken);
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when disposing
+            }
+        }
 
         public async Task SendAsync(int processedFiles, string message, long processedBytes = 0, ScheduleStatus status = ScheduleStatus.Running)
         {
@@ -37,6 +64,24 @@ namespace Octockup.Server.Models
             }
             Speed = ProcessedBytes / Math.Max(1, _stopwatch.Elapsed.TotalSeconds);
             await _hubContext.Clients.User(UserId.ToString()).SendAsync("ScheduleReport", this);
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            _backgroundTaskCts.Cancel();
+            if (_backgroundTask != null)
+            {
+                try
+                {
+                    await _backgroundTask;
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected
+                }
+            }
+            _backgroundTaskCts.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

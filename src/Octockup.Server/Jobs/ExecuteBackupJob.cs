@@ -46,6 +46,7 @@ namespace Octockup.Server.Jobs
             }
             Guid userId = next.Backup.Source.UserId;
             ScheduleReport report = new(userId, next.Id, next.BackupId, _hubContext);
+            report.StartBackgroundReporting();
 
             try
             {
@@ -136,7 +137,7 @@ namespace Octockup.Server.Jobs
             {
                 counter++;
                 report.Total = loader.Total;
-                report.UpdateProgress(counter, $"Processing: {file.Name}");
+                await report.SendAsync(counter, $"Processing: {file.Name}");
                 if (schedule.Backup.IgnoredPaths != null && ScheduleHelpers.IsPathIgnored(file.Path, file.Name, schedule.Backup.IgnoredPaths))
                 {
                     _logger.LogInformation("Schedule {ScheduleId}: File {FileName} is ignored by path rules, skipping",
@@ -166,7 +167,7 @@ namespace Octockup.Server.Jobs
                     await _dbContext.SnapshotFiles.AddAsync(snapshotFile);
                     await _dbContext.SaveChangesAsync();
 
-                    report.UpdateProgress(counter, $"Processing: {file.Name}", processedBytes: snapshotFile.Size);
+                    await report.SendAsync(counter, $"Processing: {file.Name}", processedBytes: snapshotFile.Size);
                     continue;
                 }
 
@@ -213,7 +214,7 @@ namespace Octockup.Server.Jobs
                         {
                             _logger.LogInformation("Chunk {shortHash} for file {FileName} already uploaded in previous snapshot, skipping upload", shortHash, file.Name);
                             chunkHashes.Add(hash);
-                            report.UpdateProgress(counter, $"Processing: {file.Name}", processedBytes: chunkLength);
+                            await report.SendAsync(counter, $"Processing: {file.Name}", processedBytes: chunkLength);
                             await chunk.DisposeAsync();
                             continue;
                         }
@@ -266,7 +267,7 @@ namespace Octockup.Server.Jobs
                             _logger.LogInformation("Chunk {shortHash} for file {FileName} already exists, skipping upload", shortHash, file.Name);
                         }
 
-                        report.UpdateProgress(counter, $"Uploading: {file.Name}", processedBytes: chunkLength);
+                        await report.SendAsync(counter, $"Uploading: {file.Name}", processedBytes: chunkLength);
 
                         chunkHashes.Add(hash);
                         if (_stoppingSchedules.Contains(schedule.Id))
@@ -307,7 +308,7 @@ namespace Octockup.Server.Jobs
             }
 
             report.Total = loader.Total;
-            report.UpdateProgress(report.Processed, "Finalizing snapshot...");
+            await report.SendAsync(report.Processed, "Finalizing snapshot...");
             snapshot.CompletedAt = DateTime.UtcNow;
             await _dbContext.SaveChangesAsync();
             snapshot.TotalSize = await _dbContext.SnapshotFiles
