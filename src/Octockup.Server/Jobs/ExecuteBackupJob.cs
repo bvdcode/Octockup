@@ -144,6 +144,7 @@ namespace Octockup.Server.Jobs
             CheckIfStopped(schedule.Id);
             foreach (var file in loader)
             {
+                CheckIfStopped(schedule.Id);
                 counter++;
                 report.Total = loader.Total;
                 await report.SendAsync(counter, $"Processing: {file.Name}");
@@ -326,8 +327,8 @@ namespace Octockup.Server.Jobs
 
         private static void CheckIfStopped(Guid scheduleId)
         {
-            _stoppingSchedules.Remove(scheduleId);
-            if (_stoppingSchedules.Contains(scheduleId))
+            bool removed = _stoppingSchedules.Remove(scheduleId);
+            if (removed)
             {
                 throw new OperationCanceledException("Backup stopped by user request.");
             }
