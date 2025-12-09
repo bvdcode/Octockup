@@ -20,7 +20,8 @@ import { useTranslation } from "react-i18next";
 import { ArrowBack } from "@mui/icons-material";
 import { formatSize } from "../utils/formatUtils";
 import { useNavigate, useParams } from "react-router-dom";
-import { useSnapshotsApi, type SnapshotDto } from "../api/snapshotsApi";
+import { useSnapshotsApi } from "../api/snapshotsApi";
+import type { SnapshotDto } from "../types/api";
 
 interface State {
   loading: boolean;

@@ -11,6 +11,7 @@ import {
 import {
   Replay,
   Pending,
+  AccessTime,
   StopCircle,
   CheckCircle,
   ErrorOutline,
@@ -300,9 +301,12 @@ function RunningProgressInfo({
           {formatSpeed(report.speed)}
         </Typography>
         {report.elapsed && (
-          <Typography variant="caption" color="text.secondary">
-            ⏱ {formatElapsed(report.elapsed)}
-          </Typography>
+          <Box display="flex" alignItems="center" gap={0.5}>
+            <AccessTime sx={{ fontSize: 14 }} color="action" />
+            <Typography variant="caption" color="text.secondary">
+              {formatElapsed(report.elapsed)}
+            </Typography>
+          </Box>
         )}
       </Box>
     </Box>

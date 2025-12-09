@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { SnapshotDto } from "../api/snapshotsApi";
+import type { SnapshotDto } from "../types/api";
 
 interface SnapshotsState {
   snapshots: Record<string, SnapshotDto[]>;

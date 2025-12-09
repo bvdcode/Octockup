@@ -44,6 +44,17 @@ export interface BackupItem {
   ignoredPaths: string[];
   source: Module;
   storage: Module;
+  snapshots: SnapshotDto[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface SnapshotDto {
+  id: string;
+  backupId: string;
+  completedAt?: string | null;
+  filesCount: number;
+  totalSize: number;
 }
 
 export interface CreateBackupRequest {

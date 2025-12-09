@@ -1,15 +1,7 @@
 import { useMemo } from "react";
 import type { AxiosInstance } from "axios";
 import { useAxios } from "@bvdcode/react-kit";
-import type { SnapshotFileDto } from "../types/api";
-
-export interface SnapshotDto {
-  id: string;
-  backupId: string;
-  completedAt?: string | null;
-  filesCount: number;
-  totalSize: number;
-}
+import type { SnapshotFileDto, SnapshotDto } from "../types/api";
 
 class SnapshotsApiClient {
   private axiosFactory: () => AxiosInstance;

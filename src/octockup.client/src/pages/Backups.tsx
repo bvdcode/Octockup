@@ -15,6 +15,7 @@ import {
 import {
   PlayArrow,
   BackupTable,
+  AccessTime,
   ArrowDownward,
   DeleteOutline,
   AddCircleOutline,
@@ -27,9 +28,7 @@ import type { BackupItem, ScheduleReport } from "../types/api";
 import { useBackupsApi } from "../api/backupsApi";
 import { formatSize, formatSpeed, formatElapsed } from "../utils/formatUtils";
 import { useSchedulesApi } from "../api/schedulesApi";
-import { useSnapshotsApi } from "../api/snapshotsApi";
 import { getSourceIcon } from "../constants/sourceIcons";
-import { useSnapshotsStore } from "../stores/snapshotsStore";
 import { useSignalR } from "../hooks/useSignalR";
 import { BackupStatus } from "../types/api";
 
@@ -45,8 +44,6 @@ export default function BackupsPage() {
   const navigate = useNavigate();
   const backupsApi = useBackupsApi();
   const schedulesApi = useSchedulesApi();
-  const snapshotsApi = useSnapshotsApi();
-  const { snapshots, setSnapshots } = useSnapshotsStore();
   const { connection, isConnected } = useSignalR("/api/v1/event-hub");
   const [state, setState] = useState<State>({
     loading: true,
@@ -75,22 +72,6 @@ export default function BackupsPage() {
         setScheduleToBackupMap(mapping);
         
         setState((s) => ({ ...s, loading: false }));
-
-        // Always fetch fresh snapshots in background for each backup
-        backupList.forEach((backup) => {
-          snapshotsApi
-            .listByBackup(backup.id)
-            .then((data) => {
-              if (active) {
-                setSnapshots(backup.id, data);
-              }
-            })
-            .catch(() => {
-              if (active) {
-                setSnapshots(backup.id, []);
-              }
-            });
-        });
       })
       .catch((e) => {
         if (!active) return;
@@ -104,7 +85,7 @@ export default function BackupsPage() {
     return () => {
       active = false;
     };
-  }, [backupsApi, schedulesApi, snapshotsApi, setSnapshots]);
+  }, [backupsApi, schedulesApi]);
 
   // WebSocket listener for schedule reports
   useEffect(() => {
@@ -163,7 +144,25 @@ export default function BackupsPage() {
         </Card>
       ) : (
         <Stack spacing={1}>
-          {backups.map((b) => (
+          {backups
+            .slice()
+            .sort((a, b) => {
+              // Find if backup has active schedule
+              const aHasActiveSchedule = Object.entries(scheduleReports).some(
+                ([scheduleId, r]) => scheduleToBackupMap[scheduleId] === a.id && r.status === BackupStatus.Running
+              );
+              const bHasActiveSchedule = Object.entries(scheduleReports).some(
+                ([scheduleId, r]) => scheduleToBackupMap[scheduleId] === b.id && r.status === BackupStatus.Running
+              );
+              
+              // Active backups first
+              if (aHasActiveSchedule && !bHasActiveSchedule) return -1;
+              if (!aHasActiveSchedule && bHasActiveSchedule) return 1;
+              
+              // Then sort by creation date (newest first)
+              return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+            })
+            .map((b) => (
             <Card
               key={b.id}
               sx={{
@@ -225,7 +224,7 @@ export default function BackupsPage() {
                   >
                     {b.source.tag} → {b.storage.tag}
                   </Typography>
-                  {snapshots[b.id] && snapshots[b.id].length > 0 && (
+                  {b.snapshots && b.snapshots.length > 0 && (
                     <Typography
                       variant="caption"
                       sx={{
@@ -235,11 +234,11 @@ export default function BackupsPage() {
                       }}
                     >
                       {t("backups.snapshots", {
-                        count: snapshots[b.id].length,
+                        count: b.snapshots.length,
                       })}{" "}
                       •{" "}
                       {t("backups.totalFiles", {
-                        count: snapshots[b.id].reduce(
+                        count: b.snapshots.reduce(
                           (sum, s) => sum + s.filesCount,
                           0,
                         ),
@@ -247,7 +246,7 @@ export default function BackupsPage() {
                       •{" "}
                       {t("backups.totalSize", {
                         size: formatSize(
-                          snapshots[b.id].reduce(
+                          b.snapshots.reduce(
                             (sum, s) => sum + s.totalSize,
                             0,
                           ),
@@ -294,9 +293,12 @@ export default function BackupsPage() {
                               {formatSpeed(report.speed)}
                             </Typography>
                             {report.elapsed && (
-                              <Typography variant="caption" color="text.secondary">
-                                ⏱ {formatElapsed(report.elapsed)}
-                              </Typography>
+                              <Box display="flex" alignItems="center" gap={0.5}>
+                                <AccessTime sx={{ fontSize: 14 }} color="action" />
+                                <Typography variant="caption" color="text.secondary">
+                                  {formatElapsed(report.elapsed)}
+                                </Typography>
+                              </Box>
                             )}
                           </Box>
                         </Box>
