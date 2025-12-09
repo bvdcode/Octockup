@@ -44,6 +44,7 @@ export interface BackupItem {
   ignoredPaths: string[];
   source: Module;
   storage: Module;
+  schedules: ScheduleItem[];
   snapshots: SnapshotDto[];
   createdAt?: string;
   updatedAt?: string;
