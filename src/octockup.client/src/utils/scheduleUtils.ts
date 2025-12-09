@@ -1,6 +1,6 @@
 import { BackupStatus } from "../types/api";
 import type { ScheduleItem } from "../types/api";
-import { parseUtcDate, formatRelativeTime } from "./dateUtils";
+import { parseUtcDate } from "./dateUtils";
 
 export function statusColor(
   status: BackupStatus,
@@ -110,6 +110,7 @@ export function formatNextRun(
   item: ScheduleItem,
   t: (key: string, options?: Record<string, unknown>) => string,
 ): string {
+  const now = new Date();
   const nextRun = calculateNextRunTime(item);
 
   // No next run scheduled
@@ -123,5 +124,39 @@ export function formatNextRun(
     return t("schedules.nextRun.unknown");
   }
 
-  return formatRelativeTime(nextRun, t);
+  const diff = nextRun.getTime() - now.getTime();
+
+  // Already passed or very soon
+  if (diff < 60000) {
+    return t("schedules.nextRun.soon");
+  }
+
+  // Format based on time difference
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  const weeks = Math.floor(diff / 604800000);
+  const months = Math.floor(diff / 2592000000);
+
+  if (diff < 3600000) {
+    return t("schedules.nextRun.inMinutes", { count: minutes });
+  }
+
+  if (diff < 86400000) {
+    return t("schedules.nextRun.inHours", { count: hours });
+  }
+
+  if (diff < 172800000) {
+    return t("schedules.nextRun.tomorrow");
+  }
+
+  if (diff < 604800000) {
+    return t("schedules.nextRun.inDays", { count: days });
+  }
+
+  if (diff < 2592000000) {
+    return t("schedules.nextRun.inWeeks", { count: weeks });
+  }
+
+  return t("schedules.nextRun.inMonths", { count: months });
 }

@@ -172,17 +172,17 @@ export default function BackupsPage() {
                 display: "flex",
                 alignItems: "center",
                 position: "relative",
-                minHeight: 64,
+                minHeight: 80,
               }}
             >
               <CardContent
                 sx={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 1.5,
+                  gap: 2,
                   width: "100%",
-                  p: 1.5,
-                  "&:last-child": { pb: 1.5 },
+                  p: 2,
+                  "&:last-child": { pb: 2 },
                 }}
               >
                 <Box
@@ -190,13 +190,12 @@ export default function BackupsPage() {
                   alignItems="center"
                   justifyContent="center"
                   flexDirection="column"
-                  sx={{ minWidth: 32 }}
                 >
                   <Box
-                    fontSize={28}
+                    fontSize={36}
                     sx={{
-                      width: 28,
-                      height: 28,
+                      width: 36,
+                      height: 36,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -204,12 +203,12 @@ export default function BackupsPage() {
                   >
                     {getSourceIcon(b.source.backupModuleId)}
                   </Box>
-                  <ArrowDownward sx={{ fontSize: 16, my: -0.5 }} />
+                  <ArrowDownward />
                   <Box
-                    fontSize={28}
+                    fontSize={36}
                     sx={{
-                      width: 28,
-                      height: 28,
+                      width: 36,
+                      height: 36,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -219,8 +218,8 @@ export default function BackupsPage() {
                   </Box>
                 </Box>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Box display="flex" alignItems="center" gap={1} mb={0.25}>
-                    <Typography variant="subtitle1" noWrap title={b.tag} sx={{ fontSize: "1rem", lineHeight: 1.3 }}>
+                  <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+                    <Typography variant="subtitle1" noWrap title={b.tag}>
                       {b.tag}
                     </Typography>
                     {(() => {
@@ -236,21 +235,21 @@ export default function BackupsPage() {
                           label={t(`backupStatus.${status}`)}
                           size="small"
                           color={statusColors[status]}
-                          sx={{ height: 18, fontSize: "0.65rem" }}
+                          sx={{ height: 20, fontSize: "0.7rem" }}
                         />
                       );
                     })()}
                   </Box>
                   <Typography
                     variant="caption"
-                    sx={{ color: "text.secondary", display: "block", fontSize: "0.7rem", lineHeight: 1.2 }}
+                    sx={{ color: "text.secondary" }}
                   >
                     {b.source.tag} → {b.storage.tag}
                   </Typography>
-                  <Box display="flex" gap={1.5} mt={0.25} flexWrap="wrap">
+                  <Box display="flex" gap={2} mt={0.5}>
                     <Typography
                       variant="caption"
-                      sx={{ color: "text.secondary", fontSize: "0.7rem" }}
+                      sx={{ color: "text.secondary" }}
                       title={parseUtcDate(b.createdAt)?.toLocaleString()}
                     >
                       {t("backups.createdAt")}: {formatRelativeTime(b.createdAt, t)}
@@ -263,7 +262,7 @@ export default function BackupsPage() {
                         return (
                           <Typography
                             variant="caption"
-                            sx={{ color: "text.secondary", fontSize: "0.7rem" }}
+                            sx={{ color: "text.secondary" }}
                             title={parseUtcDate(lastSnapshot.completedAt)?.toLocaleString()}
                           >
                             {t("backups.lastBackup")}: {formatRelativeTime(lastSnapshot.completedAt, t)}
@@ -279,11 +278,28 @@ export default function BackupsPage() {
                       sx={{
                         color: "text.secondary",
                         display: "block",
-                        mt: 0.25,
-                        fontSize: "0.7rem",
+                        mt: 0.5,
                       }}
                     >
-                      {t("backups.snapshots", { count: b.snapshots.length })} • {t("backups.totalFiles", { count: b.snapshots.reduce((sum, s) => sum + s.filesCount, 0) })} • {t("backups.totalSize", { size: formatSize(b.snapshots.reduce((sum, s) => sum + s.totalSize, 0)) })}
+                      {t("backups.snapshots", {
+                        count: b.snapshots.length,
+                      })}{" "}
+                      •{" "}
+                      {t("backups.totalFiles", {
+                        count: b.snapshots.reduce(
+                          (sum, s) => sum + s.filesCount,
+                          0,
+                        ),
+                      })}{" "}
+                      •{" "}
+                      {t("backups.totalSize", {
+                        size: formatSize(
+                          b.snapshots.reduce(
+                            (sum, s) => sum + s.totalSize,
+                            0,
+                          ),
+                        ),
+                      })}
                     </Typography>
                   )}
                   {(() => {
@@ -340,19 +356,19 @@ export default function BackupsPage() {
                   })()}
                 </Box>
                 <Divider orientation="vertical" flexItem />
-                <Box display="flex" flexDirection="column" gap={0.5}>
+                <Box display="flex" flexDirection="column">
                   <Tooltip title={t("backups.showSnapshots")} placement="top">
                     <IconButton
-                      size="small"
+                      size="medium"
                       aria-label={t("backups.showSnapshots")}
                       onClick={() => navigate(`/backups/${b.id}/snapshots`)}
                     >
-                      <BackupTable color="warning" fontSize="small" />
+                      <BackupTable color="warning" />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title={t("backups.runOnce")} placement="top">
                     <IconButton
-                      size="small"
+                      size="medium"
                       aria-label={t("backups.runOnce")}
                       disabled={state.runningId === b.id}
                       onClick={async (e) => {
@@ -370,15 +386,15 @@ export default function BackupsPage() {
                       }}
                     >
                       {state.runningId === b.id ? (
-                        <CircularProgress size={16} />
+                        <CircularProgress size={20} />
                       ) : (
-                        <PlayArrow color="success" fontSize="small" />
+                        <PlayArrow color="success" />
                       )}
                     </IconButton>
                   </Tooltip>
                   <Tooltip title={t("backups.deleteTooltip")} placement="top">
                     <IconButton
-                      size="small"
+                      size="medium"
                       aria-label={t("common.delete")}
                       disabled={state.deletingId === b.id}
                       onClick={async (e) => {
@@ -400,7 +416,7 @@ export default function BackupsPage() {
                         }
                       }}
                     >
-                      <DeleteOutline color="primary" fontSize="small" />
+                      <DeleteOutline color="primary" />
                     </IconButton>
                   </Tooltip>
                 </Box>
