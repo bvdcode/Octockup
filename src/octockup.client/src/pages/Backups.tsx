@@ -20,6 +20,7 @@ import {
   ArrowDownward,
   DeleteOutline,
   AddCircleOutline,
+  FilterAlt,
 } from "@mui/icons-material";
 import { useEffect, useState } from "react";
 import { confirm } from "material-ui-confirm";
@@ -35,6 +36,7 @@ import { BackupStatus } from "../types/api";
 import { formatRelativeTime, parseUtcDate } from "../utils/dateUtils";
 import { getBackupOverallStatus } from "../utils/backupUtils";
 import { EditableModuleTag } from "../components/EditableModuleTag";
+import { EditIgnoredPathsDialog } from "../components/EditIgnoredPathsDialog";
 
 interface State {
   loading: boolean;
@@ -154,6 +156,30 @@ export default function BackupsPage() {
     setBackups((prev) =>
       prev.map((b) => (b.id === backupId ? { ...b, tag: newTag } : b)),
     );
+  };
+
+  const [editingIgnoredPathsId, setEditingIgnoredPathsId] = useState<
+    string | null
+  >(null);
+  const [savingIgnoredPathsId, setSavingIgnoredPathsId] = useState<
+    string | null
+  >(null);
+
+  const handleSaveIgnoredPaths = async (
+    backupId: string,
+    paths: string[],
+  ) => {
+    setSavingIgnoredPathsId(backupId);
+    try {
+      await backupsApi.updateIgnoredPaths(backupId, paths);
+      setBackups((prev) =>
+        prev.map((b) =>
+          b.id === backupId ? { ...b, ignoredPaths: paths } : b,
+        ),
+      );
+    } finally {
+      setSavingIgnoredPathsId(null);
+    }
   };
 
   if (state.loading && backups.length === 0) {
@@ -481,6 +507,19 @@ export default function BackupsPage() {
                         <BackupTable color="warning" />
                       </IconButton>
                     </Tooltip>
+                    <Tooltip title={t("backups.ignoredPaths")} placement="top">
+                      <IconButton
+                        size="medium"
+                        aria-label={t("backups.ignoredPaths")}
+                        disabled={savingIgnoredPathsId === b.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingIgnoredPathsId(b.id);
+                        }}
+                      >
+                        <FilterAlt color="info" />
+                      </IconButton>
+                    </Tooltip>
                     <Tooltip title={t("backups.runOnce")} placement="top">
                       <IconButton
                         size="medium"
@@ -540,6 +579,23 @@ export default function BackupsPage() {
             ))}
         </Stack>
       )}
+      {editingIgnoredPathsId &&
+        (() => {
+          const backup = backups.find((b) => b.id === editingIgnoredPathsId);
+          if (!backup) return null;
+          return (
+            <EditIgnoredPathsDialog
+              open={true}
+              backupModuleId={backup.source.backupModuleId}
+              initialPaths={backup.ignoredPaths}
+              onClose={() => setEditingIgnoredPathsId(null)}
+              onSave={(paths) =>
+                handleSaveIgnoredPaths(editingIgnoredPathsId, paths)
+              }
+              loading={savingIgnoredPathsId === editingIgnoredPathsId}
+            />
+          );
+        })()}
     </Stack>
   );
 }

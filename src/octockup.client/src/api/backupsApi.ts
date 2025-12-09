@@ -35,6 +35,16 @@ class BackupsApiClient {
       { newTag },
     );
   }
+
+  async updateIgnoredPaths(
+    backupId: string,
+    ignoredPaths: string[],
+  ): Promise<void> {
+    await this.axios().patch(
+      `/api/v1/backups/${encodeURIComponent(backupId)}/ignored-paths`,
+      { ignoredPaths },
+    );
+  }
 }
 
 export function useBackupsApi(): BackupsApiClient {

@@ -74,12 +74,6 @@ function App() {
             component: <SourceWizard />,
           },
           {
-            icon: <CloudDownload />,
-            name: "Storages",
-            route: "/storages",
-            component: <StoragesPage />,
-          },
-          {
             route: "/storages/new",
             component: <StorageWizard />,
           },
@@ -88,6 +82,12 @@ function App() {
             name: "Backups",
             route: "/backups",
             component: <BackupsPage />,
+          },
+          {
+            icon: <CloudDownload />,
+            name: "Storages",
+            route: "/storages",
+            component: <StoragesPage />,
           },
           {
             route: "/backups/new",

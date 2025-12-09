@@ -4,6 +4,7 @@
     "back": "Back",
     "cancel": "Cancel",
     "delete": "Delete",
+    "save": "Save",
     "confirmDelete": "Confirm Delete",
     "never": "Never"
   },
@@ -135,6 +136,7 @@
     "deleteText": "This action is permanent!",
     "deleteTooltip": "Delete backup",
     "runOnce": "Run once",
+    "ignoredPaths": "Ignored paths",
     "modulesTitle": "Modules",
     "noModules": "No modules available",
     "snapshots": "Snapshots: {{count}}",

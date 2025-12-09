@@ -4,6 +4,7 @@
     "back": "Назад",
     "cancel": "Отмена",
     "delete": "Удалить",
+    "save": "Сохранить",
     "confirmDelete": "Подтвердите удаление",
     "never": "Никогда"
   },
@@ -159,6 +160,7 @@
     "deleteText": "Действие необратимо!",
     "deleteTooltip": "Удалить бэкап",
     "runOnce": "Запустить разово",
+    "ignoredPaths": "Игнорируемые пути",
     "modulesTitle": "Модули",
     "noModules": "Нет модулей",
     "snapshots": "Снапшотов: {{count}}",
