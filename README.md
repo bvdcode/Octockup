@@ -37,9 +37,9 @@ services:
       - MASTER_KEY=${OCTOCKUP_MASTER_KEY} # 32 chars master key for encrypting sensitive data in the database
     volumes:
       - /data/octockup:/app/data
+      # Mounts to backup if needed:
       - /files:/app/data/mounts/files:ro
       - /apps:/app/data/mounts/apps:ro
-      # etc.
 ```
 
 3. Start the application using Docker Compose:
