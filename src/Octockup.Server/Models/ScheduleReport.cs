@@ -52,8 +52,15 @@ namespace Octockup.Server.Models
 
         public async Task SendAsync(int processedFiles, string message, long processedBytes = 0, ScheduleStatus status = ScheduleStatus.Running)
         {
-            UpdateProgress(processedFiles, message, processedBytes);
+            Processed = processedFiles;
+            Message = message;
             Status = status;
+            
+            if (processedBytes > 0)
+            {
+                Interlocked.Add(ref _pendingBytes, processedBytes);
+            }
+            
             await SendNowAsync();
         }
 
