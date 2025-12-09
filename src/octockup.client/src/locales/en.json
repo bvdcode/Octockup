@@ -141,8 +141,8 @@
     "totalFiles": "Files: {{count}}",
     "totalSize": "Size: {{size}}",
     "showSnapshots": "Show snapshots",
-    "createdAt": "Created",
-    "lastBackup": "Last backup",
+    "createdAt": "Created: {{relativeTime}}",
+    "lastBackup": "Last backup: {{relativeTime}}",
     "status": "Status"
   },
   "snapshots": {

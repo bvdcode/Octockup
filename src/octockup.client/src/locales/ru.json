@@ -165,8 +165,8 @@
     "totalFiles": "Файлов: {{count}}",
     "totalSize": "Размер: {{size}}",
     "showSnapshots": "Показать снапшоты",
-    "createdAt": "Создан",
-    "lastBackup": "Последний бэкап",
+    "createdAt": "Создан: {{relativeTime}}",
+    "lastBackup": "Последний бэкап: {{relativeTime}}",
     "status": "Статус"
   },
   "snapshots": {

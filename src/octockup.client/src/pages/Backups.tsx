@@ -42,6 +42,42 @@ interface State {
   runningId: string | null;
 }
 
+interface BackupStatusChipProps {
+  backupId: string;
+  scheduleToBackupMap: Record<string, string>;
+  scheduleReports: Record<string, ScheduleReport>;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}
+
+function BackupStatusChip({
+  backupId,
+  scheduleToBackupMap,
+  scheduleReports,
+  t,
+}: BackupStatusChipProps) {
+  const status = getBackupOverallStatus(
+    backupId,
+    scheduleToBackupMap,
+    scheduleReports,
+  );
+
+  const statusColors = {
+    running: "info",
+    scheduled: "warning",
+    failed: "error",
+    idle: "default",
+  } as const;
+
+  return (
+    <Chip
+      label={t(`backupStatus.${status}`)}
+      size="small"
+      color={statusColors[status]}
+      sx={{ height: 20, fontSize: "0.7rem" }}
+    />
+  );
+}
+
 export default function BackupsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -252,27 +288,12 @@ export default function BackupsPage() {
                           {b.source.tag} → {b.storage.tag}
                         </Typography>
                       </Box>
-                      {(() => {
-                        const status = getBackupOverallStatus(
-                          b.id,
-                          scheduleToBackupMap,
-                          scheduleReports,
-                        );
-                        const statusColors = {
-                          running: "info",
-                          scheduled: "warning",
-                          failed: "error",
-                          idle: "default",
-                        } as const;
-                        return (
-                          <Chip
-                            label={t(`backupStatus.${status}`)}
-                            size="small"
-                            color={statusColors[status]}
-                            sx={{ height: 20, fontSize: "0.7rem" }}
-                          />
-                        );
-                      })()}
+                      <BackupStatusChip
+                        backupId={b.id}
+                        scheduleToBackupMap={scheduleToBackupMap}
+                        scheduleReports={scheduleReports}
+                        t={t}
+                      />
                     </Box>
                     <Box display="flex" gap={2} mt={0.5}>
                       <Typography
@@ -280,8 +301,9 @@ export default function BackupsPage() {
                         sx={{ color: "text.secondary" }}
                         title={parseUtcDate(b.createdAt)?.toLocaleString()}
                       >
-                        {t("backups.createdAt")}:{" "}
-                        {formatRelativeTime(b.createdAt, t)}
+                        {t("backups.createdAt", {
+                          relativeTime: formatRelativeTime(b.createdAt, t),
+                        })}
                       </Typography>
                       {b.snapshots &&
                         b.snapshots.length > 0 &&
@@ -295,19 +317,23 @@ export default function BackupsPage() {
                             )[0];
                           if (lastSnapshot) {
                             return (
-                              <Typography
-                                variant="caption"
-                                sx={{ color: "text.secondary" }}
-                                title={parseUtcDate(
-                                  lastSnapshot.completedAt,
-                                )?.toLocaleString()}
-                              >
-                                {t("backups.lastBackup")}:{" "}
-                                {formatRelativeTime(
-                                  lastSnapshot.completedAt,
-                                  t,
-                                )}
-                              </Typography>
+                              <Box display="flex" alignItems="center" gap={2}>
+                                <Divider orientation="vertical" flexItem />
+                                <Typography
+                                  variant="caption"
+                                  sx={{ color: "text.secondary" }}
+                                  title={parseUtcDate(
+                                    lastSnapshot.completedAt,
+                                  )?.toLocaleString()}
+                                >
+                                  {t("backups.lastBackup", {
+                                    relativeTime: formatRelativeTime(
+                                      lastSnapshot.completedAt,
+                                      t,
+                                    ),
+                                  })}
+                                </Typography>
+                              </Box>
                             );
                           }
                           return null;
