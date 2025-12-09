@@ -44,20 +44,20 @@ interface State {
 }
 
 interface BackupStatusChipProps {
-  backupId: string;
+  backup: BackupItem;
   scheduleToBackupMap: Record<string, string>;
   scheduleReports: Record<string, ScheduleReport>;
   t: (key: string, options?: Record<string, unknown>) => string;
 }
 
 function BackupStatusChip({
-  backupId,
+  backup,
   scheduleToBackupMap,
   scheduleReports,
   t,
 }: BackupStatusChipProps) {
   const status = getBackupOverallStatus(
-    backupId,
+    backup,
     scheduleToBackupMap,
     scheduleReports,
   );
@@ -66,6 +66,7 @@ function BackupStatusChip({
     running: "info",
     scheduled: "warning",
     failed: "error",
+    success: "success",
     idle: "default",
   } as const;
 
@@ -233,7 +234,7 @@ export default function BackupsPage() {
             })
             .map((b) => {
               const status = getBackupOverallStatus(
-                b.id,
+                b,
                 scheduleToBackupMap,
                 scheduleReports,
               );
@@ -252,6 +253,8 @@ export default function BackupsPage() {
                       ? theme.palette.warning.main
                       : status === "failed"
                       ? theme.palette.error.main
+                      : status === "success"
+                      ? theme.palette.success.main
                       : theme.palette.grey[300]
                   }`,
                 })}
@@ -324,7 +327,7 @@ export default function BackupsPage() {
                         </Typography>
                       </Box>
                       <BackupStatusChip
-                        backupId={b.id}
+                        backup={b}
                         scheduleToBackupMap={scheduleToBackupMap}
                         scheduleReports={scheduleReports}
                         t={t}

@@ -41,6 +41,7 @@
   "backupStatus": {
     "running": "Running",
     "scheduled": "Scheduled",
+    "success": "Success",
     "idle": "Idle",
     "failed": "Failed"
   },

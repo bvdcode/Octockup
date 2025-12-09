@@ -47,38 +47,38 @@ namespace Octockup.Server.Jobs
             Guid userId = next.Backup.Source.UserId;
             ScheduleReport report = new(userId, next.Id, next.BackupId, _hubContext);
 
-            if (_providers.FirstOrDefault(x => x.Id == next.Backup.Source.BackupModuleId) is not IBackupSource foundSourceTypeProvider)
-            {
-                next.ErrorMessage = $"Source provider not found: {next.Backup.Source.BackupModuleId}";
-                next.Status = ScheduleStatus.Failed;
-                next.FinishedAt = DateTime.UtcNow;
-                await _dbContext.SaveChangesAsync();
-                _logger.LogWarning("{msg}", next.ErrorMessage);
-                await report.SendAsync(0, next.ErrorMessage);
-                return;
-            }
-            IBackupSource foundSourceProvider = (IBackupSource)ActivatorUtilities.CreateInstance(_serviceProvider, foundSourceTypeProvider.GetType());
-            foundSourceProvider.SetParameters(next.Backup.Source.Parameters);
-
-            if (_providers.FirstOrDefault(x => x.Id == next.Backup.Storage.BackupModuleId) is not IBackupStorage foundStorageTypeProvider)
-            {
-                next.ErrorMessage = $"Storage provider not found: {next.Backup.Storage.BackupModuleId}";
-                next.Status = ScheduleStatus.Failed;
-                next.FinishedAt = DateTime.UtcNow;
-                await _dbContext.SaveChangesAsync();
-                _logger.LogWarning("{msg}", next.ErrorMessage);
-                await report.SendAsync(0, next.ErrorMessage);
-                return;
-            }
-            IBackupStorage foundStorageProvider = (IBackupStorage)ActivatorUtilities.CreateInstance(_serviceProvider, foundStorageTypeProvider.GetType());
-            foundStorageProvider.SetParameters(next.Backup.Storage.Parameters);
-
-            await report.SendAsync(0, "Listing files to backup...");
-            next.Status = ScheduleStatus.Running;
-            await _dbContext.SaveChangesAsync();
-
             try
             {
+                if (_providers.FirstOrDefault(x => x.Id == next.Backup.Source.BackupModuleId) is not IBackupSource foundSourceTypeProvider)
+                {
+                    next.ErrorMessage = $"Source provider not found: {next.Backup.Source.BackupModuleId}";
+                    next.Status = ScheduleStatus.Failed;
+                    next.FinishedAt = DateTime.UtcNow;
+                    await _dbContext.SaveChangesAsync();
+                    _logger.LogWarning("{msg}", next.ErrorMessage);
+                    await report.SendAsync(0, next.ErrorMessage);
+                    return;
+                }
+                IBackupSource foundSourceProvider = (IBackupSource)ActivatorUtilities.CreateInstance(_serviceProvider, foundSourceTypeProvider.GetType());
+                foundSourceProvider.SetParameters(next.Backup.Source.Parameters);
+
+                if (_providers.FirstOrDefault(x => x.Id == next.Backup.Storage.BackupModuleId) is not IBackupStorage foundStorageTypeProvider)
+                {
+                    next.ErrorMessage = $"Storage provider not found: {next.Backup.Storage.BackupModuleId}";
+                    next.Status = ScheduleStatus.Failed;
+                    next.FinishedAt = DateTime.UtcNow;
+                    await _dbContext.SaveChangesAsync();
+                    _logger.LogWarning("{msg}", next.ErrorMessage);
+                    await report.SendAsync(0, next.ErrorMessage);
+                    return;
+                }
+                IBackupStorage foundStorageProvider = (IBackupStorage)ActivatorUtilities.CreateInstance(_serviceProvider, foundStorageTypeProvider.GetType());
+                foundStorageProvider.SetParameters(next.Backup.Storage.Parameters);
+
+                await report.SendAsync(0, "Listing files to backup...");
+                next.Status = ScheduleStatus.Running;
+                await _dbContext.SaveChangesAsync();
+
                 // Set ignored paths before enumerating files
                 foundSourceProvider.SetIgnoredPaths(next.Backup.IgnoredPaths);
                 
@@ -98,6 +98,10 @@ namespace Octockup.Server.Jobs
                 await _dbContext.SaveChangesAsync();
                 _logger.LogError(ex, "Schedule {ScheduleId} backup failed", next.Id);
                 await report.SendAsync(report.Processed, next.ErrorMessage, status: ScheduleStatus.Failed);
+            }
+            finally
+            {
+                await report.DisposeAsync();
             }
         }
 
@@ -132,7 +136,7 @@ namespace Octockup.Server.Jobs
             {
                 counter++;
                 report.Total = loader.Total;
-                await report.SendAsync(counter, $"Processing: {file.Name}");
+                report.UpdateProgress(counter, $"Processing: {file.Name}");
                 if (schedule.Backup.IgnoredPaths != null && ScheduleHelpers.IsPathIgnored(file.Path, file.Name, schedule.Backup.IgnoredPaths))
                 {
                     _logger.LogInformation("Schedule {ScheduleId}: File {FileName} is ignored by path rules, skipping",
@@ -162,7 +166,7 @@ namespace Octockup.Server.Jobs
                     await _dbContext.SnapshotFiles.AddAsync(snapshotFile);
                     await _dbContext.SaveChangesAsync();
 
-                    await report.SendAsync(counter, $"Processing: {file.Name}", processedBytes: snapshotFile.Size);
+                    report.UpdateProgress(counter, $"Processing: {file.Name}", processedBytes: snapshotFile.Size);
                     continue;
                 }
 
@@ -209,7 +213,7 @@ namespace Octockup.Server.Jobs
                         {
                             _logger.LogInformation("Chunk {shortHash} for file {FileName} already uploaded in previous snapshot, skipping upload", shortHash, file.Name);
                             chunkHashes.Add(hash);
-                            await report.SendAsync(counter, $"Processing: {file.Name}", processedBytes: chunkLength);
+                            report.UpdateProgress(counter, $"Processing: {file.Name}", processedBytes: chunkLength);
                             await chunk.DisposeAsync();
                             continue;
                         }
@@ -262,7 +266,7 @@ namespace Octockup.Server.Jobs
                             _logger.LogInformation("Chunk {shortHash} for file {FileName} already exists, skipping upload", shortHash, file.Name);
                         }
 
-                        await report.SendAsync(counter, $"Uploading: {file.Name}", processedBytes: chunkLength);
+                        report.UpdateProgress(counter, $"Uploading: {file.Name}", processedBytes: chunkLength);
 
                         chunkHashes.Add(hash);
                         if (_stoppingSchedules.Contains(schedule.Id))
@@ -303,7 +307,7 @@ namespace Octockup.Server.Jobs
             }
 
             report.Total = loader.Total;
-            await report.SendAsync(report.Processed, "Finalizing snapshot...");
+            report.UpdateProgress(report.Processed, "Finalizing snapshot...");
             snapshot.CompletedAt = DateTime.UtcNow;
             await _dbContext.SaveChangesAsync();
             snapshot.TotalSize = await _dbContext.SnapshotFiles

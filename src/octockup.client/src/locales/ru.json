@@ -65,6 +65,7 @@
   "backupStatus": {
     "running": "Выполняется",
     "scheduled": "Запланирован",
+    "success": "Успешно",
     "idle": "Неактивен",
     "failed": "Ошибка"
   },
