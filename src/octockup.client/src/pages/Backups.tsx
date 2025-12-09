@@ -55,8 +55,12 @@ export default function BackupsPage() {
     runningId: null,
   });
   const [backups, setBackups] = useState<BackupItem[]>([]);
-  const [scheduleReports, setScheduleReports] = useState<Record<string, ScheduleReport>>({});
-  const [scheduleToBackupMap, setScheduleToBackupMap] = useState<Record<string, string>>({});
+  const [scheduleReports, setScheduleReports] = useState<
+    Record<string, ScheduleReport>
+  >({});
+  const [scheduleToBackupMap, setScheduleToBackupMap] = useState<
+    Record<string, string>
+  >({});
 
   useEffect(() => {
     let active = true;
@@ -66,14 +70,14 @@ export default function BackupsPage() {
       .then(([backupList, schedulesList]) => {
         if (!active) return;
         setBackups(backupList);
-        
+
         // Create mapping scheduleId -> backupId
         const mapping: Record<string, string> = {};
-        schedulesList.forEach(schedule => {
+        schedulesList.forEach((schedule) => {
           mapping[schedule.id] = schedule.backupId;
         });
         setScheduleToBackupMap(mapping);
-        
+
         setState((s) => ({ ...s, loading: false }));
       })
       .catch((e) => {
@@ -152,277 +156,342 @@ export default function BackupsPage() {
             .sort((a, b) => {
               // Find if backup has active schedule
               const aHasActiveSchedule = Object.entries(scheduleReports).some(
-                ([scheduleId, r]) => scheduleToBackupMap[scheduleId] === a.id && r.status === BackupStatus.Running
+                ([scheduleId, r]) =>
+                  scheduleToBackupMap[scheduleId] === a.id &&
+                  r.status === BackupStatus.Running,
               );
               const bHasActiveSchedule = Object.entries(scheduleReports).some(
-                ([scheduleId, r]) => scheduleToBackupMap[scheduleId] === b.id && r.status === BackupStatus.Running
+                ([scheduleId, r]) =>
+                  scheduleToBackupMap[scheduleId] === b.id &&
+                  r.status === BackupStatus.Running,
               );
-              
+
               // Active backups first
               if (aHasActiveSchedule && !bHasActiveSchedule) return -1;
               if (!aHasActiveSchedule && bHasActiveSchedule) return 1;
-              
+
               // Then sort by creation date (newest first)
-              return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+              return (
+                new Date(b.createdAt || 0).getTime() -
+                new Date(a.createdAt || 0).getTime()
+              );
             })
             .map((b) => (
-            <Card
-              key={b.id}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                position: "relative",
-                minHeight: 80,
-              }}
-            >
-              <CardContent
+              <Card
+                key={b.id}
                 sx={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 2,
-                  width: "100%",
-                  p: 2,
-                  "&:last-child": { pb: 2 },
+                  position: "relative",
+                  minHeight: 80,
                 }}
               >
-                <Box
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  flexDirection="column"
+                <CardContent
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 2,
+                    width: "100%",
+                    p: 2,
+                    "&:last-child": { pb: 2 },
+                  }}
                 >
                   <Box
-                    fontSize={36}
-                    sx={{
-                      width: 36,
-                      height: 36,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    flexDirection="column"
                   >
-                    {getSourceIcon(b.source.backupModuleId)}
+                    <Box
+                      fontSize={36}
+                      sx={{
+                        width: 36,
+                        height: 36,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {getSourceIcon(b.source.backupModuleId)}
+                    </Box>
+                    <ArrowDownward />
+                    <Box
+                      fontSize={36}
+                      sx={{
+                        width: 36,
+                        height: 36,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {getSourceIcon(b.storage.backupModuleId)}
+                    </Box>
                   </Box>
-                  <ArrowDownward />
-                  <Box
-                    fontSize={36}
-                    sx={{
-                      width: 36,
-                      height: 36,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {getSourceIcon(b.storage.backupModuleId)}
-                  </Box>
-                </Box>
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Box display="flex" alignItems="center" gap={1} mb={0.5}>
-                    <Typography variant="subtitle1" noWrap title={b.tag}>
-                      {b.tag}
-                    </Typography>
-                    {(() => {
-                      const status = getBackupOverallStatus(b.id, scheduleToBackupMap, scheduleReports);
-                      const statusColors = {
-                        running: "info",
-                        scheduled: "warning",
-                        failed: "error",
-                        idle: "default",
-                      } as const;
-                      return (
-                        <Chip
-                          label={t(`backupStatus.${status}`)}
-                          size="small"
-                          color={statusColors[status]}
-                          sx={{ height: 20, fontSize: "0.7rem" }}
-                        />
-                      );
-                    })()}
-                  </Box>
-                  <Typography
-                    variant="caption"
-                    sx={{ color: "text.secondary" }}
-                  >
-                    {b.source.tag} → {b.storage.tag}
-                  </Typography>
-                  <Box display="flex" gap={2} mt={0.5}>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+                      <Typography variant="subtitle1" noWrap title={b.tag}>
+                        {b.tag}
+                      </Typography>
+                      {(() => {
+                        const status = getBackupOverallStatus(
+                          b.id,
+                          scheduleToBackupMap,
+                          scheduleReports,
+                        );
+                        const statusColors = {
+                          running: "info",
+                          scheduled: "warning",
+                          failed: "error",
+                          idle: "default",
+                        } as const;
+                        return (
+                          <Chip
+                            label={t(`backupStatus.${status}`)}
+                            size="small"
+                            color={statusColors[status]}
+                            sx={{ height: 20, fontSize: "0.7rem" }}
+                          />
+                        );
+                      })()}
+                    </Box>
                     <Typography
                       variant="caption"
                       sx={{ color: "text.secondary" }}
-                      title={parseUtcDate(b.createdAt)?.toLocaleString()}
                     >
-                      {t("backups.createdAt")}: {formatRelativeTime(b.createdAt, t)}
+                      {b.source.tag} → {b.storage.tag}
                     </Typography>
-                    {b.snapshots && b.snapshots.length > 0 && (() => {
-                      const lastSnapshot = b.snapshots
-                        .filter(s => s.completedAt)
-                        .sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime())[0];
-                      if (lastSnapshot) {
+                    <Box display="flex" gap={2} mt={0.5}>
+                      <Typography
+                        variant="caption"
+                        sx={{ color: "text.secondary" }}
+                        title={parseUtcDate(b.createdAt)?.toLocaleString()}
+                      >
+                        {t("backups.createdAt")}:{" "}
+                        {formatRelativeTime(b.createdAt, t)}
+                      </Typography>
+                      {b.snapshots &&
+                        b.snapshots.length > 0 &&
+                        (() => {
+                          const lastSnapshot = b.snapshots
+                            .filter((s) => s.completedAt)
+                            .sort(
+                              (a, b) =>
+                                new Date(b.completedAt!).getTime() -
+                                new Date(a.completedAt!).getTime(),
+                            )[0];
+                          if (lastSnapshot) {
+                            return (
+                              <Typography
+                                variant="caption"
+                                sx={{ color: "text.secondary" }}
+                                title={parseUtcDate(
+                                  lastSnapshot.completedAt,
+                                )?.toLocaleString()}
+                              >
+                                {t("backups.lastBackup")}:{" "}
+                                {formatRelativeTime(
+                                  lastSnapshot.completedAt,
+                                  t,
+                                )}
+                              </Typography>
+                            );
+                          }
+                          return null;
+                        })()}
+                    </Box>
+                    {b.snapshots && b.snapshots.length > 0 && (
+                      <Box display="flex" gap={1}>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                          }}
+                        >
+                          {t("backups.snapshots", {
+                            count: b.snapshots.length,
+                          })}
+                        </Typography>
+                        <Divider orientation="vertical" flexItem />
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                          }}
+                        >
+                          {t("backups.totalFiles", {
+                            count: b.snapshots.reduce(
+                              (sum, s) => sum + s.filesCount,
+                              0,
+                            ),
+                          })}
+                        </Typography>
+                        <Divider orientation="vertical" flexItem />
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                          }}
+                        >
+                          {t("backups.totalSize", {
+                            size: formatSize(
+                              b.snapshots.reduce(
+                                (sum, s) => sum + s.totalSize,
+                                0,
+                              ),
+                            ),
+                          })}
+                        </Typography>
+                      </Box>
+                    )}
+                    {(() => {
+                      // Find report for this backup using scheduleToBackupMap
+                      const report = Object.entries(scheduleReports).find(
+                        ([scheduleId, r]) =>
+                          scheduleToBackupMap[scheduleId] === b.id &&
+                          r.status === BackupStatus.Running,
+                      )?.[1];
+                      if (report) {
+                        const progress =
+                          report.total > 0
+                            ? (report.processed / report.total) * 100
+                            : 0;
                         return (
-                          <Typography
-                            variant="caption"
-                            sx={{ color: "text.secondary" }}
-                            title={parseUtcDate(lastSnapshot.completedAt)?.toLocaleString()}
-                          >
-                            {t("backups.lastBackup")}: {formatRelativeTime(lastSnapshot.completedAt, t)}
-                          </Typography>
+                          <Box sx={{ mt: 1 }}>
+                            <LinearProgress
+                              variant="determinate"
+                              value={progress}
+                              sx={{ height: 4, borderRadius: 1, mb: 0.5 }}
+                            />
+                            <Box
+                              display="flex"
+                              justifyContent="space-between"
+                              alignItems="center"
+                            >
+                              <Tooltip
+                                title={report.message}
+                                placement="top"
+                                arrow
+                              >
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                  noWrap
+                                  sx={{ flex: 1, mr: 1 }}
+                                >
+                                  {report.message}
+                                </Typography>
+                              </Tooltip>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ whiteSpace: "nowrap" }}
+                              >
+                                {report.processed.toLocaleString()} /{" "}
+                                {report.total.toLocaleString()} •{" "}
+                                {progress.toFixed(0)}%
+                              </Typography>
+                            </Box>
+                            <Box display="flex" gap={2} mt={0.5}>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
+                                {formatSpeed(report.speed)}
+                              </Typography>
+                              {report.elapsed && (
+                                <Box
+                                  display="flex"
+                                  alignItems="center"
+                                  gap={0.5}
+                                >
+                                  <AccessTime
+                                    sx={{ fontSize: 14 }}
+                                    color="action"
+                                  />
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                  >
+                                    {formatElapsed(report.elapsed)}
+                                  </Typography>
+                                </Box>
+                              )}
+                            </Box>
+                          </Box>
                         );
                       }
                       return null;
                     })()}
                   </Box>
-                  {b.snapshots && b.snapshots.length > 0 && (
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        color: "text.secondary",
-                        display: "block",
-                        mt: 0.5,
-                      }}
-                    >
-                      {t("backups.snapshots", {
-                        count: b.snapshots.length,
-                      })}{" "}
-                      •{" "}
-                      {t("backups.totalFiles", {
-                        count: b.snapshots.reduce(
-                          (sum, s) => sum + s.filesCount,
-                          0,
-                        ),
-                      })}{" "}
-                      •{" "}
-                      {t("backups.totalSize", {
-                        size: formatSize(
-                          b.snapshots.reduce(
-                            (sum, s) => sum + s.totalSize,
-                            0,
-                          ),
-                        ),
-                      })}
-                    </Typography>
-                  )}
-                  {(() => {
-                    // Find report for this backup using scheduleToBackupMap
-                    const report = Object.entries(scheduleReports).find(
-                      ([scheduleId, r]) => scheduleToBackupMap[scheduleId] === b.id && r.status === BackupStatus.Running
-                    )?.[1];
-                    if (report) {
-                      const progress = report.total > 0 ? (report.processed / report.total) * 100 : 0;
-                      return (
-                        <Box sx={{ mt: 1 }}>
-                          <LinearProgress
-                            variant="determinate"
-                            value={progress}
-                            sx={{ height: 4, borderRadius: 1, mb: 0.5 }}
-                          />
-                          <Box display="flex" justifyContent="space-between" alignItems="center">
-                            <Tooltip title={report.message} placement="top" arrow>
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                noWrap
-                                sx={{ flex: 1, mr: 1 }}
-                              >
-                                {report.message}
-                              </Typography>
-                            </Tooltip>
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                              sx={{ whiteSpace: "nowrap" }}
-                            >
-                              {report.processed.toLocaleString()} / {report.total.toLocaleString()}{" "}
-                              • {progress.toFixed(0)}%
-                            </Typography>
-                          </Box>
-                          <Box display="flex" gap={2} mt={0.5}>
-                            <Typography variant="caption" color="text.secondary">
-                              {formatSpeed(report.speed)}
-                            </Typography>
-                            {report.elapsed && (
-                              <Box display="flex" alignItems="center" gap={0.5}>
-                                <AccessTime sx={{ fontSize: 14 }} color="action" />
-                                <Typography variant="caption" color="text.secondary">
-                                  {formatElapsed(report.elapsed)}
-                                </Typography>
-                              </Box>
-                            )}
-                          </Box>
-                        </Box>
-                      );
-                    }
-                    return null;
-                  })()}
-                </Box>
-                <Divider orientation="vertical" flexItem />
-                <Box display="flex" flexDirection="column">
-                  <Tooltip title={t("backups.showSnapshots")} placement="top">
-                    <IconButton
-                      size="medium"
-                      aria-label={t("backups.showSnapshots")}
-                      onClick={() => navigate(`/backups/${b.id}/snapshots`)}
-                    >
-                      <BackupTable color="warning" />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title={t("backups.runOnce")} placement="top">
-                    <IconButton
-                      size="medium"
-                      aria-label={t("backups.runOnce")}
-                      disabled={state.runningId === b.id}
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        try {
-                          setState((s) => ({ ...s, runningId: b.id }));
-                          await schedulesApi.create({
-                            backupId: b.id,
-                            startAt: new Date().toISOString(),
+                  <Divider orientation="vertical" flexItem />
+                  <Box display="flex" flexDirection="column">
+                    <Tooltip title={t("backups.showSnapshots")} placement="top">
+                      <IconButton
+                        size="medium"
+                        aria-label={t("backups.showSnapshots")}
+                        onClick={() => navigate(`/backups/${b.id}/snapshots`)}
+                      >
+                        <BackupTable color="warning" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title={t("backups.runOnce")} placement="top">
+                      <IconButton
+                        size="medium"
+                        aria-label={t("backups.runOnce")}
+                        disabled={state.runningId === b.id}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            setState((s) => ({ ...s, runningId: b.id }));
+                            await schedulesApi.create({
+                              backupId: b.id,
+                              startAt: new Date().toISOString(),
+                            });
+                            navigate("/schedules");
+                          } finally {
+                            setState((s) => ({ ...s, runningId: null }));
+                          }
+                        }}
+                      >
+                        {state.runningId === b.id ? (
+                          <CircularProgress size={20} />
+                        ) : (
+                          <PlayArrow color="success" />
+                        )}
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title={t("backups.deleteTooltip")} placement="top">
+                      <IconButton
+                        size="medium"
+                        aria-label={t("common.delete")}
+                        disabled={state.deletingId === b.id}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const result = await confirm({
+                            title: t("backups.deleteTitle"),
+                            description: t("backups.deleteText"),
+                            confirmationText: t("common.delete"),
+                            cancellationText: t("common.cancel"),
+                            confirmationButtonProps: { color: "error" },
                           });
-                          navigate("/schedules");
-                        } finally {
-                          setState((s) => ({ ...s, runningId: null }));
-                        }
-                      }}
-                    >
-                      {state.runningId === b.id ? (
-                        <CircularProgress size={20} />
-                      ) : (
-                        <PlayArrow color="success" />
-                      )}
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title={t("backups.deleteTooltip")} placement="top">
-                    <IconButton
-                      size="medium"
-                      aria-label={t("common.delete")}
-                      disabled={state.deletingId === b.id}
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        const result = await confirm({
-                          title: t("backups.deleteTitle"),
-                          description: t("backups.deleteText"),
-                          confirmationText: t("common.delete"),
-                          cancellationText: t("common.cancel"),
-                          confirmationButtonProps: { color: "error" },
-                        });
-                        if (result.confirmed) {
-                          setState((s) => ({ ...s, deletingId: b.id }));
-                          await backupsApi.delete(b.id);
-                          setBackups((prev) =>
-                            prev.filter((x) => x.id !== b.id),
-                          );
-                          setState((s) => ({ ...s, deletingId: null }));
-                        }
-                      }}
-                    >
-                      <DeleteOutline color="primary" />
-                    </IconButton>
-                  </Tooltip>
-                </Box>
-              </CardContent>
-            </Card>
-          ))}
+                          if (result.confirmed) {
+                            setState((s) => ({ ...s, deletingId: b.id }));
+                            await backupsApi.delete(b.id);
+                            setBackups((prev) =>
+                              prev.filter((x) => x.id !== b.id),
+                            );
+                            setState((s) => ({ ...s, deletingId: null }));
+                          }
+                        }}
+                      >
+                        <DeleteOutline color="primary" />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </CardContent>
+              </Card>
+            ))}
         </Stack>
       )}
     </Stack>
