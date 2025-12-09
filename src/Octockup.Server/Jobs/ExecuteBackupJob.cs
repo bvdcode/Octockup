@@ -133,6 +133,7 @@ namespace Octockup.Server.Jobs
                 .ToHashSet();
 
             int counter = 0;
+            CheckIfStopped(schedule.Id);
             foreach (var file in loader)
             {
                 counter++;
@@ -145,6 +146,7 @@ namespace Octockup.Server.Jobs
                     continue;
                 }
 
+                CheckIfStopped(schedule.Id);
                 var foundFile = await _dbContext.SnapshotFiles
                     .AsNoTracking()
                     .Where(x => x.Snapshot.BackupId == schedule.BackupId)
@@ -180,6 +182,7 @@ namespace Octockup.Server.Jobs
                 }
                 using var chunker = new ChunkedStream(stream, ChunkSize);
 
+                CheckIfStopped(schedule.Id);
                 byte[] buffer = ArrayPool<byte>.Shared.Rent(ChunkSize);
                 try
                 {
@@ -189,11 +192,7 @@ namespace Octockup.Server.Jobs
                     List<string> chunkHashes = [];
                     foreach (Stream chunk in chunker.GetChunks())
                     {
-                        if (_stoppingSchedules.Contains(schedule.Id))
-                        {
-                            _stoppingSchedules.Remove(schedule.Id);
-                            throw new OperationCanceledException("Backup stopped by user request.");
-                        }
+                        CheckIfStopped(schedule.Id);
 
                         // Compute chunk hash while also updating the file hasher in a single pass
                         chunk.Seek(0, SeekOrigin.Begin);
@@ -318,6 +317,15 @@ namespace Octockup.Server.Jobs
                 .Where(x => x.SnapshotId == snapshot.Id)
                 .CountAsync();
             await _dbContext.SaveChangesAsync();
+        }
+
+        private static void CheckIfStopped(Guid scheduleId)
+        {
+            _stoppingSchedules.Remove(scheduleId);
+            if (_stoppingSchedules.Contains(scheduleId))
+            {
+                throw new OperationCanceledException("Backup stopped by user request.");
+            }
         }
     }
 }
