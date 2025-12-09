@@ -1,6 +1,7 @@
 import {
   Box,
   Card,
+  Chip,
   Stack,
   Alert,
   Button,
@@ -31,6 +32,8 @@ import { useSchedulesApi } from "../api/schedulesApi";
 import { getSourceIcon } from "../constants/sourceIcons";
 import { useSignalR } from "../hooks/useSignalR";
 import { BackupStatus } from "../types/api";
+import { formatRelativeTime, parseUtcDate } from "../utils/dateUtils";
+import { getBackupOverallStatus } from "../utils/backupUtils";
 
 interface State {
   loading: boolean;
@@ -215,15 +218,60 @@ export default function BackupsPage() {
                   </Box>
                 </Box>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography variant="subtitle1" noWrap title={b.tag}>
-                    {b.tag}
-                  </Typography>
+                  <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+                    <Typography variant="subtitle1" noWrap title={b.tag}>
+                      {b.tag}
+                    </Typography>
+                    {(() => {
+                      const status = getBackupOverallStatus(b.id, scheduleToBackupMap, scheduleReports);
+                      const statusColors = {
+                        running: "info",
+                        scheduled: "warning",
+                        failed: "error",
+                        idle: "default",
+                      } as const;
+                      return (
+                        <Chip
+                          label={t(`backupStatus.${status}`)}
+                          size="small"
+                          color={statusColors[status]}
+                          sx={{ height: 20, fontSize: "0.7rem" }}
+                        />
+                      );
+                    })()}
+                  </Box>
                   <Typography
                     variant="caption"
                     sx={{ color: "text.secondary" }}
                   >
                     {b.source.tag} → {b.storage.tag}
                   </Typography>
+                  <Box display="flex" gap={2} mt={0.5}>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: "text.secondary" }}
+                      title={parseUtcDate(b.createdAt)?.toLocaleString()}
+                    >
+                      {t("backups.createdAt")}: {formatRelativeTime(b.createdAt, t)}
+                    </Typography>
+                    {b.snapshots && b.snapshots.length > 0 && (() => {
+                      const lastSnapshot = b.snapshots
+                        .filter(s => s.completedAt)
+                        .sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime())[0];
+                      if (lastSnapshot) {
+                        return (
+                          <Typography
+                            variant="caption"
+                            sx={{ color: "text.secondary" }}
+                            title={parseUtcDate(lastSnapshot.completedAt)?.toLocaleString()}
+                          >
+                            {t("backups.lastBackup")}: {formatRelativeTime(lastSnapshot.completedAt, t)}
+                          </Typography>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </Box>
                   {b.snapshots && b.snapshots.length > 0 && (
                     <Typography
                       variant="caption"

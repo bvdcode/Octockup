@@ -4,7 +4,42 @@
     "back": "Назад",
     "cancel": "Отмена",
     "delete": "Удалить",
-    "confirmDelete": "Подтвердите удаление"
+    "confirmDelete": "Подтвердите удаление",
+    "never": "Никогда"
+  },
+  "time": {
+    "justNow": "только что",
+    "minutesAgo_one": "{{count}} минуту назад",
+    "minutesAgo_few": "{{count}} минуты назад",
+    "minutesAgo_many": "{{count}} минут назад",
+    "minutesAgo_other": "{{count}} минут назад",
+    "hoursAgo_one": "{{count}} час назад",
+    "hoursAgo_few": "{{count}} часа назад",
+    "hoursAgo_many": "{{count}} часов назад",
+    "hoursAgo_other": "{{count}} часов назад",
+    "yesterday": "вчера",
+    "daysAgo_one": "{{count}} день назад",
+    "daysAgo_few": "{{count}} дня назад",
+    "daysAgo_many": "{{count}} дней назад",
+    "daysAgo_other": "{{count}} дней назад",
+    "weeksAgo_one": "на прошлой неделе",
+    "weeksAgo_few": "{{count}} недели назад",
+    "weeksAgo_many": "{{count}} недель назад",
+    "weeksAgo_other": "{{count}} недель назад",
+    "monthsAgo_one": "в прошлом месяце",
+    "monthsAgo_few": "{{count}} месяца назад",
+    "monthsAgo_many": "{{count}} месяцев назад",
+    "monthsAgo_other": "{{count}} месяцев назад",
+    "yearsAgo_one": "в прошлом году",
+    "yearsAgo_few": "{{count}} года назад",
+    "yearsAgo_many": "{{count}} лет назад",
+    "yearsAgo_other": "{{count}} лет назад"
+  },
+  "backupStatus": {
+    "running": "Выполняется",
+    "scheduled": "Запланирован",
+    "idle": "Неактивен",
+    "failed": "Ошибка"
   },
   "sources": {
     "title": "Ваши источники",
@@ -103,7 +138,10 @@
     "snapshots": "Снапшотов: {{count}}",
     "totalFiles": "Файлов: {{count}}",
     "totalSize": "Размер: {{size}}",
-    "showSnapshots": "Показать снапшоты"
+    "showSnapshots": "Показать снапшоты",
+    "createdAt": "Создан",
+    "lastBackup": "Последний бэкап",
+    "status": "Статус"
   },
   "snapshots": {
     "title": "Снапшоты",

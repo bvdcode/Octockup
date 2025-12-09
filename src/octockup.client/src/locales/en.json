@@ -4,7 +4,30 @@
     "back": "Back",
     "cancel": "Cancel",
     "delete": "Delete",
-    "confirmDelete": "Confirm Delete"
+    "confirmDelete": "Confirm Delete",
+    "never": "Never"
+  },
+  "time": {
+    "justNow": "just now",
+    "minutesAgo_one": "{{count}} minute ago",
+    "minutesAgo_other": "{{count}} minutes ago",
+    "hoursAgo_one": "{{count}} hour ago",
+    "hoursAgo_other": "{{count}} hours ago",
+    "yesterday": "yesterday",
+    "daysAgo_one": "{{count}} day ago",
+    "daysAgo_other": "{{count}} days ago",
+    "weeksAgo_one": "last week",
+    "weeksAgo_other": "{{count}} weeks ago",
+    "monthsAgo_one": "last month",
+    "monthsAgo_other": "{{count}} months ago",
+    "yearsAgo_one": "last year",
+    "yearsAgo_other": "{{count}} years ago"
+  },
+  "backupStatus": {
+    "running": "Running",
+    "scheduled": "Scheduled",
+    "idle": "Idle",
+    "failed": "Failed"
   },
   "sources": {
     "title": "Your Sources",
@@ -103,7 +126,10 @@
     "snapshots": "Snapshots: {{count}}",
     "totalFiles": "Files: {{count}}",
     "totalSize": "Size: {{size}}",
-    "showSnapshots": "Show snapshots"
+    "showSnapshots": "Show snapshots",
+    "createdAt": "Created",
+    "lastBackup": "Last backup",
+    "status": "Status"
   },
   "snapshots": {
     "title": "Snapshots",
