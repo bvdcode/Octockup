@@ -47,7 +47,6 @@ export default function SchedulesPage() {
 
   return (
     <Stack spacing={3}>
-      {state.error && <Alert severity="error">{state.error}</Alert>}
       <Box display="flex" alignItems="center" justifyContent="space-between">
         <Typography variant="h5">{t("schedules.title")}</Typography>
         <Button

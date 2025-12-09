@@ -3,7 +3,6 @@ import {
   Card,
   Chip,
   Stack,
-  Alert,
   Button,
   Divider,
   Tooltip,
@@ -40,7 +39,6 @@ import { EditIgnoredPathsDialog } from "../components/EditIgnoredPathsDialog";
 
 interface State {
   loading: boolean;
-  error: string | null;
   deletingId: string | null;
   runningId: string | null;
 }
@@ -89,7 +87,6 @@ export default function BackupsPage() {
   const { connection, isConnected } = useSignalR("/api/v1/event-hub");
   const [state, setState] = useState<State>({
     loading: true,
-    error: null,
     deletingId: null,
     runningId: null,
   });
@@ -119,12 +116,12 @@ export default function BackupsPage() {
 
         setState((s) => ({ ...s, loading: false }));
       })
-      .catch((e) => {
+      .catch(() => {
         if (!active) return;
+        // Silently fail for background requests - just stop loading
         setState((s) => ({
           ...s,
           loading: false,
-          error: e?.message || "Failed to load backups",
         }));
       });
 
@@ -190,17 +187,8 @@ export default function BackupsPage() {
     );
   }
 
-  if (state.error && backups.length === 0) {
-    return (
-      <Box p={2}>
-        <Alert severity="error">{state.error}</Alert>
-      </Box>
-    );
-  }
-
   return (
     <Stack spacing={3}>
-      {state.error && <Alert severity="error">{state.error}</Alert>}
       <Box display="flex" alignItems="center" justifyContent="space-between">
         <Typography variant="h5">{t("backups.title")}</Typography>
         <Button
