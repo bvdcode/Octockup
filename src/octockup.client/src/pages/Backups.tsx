@@ -231,15 +231,30 @@ export default function BackupsPage() {
                 new Date(a.createdAt || 0).getTime()
               );
             })
-            .map((b) => (
+            .map((b) => {
+              const status = getBackupOverallStatus(
+                b.id,
+                scheduleToBackupMap,
+                scheduleReports,
+              );
+              return (
               <Card
                 key={b.id}
-                sx={{
+                sx={(theme) => ({
                   display: "flex",
                   alignItems: "center",
                   position: "relative",
                   minHeight: 80,
-                }}
+                  borderLeft: `3px solid ${
+                    status === "running"
+                      ? theme.palette.info.main
+                      : status === "scheduled"
+                      ? theme.palette.warning.main
+                      : status === "failed"
+                      ? theme.palette.error.main
+                      : theme.palette.grey[300]
+                  }`,
+                })}
               >
                 <CardContent
                   sx={{
@@ -509,7 +524,14 @@ export default function BackupsPage() {
                       <IconButton
                         size="small"
                         aria-label={t("backups.runOnce")}
-                        disabled={state.runningId === b.id}
+                        disabled={
+                          state.runningId === b.id ||
+                          Object.entries(scheduleReports).some(
+                            ([scheduleId, r]) =>
+                              scheduleToBackupMap[scheduleId] === b.id &&
+                              r.status === BackupStatus.Running,
+                          )
+                        }
                         onClick={async (e) => {
                           e.stopPropagation();
                           try {
@@ -561,7 +583,8 @@ export default function BackupsPage() {
                   </Box>
                 </CardContent>
               </Card>
-            ))}
+            );
+            })}
         </Stack>
       )}
       {editingIgnoredPathsId &&
