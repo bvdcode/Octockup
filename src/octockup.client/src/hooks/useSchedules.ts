@@ -85,14 +85,24 @@ export function useSchedules(): UseSchedulesReturn {
           }
 
           setState((prev) => {
-            // If we already have items, just show error but keep data visible
+            // If we already have items, don't show 5xx errors - they're transient
+            if (items.length > 0 && (status === null || status >= 500)) {
+              // Silent fail, keep existing data
+              return prev;
+            }
+            // If we already have items but it's a client error (4xx), show it
             if (items.length > 0) {
               return {
                 ...prev,
                 error: e?.message || "Failed to refresh schedules",
               };
             }
-            // If no items yet, show full error state
+            // If no items yet and it's 5xx, retry silently
+            if (status === null || status >= 500) {
+              scheduleRetry();
+              return prev;
+            }
+            // If no items and client error, show it
             return {
               ...prev,
               loading: false,

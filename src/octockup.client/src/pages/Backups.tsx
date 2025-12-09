@@ -162,10 +162,7 @@ export default function BackupsPage() {
     string | null
   >(null);
 
-  const handleSaveIgnoredPaths = async (
-    backupId: string,
-    paths: string[],
-  ) => {
+  const handleSaveIgnoredPaths = async (backupId: string, paths: string[]) => {
     setSavingIgnoredPathsId(backupId);
     try {
       await backupsApi.updateIgnoredPaths(backupId, paths);
@@ -488,7 +485,7 @@ export default function BackupsPage() {
                   <Box display="flex" flexDirection="column">
                     <Tooltip title={t("backups.showSnapshots")} placement="top">
                       <IconButton
-                        size="medium"
+                        size="small"
                         aria-label={t("backups.showSnapshots")}
                         onClick={() => navigate(`/backups/${b.id}/snapshots`)}
                       >
@@ -497,7 +494,7 @@ export default function BackupsPage() {
                     </Tooltip>
                     <Tooltip title={t("backups.ignoredPaths")} placement="top">
                       <IconButton
-                        size="medium"
+                        size="small"
                         aria-label={t("backups.ignoredPaths")}
                         disabled={savingIgnoredPathsId === b.id}
                         onClick={(e) => {
@@ -510,7 +507,7 @@ export default function BackupsPage() {
                     </Tooltip>
                     <Tooltip title={t("backups.runOnce")} placement="top">
                       <IconButton
-                        size="medium"
+                        size="small"
                         aria-label={t("backups.runOnce")}
                         disabled={state.runningId === b.id}
                         onClick={async (e) => {
@@ -536,7 +533,7 @@ export default function BackupsPage() {
                     </Tooltip>
                     <Tooltip title={t("backups.deleteTooltip")} placement="top">
                       <IconButton
-                        size="medium"
+                        size="small"
                         aria-label={t("common.delete")}
                         disabled={state.deletingId === b.id}
                         onClick={async (e) => {

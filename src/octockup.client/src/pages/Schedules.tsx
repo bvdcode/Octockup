@@ -2,7 +2,6 @@ import {
   Box,
   Card,
   Stack,
-  Alert,
   Button,
   Divider,
   Typography,
@@ -31,14 +30,6 @@ export default function SchedulesPage() {
     return (
       <Box display="flex" justifyContent="center" p={4}>
         <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (state.error && items.length === 0) {
-    return (
-      <Box p={2}>
-        <Alert severity="error">{state.error}</Alert>
       </Box>
     );
   }
