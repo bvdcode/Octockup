@@ -19,7 +19,6 @@ Octockup is an all-in-one client and server application for autobackup that incl
 - **Incremental Backups:** Save only the necessary changes with each backup.
 - **Connecting Various Sources:** You can connect YouTube, SSH, FTP, and many other sources to gather data.
 - **Web Interface:** User-friendly web interface for managing all application functions.
-- **Multibase:** Octockup uses SQLite by default, but switches to PostgreSQL if environment variables are specified.
 
 ## Installation
 
@@ -38,7 +37,9 @@ services:
       - MASTER_KEY=${OCTOCKUP_MASTER_KEY} # 32 chars master key for encrypting sensitive data in the database
     volumes:
       - /data/octockup:/app/data
-      - /data:/app/data/mounts/data:ro
+      - /files:/app/data/mounts/files:ro
+      - /apps:/app/data/mounts/apps:ro
+      # etc.
 ```
 
 3. Start the application using Docker Compose:
