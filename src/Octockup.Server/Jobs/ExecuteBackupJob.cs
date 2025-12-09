@@ -132,11 +132,13 @@ namespace Octockup.Server.Jobs
                 .Distinct()
                 .ToHashSet();
 
-            // Cache all previous snapshot files by path
-            var previousFiles = await _dbContext.SnapshotFiles
+            // Cache all previous snapshot files by path (take the most recent one if duplicates exist)
+            var previousFiles = (await _dbContext.SnapshotFiles
                 .AsNoTracking()
                 .Where(x => x.Snapshot.BackupId == schedule.BackupId)
-                .ToDictionaryAsync(x => x.Path);
+                .ToListAsync())
+                .GroupBy(x => x.Path)
+                .ToDictionary(g => g.Key, g => g.OrderByDescending(f => f.LastModified).First());
 
             int counter = 0;
             CheckIfStopped(schedule.Id);
