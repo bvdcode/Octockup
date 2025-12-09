@@ -10,6 +10,7 @@ import {
   IconButton,
   CardContent,
   CircularProgress,
+  LinearProgress,
 } from "@mui/material";
 import {
   PlayArrow,
@@ -22,13 +23,15 @@ import { useEffect, useState } from "react";
 import { confirm } from "material-ui-confirm";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import type { BackupItem } from "../types/api";
+import type { BackupItem, ScheduleReport } from "../types/api";
 import { useBackupsApi } from "../api/backupsApi";
-import { formatSize } from "../utils/formatUtils";
+import { formatSize, formatSpeed, formatElapsed } from "../utils/formatUtils";
 import { useSchedulesApi } from "../api/schedulesApi";
 import { useSnapshotsApi } from "../api/snapshotsApi";
 import { getSourceIcon } from "../constants/sourceIcons";
 import { useSnapshotsStore } from "../stores/snapshotsStore";
+import { useSignalR } from "../hooks/useSignalR";
+import { BackupStatus } from "../types/api";
 
 interface State {
   loading: boolean;
@@ -44,6 +47,7 @@ export default function BackupsPage() {
   const schedulesApi = useSchedulesApi();
   const snapshotsApi = useSnapshotsApi();
   const { snapshots, setSnapshots } = useSnapshotsStore();
+  const { connection, isConnected } = useSignalR("/api/v1/event-hub");
   const [state, setState] = useState<State>({
     loading: true,
     error: null,
@@ -51,16 +55,25 @@ export default function BackupsPage() {
     runningId: null,
   });
   const [backups, setBackups] = useState<BackupItem[]>([]);
+  const [scheduleReports, setScheduleReports] = useState<Record<string, ScheduleReport>>({});
+  const [scheduleToBackupMap, setScheduleToBackupMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let active = true;
 
-    // Load backups immediately
-    backupsApi
-      .list()
-      .then((backupList) => {
+    // Load backups and schedules immediately
+    Promise.all([backupsApi.list(), schedulesApi.list()])
+      .then(([backupList, schedulesList]) => {
         if (!active) return;
         setBackups(backupList);
+        
+        // Create mapping scheduleId -> backupId
+        const mapping: Record<string, string> = {};
+        schedulesList.forEach(schedule => {
+          mapping[schedule.id] = schedule.backupId;
+        });
+        setScheduleToBackupMap(mapping);
+        
         setState((s) => ({ ...s, loading: false }));
 
         // Always fetch fresh snapshots in background for each backup
@@ -91,7 +104,25 @@ export default function BackupsPage() {
     return () => {
       active = false;
     };
-  }, [backupsApi, snapshotsApi, setSnapshots]);
+  }, [backupsApi, schedulesApi, snapshotsApi, setSnapshots]);
+
+  // WebSocket listener for schedule reports
+  useEffect(() => {
+    if (!connection || !isConnected) return;
+
+    const handler = (report: ScheduleReport) => {
+      setScheduleReports((prev) => ({
+        ...prev,
+        [report.scheduleId]: report,
+      }));
+    };
+
+    connection.on("ScheduleReport", handler);
+
+    return () => {
+      connection.off("ScheduleReport", handler);
+    };
+  }, [connection, isConnected]);
 
   if (state.loading && backups.length === 0) {
     return (
@@ -224,6 +255,55 @@ export default function BackupsPage() {
                       })}
                     </Typography>
                   )}
+                  {(() => {
+                    // Find report for this backup using scheduleToBackupMap
+                    const report = Object.entries(scheduleReports).find(
+                      ([scheduleId, r]) => scheduleToBackupMap[scheduleId] === b.id && r.status === BackupStatus.Running
+                    )?.[1];
+                    if (report) {
+                      const progress = report.total > 0 ? (report.processed / report.total) * 100 : 0;
+                      return (
+                        <Box sx={{ mt: 1 }}>
+                          <LinearProgress
+                            variant="determinate"
+                            value={progress}
+                            sx={{ height: 4, borderRadius: 1, mb: 0.5 }}
+                          />
+                          <Box display="flex" justifyContent="space-between" alignItems="center">
+                            <Tooltip title={report.message} placement="top" arrow>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                noWrap
+                                sx={{ flex: 1, mr: 1 }}
+                              >
+                                {report.message}
+                              </Typography>
+                            </Tooltip>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ whiteSpace: "nowrap" }}
+                            >
+                              {report.processed.toLocaleString()} / {report.total.toLocaleString()}{" "}
+                              • {progress.toFixed(0)}%
+                            </Typography>
+                          </Box>
+                          <Box display="flex" gap={2} mt={0.5}>
+                            <Typography variant="caption" color="text.secondary">
+                              {formatSpeed(report.speed)}
+                            </Typography>
+                            {report.elapsed && (
+                              <Typography variant="caption" color="text.secondary">
+                                ⏱ {formatElapsed(report.elapsed)}
+                              </Typography>
+                            )}
+                          </Box>
+                        </Box>
+                      );
+                    }
+                    return null;
+                  })()}
                 </Box>
                 <Divider orientation="vertical" flexItem />
                 <Box display="flex" flexDirection="column">
