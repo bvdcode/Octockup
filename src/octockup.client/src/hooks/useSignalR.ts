@@ -4,23 +4,25 @@ import {
   HubConnectionBuilder,
 } from "@microsoft/signalr";
 import { useEffect, useRef, useState } from "react";
-import { useAuthStore } from "@bvdcode/react-kit";
+import { useAuthStore, useAxios } from "@bvdcode/react-kit";
 
 export function useSignalR(hubUrl: string) {
   const [connection, setConnection] = useState<HubConnection | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const apiService = useAuthStore((s) => s.apiService);
   const accessToken = useAuthStore((s) => s.accessToken);
+  const axios = useAxios();
 
   const retryIndexRef = useRef(0);
   const retryTimerRef = useRef<number | null>(null);
-  const retryDelays = [0, 2000, 5000, 10000, 30000];
+  const isRefreshingRef = useRef(false);
 
   useEffect(() => {
     if (!apiService || !accessToken) {
       return;
     }
 
+    const retryDelays = [0, 2000, 5000, 10000, 30000];
     let mounted = true;
     const newConnection = new HubConnectionBuilder()
       .withUrl(hubUrl, {
@@ -29,6 +31,19 @@ export function useSignalR(hubUrl: string) {
       .configureLogging(LogLevel.None)
       .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
       .build();
+
+    const handleUnauthorized = async () => {
+      if (isRefreshingRef.current) return;
+      isRefreshingRef.current = true;
+      try {
+        // Trigger token refresh by calling any API endpoint
+        await axios.get("/api/v1/auth/me");
+      } catch {
+        // If refresh fails, auth store will handle logout
+      } finally {
+        isRefreshingRef.current = false;
+      }
+    };
 
     const startWithRetry = () => {
       if (!mounted) return;
@@ -40,7 +55,17 @@ export function useSignalR(hubUrl: string) {
           setIsConnected(true);
           setConnection(newConnection);
         })
-        .catch(() => {
+        .catch((error) => {
+          // Check if it's a 401 error
+          if (error?.statusCode === 401 || error?.message?.includes("401")) {
+            handleUnauthorized().then(() => {
+              // Retry after token refresh
+              if (mounted) {
+                setTimeout(() => startWithRetry(), 1000);
+              }
+            });
+            return;
+          }
           // If initial start fails (e.g., server down), retry with backoff
           setIsConnected(false);
           const i = retryIndexRef.current;
@@ -86,7 +111,7 @@ export function useSignalR(hubUrl: string) {
       setConnection((prev) => (prev === newConnection ? null : prev));
       setIsConnected(false);
     };
-  }, [hubUrl, apiService, accessToken]);
+  }, [hubUrl, apiService, accessToken, axios]);
 
   return { connection, isConnected };
 }
