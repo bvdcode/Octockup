@@ -11,6 +11,17 @@ namespace Octockup.Server.Models.Dto
         public DateTime StartAt { get; set; }
         public TimeSpan? Interval { get; set; }
         public string? ErrorMessage { get; set; }
-        public BackupDto Backup { get; set; } = null!;
+        public ScheduleBackupDto Backup { get; set; } = null!;
+    }
+
+    public class ScheduleBackupDto : BaseDto<Guid>
+    {
+        public Guid SourceId { get; set; }
+        public Guid StorageId { get; set; }
+        public string Tag { get; set; } = string.Empty;
+        public ICollection<string> IgnoredPaths { get; set; } = [];
+        public ModuleDto Source { get; set; } = null!;
+        public ModuleDto Storage { get; set; } = null!;
+        public ICollection<SnapshotDto> Snapshots { get; set; } = [];
     }
 }

@@ -50,6 +50,19 @@ export interface BackupItem {
   updatedAt?: string;
 }
 
+export interface ScheduleBackupItem {
+  id: string;
+  tag: string;
+  sourceId: string;
+  storageId: string;
+  ignoredPaths: string[];
+  source: Module;
+  storage: Module;
+  snapshots: SnapshotDto[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface SnapshotDto {
   id: string;
   backupId: string;
@@ -80,7 +93,7 @@ export interface ScheduleItem {
   status: BackupStatus;
   finishedAt?: string | null;
   errorMessage?: string | null;
-  backup: BackupItem;
+  backup: ScheduleBackupItem;
 }
 
 export interface CreateScheduleRequest {
