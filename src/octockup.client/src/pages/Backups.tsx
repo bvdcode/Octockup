@@ -631,6 +631,41 @@ export default function BackupsPage() {
                                   backupId: b.id,
                                   startAt: new Date().toISOString(),
                                 });
+                                
+                                // Add temporary schedule to prevent multiple clicks
+                                setBackups((prev) =>
+                                  prev.map((backup) =>
+                                    backup.id === b.id
+                                      ? {
+                                          ...backup,
+                                          schedules: [
+                                            ...(backup.schedules || []),
+                                            {
+                                              id: `temp-${Date.now()}`,
+                                              backupId: b.id,
+                                              startAt: new Date().toISOString(),
+                                              status: BackupStatus.Running,
+                                              finishedAt: null,
+                                              errorMessage: null,
+                                              interval: null,
+                                              backup: {
+                                                id: backup.id,
+                                                tag: backup.tag,
+                                                sourceId: backup.sourceId,
+                                                storageId: backup.storageId,
+                                                ignoredPaths: backup.ignoredPaths,
+                                                source: backup.source,
+                                                storage: backup.storage,
+                                                snapshots: backup.snapshots,
+                                                createdAt: backup.createdAt,
+                                                updatedAt: backup.updatedAt,
+                                              },
+                                            },
+                                          ],
+                                        }
+                                      : backup,
+                                  ),
+                                );
                               } finally {
                                 setState((s) => ({ ...s, runningId: null }));
                               }
