@@ -40,12 +40,12 @@ export function getBackupOverallStatus(
     return "running";
   }
 
-  // Analyze snapshots
+  // Analyze snapshots - successful = has completedAt
   const completedSnapshots = (backup.snapshots || []).filter(
-    (snapshot) => snapshot.completedAt && snapshot.filesCount > 0,
+    (snapshot) => snapshot.completedAt,
   );
 
-  // Get the latest successful snapshot (has files)
+  // Get the latest successful snapshot
   const latestSuccessfulSnapshot = completedSnapshots.sort(
     (a, b) =>
       new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime(),

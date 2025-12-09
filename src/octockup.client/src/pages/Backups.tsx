@@ -103,16 +103,18 @@ export default function BackupsPage() {
   useEffect(() => {
     let active = true;
 
-    // Load backups and schedules immediately
-    Promise.all([backupsApi.list(), schedulesApi.list()])
-      .then(([backupList, schedulesList]) => {
+    // Load backups - schedules already included in backup.schedules
+    backupsApi.list()
+      .then((backupList) => {
         if (!active) return;
         setBackups(backupList);
 
-        // Create mapping scheduleId -> backupId
+        // Create mapping scheduleId -> backupId from embedded schedules
         const mapping: Record<string, string> = {};
-        schedulesList.forEach((schedule) => {
-          mapping[schedule.id] = schedule.backupId;
+        backupList.forEach((backup) => {
+          backup.schedules?.forEach((schedule) => {
+            mapping[schedule.id] = schedule.backupId;
+          });
         });
         setScheduleToBackupMap(mapping);
 
@@ -130,7 +132,7 @@ export default function BackupsPage() {
     return () => {
       active = false;
     };
-  }, [backupsApi, schedulesApi]);
+  }, [backupsApi]);
 
   // WebSocket listener for schedule reports
   useEffect(() => {
