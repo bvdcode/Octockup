@@ -131,10 +131,10 @@ namespace Octockup.Server.Jobs
             var previousFiles = await GetFilesFromLastSnapshotAsync(schedule.BackupId, cancellationToken);
 
             int counter = 0;
-            CheckIfStopped(schedule.Id, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             foreach (var file in loader)
             {
-                CheckIfStopped(schedule.Id, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
                 counter++;
                 report.Total = loader.Total;
                 await report.SendAsync(counter, $"Processing: {file.Name}", cancellationToken: cancellationToken);
@@ -145,7 +145,7 @@ namespace Octockup.Server.Jobs
                     continue;
                 }
 
-                CheckIfStopped(schedule.Id, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
                 previousFiles.TryGetValue(file.Path, out var foundFile);
                 if (foundFile != null && foundFile.Hashsum != null && file.Size == foundFile.Size && file.LastModified == foundFile.LastModified)
                 {
@@ -178,7 +178,7 @@ namespace Octockup.Server.Jobs
                 }
                 using var chunker = new ChunkedStream(stream, ChunkSize);
 
-                CheckIfStopped(schedule.Id, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
                 byte[] buffer = ArrayPool<byte>.Shared.Rent(ChunkSize);
                 try
                 {
@@ -188,7 +188,7 @@ namespace Octockup.Server.Jobs
                     List<string> chunkHashes = [];
                     foreach (Stream chunk in chunker.GetChunks())
                     {
-                        CheckIfStopped(schedule.Id, cancellationToken);
+                        cancellationToken.ThrowIfCancellationRequested();
 
                         // Compute chunk hash while also updating the file hasher in a single pass
                         chunk.Seek(0, SeekOrigin.Begin);
@@ -265,7 +265,7 @@ namespace Octockup.Server.Jobs
                         await report.SendAsync(counter, $"Uploading: {file.Name}", processedBytes: chunkLength, cancellationToken: cancellationToken);
 
                         chunkHashes.Add(hash);
-                        CheckIfStopped(schedule.Id, cancellationToken);
+                        cancellationToken.ThrowIfCancellationRequested();
 
                         await chunk.DisposeAsync();
                     }
@@ -347,16 +347,6 @@ namespace Octockup.Server.Jobs
             await _dbContext.Snapshots.AddAsync(snapshot, cancellationToken);
             await _dbContext.SaveChangesAsync(cancellationToken);
             return snapshot;
-        }
-
-        private static void CheckIfStopped(Guid scheduleId, CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            bool removed = _stoppingSchedules.Remove(scheduleId);
-            if (removed)
-            {
-                throw new OperationCanceledException("Backup stopped by user request.");
-            }
         }
     }
 }
