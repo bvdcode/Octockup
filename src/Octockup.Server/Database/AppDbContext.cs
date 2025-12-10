@@ -50,7 +50,7 @@ namespace Octockup.Server.Database
             var stringCollectionComparer = new ValueComparer<ICollection<string>>(
                 (c1, c2) => c1!.SequenceEqual(c2!),
                 c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v)),
-                c => (ICollection<string>)c.ToList()
+                c => c.ToList()
             );
 
             // ---------- Module.Parameters ----------

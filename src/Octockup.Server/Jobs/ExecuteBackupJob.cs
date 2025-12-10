@@ -4,7 +4,6 @@
 using EasyExtensions.Abstractions;
 using EasyExtensions.Quartz.Attributes;
 using EasyExtensions.Streams;
-using Mapster;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Abstractions;
@@ -18,7 +17,6 @@ using Quartz;
 using System.Buffers;
 using System.IO.Compression;
 using System.Security.Cryptography;
-using System.Threading;
 
 namespace Octockup.Server.Jobs
 {
@@ -38,10 +36,8 @@ namespace Octockup.Server.Jobs
         {
             if (!_stoppingSchedules.TryGetValue(scheduleId, out CancellationTokenSource? cts))
             {
-                cts = new CancellationTokenSource();
-                _stoppingSchedules[scheduleId] = cts;
+                return;
             }
-
             cts.Cancel();
         }
 
@@ -56,6 +52,7 @@ namespace Octockup.Server.Jobs
                 return;
             }
 
+            _stoppingSchedules[next.Id] = merged;
             Guid userId = next.Backup.Source.UserId;
             ScheduleReport report = new(userId, next.Id, next.BackupId, _hubContext);
             report.StartBackgroundReporting(cancellationToken);
