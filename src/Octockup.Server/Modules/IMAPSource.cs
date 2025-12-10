@@ -259,9 +259,8 @@ namespace Octockup.Server.Modules
             }
 
             IMailFolder? openedFolder = null;
-            List<BackupFileInfo> results = [];
 
-            try
+            IEnumerable<BackupFileInfo> ProcessFolder()
             {
                 _imapLock.Wait(cancellationToken);
                 try
@@ -339,13 +338,13 @@ namespace Octockup.Server.Modules
                                 continue;
                             }
 
-                            results.Add(new BackupFileInfo
+                            yield return new BackupFileInfo
                             {
                                 Path = filePath,
                                 Name = fileName,
                                 Size = summary.Size,
                                 LastModified = summary.InternalDate?.UtcDateTime
-                            });
+                            };
                         }
                     }
                 }
@@ -368,6 +367,14 @@ namespace Octockup.Server.Modules
                     }
                 }
             }
+
+            IEnumerable<BackupFileInfo>? results = null;
+            Exception? exception = null;
+
+            try
+            {
+                results = ProcessFolder();
+            }
             catch (ImapCommandException ex) when (ex.Message.Contains("Unknown Mailbox"))
             {
                 _logger.LogWarning("Folder {Folder} does not exist or is not accessible, skipping", folder.FullName);
@@ -375,13 +382,21 @@ namespace Octockup.Server.Modules
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error enumerating folder {Folder}", folder.FullName);
+                exception = ex;
+            }
+
+            if (exception != null)
+            {
+                _logger.LogError(exception, "Error enumerating folder {Folder}", folder.FullName);
                 yield break;
             }
 
-            foreach (var result in results)
+            if (results != null)
             {
-                yield return result;
+                foreach (var result in results)
+                {
+                    yield return result;
+                }
             }
         }
 

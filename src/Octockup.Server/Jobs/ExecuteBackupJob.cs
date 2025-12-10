@@ -96,9 +96,9 @@ namespace Octockup.Server.Jobs
                 await BackupAsync(next, foundSourceProvider, foundStorageProvider, report, filesToBackup, cancellationToken);
                 next.Status = ScheduleStatus.Completed;
                 next.FinishedAt = DateTime.UtcNow;
-                await _dbContext.SaveChangesAsync(cancellationToken);
+                await _dbContext.SaveChangesAsync(context.CancellationToken);
                 _logger.LogInformation("Schedule {ScheduleId} backup completed successfully", next.Id);
-                await report.SendAsync(report.Processed, "Backup completed successfully.", status: ScheduleStatus.Completed, cancellationToken: cancellationToken);
+                await report.SendAsync(report.Processed, "Backup completed successfully.", status: ScheduleStatus.Completed, cancellationToken: context.CancellationToken);
             }
             catch (Exception ex)
             {
