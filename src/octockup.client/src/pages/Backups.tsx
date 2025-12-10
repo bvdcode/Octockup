@@ -73,7 +73,18 @@ function BackupStatusChip({
     idle: "default",
   } as const;
 
-  return (
+  // Extract error message for failed status
+  let errorMessage = "";
+  if (status === "failed") {
+    // Try to get error from the most recent failed schedule
+    const failedSchedule = (backup.schedules || []).find(
+      (schedule) =>
+        schedule.status === BackupStatus.Failed && schedule.errorMessage,
+    );
+    errorMessage = failedSchedule?.errorMessage || t("backups.unknownError");
+  }
+
+  const chip = (
     <Chip
       label={t(`backupStatus.${status}`)}
       size="small"
@@ -81,6 +92,17 @@ function BackupStatusChip({
       sx={{ height: 20, fontSize: "0.7rem" }}
     />
   );
+
+  // Wrap with tooltip only if there's an error message
+  if (status === "failed" && errorMessage) {
+    return (
+      <Tooltip title={errorMessage} placement="top" arrow>
+        <span>{chip}</span>
+      </Tooltip>
+    );
+  }
+
+  return chip;
 }
 
 export default function BackupsPage() {
@@ -642,7 +664,7 @@ export default function BackupsPage() {
                             <IconButton
                               size="small"
                               aria-label={t("backups.runOnce")}
-                              disabled={state.runningId === b.id}
+                              disabled={state.runningId === b.id || status === "running"}
                               onClick={async (e) => {
                                 e.stopPropagation();
                                 try {

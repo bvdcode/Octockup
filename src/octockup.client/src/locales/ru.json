@@ -172,7 +172,8 @@
     "showSnapshots": "Показать снапшоты",
     "createdAt": "Создан: {{relativeTime}}",
     "lastBackup": "Последний бэкап: {{relativeTime}}",
-    "status": "Статус"
+    "status": "Статус",
+    "unknownError": "Неизвестная ошибка"
   },
   "snapshots": {
     "title": "Снапшоты",

@@ -148,7 +148,8 @@
     "showSnapshots": "Show snapshots",
     "createdAt": "Created: {{relativeTime}}",
     "lastBackup": "Last backup: {{relativeTime}}",
-    "status": "Status"
+    "status": "Status",
+    "unknownError": "Unknown error"
   },
   "snapshots": {
     "title": "Snapshots",
