@@ -27,6 +27,9 @@ namespace Octockup.Server.Database
         [Column("parameters")]
         public Dictionary<string, string> Parameters { get; set; } = [];
 
+        // [Column("encrypted_parameters")]
+        // public string EncryptedParameters { get; set; } = string.Empty;
+
         public virtual User User { get; set; } = null!;
     }
 }

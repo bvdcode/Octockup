@@ -7,7 +7,6 @@ namespace Octockup.Server.Extensions
     {
         public static string GetMasterKey(this IConfiguration configuration)
         {
-            // chheck if configuration has a value for "MasterKey"
             string? masterKey = configuration["MasterKey"];
             if (!string.IsNullOrEmpty(masterKey))
             {
@@ -16,6 +15,7 @@ namespace Octockup.Server.Extensions
             masterKey = Environment.GetEnvironmentVariable("MASTER_KEY");
             if (!string.IsNullOrEmpty(masterKey))
             {
+                Environment.SetEnvironmentVariable("MASTER_KEY", null);
                 return masterKey;
             }
             throw new InvalidOperationException("Master key not found in configuration 'MasterKey' or environment variable 'MASTER_KEY'.");
