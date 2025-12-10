@@ -6,7 +6,7 @@ namespace Octockup.Server.Helpers
 {
     public static class ScheduleHelpers
     {
-        public static async Task<Schedule?> GetNextScheduleAsync(IQueryable<Schedule> _schedules)
+        public static async Task<Schedule?> GetNextScheduleAsync(IQueryable<Schedule> _schedules, CancellationToken cancellationToken)
         {
             DateTime now = DateTime.UtcNow;
 
@@ -15,7 +15,7 @@ namespace Octockup.Server.Helpers
                 .ThenInclude(b => b.Source)
                 .Include(x => x.Backup)
                 .ThenInclude(b => b.Storage)
-                .ToListAsync();
+                .ToListAsync(cancellationToken: cancellationToken);
 
             Schedule? best = null;
             DateTime? bestTime = null;

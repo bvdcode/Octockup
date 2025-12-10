@@ -5,8 +5,8 @@ namespace Octockup.Server.Abstractions
 {
     public interface IBackupStorage : IBackupSource, IBackupProvider
     {
-        Task<bool?> ExistsAsync(string path);
-        Task<bool?> DeleteAsync(string path);
-        Task UploadAsync(string path, Stream data);
+        Task<bool?> ExistsAsync(string path, CancellationToken cancellationToken = default);
+        Task<bool?> DeleteAsync(string path, CancellationToken cancellationToken = default);
+        Task UploadAsync(string path, Stream data, CancellationToken cancellationToken = default);
     }
 }

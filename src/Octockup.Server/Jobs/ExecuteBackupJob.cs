@@ -4,6 +4,7 @@
 using EasyExtensions.Abstractions;
 using EasyExtensions.Quartz.Attributes;
 using EasyExtensions.Streams;
+using Mapster;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Abstractions;
@@ -17,6 +18,7 @@ using Quartz;
 using System.Buffers;
 using System.IO.Compression;
 using System.Security.Cryptography;
+using System.Threading;
 
 namespace Octockup.Server.Jobs
 {
@@ -29,24 +31,34 @@ namespace Octockup.Server.Jobs
         IHubContext<EventHub> _hubContext,
         IEnumerable<IBackupProvider> _providers) : IJob
     {
+        private static readonly Dictionary<Guid, CancellationTokenSource> _stoppingSchedules = [];
+        private const int ChunkSize = 8 * 1024 * 1024;
+
         public static void StopRunningBackup(Guid scheduleId)
         {
-            _stoppingSchedules.Add(scheduleId);
-        }
+            if (!_stoppingSchedules.TryGetValue(scheduleId, out CancellationTokenSource? cts))
+            {
+                cts = new CancellationTokenSource();
+                _stoppingSchedules[scheduleId] = cts;
+            }
 
-        private static readonly List<Guid> _stoppingSchedules = [];
-        private const int ChunkSize = 8 * 1024 * 1024;
+            cts.Cancel();
+        }
 
         public async Task Execute(IJobExecutionContext context)
         {
-            Schedule? next = await ScheduleHelpers.GetNextScheduleAsync(_dbContext.Schedules);
+            CancellationTokenSource merged = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
+            CancellationToken cancellationToken = merged.Token;
+
+            Schedule? next = await ScheduleHelpers.GetNextScheduleAsync(_dbContext.Schedules, cancellationToken);
             if (next == null)
             {
                 return;
             }
+
             Guid userId = next.Backup.Source.UserId;
             ScheduleReport report = new(userId, next.Id, next.BackupId, _hubContext);
-            report.StartBackgroundReporting();
+            report.StartBackgroundReporting(cancellationToken);
 
             try
             {
@@ -55,7 +67,7 @@ namespace Octockup.Server.Jobs
                     next.ErrorMessage = $"Source provider not found: {next.Backup.Source.BackupModuleId}";
                     next.Status = ScheduleStatus.Failed;
                     next.FinishedAt = DateTime.UtcNow;
-                    await _dbContext.SaveChangesAsync();
+                    await _dbContext.SaveChangesAsync(cancellationToken);
                     _logger.LogWarning("{msg}", next.ErrorMessage);
                     await report.SendAsync(0, next.ErrorMessage);
                     return;
@@ -68,37 +80,37 @@ namespace Octockup.Server.Jobs
                     next.ErrorMessage = $"Storage provider not found: {next.Backup.Storage.BackupModuleId}";
                     next.Status = ScheduleStatus.Failed;
                     next.FinishedAt = DateTime.UtcNow;
-                    await _dbContext.SaveChangesAsync();
+                    await _dbContext.SaveChangesAsync(cancellationToken);
                     _logger.LogWarning("{msg}", next.ErrorMessage);
-                    await report.SendAsync(0, next.ErrorMessage);
+                    await report.SendAsync(0, next.ErrorMessage, cancellationToken: cancellationToken);
                     return;
                 }
                 IBackupStorage foundStorageProvider = (IBackupStorage)ActivatorUtilities.CreateInstance(_serviceProvider, foundStorageTypeProvider.GetType());
                 foundStorageProvider.SetParameters(next.Backup.Storage.Parameters);
 
-                await report.SendAsync(0, "Listing files to backup...");
+                await report.SendAsync(0, "Listing files to backup...", cancellationToken: cancellationToken);
                 next.Status = ScheduleStatus.Running;
-                await _dbContext.SaveChangesAsync();
+                await _dbContext.SaveChangesAsync(cancellationToken);
 
                 // Set ignored paths before enumerating files
                 foundSourceProvider.SetIgnoredPaths(next.Backup.IgnoredPaths);
 
-                var filesToBackup = foundSourceProvider.GetFiles(recursive: true);
-                await BackupAsync(next, foundSourceProvider, foundStorageProvider, report, filesToBackup, context.CancellationToken);
+                var filesToBackup = foundSourceProvider.GetFiles(recursive: true, cancellationToken: cancellationToken);
+                await BackupAsync(next, foundSourceProvider, foundStorageProvider, report, filesToBackup, cancellationToken);
                 next.Status = ScheduleStatus.Completed;
                 next.FinishedAt = DateTime.UtcNow;
-                await _dbContext.SaveChangesAsync();
+                await _dbContext.SaveChangesAsync(cancellationToken);
                 _logger.LogInformation("Schedule {ScheduleId} backup completed successfully", next.Id);
-                await report.SendAsync(report.Processed, "Backup completed successfully.", status: ScheduleStatus.Completed);
+                await report.SendAsync(report.Processed, "Backup completed successfully.", status: ScheduleStatus.Completed, cancellationToken: cancellationToken);
             }
             catch (Exception ex)
             {
                 next.ErrorMessage = $"Backup failed: {ex.Message}";
                 next.Status = ScheduleStatus.Failed;
                 next.FinishedAt = DateTime.UtcNow;
-                await _dbContext.SaveChangesAsync();
+                await _dbContext.SaveChangesAsync(cancellationToken);
                 _logger.LogError(ex, "Schedule {ScheduleId} backup failed", next.Id);
-                await report.SendAsync(report.Processed, next.ErrorMessage, status: ScheduleStatus.Failed);
+                await report.SendAsync(report.Processed, next.ErrorMessage, status: ScheduleStatus.Failed, cancellationToken: cancellationToken);
             }
             finally
             {
@@ -114,32 +126,12 @@ namespace Octockup.Server.Jobs
             IEnumerable<BackupFileInfo> lazyFiles,
             CancellationToken cancellationToken)
         {
-            Snapshot snapshot = new()
-            {
-                BackupId = schedule.BackupId,
-            };
-
-            await _dbContext.Snapshots.AddAsync(snapshot, cancellationToken);
-            await _dbContext.SaveChangesAsync(cancellationToken);
-
+            Snapshot snapshot = await CreateNewSnapshotWithTracking(schedule.BackupId, cancellationToken);
             using LazyLoader<BackupFileInfo> loader = new(lazyFiles);
-            var uploadedChunks = (await _dbContext.SnapshotFiles
-                    .AsNoTracking()
-                    .Where(x => x.Snapshot.BackupId == schedule.BackupId)
-                    .Select(x => x.ChunkHashes)
-                    .ToListAsync(cancellationToken: cancellationToken))
-                .Where(list => list != null)
-                .SelectMany(list => list)
-                .Distinct()
-                .ToHashSet();
+            var uploadedChunks = await LoadChunkHashesAsync(schedule.Backup.StorageId, cancellationToken);
 
             // Cache all previous snapshot files by path (take the most recent one if duplicates exist)
-            var previousFiles = (await _dbContext.SnapshotFiles
-                .AsNoTracking()
-                .Where(x => x.Snapshot.BackupId == schedule.BackupId)
-                .ToListAsync(cancellationToken: cancellationToken))
-                .GroupBy(x => x.Path)
-                .ToDictionary(g => g.Key, g => g.OrderByDescending(f => f.LastModified).First());
+            var previousFiles = await GetFilesFromLastSnapshotAsync(schedule.BackupId, cancellationToken);
 
             int counter = 0;
             CheckIfStopped(schedule.Id, cancellationToken);
@@ -148,7 +140,7 @@ namespace Octockup.Server.Jobs
                 CheckIfStopped(schedule.Id, cancellationToken);
                 counter++;
                 report.Total = loader.Total;
-                await report.SendAsync(counter, $"Processing: {file.Name}");
+                await report.SendAsync(counter, $"Processing: {file.Name}", cancellationToken: cancellationToken);
                 if (schedule.Backup.IgnoredPaths != null && ScheduleHelpers.IsPathIgnored(file.Path, file.Name, schedule.Backup.IgnoredPaths))
                 {
                     _logger.LogInformation("Schedule {ScheduleId}: File {FileName} is ignored by path rules, skipping",
@@ -165,22 +157,22 @@ namespace Octockup.Server.Jobs
                     SnapshotFile snapshotFile = new()
                     {
                         Path = file.Path,
-                        Hashsum = foundFile.Hashsum,
                         Snapshot = snapshot,
                         Size = file.Size ?? 0,
                         SnapshotId = snapshot.Id,
-                        ChunkHashes = foundFile.ChunkHashes,
+                        Hashsum = foundFile.Hashsum,
                         Name = file.Name ?? file.Path,
                         LastModified = file.LastModified,
+                        ChunkHashes = foundFile.ChunkHashes,
                     };
                     await _dbContext.SnapshotFiles.AddAsync(snapshotFile, cancellationToken);
                     await _dbContext.SaveChangesAsync(cancellationToken);
 
-                    await report.SendAsync(counter, $"Processing: {file.Name}", processedBytes: snapshotFile.Size);
+                    await report.SendAsync(counter, $"Processing: {file.Name}", processedBytes: snapshotFile.Size, cancellationToken: cancellationToken);
                     continue;
                 }
 
-                using var stream = await source.GetFileStreamAsync(file);
+                using var stream = await source.GetFileStreamAsync(file, cancellationToken);
                 if (stream == Stream.Null)
                 {
                     _logger.LogWarning("Schedule {ScheduleId}: Unable to get stream for file {FileName}, skipping",
@@ -220,13 +212,13 @@ namespace Octockup.Server.Jobs
                         {
                             _logger.LogInformation("Chunk {shortHash} for file {FileName} already uploaded in previous snapshot, skipping upload", shortHash, file.Name);
                             chunkHashes.Add(hash);
-                            await report.SendAsync(counter, $"Processing: {file.Name}", processedBytes: chunkLength);
+                            await report.SendAsync(counter, $"Processing: {file.Name}", processedBytes: chunkLength, cancellationToken: cancellationToken);
                             await chunk.DisposeAsync();
                             continue;
                         }
 
                         string path = ScheduleHelpers.SplitHash(hash, storage.PathSeparator);
-                        bool exists = await storage.ExistsAsync(path) ?? false;
+                        bool exists = await storage.ExistsAsync(path, cancellationToken) ?? false;
                         if (!exists)
                         {
                             string size = $"{(chunkLength / (1024.0 * 1024.0)):F2} MB";
@@ -251,7 +243,7 @@ namespace Octockup.Server.Jobs
                             await _crypto.EncryptAsync(compressed, encryptedStream, ct: cancellationToken);
                             encryptedStream.Seek(0, SeekOrigin.Begin);
                             storedSize = encryptedStream.Length;
-                            await storage.UploadAsync(path, encryptedStream);
+                            await storage.UploadAsync(path, encryptedStream, cancellationToken);
                             uploadedChunks.Add(hash);
 
                             bool chunkRecorded = await _dbContext.UploadedHashes.AnyAsync(x => x.Hash == hash, cancellationToken: cancellationToken);
@@ -273,14 +265,10 @@ namespace Octockup.Server.Jobs
                             _logger.LogInformation("Chunk {shortHash} for file {FileName} already exists, skipping upload", shortHash, file.Name);
                         }
 
-                        await report.SendAsync(counter, $"Uploading: {file.Name}", processedBytes: chunkLength);
+                        await report.SendAsync(counter, $"Uploading: {file.Name}", processedBytes: chunkLength, cancellationToken: cancellationToken);
 
                         chunkHashes.Add(hash);
-                        if (_stoppingSchedules.Contains(schedule.Id))
-                        {
-                            _stoppingSchedules.Remove(schedule.Id);
-                            throw new OperationCanceledException("Backup stopped by user request.");
-                        }
+                        CheckIfStopped(schedule.Id, cancellationToken);
 
                         await chunk.DisposeAsync();
                     }
@@ -314,7 +302,7 @@ namespace Octockup.Server.Jobs
             }
 
             report.Total = loader.Total;
-            await report.SendAsync(report.Processed, "Finalizing snapshot...");
+            await report.SendAsync(report.Processed, "Finalizing snapshot...", cancellationToken: cancellationToken);
             snapshot.CompletedAt = DateTime.UtcNow;
             await _dbContext.SaveChangesAsync(cancellationToken);
             snapshot.TotalSize = await _dbContext.SnapshotFiles
@@ -324,6 +312,44 @@ namespace Octockup.Server.Jobs
                 .Where(x => x.SnapshotId == snapshot.Id)
                 .CountAsync(cancellationToken: cancellationToken);
             await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        private async Task<IDictionary<string, SnapshotFile>> GetFilesFromLastSnapshotAsync(Guid backupId, CancellationToken cancellationToken)
+        {
+            var previousSnapshot = await _dbContext.Snapshots
+                .Where(x => x.BackupId == backupId && x.CompletedAt.HasValue)
+                .OrderByDescending(x => x.CreatedAt)
+                .FirstOrDefaultAsync(cancellationToken: cancellationToken);
+
+            if (previousSnapshot == null)
+            {
+                return new Dictionary<string, SnapshotFile>();
+            }
+
+            return await _dbContext.SnapshotFiles
+                .AsNoTracking()
+                .Where(x => x.SnapshotId == previousSnapshot.Id)
+                .ToDictionaryAsync(x => x.Path, cancellationToken: cancellationToken);
+        }
+
+        private Task<HashSet<string>> LoadChunkHashesAsync(Guid storageId, CancellationToken cancellationToken)
+        {
+            return _dbContext.UploadedHashes
+                .AsNoTracking()
+                .Where(x => x.ModuleId == storageId)
+                .Select(x => x.Hash)
+                .ToHashSetAsync(cancellationToken: cancellationToken);
+        }
+
+        private async Task<Snapshot> CreateNewSnapshotWithTracking(Guid backupId, CancellationToken cancellationToken)
+        {
+            Snapshot snapshot = new()
+            {
+                BackupId = backupId,
+            };
+            await _dbContext.Snapshots.AddAsync(snapshot, cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            return snapshot;
         }
 
         private static void CheckIfStopped(Guid scheduleId, CancellationToken cancellationToken)

@@ -13,8 +13,8 @@ namespace Octockup.Server.Abstractions
         /// </summary>
         void SetIgnoredPaths(ICollection<string>? ignoredPaths);
 
-        Task<Stream> GetFileStreamAsync(BackupFileInfo file);
-        IEnumerable<string> GetDirectories(bool recursive = false);
-        IEnumerable<BackupFileInfo> GetFiles(bool recursive = false);
+        Task<Stream> GetFileStreamAsync(BackupFileInfo file, CancellationToken cancellationToken = default);
+        IEnumerable<string> GetDirectories(bool recursive = false, CancellationToken cancellationToken = default);
+        IEnumerable<BackupFileInfo> GetFiles(bool recursive = false, CancellationToken cancellationToken = default);
     }
 }

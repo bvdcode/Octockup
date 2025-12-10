@@ -77,7 +77,7 @@ namespace Octockup.Server.Modules
 
         private static string NormalizeRemotePath(string path) => path.Replace("\\", "/");
 
-        public async Task<bool?> DeleteAsync(string path)
+        public async Task<bool?> DeleteAsync(string path, CancellationToken cancellationToken = default)
         {
             ArgumentException.ThrowIfNullOrEmpty(path);
             EnsureConnected();
@@ -87,9 +87,9 @@ namespace Octockup.Server.Modules
 
             try
             {
-                if (await _sftp.ExistsAsync(remote, CancellationToken.None))
+                if (await _sftp.ExistsAsync(remote, cancellationToken))
                 {
-                    await _sftp.DeleteFileAsync(remote, CancellationToken.None);
+                    await _sftp.DeleteFileAsync(remote, cancellationToken);
                     return true;
                 }
 
@@ -101,7 +101,7 @@ namespace Octockup.Server.Modules
             }
         }
 
-        public async Task<bool?> ExistsAsync(string path)
+        public async Task<bool?> ExistsAsync(string path, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(_sftp);
             ArgumentException.ThrowIfNullOrEmpty(path);
@@ -111,7 +111,7 @@ namespace Octockup.Server.Modules
 
             try
             {
-                var exists = await _sftp.ExistsAsync(remote, CancellationToken.None);
+                var exists = await _sftp.ExistsAsync(remote, cancellationToken);
                 return exists;
             }
             catch
@@ -119,7 +119,7 @@ namespace Octockup.Server.Modules
                 return null;
             }
         }
-        public IEnumerable<string> GetDirectories(bool recursive = false)
+        public IEnumerable<string> GetDirectories(bool recursive = false, CancellationToken cancellationToken = default)
         {
             EnsureConnected();
             ArgumentNullException.ThrowIfNull(_sftp);
@@ -150,6 +150,7 @@ namespace Octockup.Server.Modules
 
                 foreach (var entry in entries)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     if (entry.Name == "." || entry.Name == "..")
                     {
                         continue;
@@ -187,6 +188,7 @@ namespace Octockup.Server.Modules
                     {
                         foreach (var sub in Walk(rel))
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
                             yield return sub;
                         }
                     }
@@ -195,11 +197,12 @@ namespace Octockup.Server.Modules
 
             foreach (var d in Walk(string.Empty))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 yield return d;
             }
         }
 
-        public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false)
+        public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false, CancellationToken cancellationToken = default)
         {
             EnsureConnected();
             ArgumentNullException.ThrowIfNull(_sftp);
@@ -211,6 +214,7 @@ namespace Octockup.Server.Modules
 
             while (queue.Count > 0)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var currentRelative = queue.Dequeue();
                 var full = NormalizeRemotePath(GetRemotePath(currentRelative));
 
@@ -236,11 +240,16 @@ namespace Octockup.Server.Modules
 
                 foreach (var entry in entries)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     if (entry.Name == "." || entry.Name == "..")
+                    {
                         continue;
+                    }
 
                     if (entry.IsSymbolicLink)
+                    {
                         continue;
+                    }
 
                     var rel = string.IsNullOrEmpty(currentRelative)
                         ? entry.Name
@@ -294,7 +303,7 @@ namespace Octockup.Server.Modules
             }
         }
 
-        public async Task<Stream> GetFileStreamAsync(BackupFileInfo file)
+        public async Task<Stream> GetFileStreamAsync(BackupFileInfo file, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(_sftp);
             ArgumentNullException.ThrowIfNull(file);
@@ -315,7 +324,7 @@ namespace Octockup.Server.Modules
             }
         }
 
-        public Task UploadAsync(string path, Stream data)
+        public Task UploadAsync(string path, Stream data, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(_sftp);
             ArgumentException.ThrowIfNullOrEmpty(path);
@@ -326,7 +335,7 @@ namespace Octockup.Server.Modules
 
             EnsureDirectory(dir);
 
-            return _sftp.UploadFileAsync(data, remote, CancellationToken.None);
+            return _sftp.UploadFileAsync(data, remote, cancellationToken);
         }
 
         private void EnsureDirectory(string remoteDir)

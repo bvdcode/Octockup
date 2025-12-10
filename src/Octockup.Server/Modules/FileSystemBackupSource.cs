@@ -64,7 +64,7 @@ namespace Octockup.Server.Modules
             _ignoredPaths = ignoredPaths;
         }
 
-        public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false)
+        public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false, CancellationToken cancellationToken = default)
         {
             CheckPassword();
             Directory.CreateDirectory(_rootDirectory);
@@ -80,6 +80,7 @@ namespace Octockup.Server.Modules
 
             foreach (var file in files)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var fileInfo = new FileInfo(file);
                 var relativePath = Path.GetRelativePath(_baseDirectory, file);
 
@@ -100,7 +101,7 @@ namespace Octockup.Server.Modules
             }
         }
 
-        public IEnumerable<string> GetDirectories(bool recursive = false)
+        public IEnumerable<string> GetDirectories(bool recursive = false, CancellationToken cancellationToken = default)
         {
             CheckPassword();
             Directory.CreateDirectory(_rootDirectory);
@@ -116,6 +117,7 @@ namespace Octockup.Server.Modules
 
             foreach (var dir in directories)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var relativePath = Path.GetRelativePath(_baseDirectory, dir);
 
                 // Check if directory is ignored
@@ -143,7 +145,7 @@ namespace Octockup.Server.Modules
                        StringComparison.OrdinalIgnoreCase);
         }
 
-        public Task<Stream> GetFileStreamAsync(BackupFileInfo file)
+        public Task<Stream> GetFileStreamAsync(BackupFileInfo file, CancellationToken cancellationToken = default)
         {
             CheckPassword();
             var fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, file.Path));
@@ -164,7 +166,7 @@ namespace Octockup.Server.Modules
             }
         }
 
-        public Task<bool?> ExistsAsync(string path)
+        public Task<bool?> ExistsAsync(string path, CancellationToken cancellationToken = default)
         {
             CheckPassword();
             var fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, path));
@@ -176,7 +178,7 @@ namespace Octockup.Server.Modules
             return Task.FromResult<bool?>(exists);
         }
 
-        public Task<bool?> DeleteAsync(string path)
+        public Task<bool?> DeleteAsync(string path, CancellationToken cancellationToken = default)
         {
             CheckPassword();
             var fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, path));
@@ -200,7 +202,7 @@ namespace Octockup.Server.Modules
             }
         }
 
-        public Task UploadAsync(string path, Stream data)
+        public async Task UploadAsync(string path, Stream data, CancellationToken cancellationToken = default)
         {
             CheckPassword();
             var fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, path));
@@ -212,10 +214,9 @@ namespace Octockup.Server.Modules
             Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
             using (var fileStream = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None))
             {
-                data.CopyTo(fileStream);
+                await data.CopyToAsync(fileStream, cancellationToken);
             }
             File.Move(tempFile, fullPath, true);
-            return Task.CompletedTask;
         }
 
         private IEnumerable<string> GetRequiredParameters()

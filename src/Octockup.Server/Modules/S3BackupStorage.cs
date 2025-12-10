@@ -6,6 +6,7 @@ using Amazon.S3.Model;
 using Octockup.Server.Abstractions;
 using Octockup.Server.Helpers;
 using Octockup.Server.Models;
+using System.Net;
 using System.Net.Mime;
 
 namespace Octockup.Server.Modules
@@ -93,7 +94,7 @@ namespace Octockup.Server.Modules
             return fullKey.Trim(PathSeparator);
         }
 
-        public async Task<Stream> GetFileStreamAsync(BackupFileInfo fileInfo)
+        public async Task<Stream> GetFileStreamAsync(BackupFileInfo fileInfo, CancellationToken cancellationToken = default)
         {
             string path = fileInfo.Path;
             ArgumentException.ThrowIfNullOrEmpty(path);
@@ -108,7 +109,7 @@ namespace Octockup.Server.Modules
                     Key = key,
                     BucketName = _bucket,
                     ChecksumMode = new ChecksumMode("DISABLED")
-                });
+                }, cancellationToken);
 
                 return result.ResponseStream;
             }
@@ -124,15 +125,15 @@ namespace Octockup.Server.Modules
                         Expires = DateTime.UtcNow.AddHours(1)
                     });
                     var httpClient = new HttpClient();
-                    var response = await httpClient.GetAsync(presignedUrl);
+                    var response = await httpClient.GetAsync(presignedUrl, cancellationToken);
                     response.EnsureSuccessStatusCode();
-                    return await response.Content.ReadAsStreamAsync();
+                    return await response.Content.ReadAsStreamAsync(cancellationToken);
                 }
                 throw;
             }
         }
 
-        public async Task<bool?> ExistsAsync(string path)
+        public async Task<bool?> ExistsAsync(string path, CancellationToken cancellationToken = default)
         {
             ArgumentException.ThrowIfNullOrEmpty(path);
             ArgumentNullException.ThrowIfNull(_s3);
@@ -147,17 +148,17 @@ namespace Octockup.Server.Modules
 
             try
             {
-                var res = await _s3.GetObjectMetadataAsync(req);
-                bool? result = res.HttpStatusCode == System.Net.HttpStatusCode.OK;
+                var res = await _s3.GetObjectMetadataAsync(req, cancellationToken);
+                bool? result = res.HttpStatusCode == HttpStatusCode.OK;
                 return result;
             }
-            catch (AmazonS3Exception s3Ex) when (s3Ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            catch (AmazonS3Exception s3Ex) when (s3Ex.StatusCode == HttpStatusCode.NotFound)
             {
                 return false;
             }
         }
 
-        public IEnumerable<string> GetDirectories(bool recursive = false)
+        public IEnumerable<string> GetDirectories(bool recursive = false, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(_s3);
             ArgumentException.ThrowIfNullOrEmpty(_bucket);
@@ -171,6 +172,7 @@ namespace Octockup.Server.Modules
 
                 do
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var request = new ListObjectsV2Request
                     {
                         BucketName = _bucket,
@@ -179,10 +181,10 @@ namespace Octockup.Server.Modules
                         ContinuationToken = continuationToken
                     };
 
-                    ListObjectsV2Response? response = null;
+                    ListObjectsV2Response? response;
                     try
                     {
-                        response = _s3.ListObjectsV2Async(request).GetAwaiter().GetResult();
+                        response = _s3.ListObjectsV2Async(request, cancellationToken).GetAwaiter().GetResult();
                     }
                     catch (Exception ex)
                     {
@@ -199,8 +201,11 @@ namespace Octockup.Server.Modules
 
                     foreach (var prefix in prefixes)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         if (string.IsNullOrEmpty(prefix))
+                        {
                             continue;
+                        }
 
                         var relative = ToRelativeKey(prefix, basePrefix);
                         if (!string.IsNullOrEmpty(relative))
@@ -228,6 +233,7 @@ namespace Octockup.Server.Modules
 
                 do
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var request = new ListObjectsV2Request
                     {
                         BucketName = _bucket,
@@ -235,10 +241,10 @@ namespace Octockup.Server.Modules
                         ContinuationToken = continuationToken
                     };
 
-                    ListObjectsV2Response? response = null;
+                    ListObjectsV2Response? response;
                     try
                     {
-                        response = _s3.ListObjectsV2Async(request).GetAwaiter().GetResult();
+                        response = _s3.ListObjectsV2Async(request, cancellationToken).GetAwaiter().GetResult();
                     }
                     catch (Exception ex)
                     {
@@ -255,16 +261,23 @@ namespace Octockup.Server.Modules
 
                     foreach (var obj in objects)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         if (obj == null || string.IsNullOrEmpty(obj.Key))
+                        {
                             continue;
+                        }
 
                         var relativeKey = ToRelativeKey(obj.Key, basePrefix);
                         if (string.IsNullOrEmpty(relativeKey))
+                        {
                             continue;
+                        }
 
                         var segments = relativeKey.Split(PathSeparator, StringSplitOptions.RemoveEmptyEntries);
                         if (segments.Length <= 1)
+                        {
                             continue;
+                        }
 
                         var current = segments[0];
 
@@ -278,6 +291,7 @@ namespace Octockup.Server.Modules
 
                         for (int i = 1; i < segments.Length - 1; i++)
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
                             current = current + PathSeparator + segments[i];
 
                             if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + current, null, _ignoredPaths))
@@ -298,7 +312,7 @@ namespace Octockup.Server.Modules
             }
         }
 
-        public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false)
+        public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(_s3);
             ArgumentException.ThrowIfNullOrEmpty(_bucket);
@@ -309,6 +323,7 @@ namespace Octockup.Server.Modules
 
             do
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var request = new ListObjectsV2Request
                 {
                     BucketName = _bucket,
@@ -316,10 +331,10 @@ namespace Octockup.Server.Modules
                     ContinuationToken = continuationToken
                 };
 
-                ListObjectsV2Response? response = null;
+                ListObjectsV2Response? response;
                 try
                 {
-                    response = _s3.ListObjectsV2Async(request).GetAwaiter().GetResult();
+                    response = _s3.ListObjectsV2Async(request, cancellationToken).GetAwaiter().GetResult();
                 }
                 catch (Exception ex)
                 {
@@ -336,6 +351,7 @@ namespace Octockup.Server.Modules
 
                 foreach (var obj in objects)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     if (obj == null || string.IsNullOrEmpty(obj.Key))
                     {
                         continue;
@@ -387,7 +403,7 @@ namespace Octockup.Server.Modules
             return files;
         }
 
-        public Task UploadAsync(string path, Stream data)
+        public Task UploadAsync(string path, Stream data, CancellationToken cancellationToken = default)
         {
             ArgumentException.ThrowIfNullOrEmpty(path);
             ArgumentNullException.ThrowIfNull(_s3);
@@ -403,16 +419,16 @@ namespace Octockup.Server.Modules
                 Key = key
             };
 
-            return _s3.PutObjectAsync(req);
+            return _s3.PutObjectAsync(req, cancellationToken);
         }
 
-        public async Task<bool?> DeleteAsync(string path)
+        public async Task<bool?> DeleteAsync(string path, CancellationToken cancellationToken = default)
         {
             ArgumentException.ThrowIfNullOrEmpty(path);
             ArgumentNullException.ThrowIfNull(_s3);
 
             var key = GetFullKey(path);
-            var result = await _s3.DeleteObjectAsync(_bucket, key);
+            var result = await _s3.DeleteObjectAsync(_bucket, key, cancellationToken);
             return result.HttpStatusCode == System.Net.HttpStatusCode.NoContent;
         }
     }

@@ -55,9 +55,9 @@ namespace Octockup.Server.Modules
             _ignoredPaths = ignoredPaths;
         }
 
-        private async Task EnsureConnectedAsync()
+        private async Task EnsureConnectedAsync(CancellationToken cancellationToken = default)
         {
-            await _imapLock.WaitAsync();
+            await _imapLock.WaitAsync(cancellationToken);
             try
             {
                 if (_client != null && _client.IsConnected && _client.IsAuthenticated)
@@ -73,8 +73,8 @@ namespace Octockup.Server.Modules
 
                 try
                 {
-                    await _client.ConnectAsync(_host, _port, _useSsl);
-                    await _client.AuthenticateAsync(_username, _password);
+                    await _client.ConnectAsync(_host, _port, _useSsl, cancellationToken);
+                    await _client.AuthenticateAsync(_username, _password, cancellationToken);
                     _logger.LogInformation("Successfully connected to IMAP server {Host}:{Port}", _host, _port);
 
                     // Cache the directory separator from the server
@@ -95,9 +95,9 @@ namespace Octockup.Server.Modules
             }
         }
 
-        public IEnumerable<string> GetDirectories(bool recursive = false)
+        public IEnumerable<string> GetDirectories(bool recursive = false, CancellationToken cancellationToken = default)
         {
-            EnsureConnectedAsync().GetAwaiter().GetResult();
+            EnsureConnectedAsync(cancellationToken).GetAwaiter().GetResult();
             if (_client == null)
             {
                 yield break;
@@ -107,20 +107,20 @@ namespace Octockup.Server.Modules
 
             if (recursive)
             {
-                var root = GetRootFolder();
-                folders = GetAllFoldersRecursive(root);
+                var root = GetRootFolder(cancellationToken);
+                folders = GetAllFoldersRecursive(root, cancellationToken);
             }
             else
             {
-                var root = GetRootFolder();
+                var root = GetRootFolder(cancellationToken);
 
                 IReadOnlyList<IMailFolder> subfolders;
                 try
                 {
-                    _imapLock.Wait();
+                    _imapLock.Wait(cancellationToken);
                     try
                     {
-                        var fetched = root.GetSubfolders();
+                        var fetched = root.GetSubfolders(cancellationToken: cancellationToken);
                         subfolders = fetched is IReadOnlyList<IMailFolder> ro
                             ? ro
                             : [.. fetched];
@@ -153,29 +153,29 @@ namespace Octockup.Server.Modules
             }
         }
 
-        public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false)
+        public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false, CancellationToken cancellationToken = default)
         {
-            EnsureConnectedAsync().GetAwaiter().GetResult();
+            EnsureConnectedAsync(cancellationToken).GetAwaiter().GetResult();
             if (_client == null)
             {
                 yield break;
             }
 
             var visitedFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var root = GetRootFolder();
+            var root = GetRootFolder(cancellationToken);
 
             if (!string.IsNullOrWhiteSpace(_rootPath) && _rootPath != "/")
             {
                 if (recursive)
                 {
-                    foreach (var folder in GetAllFoldersRecursive(root))
+                    foreach (var folder in GetAllFoldersRecursive(root, cancellationToken))
                     {
                         if (!visitedFolders.Add(folder.FullName))
                         {
                             continue;
                         }
 
-                        foreach (var file in EnumerateFolderFiles(folder))
+                        foreach (var file in EnumerateFolderFiles(folder, cancellationToken))
                         {
                             yield return file;
                         }
@@ -183,7 +183,7 @@ namespace Octockup.Server.Modules
                 }
                 else
                 {
-                    foreach (var file in EnumerateFolderFiles(root))
+                    foreach (var file in EnumerateFolderFiles(root, cancellationToken))
                     {
                         yield return file;
                     }
@@ -194,7 +194,7 @@ namespace Octockup.Server.Modules
 
             string inboxFullName;
             IMailFolder inboxFolder;
-            _imapLock.Wait();
+            _imapLock.Wait(cancellationToken);
             try
             {
                 inboxFolder = _client.Inbox;
@@ -207,7 +207,7 @@ namespace Octockup.Server.Modules
 
             if (!visitedFolders.Contains(inboxFullName))
             {
-                foreach (var file in EnumerateFolderFiles(inboxFolder))
+                foreach (var file in EnumerateFolderFiles(inboxFolder, cancellationToken))
                 {
                     yield return file;
                 }
@@ -220,7 +220,7 @@ namespace Octockup.Server.Modules
                 yield break;
             }
 
-            foreach (var folder in GetAllFoldersRecursive(root))
+            foreach (var folder in GetAllFoldersRecursive(root, cancellationToken))
             {
                 if (!visitedFolders.Add(folder.FullName))
                 {
@@ -232,16 +232,17 @@ namespace Octockup.Server.Modules
                     continue;
                 }
 
-                foreach (var file in EnumerateFolderFiles(folder))
+                foreach (var file in EnumerateFolderFiles(folder, cancellationToken))
                 {
                     yield return file;
                 }
             }
         }
 
-        private IEnumerable<BackupFileInfo> EnumerateFolderFiles(IMailFolder folder)
+        private IEnumerable<BackupFileInfo> EnumerateFolderFiles(IMailFolder folder, CancellationToken cancellationToken = default)
         {
             var folderPath = "/" + folder.FullName;
+            cancellationToken.ThrowIfCancellationRequested();
 
             if (_ignoredPaths != null &&
                 ScheduleHelpers.IsPathIgnored(folderPath, folder.Name, _ignoredPaths))
@@ -262,17 +263,17 @@ namespace Octockup.Server.Modules
 
             try
             {
-                _imapLock.Wait();
+                _imapLock.Wait(cancellationToken);
                 try
                 {
                     // Get a fresh reference to the folder to avoid stale references
                     openedFolder = string.IsNullOrEmpty(folder.FullName)
                         ? _client!.Inbox
-                        : _client!.GetFolder(folder.FullName);
+                        : _client!.GetFolder(folder.FullName, cancellationToken);
 
                     if (!openedFolder.IsOpen)
                     {
-                        openedFolder.Open(FolderAccess.ReadOnly);
+                        openedFolder.Open(FolderAccess.ReadOnly, cancellationToken);
                     }
 
                     var total = openedFolder.Count;
@@ -284,17 +285,15 @@ namespace Octockup.Server.Modules
 
                     for (var start = 0; start < total; start += _batchSize)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         var end = Math.Min(start + _batchSize - 1, total - 1);
 
                         IReadOnlyList<IMessageSummary> summaries;
                         try
                         {
-                            var fetched = openedFolder.Fetch(
-                                start,
-                                end,
-                                MessageSummaryItems.UniqueId |
+                            var fetched = openedFolder.Fetch(start, end, MessageSummaryItems.UniqueId |
                                 MessageSummaryItems.InternalDate |
-                                MessageSummaryItems.Size);
+                                MessageSummaryItems.Size, cancellationToken: cancellationToken);
 
                             summaries = fetched is IReadOnlyList<IMessageSummary> ro
                                 ? ro
@@ -313,6 +312,7 @@ namespace Octockup.Server.Modules
 
                         foreach (var summary in summaries)
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
                             var uid = summary.UniqueId;
                             if (uid.IsValid == false)
                             {
@@ -355,7 +355,7 @@ namespace Octockup.Server.Modules
                     {
                         if (openedFolder != null && openedFolder.IsOpen)
                         {
-                            openedFolder.Close();
+                            openedFolder.Close(cancellationToken: cancellationToken);
                         }
                     }
                     catch
@@ -385,23 +385,24 @@ namespace Octockup.Server.Modules
             }
         }
 
-        private IEnumerable<IMailFolder> GetAllFoldersRecursive(IMailFolder rootFolder)
+        private IEnumerable<IMailFolder> GetAllFoldersRecursive(IMailFolder rootFolder, CancellationToken cancellationToken = default)
         {
             var queue = new Queue<IMailFolder>();
             queue.Enqueue(rootFolder);
 
             while (queue.Count > 0)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var folder = queue.Dequeue();
                 yield return folder;
 
                 IReadOnlyList<IMailFolder> subfolders;
                 try
                 {
-                    _imapLock.Wait();
+                    _imapLock.Wait(cancellationToken);
                     try
                     {
-                        var fetched = folder.GetSubfolders();
+                        var fetched = folder.GetSubfolders(cancellationToken: cancellationToken);
                         subfolders = fetched is IReadOnlyList<IMailFolder> ro
                             ? ro
                             : [.. fetched];
@@ -424,9 +425,9 @@ namespace Octockup.Server.Modules
             }
         }
 
-        public async Task<Stream> GetFileStreamAsync(BackupFileInfo file)
+        public async Task<Stream> GetFileStreamAsync(BackupFileInfo file, CancellationToken cancellationToken = default)
         {
-            await EnsureConnectedAsync();
+            await EnsureConnectedAsync(cancellationToken);
             if (_client == null)
             {
                 return Stream.Null;
@@ -449,7 +450,7 @@ namespace Octockup.Server.Modules
 
                 var uid = new UniqueId(uidValue);
 
-                await _imapLock.WaitAsync();
+                await _imapLock.WaitAsync(cancellationToken);
                 try
                 {
                     IMailFolder folder;
@@ -463,15 +464,15 @@ namespace Octockup.Server.Modules
                         var serverFolderPath = (_serverDirectorySeparator.HasValue && _serverDirectorySeparator.Value != '/')
                             ? folderPath.Replace('/', _serverDirectorySeparator.Value)
                             : folderPath;
-                        folder = _client.GetFolder(serverFolderPath);
+                        folder = await _client.GetFolderAsync(serverFolderPath, cancellationToken);
                     }
 
-                    await folder.OpenAsync(FolderAccess.ReadOnly);
+                    await folder.OpenAsync(FolderAccess.ReadOnly, cancellationToken);
                     var message = await folder.GetMessageAsync(uid);
-                    await folder.CloseAsync();
+                    await folder.CloseAsync(cancellationToken: cancellationToken);
 
                     var ms = new MemoryStream();
-                    await message.WriteToAsync(ms);
+                    await message.WriteToAsync(ms, cancellationToken);
                     ms.Position = 0;
 
                     return ms;
@@ -495,9 +496,9 @@ namespace Octockup.Server.Modules
             GC.SuppressFinalize(this);
         }
 
-        private IMailFolder GetRootFolder()
+        private IMailFolder GetRootFolder(CancellationToken cancellationToken = default)
         {
-            _imapLock.Wait();
+            _imapLock.Wait(cancellationToken);
             try
             {
                 if (string.IsNullOrWhiteSpace(_rootPath) || _rootPath == "/")
@@ -509,7 +510,7 @@ namespace Octockup.Server.Modules
                 var serverRoot = (_serverDirectorySeparator.HasValue && _serverDirectorySeparator.Value != '/')
                     ? _rootPath.TrimStart('/').Replace('/', _serverDirectorySeparator.Value)
                     : _rootPath.TrimStart('/');
-                return _client!.GetFolder(serverRoot);
+                return _client!.GetFolder(serverRoot, cancellationToken);
             }
             finally
             {

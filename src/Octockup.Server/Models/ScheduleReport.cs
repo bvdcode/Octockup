@@ -27,9 +27,10 @@ namespace Octockup.Server.Models
         private readonly CancellationTokenSource _backgroundTaskCts = new();
         private Task? _backgroundTask;
 
-        public void StartBackgroundReporting()
+        public void StartBackgroundReporting(CancellationToken cancellationToken)
         {
-            _backgroundTask = BackgroundReportingTask(_backgroundTaskCts.Token);
+            CancellationToken linkedToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _backgroundTaskCts.Token).Token;
+            _backgroundTask = BackgroundReportingTask(linkedToken);
         }
 
         private async Task BackgroundReportingTask(CancellationToken cancellationToken)
@@ -52,7 +53,11 @@ namespace Octockup.Server.Models
             }
         }
 
-        public async Task SendAsync(int processedFiles, string message, long processedBytes = 0, ScheduleStatus status = ScheduleStatus.Running)
+        public async Task SendAsync(int processedFiles,
+            string message,
+            long processedBytes = 0,
+            ScheduleStatus status = ScheduleStatus.Running,
+            CancellationToken cancellationToken = default)
         {
             Status = status;
             Timestamp = DateTime.UtcNow;
@@ -63,7 +68,7 @@ namespace Octockup.Server.Models
                 ProcessedBytes += processedBytes;
             }
             Speed = ProcessedBytes / Math.Max(1, _stopwatch.Elapsed.TotalSeconds);
-            await _hubContext.Clients.User(UserId.ToString()).SendAsync("ScheduleReport", this);
+            await _hubContext.Clients.User(UserId.ToString()).SendAsync("ScheduleReport", this, cancellationToken: cancellationToken);
         }
 
         public async ValueTask DisposeAsync()
