@@ -1,9 +1,9 @@
-﻿using Renci.SshNet;
-using Renci.SshNet.Sftp;
-using Renci.SshNet.Common;
-using Octockup.Server.Models;
-using Octockup.Server.Abstractions;
+﻿using Octockup.Server.Abstractions;
 using Octockup.Server.Helpers;
+using Octockup.Server.Models;
+using Renci.SshNet;
+using Renci.SshNet.Common;
+using Renci.SshNet.Sftp;
 
 namespace Octockup.Server.Modules
 {
@@ -168,7 +168,7 @@ namespace Octockup.Server.Modules
                     var rel = string.IsNullOrEmpty(currentRelative)
                         ? entry.Name
                         : currentRelative + PathSeparator + entry.Name;
-                    
+
                     var fullEntryPath = full.TrimEnd(PathSeparator) + PathSeparator + entry.Name;
 
                     // Check if this subdirectory is ignored (use full absolute path)
@@ -216,7 +216,7 @@ namespace Octockup.Server.Modules
 
                 // Check if current directory is ignored before listing
                 // Use FULL path for ignore check, not relative to _path
-                if (!string.IsNullOrEmpty(full) && _ignoredPaths != null && 
+                if (!string.IsNullOrEmpty(full) && _ignoredPaths != null &&
                     ScheduleHelpers.IsPathIgnored(full, null, _ignoredPaths))
                 {
                     _logger.LogDebug("Skipping ignored directory during file enumeration: {Path}", full);
@@ -245,7 +245,7 @@ namespace Octockup.Server.Modules
                     var rel = string.IsNullOrEmpty(currentRelative)
                         ? entry.Name
                         : currentRelative + PathSeparator + entry.Name;
-                    
+
                     var fullEntryPath = full.TrimEnd(PathSeparator) + PathSeparator + entry.Name;
 
                     if (entry.IsDirectory)

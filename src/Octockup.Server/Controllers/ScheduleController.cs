@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2025 Vadim Belov
 
-using Quartz;
-using Mapster;
 using EasyExtensions;
-using Octockup.Server.Jobs;
-using Octockup.Server.Database;
+using EasyExtensions.AspNetCore.Extensions;
+using EasyExtensions.Quartz.Extensions;
+using Mapster;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Octockup.Server.Database;
+using Octockup.Server.Jobs;
 using Octockup.Server.Models.Dto;
 using Octockup.Server.Models.Enums;
-using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Models.Requests;
-using EasyExtensions.Quartz.Extensions;
-using Microsoft.AspNetCore.Authorization;
-using EasyExtensions.AspNetCore.Extensions;
+using Quartz;
 
 namespace Octockup.Server.Controllers
 {

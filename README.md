@@ -12,6 +12,11 @@
 
 Octockup is an all-in-one client and server application for autobackup that includes both backend and frontend in a single Docker container. It allows you to gather and manage data from various sources, such as YouTube, SSH, FTP, Email, and more, directly through the browser.
 
+<img width="852" height="384" alt="image" src="https://github.com/user-attachments/assets/c15cf759-017f-4b5b-962a-f56d00c60347" />
+
+
+---
+
 ## Key Features
 
 - **Containerization:** A single Docker container includes all necessary components.
@@ -19,7 +24,9 @@ Octockup is an all-in-one client and server application for autobackup that incl
 - **Incremental Backups:** Save only the necessary changes with each backup.
 - **Connecting Various Sources:** You can connect YouTube, SSH, FTP, and many other sources to gather data.
 - **Web Interface:** User-friendly web interface for managing all application functions.
-- **Multibase:** Octockup uses SQLite by default, but switches to PostgreSQL if environment variables are specified.
+
+
+---
 
 ## Installation
 
@@ -38,7 +45,9 @@ services:
       - MASTER_KEY=${OCTOCKUP_MASTER_KEY} # 32 chars master key for encrypting sensitive data in the database
     volumes:
       - /data/octockup:/app/data
-      - /data:/app/data/mounts/data:ro
+      # Mounts to backup if needed:
+      - /files:/app/data/mounts/files:ro
+      - /apps:/app/data/mounts/apps:ro
 ```
 
 3. Start the application using Docker Compose:
@@ -47,11 +56,15 @@ services:
 docker compose up -d
 ```
 
+---
+
 ## Usage
 
 1. Open your browser and navigate to the address where the application is running.
 2. Log in and set up connections to the necessary data sources (YouTube, SSH, FTP, etc.).
 3. Start gathering and managing data using the user-friendly web interface.
+
+---
 
 ## Configuration
 
@@ -64,6 +77,131 @@ docker compose up -d
 ```yaml
 MASTER_KEY: A 32-character master key for encrypting sensitive data in the database.
 ```
+
+---
+
+## 🏗 Architecture Overview
+
+```mermaid
+flowchart LR
+    subgraph SRC[Backup Source]
+        S1[SFTP]
+        S2[IMAP]
+        S3[File System]
+        S4[Other]
+    end
+
+    subgraph CORE[Octockup Core]
+        B[Backup Job]
+        SNAP[Snapshot]
+        F[SnapshotFile]
+        CH[Chunker]
+        H[SHA-256 Hashing]
+        IDX[UploadedHash<br/>Global Dedup Index]
+        ENC[AES-GCM Encryption]
+        CMP[Brotli Compression]
+    end
+
+    subgraph STOR[Backup Storage]
+        T1[S3]
+        T2[SFTP]
+        T3[Other Storage]
+    end
+
+    SRC --> B
+    B --> SNAP
+    SNAP --> F
+    F --> CH
+    CH --> H
+    H --> IDX
+    IDX -->|exists| SNAP
+    H -->|new| CMP --> ENC --> STOR
+
+```
+
+**High-level flow:**
+
+1. A **Source** provides a hierarchical list of files.
+2. A **Backup Job** scans files and creates a new **Snapshot**.
+3. Each file becomes a **SnapshotFile**.
+4. Files are split into fixed-size **chunks**.
+5. Each chunk is hashed (SHA-256).
+6. Hashes are checked against the global **UploadedHash** table.
+7. Only **missing chunks** are uploaded to the **Storage**.
+8. The Snapshot stores only **references to chunk hashes**, not raw data.
+
+This allows:
+
+* true **block-level deduplication**
+* **incremental backups**
+* efficient storage usage across all snapshots
+
+---
+
+## 🧱 How Deduplication Works
+
+Octockup uses **content-addressed chunk-level deduplication**.
+
+1. Every file is split into fixed-size chunks.
+2. Each chunk is hashed using **SHA-256**.
+3. Before uploading a chunk, Octockup checks the `UploadedHash` table:
+
+   * `(ModuleId + Hash)` must be unique.
+4. If the hash already exists:
+
+   * the chunk is **NOT uploaded again**
+   * only a reference is stored in `SnapshotFile.ChunkHashes`.
+5. If the hash does not exist:
+
+   * the chunk is **compressed**
+   * **encrypted**
+   * uploaded to the storage
+   * recorded in `UploadedHash`.
+
+As a result:
+
+* identical files across different backups are stored **only once**
+* even partial file changes reuse unchanged blocks
+* storage usage grows **only with truly new data**
+
+Deduplication works **globally per storage**, not only per snapshot.
+
+---
+
+## 🔐 How Encryption Works
+
+All backup data is encrypted **before leaving the server**.
+
+1. A global **MASTER_KEY** (32 bytes) is provided via environment variable.
+2. Every chunk is encrypted using:
+
+   * **AES-GCM**
+   * streamed encryption (no full-buffer loading)
+3. The encryption pipeline is:
+
+```
+Raw Chunk → Brotli Compression → AES-GCM Encryption → Upload
+```
+
+4. Encryption is performed **on the fly during chunk streaming**.
+5. The storage backend **never sees plaintext data**.
+6. During download:
+
+   * encrypted chunks are fetched
+   * decrypted and decompressed in memory
+   * reassembled into the original file stream.
+
+Security guarantees:
+
+* All data at rest in storage is **encrypted**
+* Authentication is provided by **GCM tags**
+* Tampered chunks are **automatically rejected**
+* The storage provider **cannot read backups**
+
+The master key is **never stored** in the database and must be backed up securely.
+
+---
+
 
 ## Updating
 

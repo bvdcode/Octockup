@@ -1,8 +1,8 @@
 ﻿using MailKit;
 using MailKit.Net.Imap;
-using Octockup.Server.Models;
-using Octockup.Server.Helpers;
 using Octockup.Server.Abstractions;
+using Octockup.Server.Helpers;
+using Octockup.Server.Models;
 
 namespace Octockup.Server.Modules
 {
@@ -76,7 +76,7 @@ namespace Octockup.Server.Modules
                     await _client.ConnectAsync(_host, _port, _useSsl);
                     await _client.AuthenticateAsync(_username, _password);
                     _logger.LogInformation("Successfully connected to IMAP server {Host}:{Port}", _host, _port);
-                    
+
                     // Cache the directory separator from the server
                     var personalNamespace = _client.GetFolder(_client.PersonalNamespaces[0]);
                     _serverDirectorySeparator = personalNamespace.DirectorySeparator;

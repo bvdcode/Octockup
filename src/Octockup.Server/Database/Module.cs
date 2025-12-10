@@ -1,9 +1,9 @@
 ﻿// SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2025 Vadim Belov
 
-using Octockup.Server.Models.Enums;
-using Microsoft.EntityFrameworkCore;
 using EasyExtensions.EntityFrameworkCore.Abstractions;
+using Microsoft.EntityFrameworkCore;
+using Octockup.Server.Models.Enums;
 
 namespace Octockup.Server.Database
 {

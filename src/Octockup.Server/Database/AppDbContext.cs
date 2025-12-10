@@ -1,11 +1,11 @@
 ﻿// SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2025 Vadim Belov
 
-using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
 using EasyExtensions.EntityFrameworkCore.Database;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using System.Text.Json;
 
 namespace Octockup.Server.Database
 {

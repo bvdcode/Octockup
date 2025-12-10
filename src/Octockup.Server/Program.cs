@@ -1,18 +1,18 @@
 ﻿// SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2025 Vadim Belov
 
-using Octockup.Server.Hubs;
+using EasyExtensions.Abstractions;
+using EasyExtensions.AspNetCore.Authorization.Extensions;
+using EasyExtensions.AspNetCore.Extensions;
 using EasyExtensions.Crypto;
-using Octockup.Server.Modules;
+using EasyExtensions.EntityFrameworkCore.Extensions;
+using EasyExtensions.Quartz.Extensions;
+using Microsoft.EntityFrameworkCore;
+using Octockup.Server.Abstractions;
 using Octockup.Server.Database;
 using Octockup.Server.Extensions;
-using EasyExtensions.Abstractions;
-using Octockup.Server.Abstractions;
-using Microsoft.EntityFrameworkCore;
-using EasyExtensions.Quartz.Extensions;
-using EasyExtensions.AspNetCore.Extensions;
-using EasyExtensions.EntityFrameworkCore.Extensions;
-using EasyExtensions.AspNetCore.Authorization.Extensions;
+using Octockup.Server.Hubs;
+using Octockup.Server.Modules;
 
 namespace Octockup.Server
 {

@@ -1,9 +1,9 @@
-﻿using System.IO.Compression;
-using Octockup.Server.Models;
-using Octockup.Server.Helpers;
-using Octockup.Server.Database;
-using EasyExtensions.Abstractions;
+﻿using EasyExtensions.Abstractions;
 using Octockup.Server.Abstractions;
+using Octockup.Server.Database;
+using Octockup.Server.Helpers;
+using Octockup.Server.Models;
+using System.IO.Compression;
 
 namespace Octockup.Server.Streams
 {

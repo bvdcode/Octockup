@@ -1,5 +1,5 @@
-﻿using Octockup.Server.Modules;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
+using Octockup.Server.Modules;
 
 namespace Octockup.Tests
 {
