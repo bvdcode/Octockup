@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Octockup.Server.Database
 {
-    [Table("uploaded_hashes")]
+    [Table("uploaded_hashes1")]
     [Index(nameof(Hash))]
     [Index(nameof(ModuleId), nameof(Hash), IsUnique = true)]
     public class UploadedHash : BaseEntity<Guid>

@@ -11,7 +11,7 @@ using Octockup.Server.Database;
 namespace Octockup.Server.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251210170514_RenameTablesAndColumns")]
+    [Migration("20251210174153_RenameTablesAndColumns")]
     partial class RenameTablesAndColumns
     {
         /// <inheritdoc />
@@ -102,7 +102,7 @@ namespace Octockup.Server.Migrations
                     b.HasIndex("Tag")
                         .IsUnique();
 
-                    b.ToTable("backups");
+                    b.ToTable("backups1");
                 });
 
             modelBuilder.Entity("Octockup.Server.Database.Module", b =>
@@ -152,7 +152,7 @@ namespace Octockup.Server.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("modules");
+                    b.ToTable("modules1");
                 });
 
             modelBuilder.Entity("Octockup.Server.Database.Schedule", b =>
@@ -201,7 +201,7 @@ namespace Octockup.Server.Migrations
 
                     b.HasIndex("BackupId");
 
-                    b.ToTable("schedules");
+                    b.ToTable("schedules1");
                 });
 
             modelBuilder.Entity("Octockup.Server.Database.Snapshot", b =>
@@ -246,7 +246,7 @@ namespace Octockup.Server.Migrations
 
                     b.HasIndex("ScheduleId");
 
-                    b.ToTable("snapshots");
+                    b.ToTable("snapshots1");
                 });
 
             modelBuilder.Entity("Octockup.Server.Database.SnapshotFile", b =>
@@ -302,7 +302,7 @@ namespace Octockup.Server.Migrations
 
                     b.HasIndex("SnapshotId");
 
-                    b.ToTable("snapshot_files");
+                    b.ToTable("snapshot_files1");
                 });
 
             modelBuilder.Entity("Octockup.Server.Database.UploadedHash", b =>
@@ -346,7 +346,7 @@ namespace Octockup.Server.Migrations
                     b.HasIndex("ModuleId", "Hash")
                         .IsUnique();
 
-                    b.ToTable("uploaded_hashes");
+                    b.ToTable("uploaded_hashes1");
                 });
 
             modelBuilder.Entity("Octockup.Server.Database.User", b =>
@@ -381,7 +381,7 @@ namespace Octockup.Server.Migrations
                     b.HasIndex("Username")
                         .IsUnique();
 
-                    b.ToTable("users");
+                    b.ToTable("users1");
                 });
 
             modelBuilder.Entity("Octockup.Server.Database.Backup", b =>
