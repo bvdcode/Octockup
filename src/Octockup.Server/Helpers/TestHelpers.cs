@@ -1,10 +1,10 @@
 ﻿// SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2025 Vadim Belov
 
-using Microsoft.AspNetCore.Mvc;
-using Octockup.Server.Controllers;
-using Octockup.Server.Abstractions;
 using EasyExtensions.AspNetCore.Extensions;
+using Microsoft.AspNetCore.Mvc;
+using Octockup.Server.Abstractions;
+using Octockup.Server.Controllers;
 
 namespace Octockup.Server.Helpers
 {
@@ -54,7 +54,7 @@ namespace Octockup.Server.Helpers
 
                 int tested = 0;
                 var errors = new List<string>();
-                
+
                 foreach (var file in candidates)
                 {
                     if (tested >= maxTestedFiles)
@@ -66,7 +66,7 @@ namespace Octockup.Server.Helpers
                     try
                     {
                         testStream = await source.GetFileStreamAsync(file);
-                        
+
                         if (testStream == null || testStream == Stream.Null)
                         {
                             logger.LogWarning("File '{FilePath}' returned null or empty stream during connection test.", file.Path);
@@ -110,7 +110,7 @@ namespace Octockup.Server.Helpers
                     tested++;
                 }
 
-                var errorMessage = errors.Count > 0 
+                var errorMessage = errors.Count > 0
                     ? string.Join("; ", errors.Take(3))
                     : "no files could be read";
 

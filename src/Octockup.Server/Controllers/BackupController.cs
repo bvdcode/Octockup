@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2025 Vadim Belov
 
-using Mapster;
 using EasyExtensions;
+using EasyExtensions.AspNetCore.Extensions;
+using Mapster;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Database;
 using Octockup.Server.Models.Dto;
 using Octockup.Server.Models.Enums;
-using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Models.Requests;
-using Microsoft.AspNetCore.Authorization;
-using EasyExtensions.AspNetCore.Extensions;
 
 namespace Octockup.Server.Controllers
 {

@@ -2,20 +2,18 @@
 // Copyright (c) 2025 Vadim Belov
 
 using EasyExtensions;
-using EasyExtensions.Helpers;
-using Octockup.Server.Models;
-using Microsoft.AspNetCore.Mvc;
-using Octockup.Server.Database;
 using EasyExtensions.Abstractions;
+using EasyExtensions.AspNetCore.Authorization.Abstractions;
+using EasyExtensions.AspNetCore.Authorization.Models.Dto;
+using EasyExtensions.AspNetCore.Extensions;
+using EasyExtensions.EntityFrameworkCore.Database;
+using EasyExtensions.Helpers;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Octockup.Server.Database;
 using Octockup.Server.Models.Requests;
 using System.IdentityModel.Tokens.Jwt;
-using Microsoft.AspNetCore.Authorization;
-using EasyExtensions.AspNetCore.Extensions;
-using EasyExtensions.AspNetCore.Authorization.Abstractions;
-using EasyExtensions.Models;
-using EasyExtensions.AspNetCore.Authorization.Models.Dto;
-using EasyExtensions.EntityFrameworkCore.Database;
 
 namespace Octockup.Server.Controllers
 {

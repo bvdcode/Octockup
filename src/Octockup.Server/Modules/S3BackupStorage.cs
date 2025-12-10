@@ -3,10 +3,10 @@
 
 using Amazon.S3;
 using Amazon.S3.Model;
-using System.Net.Mime;
-using Octockup.Server.Models;
-using Octockup.Server.Helpers;
 using Octockup.Server.Abstractions;
+using Octockup.Server.Helpers;
+using Octockup.Server.Models;
+using System.Net.Mime;
 
 namespace Octockup.Server.Modules
 {

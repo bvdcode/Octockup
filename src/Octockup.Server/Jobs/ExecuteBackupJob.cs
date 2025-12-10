@@ -1,22 +1,22 @@
 ﻿// SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2025 Vadim Belov
 
+using EasyExtensions.Abstractions;
+using EasyExtensions.Quartz.Attributes;
+using EasyExtensions.Streams;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using Octockup.Server.Abstractions;
+using Octockup.Server.Collections;
+using Octockup.Server.Database;
+using Octockup.Server.Helpers;
+using Octockup.Server.Hubs;
+using Octockup.Server.Models;
+using Octockup.Server.Models.Enums;
 using Quartz;
 using System.Buffers;
-using Octockup.Server.Hubs;
 using System.IO.Compression;
-using EasyExtensions.Streams;
-using Octockup.Server.Models;
-using Octockup.Server.Helpers;
-using Octockup.Server.Database;
-using Octockup.Server.Collections;
-using EasyExtensions.Abstractions;
-using Octockup.Server.Models.Enums;
-using Microsoft.AspNetCore.SignalR;
-using Octockup.Server.Abstractions;
 using System.Security.Cryptography;
-using Microsoft.EntityFrameworkCore;
-using EasyExtensions.Quartz.Attributes;
 
 namespace Octockup.Server.Jobs
 {
@@ -82,7 +82,7 @@ namespace Octockup.Server.Jobs
 
                 // Set ignored paths before enumerating files
                 foundSourceProvider.SetIgnoredPaths(next.Backup.IgnoredPaths);
-                
+
                 var filesToBackup = foundSourceProvider.GetFiles(recursive: true);
                 await BackupAsync(next, foundSourceProvider, foundStorageProvider, report, filesToBackup, context.CancellationToken);
                 next.Status = ScheduleStatus.Completed;
