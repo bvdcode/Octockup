@@ -128,7 +128,10 @@ namespace Octockup.Server.Jobs
             var uploadedChunks = await LoadChunkHashesAsync(schedule.Backup.StorageId, cancellationToken);
             var previousFiles = await GetFilesFromLastSnapshotAsync(schedule.BackupId, cancellationToken);
 
+            const int SaveBatchSize = 100;
             int counter = 0;
+            int filesAddedSinceLastSave = 0;
+            
             cancellationToken.ThrowIfCancellationRequested();
             foreach (var file in loader)
             {
@@ -161,7 +164,13 @@ namespace Octockup.Server.Jobs
                         ChunkHashes = foundFile.ChunkHashes,
                     };
                     await _dbContext.SnapshotFiles.AddAsync(snapshotFile, cancellationToken);
-                    await _dbContext.SaveChangesAsync(cancellationToken);
+                    filesAddedSinceLastSave++;
+
+                    if (filesAddedSinceLastSave >= SaveBatchSize)
+                    {
+                        await _dbContext.SaveChangesAsync(cancellationToken);
+                        filesAddedSinceLastSave = 0;
+                    }
 
                     await report.SendAsync(counter, $"Processing: {file.Name}", processedBytes: snapshotFile.Size, cancellationToken: cancellationToken);
                     continue;
@@ -285,7 +294,13 @@ namespace Octockup.Server.Jobs
                     await _dbContext.SnapshotFiles.AddAsync(snapshotFile, cancellationToken);
                     snapshot.TotalSize += snapshotFile.Size;
                     snapshot.FilesCount += 1;
-                    await _dbContext.SaveChangesAsync(cancellationToken);
+                    filesAddedSinceLastSave++;
+
+                    if (filesAddedSinceLastSave >= SaveBatchSize)
+                    {
+                        await _dbContext.SaveChangesAsync(cancellationToken);
+                        filesAddedSinceLastSave = 0;
+                    }
 
                     _logger.LogInformation("Schedule {ScheduleId}: {Message} ({Processed}/{Total})",
                         schedule.Id, report.Message, report.Processed, report.Total);
@@ -294,6 +309,12 @@ namespace Octockup.Server.Jobs
                 {
                     ArrayPool<byte>.Shared.Return(buffer);
                 }
+            }
+
+            // Save any remaining files
+            if (filesAddedSinceLastSave > 0)
+            {
+                await _dbContext.SaveChangesAsync(cancellationToken);
             }
 
             report.Total = loader.Total;
