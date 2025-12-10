@@ -105,7 +105,7 @@ namespace Octockup.Server.Jobs
                 next.ErrorMessage = $"Backup failed: {ex.Message}";
                 next.Status = ScheduleStatus.Failed;
                 next.FinishedAt = DateTime.UtcNow;
-                await _dbContext.SaveChangesAsync(cancellationToken);
+                await _dbContext.SaveChangesAsync(context.CancellationToken);
                 _logger.LogError(ex, "Schedule {ScheduleId} backup failed", next.Id);
                 await report.SendAsync(report.Processed, next.ErrorMessage, status: ScheduleStatus.Failed, cancellationToken: cancellationToken);
             }
