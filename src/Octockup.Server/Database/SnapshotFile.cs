@@ -2,11 +2,13 @@
 // Copyright (c) 2025 Vadim Belov
 
 using EasyExtensions.EntityFrameworkCore.Abstractions;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Octockup.Server.Database
 {
-    [Table("snapshot_files1")]
+    [Table("snapshot_files")]
+    [Index(nameof(SnapshotId), nameof(Path), IsUnique = true)]
     public class SnapshotFile : BaseEntity<Guid>
     {
         [Column("size")]

@@ -8,7 +8,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Octockup.Server.Database
 {
-    [Table("modules1")]
+    [Table("modules")]
     [Index(nameof(Tag), IsUnique = true)]
     public class Module : BaseEntity<Guid>
     {

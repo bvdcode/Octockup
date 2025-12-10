@@ -6,7 +6,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Octockup.Server.Database
 {
-    [Table("snapshots1")]
+    [Table("snapshots")]
     public class Snapshot : BaseEntity<Guid>
     {
         [Column("backup_id")]

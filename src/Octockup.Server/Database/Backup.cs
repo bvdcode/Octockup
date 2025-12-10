@@ -7,7 +7,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Octockup.Server.Database
 {
-    [Table("backups1")]
+    [Table("backups")]
     [Index(nameof(Tag), IsUnique = true)]
     public class Backup : BaseEntity<Guid>
     {

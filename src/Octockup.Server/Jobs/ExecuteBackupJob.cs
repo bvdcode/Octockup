@@ -126,8 +126,6 @@ namespace Octockup.Server.Jobs
             Snapshot snapshot = await CreateNewSnapshotWithTracking(schedule.BackupId, cancellationToken);
             using LazyLoader<BackupFileInfo> loader = new(lazyFiles);
             var uploadedChunks = await LoadChunkHashesAsync(schedule.Backup.StorageId, cancellationToken);
-
-            // Cache all previous snapshot files by path (take the most recent one if duplicates exist)
             var previousFiles = await GetFilesFromLastSnapshotAsync(schedule.BackupId, cancellationToken);
 
             int counter = 0;
