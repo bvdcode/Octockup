@@ -3,17 +3,20 @@
 
 using EasyExtensions.EntityFrameworkCore.Abstractions;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Octockup.Server.Database
 {
-    /// <summary>
-    /// Represents an application user with authentication credentials and associated modules.
-    /// </summary>
+    [Table("users")]
     [Index(nameof(Username), IsUnique = true)]
     public class User : BaseEntity<Guid>
     {
+        [Column("username")]
         public string Username { get; set; } = string.Empty;
+
+        [Column("password_phc")]
         public string PasswordPhc { get; set; } = string.Empty;
+
         public ICollection<Module> Modules { get; set; } = [];
     }
 }
