@@ -27,27 +27,14 @@ namespace Octockup.Server.Services
 
             if (string.IsNullOrWhiteSpace(postgresPassword))
             {
-                _serviceCollection.AddSqlite<SqliteDbContext>(sqliteConnectionString);
                 _logger.LogInformation("No PostgreSQL password provided. Using SQLite database: {file}",
                     Helpers.PathHelpers.GetPath(SqliteFileName));
                 DbContextOptionsBuilder<SqliteDbContext> optionsBuilder = new DbContextOptionsBuilder<SqliteDbContext>()
                     .UseSqlite(sqliteConnectionString);
                 SqliteDbContext sqliteContext = new(optionsBuilder.Options);
-                try
-                {
-                    bool created = sqliteContext.Database.EnsureCreated();
-                    if (created)
-                    {
-                        _logger.LogInformation("SQLite database created.");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to create or connect to SQLite database: " +
-                        "if schema is outdated, consider deleting the file {file} to recreate it. Migrations are supported only for PostgreSQL.",
-                        Helpers.PathHelpers.GetPath(SqliteFileName));
-                    throw;
-                }
+                sqliteContext.ApplyMigrations(_logger);
+                _serviceCollection.AddSqlite<SqliteDbContext>(sqliteConnectionString);
+                _serviceCollection.AddScoped<AppDbContext>(sp => sp.GetRequiredService<SqliteDbContext>());
                 return;
             }
 
@@ -63,6 +50,7 @@ namespace Octockup.Server.Services
             _logger.LogInformation("Using PostgreSQL database at {host}:{port}/{database} with user {user}",
                 postgresHost, postgresPort, postgresDatabase, postgresUser);
             _serviceCollection.AddPostgresDbContext<PostgresDbContext>();
+            _serviceCollection.AddScoped<AppDbContext>(sp => sp.GetRequiredService<PostgresDbContext>());
 
             NpgsqlConnectionStringBuilder builder = new()
             {
