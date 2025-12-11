@@ -27,7 +27,7 @@ namespace Octockup.Server.Services
 
             if (string.IsNullOrWhiteSpace(postgresPassword))
             {
-                _serviceCollection.AddSqlite<AppDbContext>(sqliteConnectionString);
+                _serviceCollection.AddSqlite<SqliteDbContext>(sqliteConnectionString);
                 _logger.LogInformation("No PostgreSQL password provided. Using SQLite database: {file}",
                     Helpers.PathHelpers.GetPath(SqliteFileName));
                 DbContextOptionsBuilder<SqliteDbContext> optionsBuilder = new DbContextOptionsBuilder<SqliteDbContext>()
@@ -62,7 +62,7 @@ namespace Octockup.Server.Services
 
             _logger.LogInformation("Using PostgreSQL database at {host}:{port}/{database} with user {user}",
                 postgresHost, postgresPort, postgresDatabase, postgresUser);
-            _serviceCollection.AddPostgresDbContext<AppDbContext>();
+            _serviceCollection.AddPostgresDbContext<PostgresDbContext>();
 
             NpgsqlConnectionStringBuilder builder = new()
             {
@@ -72,7 +72,7 @@ namespace Octockup.Server.Services
                 Database = postgresDatabase,
                 Port = ushort.Parse(postgresPort),
             };
-            using AppDbContext pgContext = new(new DbContextOptionsBuilder<AppDbContext>()
+            using PostgresDbContext pgContext = new(new DbContextOptionsBuilder<PostgresDbContext>()
                 .UseNpgsql(builder.ConnectionString).Options);
             pgContext.ApplyMigrations(_logger);
 
