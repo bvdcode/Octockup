@@ -5,14 +5,13 @@ using EasyExtensions.Abstractions;
 using EasyExtensions.AspNetCore.Authorization.Extensions;
 using EasyExtensions.AspNetCore.Extensions;
 using EasyExtensions.Crypto;
-using EasyExtensions.EntityFrameworkCore.Extensions;
 using EasyExtensions.Quartz.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Abstractions;
-using Octockup.Server.Database;
 using Octockup.Server.Extensions;
 using Octockup.Server.Hubs;
 using Octockup.Server.Modules;
+using Octockup.Server.Services;
 
 namespace Octockup.Server
 {
@@ -28,12 +27,9 @@ namespace Octockup.Server
                 new KeyValuePair<string, string?>("Pepper", KeyDerivation.DeriveSubkeyBase64(masterKey, "pepper", 32))
             ]);
             byte[] cryptoKey = KeyDerivation.DeriveSubkey(masterKey, "crypto", 32);
-            string sqlitePassword = KeyDerivation.DeriveSubkeyBase64(masterKey, "sqlite", 32);
-            string sqlitePath = Helpers.PathHelpers.GetPath("octockup.sqlite");
 
             builder.Services.AddControllers();
             builder.Services
-                .AddSqlite<AppDbContext>(connectionString: $"Data Source={sqlitePath};Password={sqlitePassword};")
                 .AddScoped<IBackupProvider, IMAPSource>()
                 .AddScoped<IBackupProvider, S3BackupStorage>()
                 .AddScoped<IBackupProvider, SFTPBackupStorage>()
@@ -48,6 +44,8 @@ namespace Octockup.Server
 
             string[] corsOrigins = builder.Configuration.GetSection("CorsOrigins").Get<string[]>() ?? [];
             builder.Services.AddDefaultCorsWithOrigins(corsOrigins);
+            var logger = LoggerFactory.Create(loggingBuilder => loggingBuilder.AddConsole()).CreateLogger<Program>();
+            SetupDatabaseService setupDb = new(logger, builder.Configuration, builder.Services);
 
             var app = builder.Build();
             app.UseCors().UseDefaultFiles();
@@ -57,7 +55,6 @@ namespace Octockup.Server
             app.MapControllers();
             app.MapFallbackToFile("/index.html");
             app.MapHub<EventHub>("/api/v1/event-hub");
-            app.ApplyMigrations<AppDbContext>();
             app.Run();
         }
     }

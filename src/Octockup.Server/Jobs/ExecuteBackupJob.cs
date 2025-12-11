@@ -131,7 +131,7 @@ namespace Octockup.Server.Jobs
             const int SaveBatchSize = 100;
             int counter = 0;
             int filesAddedSinceLastSave = 0;
-            
+
             cancellationToken.ThrowIfCancellationRequested();
             foreach (var file in loader)
             {
