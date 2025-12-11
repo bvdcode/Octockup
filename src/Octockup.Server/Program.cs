@@ -33,7 +33,7 @@ namespace Octockup.Server
 
             builder.Services.AddControllers();
             builder.Services
-                .AddSqlite<AppDbContext>(connectionString: $"Data Source={sqlitePath};Password={sqlitePassword};")
+                .AddDbContext<AppDbContext, SqliteDbContext>(x => x.UseSqlite(connectionString: $"Data Source={sqlitePath};Password={sqlitePassword};"))
                 .AddScoped<IBackupProvider, IMAPSource>()
                 .AddScoped<IBackupProvider, S3BackupStorage>()
                 .AddScoped<IBackupProvider, SFTPBackupStorage>()
