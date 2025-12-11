@@ -15,6 +15,7 @@ using Octockup.Server.Models;
 using Octockup.Server.Models.Enums;
 using Quartz;
 using System.Buffers;
+using System.Diagnostics;
 using System.IO.Compression;
 using System.Security.Cryptography;
 
@@ -128,10 +129,9 @@ namespace Octockup.Server.Jobs
             var uploadedChunks = await LoadChunkHashesAsync(schedule.Backup.StorageId, cancellationToken);
             var previousFiles = await GetFilesFromLastSnapshotAsync(schedule.BackupId, cancellationToken);
 
-            const int SaveBatchSize = 100;
             int counter = 0;
-            int filesAddedSinceLastSave = 0;
-            
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
             cancellationToken.ThrowIfCancellationRequested();
             foreach (var file in loader)
             {
@@ -164,16 +164,21 @@ namespace Octockup.Server.Jobs
                         ChunkHashes = foundFile.ChunkHashes,
                     };
                     await _dbContext.SnapshotFiles.AddAsync(snapshotFile, cancellationToken);
-                    filesAddedSinceLastSave++;
 
-                    if (filesAddedSinceLastSave >= SaveBatchSize)
+                    if (stopwatch.Elapsed.TotalSeconds > 10)
                     {
                         await _dbContext.SaveChangesAsync(cancellationToken);
-                        filesAddedSinceLastSave = 0;
+                        stopwatch.Restart();
                     }
 
                     await report.SendAsync(counter, $"Processing: {file.Name}", processedBytes: snapshotFile.Size, cancellationToken: cancellationToken);
                     continue;
+                }
+
+                if (foundFile != null)
+                {
+                    _logger.LogInformation("Schedule {ScheduleId}: File {FileName} changed - Hashsum: {HasHashsum}, Size: {OldSize} vs {NewSize}, LastModified: {OldModified} vs {NewModified}",
+                        schedule.Id, file.Name, foundFile.Hashsum != null, foundFile.Size, file.Size, foundFile.LastModified, file.LastModified);
                 }
 
                 using var stream = await source.GetFileStreamAsync(file, cancellationToken);
@@ -294,12 +299,11 @@ namespace Octockup.Server.Jobs
                     await _dbContext.SnapshotFiles.AddAsync(snapshotFile, cancellationToken);
                     snapshot.TotalSize += snapshotFile.Size;
                     snapshot.FilesCount += 1;
-                    filesAddedSinceLastSave++;
 
-                    if (filesAddedSinceLastSave >= SaveBatchSize)
+                    if (stopwatch.Elapsed.TotalSeconds > 10)
                     {
                         await _dbContext.SaveChangesAsync(cancellationToken);
-                        filesAddedSinceLastSave = 0;
+                        stopwatch.Restart();
                     }
 
                     _logger.LogInformation("Schedule {ScheduleId}: {Message} ({Processed}/{Total})",
@@ -311,14 +315,9 @@ namespace Octockup.Server.Jobs
                 }
             }
 
-            // Save any remaining files
-            if (filesAddedSinceLastSave > 0)
-            {
-                await _dbContext.SaveChangesAsync(cancellationToken);
-            }
-
             report.Total = loader.Total;
             await report.SendAsync(report.Processed, "Finalizing snapshot...", cancellationToken: cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
             snapshot.CompletedAt = DateTime.UtcNow;
             await _dbContext.SaveChangesAsync(cancellationToken);
             snapshot.TotalSize = await _dbContext.SnapshotFiles
