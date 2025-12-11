@@ -33,8 +33,8 @@ namespace Octockup.Server.Services
                     .UseSqlite(sqliteConnectionString);
                 SqliteDbContext sqliteContext = new(optionsBuilder.Options);
                 sqliteContext.ApplyMigrations(_logger);
-                _serviceCollection.AddSqlite<SqliteDbContext>(sqliteConnectionString);
-                _serviceCollection.AddScoped<AppDbContext>(sp => sp.GetRequiredService<SqliteDbContext>());
+                _serviceCollection.AddSqlite<SqliteDbContext>(sqliteConnectionString)
+                    .AddScoped<AppDbContext>(sp => sp.GetRequiredService<SqliteDbContext>());
                 return;
             }
 

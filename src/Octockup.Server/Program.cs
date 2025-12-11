@@ -44,8 +44,8 @@ namespace Octockup.Server
 
             string[] corsOrigins = builder.Configuration.GetSection("CorsOrigins").Get<string[]>() ?? [];
             builder.Services.AddDefaultCorsWithOrigins(corsOrigins);
-            var logger = LoggerFactory.Create(loggingBuilder => loggingBuilder.AddConsole()).CreateLogger<Program>();
-            SetupDatabaseService setupDb = new(logger, builder.Configuration, builder.Services);
+            var logger = LoggerFactory.Create(loggingBuilder => loggingBuilder.AddConsole()).CreateLogger<SetupDatabaseService>();
+            new SetupDatabaseService(logger, builder.Configuration, builder.Services).Setup();
 
             var app = builder.Build();
             app.UseCors().UseDefaultFiles();
