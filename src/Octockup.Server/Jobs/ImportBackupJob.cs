@@ -43,14 +43,14 @@ namespace Octockup.Server.Jobs
                     {
                         _logger.LogInformation("Processing import file: {ImportFile}", importFile);
                         await ProcessImportFileAsync(userId, importFile, cancellationToken);
-                        
+
                         File.Delete(importFile);
                         _logger.LogInformation("Successfully processed and deleted import file: {ImportFile}", importFile);
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Failed to process import file: {ImportFile}", importFile);
-                        
+
                         string failedPath = importFile + ".failed";
                         if (File.Exists(failedPath))
                         {
@@ -95,12 +95,12 @@ namespace Octockup.Server.Jobs
             await using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
             await using var brotliStream = new BrotliStream(fileStream, CompressionMode.Decompress, leaveOpen: true);
             using var decryptedStream = new MemoryStream();
-            
+
             await _streamCipher.DecryptAsync(brotliStream, decryptedStream, ct: cancellationToken);
             decryptedStream.Seek(0, SeekOrigin.Begin);
 
             var importData = await JsonSerializer.DeserializeAsync<ImportData>(decryptedStream, cancellationToken: cancellationToken);
-            
+
             if (importData == null)
             {
                 _logger.LogWarning("Failed to deserialize import data from file {FilePath}", filePath);
@@ -130,10 +130,18 @@ namespace Octockup.Server.Jobs
                 {
                     backup.Source = source;
                 }
+                else
+                {
+                    throw new InvalidOperationException($"Source module with ID {backup.SourceId} not found for backup {backup.Id}");
+                }
 
                 if (modulesById.TryGetValue(backup.StorageId, out var storage))
                 {
                     backup.Storage = storage;
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Storage module with ID {backup.StorageId} not found for backup {backup.Id}");
                 }
             }
 
@@ -146,6 +154,10 @@ namespace Octockup.Server.Jobs
                     backup.Schedules ??= [];
                     backup.Schedules.Add(schedule);
                 }
+                else
+                {
+                    throw new InvalidOperationException($"Backup with ID {schedule.BackupId} not found for schedule {schedule.Id}");
+                }
             }
 
             // Восстанавливаем связи Backup <-> Snapshot
@@ -157,6 +169,10 @@ namespace Octockup.Server.Jobs
                     backup.Snapshots ??= [];
                     backup.Snapshots.Add(snapshot);
                 }
+                else
+                {
+                    throw new InvalidOperationException($"Backup with ID {snapshot.BackupId} not found for snapshot {snapshot.Id}");
+                }
             }
 
             // Восстанавливаем связи Snapshot <-> SnapshotFile
@@ -167,6 +183,10 @@ namespace Octockup.Server.Jobs
                     snapshotFile.Snapshot = snapshot;
                     snapshot.Files ??= [];
                     snapshot.Files.Add(snapshotFile);
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Snapshot with ID {snapshotFile.SnapshotId} not found for snapshot file {snapshotFile.Id}");
                 }
             }
 
