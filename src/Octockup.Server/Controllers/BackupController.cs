@@ -249,7 +249,7 @@ namespace Octockup.Server.Controllers
 
         [Authorize]
         [HttpPost("/api/v1/backups/server/import")]
-        public async Task<IActionResult> ImportServerBackup(IFormFile file, CancellationToken ct)
+        public async Task<IActionResult> ImportServerBackup([FromForm] IFormFile file, CancellationToken ct)
         {
             if (file == null || file.Length == 0)
             {
@@ -266,7 +266,7 @@ namespace Octockup.Server.Controllers
                 return this.ApiNotFound("User not found: " + userId);
             }
 
-            _logger.LogInformation("User {UserId} is importing server backup data.", userId);
+            _logger.LogInformation("User {UserId} is importing server backup data, file size: {FileSize} bytes", userId, file.Length);
 
             // Create import directory if not exists
             string importDir = Path.Combine(Path.GetTempPath(), "octockup-imports", userId.ToString());
@@ -282,7 +282,7 @@ namespace Octockup.Server.Controllers
                 await file.CopyToAsync(fileStream, ct);
             }
 
-            _logger.LogInformation("Saved import file for user {UserId} to {FilePath}", userId, filePath);
+            _logger.LogInformation("Saved import file for user {UserId} to {FilePath}, triggering import job", userId, filePath);
 
             // Trigger the import job
             await _schedulerFactory.TriggerJobAsync<ImportBackupJob>();
