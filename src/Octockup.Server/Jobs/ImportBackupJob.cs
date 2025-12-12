@@ -28,7 +28,9 @@ namespace Octockup.Server.Jobs
             resolver.Modifiers.Add(static ti =>
             {
                 if (ti.Kind != JsonTypeInfoKind.Object)
+                {
                     return;
+                }
 
                 var jsonProp = ti.Properties.FirstOrDefault(p =>
                     string.Equals(p.Name, "Id", StringComparison.Ordinal) &&

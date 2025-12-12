@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Models.Enums;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Octockup.Server.Database
 {
@@ -27,10 +28,12 @@ namespace Octockup.Server.Database
         [Column("backup_module_id")]
         public string BackupModuleId { get; set; } = string.Empty;
 
+        [JsonInclude]
         [Column("parameters")]
         [Obsolete("Use EncryptedParameters instead.")]
         public Dictionary<string, string> Parameters { get; private set; } = [];
 
+        [JsonInclude]
         [Column("encrypted_parameters")]
         public string EncryptedParameters { get; private set; } = string.Empty;
 
