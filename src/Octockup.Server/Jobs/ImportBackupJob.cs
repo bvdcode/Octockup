@@ -118,6 +118,7 @@ namespace Octockup.Server.Jobs
             {
                 foreach (var module in importData.Modules)
                 {
+                    module.UserId = user.Id;
                     var exists = await _dbContext.Modules.AnyAsync(m => m.Id == module.Id, cancellationToken);
                     if (!exists)
                     {
