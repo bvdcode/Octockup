@@ -108,113 +108,45 @@ namespace Octockup.Server.Jobs
             }
 
             _logger.LogInformation("Import data contains: {ModuleCount} modules, {BackupCount} backups, {ScheduleCount} schedules, {SnapshotCount} snapshots, {SnapshotFileCount} snapshot files",
-                importData.Modules?.Count ?? 0,
-                importData.Backups?.Count ?? 0,
-                importData.Schedules?.Count ?? 0,
-                importData.Snapshots?.Count ?? 0,
-                importData.SnapshotFiles?.Count ?? 0);
-                
-            if (importData.Modules != null)
+                importData.Modules.Count,
+                importData.Backups.Count,
+                importData.Schedules.Count,
+                importData.Snapshots.Count,
+                importData.SnapshotFiles.Count);
+
+            foreach (var item in importData.Modules)
             {
-                foreach (var module in importData.Modules)
-                {
-                    module.UserId = user.Id;
-                    var exists = await _dbContext.Modules.AnyAsync(m => m.Id == module.Id, cancellationToken);
-                    if (!exists)
-                    {
-                        _dbContext.Modules.Add(module);
-                        _logger.LogInformation("Added module {Tag} with ID {Id}", module.Tag, module.Id);
-                    }
-                    else
-                    {
-                        _logger.LogInformation("Module {Tag} with ID {Id} already exists, skipping", module.Tag, module.Id);
-                    }
-                }
-                await _dbContext.SaveChangesAsync(cancellationToken);
+                item.User = user;
             }
 
-            if (importData.Backups != null)
+            foreach (var snapshot in importData.Snapshots)
             {
-                foreach (var backup in importData.Backups)
-                {
-                    var exists = await _dbContext.Backups.AnyAsync(b => b.Id == backup.Id, cancellationToken);
-                    if (!exists)
-                    {
-                        _dbContext.Backups.Add(backup);
-                        _logger.LogInformation("Added backup {Tag} with ID {Id}", backup.Tag, backup.Id);
-                    }
-                    else
-                    {
-                        _logger.LogInformation("Backup {Tag} with ID {Id} already exists, skipping", backup.Tag, backup.Id);
-                    }
-                }
-                await _dbContext.SaveChangesAsync(cancellationToken);
+                snapshot.Files = [.. importData.SnapshotFiles.Where(sf => sf.SnapshotId == snapshot.Id)];
+                snapshot.Backup = importData.Backups.First(b => b.Id == snapshot.BackupId);
+                snapshot.Backup.Schedules = [.. importData.Schedules.Where(s => s.BackupId == snapshot.BackupId)];
+                snapshot.Backup.Source = importData.Modules.First(m => m.Id == snapshot.Backup.SourceId);
+                snapshot.Backup.Storage = importData.Modules.First(m => m.Id == snapshot.Backup.StorageId);
             }
 
-            if (importData.Schedules != null)
-            {
-                foreach (var schedule in importData.Schedules)
-                {
-                    var exists = await _dbContext.Schedules.AnyAsync(s => s.Id == schedule.Id, cancellationToken);
-                    if (!exists)
-                    {
-                        _dbContext.Schedules.Add(schedule);
-                        _logger.LogInformation("Added schedule with ID {Id}", schedule.Id);
-                    }
-                    else
-                    {
-                        _logger.LogInformation("Schedule with ID {Id} already exists, skipping", schedule.Id);
-                    }
-                }
-                await _dbContext.SaveChangesAsync(cancellationToken);
-            }
+            await _dbContext.Modules.AddRangeAsync(importData.Modules, cancellationToken);
+            await _dbContext.Backups.AddRangeAsync(importData.Backups, cancellationToken);
+            await _dbContext.Schedules.AddRangeAsync(importData.Schedules, cancellationToken);
+            await _dbContext.Snapshots.AddRangeAsync(importData.Snapshots, cancellationToken);
+            await _dbContext.SnapshotFiles.AddRangeAsync(importData.SnapshotFiles, cancellationToken);
 
-            if (importData.Snapshots != null)
-            {
-                foreach (var snapshot in importData.Snapshots)
-                {
-                    var exists = await _dbContext.Snapshots.AnyAsync(s => s.Id == snapshot.Id, cancellationToken);
-                    if (!exists)
-                    {
-                        _dbContext.Snapshots.Add(snapshot);
-                        _logger.LogInformation("Added snapshot with ID {Id}", snapshot.Id);
-                    }
-                    else
-                    {
-                        _logger.LogInformation("Snapshot with ID {Id} already exists, skipping", snapshot.Id);
-                    }
-                }
-                await _dbContext.SaveChangesAsync(cancellationToken);
-            }
-
-            if (importData.SnapshotFiles != null)
-            {
-                foreach (var snapshotFile in importData.SnapshotFiles)
-                {
-                    var exists = await _dbContext.SnapshotFiles.AnyAsync(sf => sf.Id == snapshotFile.Id, cancellationToken);
-                    if (!exists)
-                    {
-                        _dbContext.SnapshotFiles.Add(snapshotFile);
-                    }
-                    else
-                    {
-                        _logger.LogInformation("SnapshotFile with ID {Id} already exists, skipping", snapshotFile.Id);
-                    }
-                }
-                await _dbContext.SaveChangesAsync(cancellationToken);
-                _logger.LogInformation("Added {Count} snapshot files", importData.SnapshotFiles.Count);
-            }
+            _logger.LogInformation("Saving imported data to the database for user {UserId}...", userId);
+            await _dbContext.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Successfully completed import for user {UserId} from file {FilePath}", userId, filePath);
         }
 
         private class ImportData
         {
-            public List<Module>? Modules { get; set; }
-            public List<Backup>? Backups { get; set; }
-            public List<Schedule>? Schedules { get; set; }
-            public List<Snapshot>? Snapshots { get; set; }
-            public List<SnapshotFile>? SnapshotFiles { get; set; }
+            public List<Module> Modules { get; set; } = [];
+            public List<Backup> Backups { get; set; } = [];
+            public List<Schedule> Schedules { get; set; } = [];
+            public List<Snapshot> Snapshots { get; set; } = [];
+            public List<SnapshotFile> SnapshotFiles { get; set; } = [];
         }
     }
 }
