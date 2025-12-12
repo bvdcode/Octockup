@@ -339,6 +339,11 @@ namespace Octockup.Server.Jobs
                 .OrderByDescending(x => x.CreatedAt)
                 .FirstOrDefaultAsync(cancellationToken: cancellationToken);
 
+            previousSnapshot ??= await _dbContext.Snapshots
+                    .Where(x => x.BackupId == backupId)
+                    .OrderByDescending(x => x.CreatedAt)
+                    .FirstOrDefaultAsync(cancellationToken: cancellationToken);
+
             if (previousSnapshot == null)
             {
                 return new Dictionary<string, SnapshotFile>();
