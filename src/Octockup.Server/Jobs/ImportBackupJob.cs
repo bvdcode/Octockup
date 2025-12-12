@@ -114,95 +114,146 @@ namespace Octockup.Server.Jobs
                 importData.Snapshots?.Count ?? 0,
                 importData.SnapshotFiles?.Count ?? 0);
 
-            // Просто добавляем всё как есть, EF разберется с ID и конфликтами
+            // Track old ID -> new ID mappings for foreign keys
+            var moduleIdMap = new Dictionary<Guid, Guid>();
+            var backupIdMap = new Dictionary<Guid, Guid>();
+            var snapshotIdMap = new Dictionary<Guid, Guid>();
+
+            // Import Modules - check by tag
             if (importData.Modules != null)
             {
                 foreach (var module in importData.Modules)
                 {
-                    var exists = await _dbContext.Modules.AnyAsync(m => m.Id == module.Id, cancellationToken);
-                    if (!exists)
+                    var oldId = module.Id;
+                    var existing = await _dbContext.Modules
+                        .FirstOrDefaultAsync(m => m.Tag == module.Tag && m.UserId == user.Id, cancellationToken);
+                    
+                    if (existing != null)
                     {
-                        _dbContext.Modules.Add(module);
-                        _logger.LogInformation("Added module {Tag} with ID {Id}", module.Tag, module.Id);
+                        _logger.LogInformation("Module with tag {Tag} already exists for user, mapping old ID {OldId} to existing ID {NewId}", 
+                            module.Tag, oldId, existing.Id);
+                        moduleIdMap[oldId] = existing.Id;
                     }
                     else
                     {
-                        _logger.LogInformation("Module {Tag} with ID {Id} already exists, skipping", module.Tag, module.Id);
+                        // JSON deserializer won't set protected Id, so EF will generate new one
+                        module.UserId = user.Id;
+                        _dbContext.Modules.Add(module);
+                        await _dbContext.SaveChangesAsync(cancellationToken);
+                        moduleIdMap[oldId] = module.Id;
+                        _logger.LogInformation("Added module {Tag}, mapped old ID {OldId} to new ID {NewId}", 
+                            module.Tag, oldId, module.Id);
                     }
                 }
-                await _dbContext.SaveChangesAsync(cancellationToken);
             }
 
+            // Import Backups - check by tag and remap source/storage IDs
             if (importData.Backups != null)
             {
                 foreach (var backup in importData.Backups)
                 {
-                    var exists = await _dbContext.Backups.AnyAsync(b => b.Id == backup.Id, cancellationToken);
-                    if (!exists)
+                    var oldId = backup.Id;
+                    var existing = await _dbContext.Backups
+                        .Include(b => b.Source)
+                        .FirstOrDefaultAsync(b => b.Tag == backup.Tag && b.Source.UserId == user.Id, cancellationToken);
+                    
+                    if (existing != null)
                     {
-                        _dbContext.Backups.Add(backup);
-                        _logger.LogInformation("Added backup {Tag} with ID {Id}", backup.Tag, backup.Id);
+                        _logger.LogInformation("Backup with tag {Tag} already exists, mapping old ID {OldId} to existing ID {NewId}", 
+                            backup.Tag, oldId, existing.Id);
+                        backupIdMap[oldId] = existing.Id;
                     }
                     else
                     {
-                        _logger.LogInformation("Backup {Tag} with ID {Id} already exists, skipping", backup.Tag, backup.Id);
+                        // Remap foreign keys
+                        if (moduleIdMap.TryGetValue(backup.SourceId, out var newSourceId))
+                        {
+                            backup.SourceId = newSourceId;
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Source module not found for backup {Tag}, skipping", backup.Tag);
+                            continue;
+                        }
+                        
+                        if (moduleIdMap.TryGetValue(backup.StorageId, out var newStorageId))
+                        {
+                            backup.StorageId = newStorageId;
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Storage module not found for backup {Tag}, skipping", backup.Tag);
+                            continue;
+                        }
+
+                        _dbContext.Backups.Add(backup);
+                        await _dbContext.SaveChangesAsync(cancellationToken);
+                        backupIdMap[oldId] = backup.Id;
+                        _logger.LogInformation("Added backup {Tag}, mapped old ID {OldId} to new ID {NewId}", 
+                            backup.Tag, oldId, backup.Id);
                     }
                 }
-                await _dbContext.SaveChangesAsync(cancellationToken);
             }
 
+            // Import Schedules - remap backup IDs
             if (importData.Schedules != null)
             {
                 foreach (var schedule in importData.Schedules)
                 {
-                    var exists = await _dbContext.Schedules.AnyAsync(s => s.Id == schedule.Id, cancellationToken);
-                    if (!exists)
+                    if (backupIdMap.TryGetValue(schedule.BackupId, out var newBackupId))
                     {
+                        schedule.BackupId = newBackupId;
                         _dbContext.Schedules.Add(schedule);
-                        _logger.LogInformation("Added schedule with ID {Id}", schedule.Id);
+                        _logger.LogInformation("Added schedule for backup ID {BackupId}", newBackupId);
                     }
                     else
                     {
-                        _logger.LogInformation("Schedule with ID {Id} already exists, skipping", schedule.Id);
+                        _logger.LogWarning("Backup not found for schedule, skipping");
                     }
                 }
                 await _dbContext.SaveChangesAsync(cancellationToken);
             }
 
+            // Import Snapshots - remap backup IDs
             if (importData.Snapshots != null)
             {
                 foreach (var snapshot in importData.Snapshots)
                 {
-                    var exists = await _dbContext.Snapshots.AnyAsync(s => s.Id == snapshot.Id, cancellationToken);
-                    if (!exists)
+                    var oldId = snapshot.Id;
+                    if (backupIdMap.TryGetValue(snapshot.BackupId, out var newBackupId))
                     {
+                        snapshot.BackupId = newBackupId;
                         _dbContext.Snapshots.Add(snapshot);
-                        _logger.LogInformation("Added snapshot with ID {Id}", snapshot.Id);
+                        await _dbContext.SaveChangesAsync(cancellationToken);
+                        snapshotIdMap[oldId] = snapshot.Id;
+                        _logger.LogInformation("Added snapshot, mapped old ID {OldId} to new ID {NewId}", oldId, snapshot.Id);
                     }
                     else
                     {
-                        _logger.LogInformation("Snapshot with ID {Id} already exists, skipping", snapshot.Id);
+                        _logger.LogWarning("Backup not found for snapshot, skipping");
                     }
                 }
-                await _dbContext.SaveChangesAsync(cancellationToken);
             }
 
+            // Import Snapshot Files - remap snapshot IDs
             if (importData.SnapshotFiles != null)
             {
+                int addedCount = 0;
                 foreach (var snapshotFile in importData.SnapshotFiles)
                 {
-                    var exists = await _dbContext.SnapshotFiles.AnyAsync(sf => sf.Id == snapshotFile.Id, cancellationToken);
-                    if (!exists)
+                    if (snapshotIdMap.TryGetValue(snapshotFile.SnapshotId, out var newSnapshotId))
                     {
+                        snapshotFile.SnapshotId = newSnapshotId;
                         _dbContext.SnapshotFiles.Add(snapshotFile);
+                        addedCount++;
                     }
                     else
                     {
-                        _logger.LogInformation("SnapshotFile with ID {Id} already exists, skipping", snapshotFile.Id);
+                        _logger.LogWarning("Snapshot not found for snapshot file, skipping");
                     }
                 }
                 await _dbContext.SaveChangesAsync(cancellationToken);
-                _logger.LogInformation("Added {Count} snapshot files", importData.SnapshotFiles.Count);
+                _logger.LogInformation("Added {Count} snapshot files", addedCount);
             }
 
             _logger.LogInformation("Successfully completed import for user {UserId} from file {FilePath}", userId, filePath);
