@@ -37,7 +37,7 @@ export default function SettingsPage() {
   };
 
   const handleFileChange = async (
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -74,24 +74,25 @@ export default function SettingsPage() {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               {t("settings.dataExport.description")}
             </Typography>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<Download />}
-              onClick={handleExportUserData}
-            >
-              {t("settings.dataExport.button")}
-            </Button>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={includeFiles}
-                  onChange={(e) => setIncludeFiles(e.target.checked)}
-                />
-              }
-              label={t("settings.dataExport.includeFiles")}
-              sx={{ mb: 2 }}
-            />
+            <Box display="flex" alignItems="center" gap={2} flexDirection="row">
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<Download />}
+                onClick={handleExportUserData}
+              >
+                {t("settings.dataExport.button")}
+              </Button>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={includeFiles}
+                    onChange={(e) => setIncludeFiles(e.target.checked)}
+                  />
+                }
+                label={t("settings.dataExport.includeFiles")}
+              />
+            </Box>
           </CardContent>
         </Card>
 
