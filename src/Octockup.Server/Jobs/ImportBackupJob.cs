@@ -170,7 +170,7 @@ namespace Octockup.Server.Jobs
                 importData.Snapshots.Count,
                 importData.SnapshotFiles.Count);
 
-            // Просто обновляем UserId, БЕЗ восстановления навигаций!
+            // Simply update UserId WITHOUT restoring navigations!
             foreach (var item in importData.Modules)
             {
                 item.UserId = user.Id;
@@ -182,28 +182,28 @@ namespace Octockup.Server.Jobs
 
             try
             {
-                // Modules - маленькие, можно все сразу, но DETACH после
+                // Modules - small, can be saved all at once, but DETACH after
                 _dbContext.Modules.AddRange(importData.Modules);
                 await _dbContext.SaveChangesAsync(cancellationToken);
                 _dbContext.ChangeTracker.Clear();
                 _logger.LogInformation("Imported {Count} modules", importData.Modules.Count);
 
-                // Backups - маленькие, но DETACH после
+                // Backups - small, but DETACH after
                 _dbContext.Backups.AddRange(importData.Backups);
                 await _dbContext.SaveChangesAsync(cancellationToken);
                 _dbContext.ChangeTracker.Clear();
                 _logger.LogInformation("Imported {Count} backups", importData.Backups.Count);
 
-                // Schedules - маленькие, но DETACH после
+                // Schedules - small, but DETACH after
                 _dbContext.Schedules.AddRange(importData.Schedules);
                 await _dbContext.SaveChangesAsync(cancellationToken);
                 _dbContext.ChangeTracker.Clear();
                 _logger.LogInformation("Imported {Count} schedules", importData.Schedules.Count);
 
-                // Snapshots - батчами с DETACH
+                // Snapshots - in batches with DETACH
                 await SaveInBatchesWithDetachAsync(importData.Snapshots, _dbContext.Snapshots, "snapshots", cancellationToken);
 
-                // SnapshotFiles - БОЛЬШИЕ, обязательно батчами + очистка ChangeTracker
+                // SnapshotFiles - LARGE, must be in batches + clear ChangeTracker
                 await SaveInBatchesWithDetachAsync(importData.SnapshotFiles, _dbContext.SnapshotFiles, "snapshot files", cancellationToken);
 
                 await tx.CommitAsync(cancellationToken);
@@ -227,7 +227,7 @@ namespace Octockup.Server.Jobs
                 dbSet.AddRange(batch);
                 await _dbContext.SaveChangesAsync(ct);
 
-                // Очищаем ChangeTracker чтобы освободить память
+                // Clear ChangeTracker to free memory
                 _dbContext.ChangeTracker.Clear();
 
                 int currentBatch = (i / BATCH_SIZE) + 1;
