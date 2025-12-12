@@ -15,7 +15,7 @@ namespace Octockup.Server.Extensions
             masterKey = Environment.GetEnvironmentVariable("OCTOCKUP_MASTER_KEY");
             if (!string.IsNullOrEmpty(masterKey))
             {
-                Environment.SetEnvironmentVariable("OCTOCKUP_MASTER_KEY", null);
+                Environment.SetEnvironmentVariable("OCTOCKUP_MASTER_KEY", "REMOVED");
                 return masterKey;
             }
             throw new InvalidOperationException("Master key not found in configuration 'MasterKey' or environment variable 'MASTER_KEY'.");

@@ -51,6 +51,7 @@ namespace Octockup.Server.Extensions
                 new KeyValuePair<string, string?>("DatabaseSettings:Username", username),
                 new KeyValuePair<string, string?>("DatabaseSettings:Password", password)
             ]);
+            Environment.SetEnvironmentVariable("OCTOCKUP_PG_PASSWORD", "REMOVED");
             return true;
         }
     }
