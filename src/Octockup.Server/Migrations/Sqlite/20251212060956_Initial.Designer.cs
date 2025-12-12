@@ -11,8 +11,8 @@ using Octockup.Server.Database;
 namespace Octockup.Server.Migrations.Sqlite
 {
     [DbContext(typeof(SqliteDbContext))]
-    [Migration("20251212003344_AddEncryptedParameters")]
-    partial class AddEncryptedParameters
+    [Migration("20251212060956_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -158,6 +158,55 @@ namespace Octockup.Server.Migrations.Sqlite
                     b.HasIndex("UserId");
 
                     b.ToTable("modules");
+                });
+
+            modelBuilder.Entity("Octockup.Server.Database.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CreatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Details")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("details");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("message");
+
+                    b.Property<string>("Metadata")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("metadata");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("priority");
+
+                    b.Property<string>("ReadAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("read_at");
+
+                    b.Property<string>("UpdatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("notifications");
                 });
 
             modelBuilder.Entity("Octockup.Server.Database.Schedule", b =>
@@ -413,6 +462,17 @@ namespace Octockup.Server.Migrations.Sqlite
                 {
                     b.HasOne("Octockup.Server.Database.User", "User")
                         .WithMany("Modules")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Octockup.Server.Database.Notification", b =>
+                {
+                    b.HasOne("Octockup.Server.Database.User", "User")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
