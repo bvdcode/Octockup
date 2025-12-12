@@ -43,7 +43,7 @@ export default function SettingsPage() {
     setImportMessage(null);
 
     try {
-      const result = await backupsApi.importServerBackup(file);
+      const result = await backupsApi.importServerBackup(file, includeFiles);
       setImportMessage({ type: "success", text: result.message });
     } catch (error: unknown) {
       const errorMessage =

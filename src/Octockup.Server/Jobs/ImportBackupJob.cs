@@ -19,6 +19,7 @@ namespace Octockup.Server.Jobs
         AppDbContext _dbContext,
         ILogger<ImportBackupJob> _logger) : IJob
     {
+        private const int BATCH_SIZE = 100;
         private static readonly ConcurrentDictionary<Type, Action<object, Guid>?> _idSetterCache = new();
 
         public static JsonSerializerOptions CreateOptions()
@@ -256,20 +257,76 @@ namespace Octockup.Server.Jobs
                 }
             }
 
-            _logger.LogInformation("Saving imported data to the database for user {UserId}...", userId);
+            _logger.LogInformation("Saving imported data to the database for user {UserId} in batches...", userId);
 
             await using var tx = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
 
-            _dbContext.Modules.AddRange(importData.Modules);
-            _dbContext.Backups.AddRange(importData.Backups);
-            _dbContext.Schedules.AddRange(importData.Schedules);
-            _dbContext.Snapshots.AddRange(importData.Snapshots);
-            _dbContext.SnapshotFiles.AddRange(importData.SnapshotFiles);
+            try
+            {
+                // Modules - маленькие, можно все сразу
+                _dbContext.Modules.AddRange(importData.Modules);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                _logger.LogInformation("Imported {Count} modules", importData.Modules.Count);
 
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            await tx.CommitAsync(cancellationToken);
+                // Backups - маленькие, можно все сразу
+                _dbContext.Backups.AddRange(importData.Backups);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                _logger.LogInformation("Imported {Count} backups", importData.Backups.Count);
+
+                // Schedules - маленькие, можно все сразу
+                _dbContext.Schedules.AddRange(importData.Schedules);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                _logger.LogInformation("Imported {Count} schedules", importData.Schedules.Count);
+
+                // Snapshots - батчами
+                await SaveInBatchesAsync(importData.Snapshots, _dbContext.Snapshots, "snapshots", cancellationToken);
+
+                // SnapshotFiles - БОЛЬШИЕ, обязательно батчами + очистка ChangeTracker
+                await SaveInBatchesWithDetachAsync(importData.SnapshotFiles, _dbContext.SnapshotFiles, "snapshot files", cancellationToken);
+
+                await tx.CommitAsync(cancellationToken);
+                _logger.LogInformation("Successfully committed import transaction for user {UserId}", userId);
+            }
+            catch
+            {
+                await tx.RollbackAsync(cancellationToken);
+                throw;
+            }
 
             _logger.LogInformation("Successfully completed import for user {UserId} from file {FilePath}", userId, filePath);
+        }
+
+        private async Task SaveInBatchesAsync<T>(List<T> items, DbSet<T> dbSet, string entityName, CancellationToken ct) where T : class
+        {
+            int totalBatches = (items.Count + BATCH_SIZE - 1) / BATCH_SIZE;
+            for (int i = 0; i < items.Count; i += BATCH_SIZE)
+            {
+                var batch = items.Skip(i).Take(BATCH_SIZE).ToList();
+                dbSet.AddRange(batch);
+                await _dbContext.SaveChangesAsync(ct);
+
+                int currentBatch = (i / BATCH_SIZE) + 1;
+                _logger.LogInformation("Imported batch {CurrentBatch}/{TotalBatches} of {EntityName} ({Count} items)",
+                    currentBatch, totalBatches, entityName, batch.Count);
+            }
+        }
+
+        private async Task SaveInBatchesWithDetachAsync<T>(List<T> items, DbSet<T> dbSet, string entityName, CancellationToken ct) where T : class
+        {
+            int totalBatches = (items.Count + BATCH_SIZE - 1) / BATCH_SIZE;
+            for (int i = 0; i < items.Count; i += BATCH_SIZE)
+            {
+                var batch = items.Skip(i).Take(BATCH_SIZE).ToList();
+                dbSet.AddRange(batch);
+                await _dbContext.SaveChangesAsync(ct);
+
+                // Очищаем ChangeTracker чтобы освободить память
+                _dbContext.ChangeTracker.Clear();
+
+                int currentBatch = (i / BATCH_SIZE) + 1;
+                _logger.LogInformation("Imported batch {CurrentBatch}/{TotalBatches} of {EntityName} ({Count} items), memory freed",
+                    currentBatch, totalBatches, entityName, batch.Count);
+            }
         }
 
         private class ImportData

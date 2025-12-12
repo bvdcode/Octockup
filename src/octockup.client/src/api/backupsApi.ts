@@ -46,11 +46,14 @@ class BackupsApiClient {
     );
   }
 
-  async importServerBackup(file: File): Promise<{ message: string }> {
+  async importServerBackup(
+    file: File,
+    includeFiles: boolean,
+  ): Promise<{ message: string }> {
     const formData = new FormData();
     formData.append("file", file);
     const result = await this.axios().post<{ message: string }>(
-      "/api/v1/backups/server/import",
+      "/api/v1/backups/server/import?includeFiles=" + includeFiles,
       formData,
     );
     return result.data;
