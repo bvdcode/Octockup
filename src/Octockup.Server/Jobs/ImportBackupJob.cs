@@ -116,26 +116,72 @@ namespace Octockup.Server.Jobs
 
             foreach (var item in importData.Modules)
             {
-                item.User = user;
+                item.UserId = user.Id;
             }
 
+            var modulesById = importData.Modules.ToDictionary(m => m.Id);
+            var backupsById = importData.Backups.ToDictionary(b => b.Id);
+            var snapshotsById = importData.Snapshots.ToDictionary(s => s.Id);
+
+            // Восстанавливаем связи Module <-> Backup
+            foreach (var backup in importData.Backups)
+            {
+                if (modulesById.TryGetValue(backup.SourceId, out var source))
+                {
+                    backup.Source = source;
+                }
+
+                if (modulesById.TryGetValue(backup.StorageId, out var storage))
+                {
+                    backup.Storage = storage;
+                }
+            }
+
+            // Восстанавливаем связи Backup <-> Schedule
+            foreach (var schedule in importData.Schedules)
+            {
+                if (backupsById.TryGetValue(schedule.BackupId, out var backup))
+                {
+                    schedule.Backup = backup;
+                    backup.Schedules ??= [];
+                    backup.Schedules.Add(schedule);
+                }
+            }
+
+            // Восстанавливаем связи Backup <-> Snapshot
             foreach (var snapshot in importData.Snapshots)
             {
-                snapshot.Files = [.. importData.SnapshotFiles.Where(sf => sf.SnapshotId == snapshot.Id)];
-                snapshot.Backup = importData.Backups.First(b => b.Id == snapshot.BackupId);
-                snapshot.Backup.Schedules = [.. importData.Schedules.Where(s => s.BackupId == snapshot.BackupId)];
-                snapshot.Backup.Source = importData.Modules.First(m => m.Id == snapshot.Backup.SourceId);
-                snapshot.Backup.Storage = importData.Modules.First(m => m.Id == snapshot.Backup.StorageId);
+                if (backupsById.TryGetValue(snapshot.BackupId, out var backup))
+                {
+                    snapshot.Backup = backup;
+                    backup.Snapshots ??= [];
+                    backup.Snapshots.Add(snapshot);
+                }
             }
 
-            await _dbContext.Modules.AddRangeAsync(importData.Modules, cancellationToken);
-            await _dbContext.Backups.AddRangeAsync(importData.Backups, cancellationToken);
-            await _dbContext.Schedules.AddRangeAsync(importData.Schedules, cancellationToken);
-            await _dbContext.Snapshots.AddRangeAsync(importData.Snapshots, cancellationToken);
-            await _dbContext.SnapshotFiles.AddRangeAsync(importData.SnapshotFiles, cancellationToken);
+            // Восстанавливаем связи Snapshot <-> SnapshotFile
+            foreach (var snapshotFile in importData.SnapshotFiles)
+            {
+                if (snapshotsById.TryGetValue(snapshotFile.SnapshotId, out var snapshot))
+                {
+                    snapshotFile.Snapshot = snapshot;
+                    snapshot.Files ??= [];
+                    snapshot.Files.Add(snapshotFile);
+                }
+            }
 
             _logger.LogInformation("Saving imported data to the database for user {UserId}...", userId);
+
+            await using var tx = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+            _dbContext.Modules.AddRange(importData.Modules);
+            _dbContext.Backups.AddRange(importData.Backups);
+            _dbContext.Schedules.AddRange(importData.Schedules);
+            _dbContext.Snapshots.AddRange(importData.Snapshots);
+            _dbContext.SnapshotFiles.AddRange(importData.SnapshotFiles);
+
             await _dbContext.SaveChangesAsync(cancellationToken);
+            await tx.CommitAsync(cancellationToken);
 
             _logger.LogInformation("Successfully completed import for user {UserId} from file {FilePath}", userId, filePath);
         }
