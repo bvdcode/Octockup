@@ -276,6 +276,7 @@ namespace Octockup.Server.Controllers
             string fileName = $"import-{DateTime.UtcNow:yyyyMMddHHmmss}.octockup";
             string filePath = Path.Combine(importDir, fileName);
 
+            _logger.LogInformation("Saving import file for user {UserId} to {FilePath}", userId, filePath);
             await using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
             {
                 await file.CopyToAsync(fileStream, ct);
