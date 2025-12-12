@@ -17,6 +17,11 @@ namespace Octockup.Server.Jobs
         AppDbContext _dbContext,
         ILogger<ImportBackupJob> _logger) : IJob
     {
+        private static readonly JsonSerializerOptions _jsonOptions = new()
+        {
+            IncludeFields = true,
+        };
+
         public async Task Execute(IJobExecutionContext context)
         {
             CancellationToken cancellationToken = context.CancellationToken;
@@ -99,7 +104,9 @@ namespace Octockup.Server.Jobs
             await _streamCipher.DecryptAsync(brotliStream, decryptedStream, ct: cancellationToken);
             decryptedStream.Seek(0, SeekOrigin.Begin);
 
-            var importData = await JsonSerializer.DeserializeAsync<ImportData>(decryptedStream, cancellationToken: cancellationToken);
+            var importData = await JsonSerializer.DeserializeAsync<ImportData>(
+                decryptedStream, options: _jsonOptions,
+                cancellationToken: cancellationToken);
 
             if (importData == null)
             {
