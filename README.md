@@ -12,7 +12,7 @@
 
 Octockup is an all-in-one client and server application for autobackup that includes both backend and frontend in a single Docker container. It allows you to gather and manage data from various sources, such as YouTube, SSH, FTP, Email, and more, directly through the browser.
 
-<img width="852" height="384" alt="image" src="https://github.com/user-attachments/assets/c15cf759-017f-4b5b-962a-f56d00c60347" />
+<img width="835" height="311" alt="image" src="https://github.com/user-attachments/assets/4cdbc8fd-13cc-48d7-8964-8b32eb86bfa7" />
 
 
 ---
