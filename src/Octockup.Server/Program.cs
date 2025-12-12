@@ -22,15 +22,15 @@ namespace Octockup.Server
         {
             var builder = WebApplication.CreateBuilder(args);
             builder.SetupDatabaseAndKeys();
-            
+
             // Configure Kestrel for large requests
             builder.Services.Configure<KestrelServerOptions>(options =>
             {
                 options.Limits.MaxRequestBodySize = 1_073_741_824; // 1 GB
             });
-            
+
             builder.Services.AddControllers();
-            
+
             // Configure form options for large file uploads
             builder.Services.Configure<FormOptions>(options =>
             {
@@ -38,7 +38,7 @@ namespace Octockup.Server
                 options.ValueLengthLimit = int.MaxValue;
                 options.MultipartHeadersLengthLimit = int.MaxValue;
             });
-            
+
             builder.Services
                 .AddScoped<IBackupProvider, IMAPSource>()
                 .AddScoped<IBackupProvider, S3BackupStorage>()

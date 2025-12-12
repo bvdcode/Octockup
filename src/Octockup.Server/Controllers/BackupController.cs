@@ -10,14 +10,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Database;
+using Octockup.Server.Jobs;
 using Octockup.Server.Models.Dto;
 using Octockup.Server.Models.Enums;
 using Octockup.Server.Models.Requests;
-using Octockup.Server.Jobs;
-using System.IO.Compression;
-using System.Text.Json;
-using System.IO.Pipelines;
 using Quartz;
+using System.IO.Compression;
+using System.IO.Pipelines;
+using System.Text.Json;
 
 namespace Octockup.Server.Controllers
 {

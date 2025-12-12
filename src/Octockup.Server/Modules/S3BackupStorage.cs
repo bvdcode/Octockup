@@ -30,7 +30,7 @@ namespace Octockup.Server.Modules
             "validateChecksums"
         ];
 
-        public void SetParameters(Dictionary<string, string> parameters)
+        public void SetParameters(IReadOnlyDictionary<string, string> parameters)
         {
             var config = new AmazonS3Config
             {

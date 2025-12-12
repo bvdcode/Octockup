@@ -2,6 +2,7 @@
 // Copyright (c) 2025 Vadim Belov
 
 using EasyExtensions;
+using EasyExtensions.Abstractions;
 using EasyExtensions.AspNetCore.Extensions;
 using Mapster;
 using Microsoft.AspNetCore.Authorization;
@@ -18,6 +19,7 @@ namespace Octockup.Server.Controllers
 {
     [ApiController]
     public class ModuleController(
+        IStreamCipher _crypto,
         AppDbContext _dbContext,
         ILogger<ModuleController> _logger,
         IEnumerable<IBackupProvider> _providers) : ControllerBase
@@ -71,10 +73,13 @@ namespace Octockup.Server.Controllers
             {
                 UserId = user.Id,
                 Tag = request.Tag,
-                Parameters = request.Parameters,
                 Destination = request.Destination,
                 BackupModuleId = request.BackupModuleId,
             };
+            foreach (var item in request.Parameters)
+            {
+                newStorage.Params(_crypto)[item.Key] = item.Value;
+            }
             await _dbContext.Modules.AddAsync(newStorage);
             await _dbContext.SaveChangesAsync();
             return Ok(new { message = "Backup storage created successfully." });

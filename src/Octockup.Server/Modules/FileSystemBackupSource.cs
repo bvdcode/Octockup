@@ -23,7 +23,7 @@ namespace Octockup.Server.Modules
         private ICollection<string>? _ignoredPaths;
         private const string PasswordFileName = ".password";
 
-        public void SetParameters(Dictionary<string, string> parameters)
+        public void SetParameters(IReadOnlyDictionary<string, string> parameters)
         {
             if (!parameters.TryGetValue("path", out var path))
             {

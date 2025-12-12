@@ -26,7 +26,7 @@ namespace Octockup.Server.Modules
         private readonly SemaphoreSlim _imapLock = new(1, 1);
         private char? _serverDirectorySeparator;
 
-        public void SetParameters(Dictionary<string, string> parameters)
+        public void SetParameters(IReadOnlyDictionary<string, string> parameters)
         {
             _host = parameters["host"];
             _port = int.TryParse(parameters["port"], out var p) ? p : 993;

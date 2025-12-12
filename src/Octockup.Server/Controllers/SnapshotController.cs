@@ -16,8 +16,8 @@ namespace Octockup.Server.Controllers
 {
     [ApiController]
     public class SnapshotController(
+        IStreamCipher _crypto,
         AppDbContext _dbContext,
-        IStreamCipher _streamCipher,
         ILogger<SnapshotController> _logger,
         IEnumerable<IBackupProvider> _providers) : ControllerBase
     {
@@ -45,8 +45,7 @@ namespace Octockup.Server.Controllers
                 return NotFound();
             }
 
-            provider.SetParameters(snapshotFile.Snapshot.Backup.Storage.Parameters);
-
+            provider.SetParameters(snapshotFile.Snapshot.Backup.Storage.Params(_crypto).Snapshot());
             if (provider is not IBackupStorage storage)
             {
                 return BadRequest("Storage provider is not a backup storage");
@@ -63,7 +62,7 @@ namespace Octockup.Server.Controllers
                 storage,
                 hashes,
                 snapshotFile,
-                _streamCipher,
+                _crypto,
                 HttpContext.RequestAborted
             );
 

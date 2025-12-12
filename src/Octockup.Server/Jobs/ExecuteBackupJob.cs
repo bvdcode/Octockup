@@ -71,7 +71,7 @@ namespace Octockup.Server.Jobs
                     return;
                 }
                 IBackupSource foundSourceProvider = (IBackupSource)ActivatorUtilities.CreateInstance(_serviceProvider, foundSourceTypeProvider.GetType());
-                foundSourceProvider.SetParameters(next.Backup.Source.Parameters);
+                foundSourceProvider.SetParameters(next.Backup.Source.Params(_crypto).Snapshot());
 
                 if (_providers.FirstOrDefault(x => x.Id == next.Backup.Storage.BackupModuleId) is not IBackupStorage foundStorageTypeProvider)
                 {
@@ -84,7 +84,7 @@ namespace Octockup.Server.Jobs
                     return;
                 }
                 IBackupStorage foundStorageProvider = (IBackupStorage)ActivatorUtilities.CreateInstance(_serviceProvider, foundStorageTypeProvider.GetType());
-                foundStorageProvider.SetParameters(next.Backup.Storage.Parameters);
+                foundStorageProvider.SetParameters(next.Backup.Storage.Params(_crypto).Snapshot());
 
                 await report.SendAsync(0, "Listing files to backup...", cancellationToken: cancellationToken);
                 next.Status = ScheduleStatus.Running;
@@ -150,7 +150,7 @@ namespace Octockup.Server.Jobs
                 previousFiles.TryGetValue(file.Path, out var foundFile);
                 bool datesMatch = foundFile?.LastModified != null && file.LastModified != null &&
                     Math.Abs((foundFile.LastModified.Value - file.LastModified.Value).TotalSeconds) < 1;
-                
+
                 if (foundFile != null && foundFile.Hashsum != null && file.Size == foundFile.Size && datesMatch)
                 {
                     _logger.LogInformation("Schedule {ScheduleId}: File {FileName} unchanged since last snapshot, skipping",

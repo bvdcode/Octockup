@@ -22,7 +22,7 @@ namespace Octockup.Server.Modules
         private bool _skipPermissionDenied = false;
         private ICollection<string>? _ignoredPaths;
 
-        public void SetParameters(Dictionary<string, string> parameters)
+        public void SetParameters(IReadOnlyDictionary<string, string> parameters)
         {
             string host = parameters["host"];
             int port = int.TryParse(parameters["port"], out var p) ? p : 22;
