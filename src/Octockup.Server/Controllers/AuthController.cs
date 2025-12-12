@@ -70,7 +70,7 @@ namespace Octockup.Server.Controllers
         }
 
         [HttpPost("refresh")]
-        public async Task<TokenPairResponseDto> RefreshTokenAsync([FromBody] RefreshTokenRequestDto request)
+        public async Task<IActionResult> RefreshTokenAsync([FromBody] RefreshTokenRequestDto request)
         {
             if (string.IsNullOrEmpty(request.RefreshToken))
             {
@@ -82,7 +82,7 @@ namespace Octockup.Server.Controllers
             var foundToken = _dbContext.RefreshTokens.FirstOrDefault(x => x.Token == request.RefreshToken && x.RevokedAt == null);
             if (foundToken == null)
             {
-                return new TokenPairResponseDto();
+                return this.ApiUnauthorized("Invalid refresh token.");
             }
             string accessToken = _tokens.CreateToken(x => x.Add(JwtRegisteredClaimNames.Sub, foundToken.UserId.ToString()));
             string refreshToken = StringHelpers.CreateRandomString(64);
@@ -102,11 +102,11 @@ namespace Octockup.Server.Controllers
                 SameSite = SameSiteMode.Strict,
                 Expires = DateTimeOffset.UtcNow.AddDays(30),
             });
-            return new TokenPairResponseDto()
+            return Ok(new TokenPairResponseDto()
             {
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
-            };
+            });
         }
 
         [HttpPost("login")]
