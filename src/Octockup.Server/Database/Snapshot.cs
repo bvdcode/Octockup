@@ -22,6 +22,6 @@ namespace Octockup.Server.Database
         public int FilesCount { get; set; }
 
         public virtual Backup Backup { get; set; } = null!;
-        public ICollection<SnapshotFile> Files { get; set; } = [];
+        public virtual ICollection<SnapshotFile> Files { get; set; } = [];
     }
 }

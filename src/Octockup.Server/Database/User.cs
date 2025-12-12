@@ -17,6 +17,6 @@ namespace Octockup.Server.Database
         [Column("password_phc")]
         public string PasswordPhc { get; set; } = string.Empty;
 
-        public ICollection<Module> Modules { get; set; } = [];
+        public virtual ICollection<Module> Modules { get; set; } = [];
     }
 }
