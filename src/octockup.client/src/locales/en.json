@@ -241,7 +241,8 @@
     "dataExport": {
       "title": "Data Export",
       "description": "Export all backup configuration and metadata to a JSON file.",
-      "button": "Export user data"
+      "button": "Export user data",
+      "includeFiles": "Include files"
     },
     "dataImport": {
       "title": "Data Import",

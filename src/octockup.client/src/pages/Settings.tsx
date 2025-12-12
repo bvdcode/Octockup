@@ -6,6 +6,8 @@ import {
   Typography,
   Alert,
   Stack,
+  FormControlLabel,
+  Checkbox,
 } from "@mui/material";
 import { Download, Upload } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
@@ -23,9 +25,10 @@ export default function SettingsPage() {
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [includeFiles, setIncludeFiles] = useState(false);
 
   const handleExportUserData = () => {
-    const url = `/api/v1/backups/server?access_token=${accessToken}`;
+    const url = `/api/v1/backups/server?access_token=${accessToken}&includeFiles=${includeFiles}`;
     window.open(url, "_blank");
   };
 
@@ -79,6 +82,16 @@ export default function SettingsPage() {
             >
               {t("settings.dataExport.button")}
             </Button>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={includeFiles}
+                  onChange={(e) => setIncludeFiles(e.target.checked)}
+                />
+              }
+              label={t("settings.dataExport.includeFiles")}
+              sx={{ mb: 2 }}
+            />
           </CardContent>
         </Card>
 
