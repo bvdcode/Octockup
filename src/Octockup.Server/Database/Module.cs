@@ -24,6 +24,7 @@ namespace Octockup.Server.Database
         [Column("backup_module_id")]
         public string BackupModuleId { get; set; } = string.Empty;
 
+        [Obsolete("Use EncryptedParameters instead.")]
         [Column("parameters")]
         public Dictionary<string, string> Parameters { get; set; } = [];
 
