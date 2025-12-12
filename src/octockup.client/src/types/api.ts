@@ -112,6 +112,7 @@ export interface ScheduleReport {
   processed: number;
   speed: number;
   elapsed?: string;
+  isEnumerationCompleted: boolean;
 }
 
 export interface SnapshotFileDto {

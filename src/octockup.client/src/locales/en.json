@@ -149,7 +149,8 @@
     "createdAt": "Created: {{relativeTime}}",
     "lastBackup": "Last backup: {{relativeTime}}",
     "status": "Status",
-    "unknownError": "Unknown error"
+    "unknownError": "Unknown error",
+    "enumerating": "Enumerating..."
   },
   "snapshots": {
     "title": "Snapshots",

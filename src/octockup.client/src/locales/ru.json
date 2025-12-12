@@ -173,7 +173,8 @@
     "createdAt": "Создан: {{relativeTime}}",
     "lastBackup": "Последний бэкап: {{relativeTime}}",
     "status": "Статус",
-    "unknownError": "Неизвестная ошибка"
+    "unknownError": "Неизвестная ошибка",
+    "enumerating": "Подсчёт файлов..."
   },
   "snapshots": {
     "title": "Снапшоты",
