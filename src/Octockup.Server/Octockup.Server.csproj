@@ -15,6 +15,7 @@
 		<Folder Include="Migrations\Postgres\" />
 		<Folder Include="wwwroot\" />
 		<PackageReference Include="EasyExtensions.EntityFrameworkCore.Npgsql" Version="3.0.15" />
+		<PackageReference Include="EasyVault" Version="1.0.10" />
 		<PackageReference Include="MailKit" Version="4.14.1" />
 		<PackageReference Include="Mapster" Version="7.4.0" />
 		<PackageReference Include="SSH.NET" Version="2025.1.0" />

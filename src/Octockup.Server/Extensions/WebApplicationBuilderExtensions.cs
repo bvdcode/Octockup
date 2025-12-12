@@ -8,6 +8,8 @@ namespace Octockup.Server.Extensions
 {
     public static class WebApplicationBuilderExtensions
     {
+        private const string PostgresEnvPrefix = "OCTOCKUP_POSTGRES2_";
+
         public static WebApplicationBuilder SetupDatabaseAndKeys(this WebApplicationBuilder builder)
         {
             string masterKey = builder.Configuration.GetMasterKey();
@@ -34,25 +36,34 @@ namespace Octockup.Server.Extensions
 
         private static bool InjectPostgresSettings(ConfigurationManager configuration)
         {
-            string host = Environment.GetEnvironmentVariable("OCTOCKUP_PG_HOST") ?? "postgres-server";
-            string port = Environment.GetEnvironmentVariable("OCTOCKUP_PG_PORT") ?? "5432";
-            string database = Environment.GetEnvironmentVariable("OCTOCKUP_PG_DATABASE") ?? "octockup";
-            string username = Environment.GetEnvironmentVariable("OCTOCKUP_PG_USERNAME") ?? "octockup_client";
-            string? password = Environment.GetEnvironmentVariable("OCTOCKUP_PG_PASSWORD");
-            if (string.IsNullOrEmpty(password))
+            string? host = Environment.GetEnvironmentVariable(PostgresEnvPrefix + "HOST");
+            string? port = Environment.GetEnvironmentVariable(PostgresEnvPrefix + "PORT");
+            string? database = Environment.GetEnvironmentVariable(PostgresEnvPrefix + "DATABASE");
+            string? username = Environment.GetEnvironmentVariable(PostgresEnvPrefix + "USERNAME");
+            string? password = Environment.GetEnvironmentVariable(PostgresEnvPrefix + "PASSWORD");
+            Dictionary<string, string?> envVars = [];
+            if (!string.IsNullOrEmpty(host))
             {
-                return false;
+                envVars["DatabaseSettings:Host"] = host;
             }
-            configuration.AddInMemoryCollection(
-            [
-                new KeyValuePair<string, string?>("DatabaseSettings:Host", host),
-                new KeyValuePair<string, string?>("DatabaseSettings:Port", port),
-                new KeyValuePair<string, string?>("DatabaseSettings:Database", database),
-                new KeyValuePair<string, string?>("DatabaseSettings:Username", username),
-                new KeyValuePair<string, string?>("DatabaseSettings:Password", password)
-            ]);
-            Environment.SetEnvironmentVariable("OCTOCKUP_PG_PASSWORD", "REMOVED");
-            return true;
+            if (!string.IsNullOrEmpty(port))
+            {
+                envVars["DatabaseSettings:Port"] = port;
+            }
+            if (!string.IsNullOrEmpty(database))
+            {
+                envVars["DatabaseSettings:Database"] = database;
+            }
+            if (!string.IsNullOrEmpty(username))
+            {
+                envVars["DatabaseSettings:Username"] = username;
+            }
+            if (!string.IsNullOrEmpty(password))
+            {
+                envVars["DatabaseSettings:Password"] = password;
+            }
+            configuration.AddInMemoryCollection(envVars);
+            return !string.IsNullOrEmpty(configuration["DatabaseSettings:Password"]);
         }
     }
 }
