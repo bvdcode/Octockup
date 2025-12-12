@@ -1,5 +1,6 @@
 ﻿using EasyExtensions.Abstractions;
 using EasyExtensions.Crypto;
+using EasyExtensions.EntityFrameworkCore.Npgsql.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Database;
 
@@ -17,14 +18,17 @@ namespace Octockup.Server.Extensions
             byte[] cryptoKey = KeyDerivation.DeriveSubkey(masterKey, "crypto", 32);
             builder.Services.AddScoped<IStreamCipher>(sp => new AesGcmStreamCipher(cryptoKey));
             bool hasPostgresSettings = InjectPostgresSettings(builder.Configuration);
-            if (!hasPostgresSettings)
+            if (hasPostgresSettings)
+            {
+                builder.Services.AddPostgresDbContext<AppDbContext, PostgresDbContext>();
+            }
+            else
             {
                 string sqlitePassword = KeyDerivation.DeriveSubkeyBase64(masterKey, "sqlite", 32);
                 string sqlitePath = Helpers.PathHelpers.GetPath("octockup.sqlite");
-                builder.Services.AddDbContext<AppDbContext, SqliteDbContext>(x => x.UseSqlite(connectionString: $"Data Source={sqlitePath};Password={sqlitePassword};"));
-                return builder;
+                builder.Services.AddDbContext<AppDbContext, SqliteDbContext>(
+                    x => x.UseSqlite(connectionString: $"Data Source={sqlitePath};Password={sqlitePassword};"));
             }
-
             return builder;
         }
 
