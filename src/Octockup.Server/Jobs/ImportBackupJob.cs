@@ -6,8 +6,10 @@ using EasyExtensions.Quartz.Attributes;
 using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Database;
 using Quartz;
+using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 
 namespace Octockup.Server.Jobs
 {
@@ -17,10 +19,62 @@ namespace Octockup.Server.Jobs
         AppDbContext _dbContext,
         ILogger<ImportBackupJob> _logger) : IJob
     {
-        private static readonly JsonSerializerOptions _jsonOptions = new()
+        private static readonly ConcurrentDictionary<Type, Action<object, Guid>?> _idSetterCache = new();
+
+        public static JsonSerializerOptions CreateOptions()
         {
-            IncludeFields = true,
-        };
+            var resolver = new DefaultJsonTypeInfoResolver();
+            resolver.Modifiers.Add(static ti =>
+            {
+                if (ti.Kind != JsonTypeInfoKind.Object)
+                    return;
+
+                // Ищем JSON property "Id" (имя будет "Id" по умолчанию)
+                var jsonProp = ti.Properties.FirstOrDefault(p =>
+                    string.Equals(p.Name, "Id", StringComparison.Ordinal) &&
+                    p.PropertyType == typeof(Guid));
+
+                if (jsonProp is null)
+                {
+                    return;
+                }
+
+                // Если уже есть setter — не трогаем
+                if (jsonProp.Set is not null)
+                {
+                    return;
+                }
+
+                // Если у типа нет property Id — выходим
+                var idPropInfo = ti.Type.GetProperty("Id",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+
+                var setMethod = idPropInfo?.GetSetMethod(nonPublic: true);
+                if (setMethod is null)
+                {
+                    return;
+                }
+
+                // Кэшируем быстрый делегат
+                var setter = _idSetterCache.GetOrAdd(ti.Type, _ =>
+                {
+                    // Создаём делегат вида (object obj, Guid value) => ((T)obj).set_Id(value)
+                    return (obj, value) => setMethod.Invoke(obj, [value]);
+                });
+
+                jsonProp.Set = (obj, value) =>
+                {
+                    // value приходит как object, но это Guid
+                    setter?.Invoke(obj!, (Guid)value!);
+                };
+            });
+
+            return new JsonSerializerOptions
+            {
+                TypeInfoResolver = resolver,
+                PropertyNameCaseInsensitive = true
+            };
+        }
 
         public async Task Execute(IJobExecutionContext context)
         {
@@ -105,7 +159,7 @@ namespace Octockup.Server.Jobs
             decryptedStream.Seek(0, SeekOrigin.Begin);
 
             var importData = await JsonSerializer.DeserializeAsync<ImportData>(
-                decryptedStream, options: _jsonOptions,
+                decryptedStream, options: CreateOptions(),
                 cancellationToken: cancellationToken);
 
             if (importData == null)
