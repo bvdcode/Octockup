@@ -5,7 +5,7 @@ using System.Text.Json;
 
 namespace Octockup.Server.Database
 {
-    public class SqliteDbContext(DbContextOptions options) : AppDbContext(options)
+    public class SqliteDbContext(DbContextOptions<SqliteDbContext> options) : AppDbContext(options)
     {
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
         {
