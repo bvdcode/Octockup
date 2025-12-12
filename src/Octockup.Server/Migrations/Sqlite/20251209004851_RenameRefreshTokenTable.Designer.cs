@@ -10,7 +10,7 @@ using Octockup.Server.Database;
 
 namespace Octockup.Server.Migrations
 {
-    [DbContext(typeof(AppDbContext))]
+    [DbContext(typeof(SqliteDbContext))]
     [Migration("20251209004851_RenameRefreshTokenTable")]
     partial class RenameRefreshTokenTable
     {

@@ -10,9 +10,9 @@ using Octockup.Server.Database;
 
 namespace Octockup.Server.Migrations
 {
-    [DbContext(typeof(AppDbContext))]
-    [Migration("20251205055624_UtcDateTimeConversion")]
-    partial class UtcDateTimeConversion
+    [DbContext(typeof(SqliteDbContext))]
+    [Migration("20251128074048_AddSnapshotCompletedAt")]
+    partial class AddSnapshotCompletedAt
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -27,8 +27,7 @@ namespace Octockup.Server.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("id");
 
-                    b.Property<string>("CreatedAt")
-                        .IsRequired()
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("created_at");
 
@@ -46,8 +45,7 @@ namespace Octockup.Server.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("UpdatedAt")
-                        .IsRequired()
+                    b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("updated_at");
 
@@ -74,8 +72,7 @@ namespace Octockup.Server.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("CreatedAt")
-                        .IsRequired()
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("created_at");
 
@@ -90,8 +87,7 @@ namespace Octockup.Server.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("UpdatedAt")
-                        .IsRequired()
+                    b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("updated_at");
 
@@ -115,20 +111,18 @@ namespace Octockup.Server.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("id");
 
-                    b.Property<string>("CreatedAt")
-                        .IsRequired()
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("created_at");
 
-                    b.Property<string>("RevokedAt")
+                    b.Property<DateTime?>("RevokedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Token")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("UpdatedAt")
-                        .IsRequired()
+                    b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("updated_at");
 
@@ -152,29 +146,26 @@ namespace Octockup.Server.Migrations
                     b.Property<Guid>("BackupId")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("CreatedAt")
-                        .IsRequired()
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("created_at");
 
                     b.Property<string>("ErrorMessage")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("FinishedAt")
+                    b.Property<DateTime?>("FinishedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<TimeSpan?>("Interval")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("StartAt")
-                        .IsRequired()
+                    b.Property<DateTime>("StartAt")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("UpdatedAt")
-                        .IsRequired()
+                    b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("updated_at");
 
@@ -195,19 +186,17 @@ namespace Octockup.Server.Migrations
                     b.Property<Guid>("BackupId")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("CompletedAt")
+                    b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("CreatedAt")
-                        .IsRequired()
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("ScheduleId")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("UpdatedAt")
-                        .IsRequired()
+                    b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("updated_at");
 
@@ -231,19 +220,11 @@ namespace Octockup.Server.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("CreatedAt")
-                        .IsRequired()
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("created_at");
 
                     b.Property<string>("Hashsum")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("LastModified")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
@@ -257,8 +238,7 @@ namespace Octockup.Server.Migrations
                     b.Property<Guid>("SnapshotId")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("UpdatedAt")
-                        .IsRequired()
+                    b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("updated_at");
 
@@ -276,8 +256,7 @@ namespace Octockup.Server.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("id");
 
-                    b.Property<string>("CreatedAt")
-                        .IsRequired()
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("created_at");
 
@@ -285,8 +264,7 @@ namespace Octockup.Server.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("UpdatedAt")
-                        .IsRequired()
+                    b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("updated_at");
 
@@ -357,7 +335,7 @@ namespace Octockup.Server.Migrations
             modelBuilder.Entity("Octockup.Server.Database.Snapshot", b =>
                 {
                     b.HasOne("Octockup.Server.Database.Backup", "Backup")
-                        .WithMany("Snapshots")
+                        .WithMany()
                         .HasForeignKey("BackupId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -383,8 +361,6 @@ namespace Octockup.Server.Migrations
             modelBuilder.Entity("Octockup.Server.Database.Backup", b =>
                 {
                     b.Navigation("Schedules");
-
-                    b.Navigation("Snapshots");
                 });
 
             modelBuilder.Entity("Octockup.Server.Database.Schedule", b =>
