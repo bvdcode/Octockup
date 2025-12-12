@@ -5,6 +5,8 @@ using EasyExtensions.AspNetCore.Authorization.Extensions;
 using EasyExtensions.AspNetCore.Extensions;
 using EasyExtensions.EntityFrameworkCore.Extensions;
 using EasyExtensions.Quartz.Extensions;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Abstractions;
 using Octockup.Server.Database;
@@ -20,7 +22,23 @@ namespace Octockup.Server
         {
             var builder = WebApplication.CreateBuilder(args);
             builder.SetupDatabaseAndKeys();
+            
+            // Configure Kestrel for large requests
+            builder.Services.Configure<KestrelServerOptions>(options =>
+            {
+                options.Limits.MaxRequestBodySize = 1_073_741_824; // 1 GB
+            });
+            
             builder.Services.AddControllers();
+            
+            // Configure form options for large file uploads
+            builder.Services.Configure<FormOptions>(options =>
+            {
+                options.MultipartBodyLengthLimit = 1_073_741_824; // 1 GB
+                options.ValueLengthLimit = int.MaxValue;
+                options.MultipartHeadersLengthLimit = int.MaxValue;
+            });
+            
             builder.Services
                 .AddScoped<IBackupProvider, IMAPSource>()
                 .AddScoped<IBackupProvider, S3BackupStorage>()
