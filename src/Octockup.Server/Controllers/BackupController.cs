@@ -248,6 +248,7 @@ namespace Octockup.Server.Controllers
         }
 
         [Authorize]
+        [RequestSizeLimit(1_000_000_000)]
         [HttpPost("/api/v1/backups/server/import")]
         public async Task<IActionResult> ImportServerBackup([FromForm] IFormFile file, CancellationToken ct)
         {
