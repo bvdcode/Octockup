@@ -52,11 +52,6 @@ class BackupsApiClient {
     const result = await this.axios().post<{ message: string }>(
       "/api/v1/backups/server/import",
       formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      },
     );
     return result.data;
   }
