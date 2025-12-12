@@ -19,7 +19,7 @@ namespace Octockup.Server.Jobs
         AppDbContext _dbContext,
         ILogger<ImportBackupJob> _logger) : IJob
     {
-        private const int BATCH_SIZE = 100;
+        private const int BATCH_SIZE = 500;
         private static readonly ConcurrentDictionary<Type, Action<object, Guid>?> _idSetterCache = new();
 
         public static JsonSerializerOptions CreateOptions()
@@ -30,7 +30,6 @@ namespace Octockup.Server.Jobs
                 if (ti.Kind != JsonTypeInfoKind.Object)
                     return;
 
-                // Ищем JSON property "Id" (имя будет "Id" по умолчанию)
                 var jsonProp = ti.Properties.FirstOrDefault(p =>
                     string.Equals(p.Name, "Id", StringComparison.Ordinal) &&
                     p.PropertyType == typeof(Guid));
@@ -40,13 +39,11 @@ namespace Octockup.Server.Jobs
                     return;
                 }
 
-                // Если уже есть setter — не трогаем
                 if (jsonProp.Set is not null)
                 {
                     return;
                 }
 
-                // Если у типа нет property Id — выходим
                 var idPropInfo = ti.Type.GetProperty("Id",
                     System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
 
@@ -56,16 +53,13 @@ namespace Octockup.Server.Jobs
                     return;
                 }
 
-                // Кэшируем быстрый делегат
                 var setter = _idSetterCache.GetOrAdd(ti.Type, _ =>
                 {
-                    // Создаём делегат вида (object obj, Guid value) => ((T)obj).set_Id(value)
                     return (obj, value) => setMethod.Invoke(obj, [value]);
                 });
 
                 jsonProp.Set = (obj, value) =>
                 {
-                    // value приходит как object, но это Guid
                     setter?.Invoke(obj!, (Guid)value!);
                 };
             });
@@ -176,85 +170,10 @@ namespace Octockup.Server.Jobs
                 importData.Snapshots.Count,
                 importData.SnapshotFiles.Count);
 
+            // Просто обновляем UserId, БЕЗ восстановления навигаций!
             foreach (var item in importData.Modules)
             {
                 item.UserId = user.Id;
-            }
-
-            var modulesById = importData.Modules.ToDictionary(m => m.Id);
-            var backupsById = importData.Backups.ToDictionary(b => b.Id);
-            var snapshotsById = importData.Snapshots.ToDictionary(s => s.Id);
-
-            // Восстанавливаем связи Module <-> Backup
-            foreach (var backup in importData.Backups)
-            {
-                if (modulesById.TryGetValue(backup.SourceId, out var source))
-                {
-                    backup.Source = source;
-                    backup.SourceId = source.Id;
-                }
-                else
-                {
-                    throw new InvalidOperationException($"Source module with ID {backup.SourceId} not found for backup {backup.Id}");
-                }
-
-                if (modulesById.TryGetValue(backup.StorageId, out var storage))
-                {
-                    backup.Storage = storage;
-                    backup.StorageId = storage.Id;
-                }
-                else
-                {
-                    throw new InvalidOperationException($"Storage module with ID {backup.StorageId} not found for backup {backup.Id}");
-                }
-            }
-
-            // Восстанавливаем связи Backup <-> Schedule
-            foreach (var schedule in importData.Schedules)
-            {
-                if (backupsById.TryGetValue(schedule.BackupId, out var backup))
-                {
-                    schedule.Backup = backup;
-                    schedule.BackupId = backup.Id;
-                    backup.Schedules ??= [];
-                    backup.Schedules.Add(schedule);
-                }
-                else
-                {
-                    throw new InvalidOperationException($"Backup with ID {schedule.BackupId} not found for schedule {schedule.Id}");
-                }
-            }
-
-            // Восстанавливаем связи Backup <-> Snapshot
-            foreach (var snapshot in importData.Snapshots)
-            {
-                if (backupsById.TryGetValue(snapshot.BackupId, out var backup))
-                {
-                    snapshot.Backup = backup;
-                    snapshot.BackupId = backup.Id;
-                    backup.Snapshots ??= [];
-                    backup.Snapshots.Add(snapshot);
-                }
-                else
-                {
-                    throw new InvalidOperationException($"Backup with ID {snapshot.BackupId} not found for snapshot {snapshot.Id}");
-                }
-            }
-
-            // Восстанавливаем связи Snapshot <-> SnapshotFile
-            foreach (var snapshotFile in importData.SnapshotFiles)
-            {
-                if (snapshotsById.TryGetValue(snapshotFile.SnapshotId, out var snapshot))
-                {
-                    snapshotFile.Snapshot = snapshot;
-                    snapshotFile.SnapshotId = snapshot.Id;
-                    snapshot.Files ??= [];
-                    snapshot.Files.Add(snapshotFile);
-                }
-                else
-                {
-                    throw new InvalidOperationException($"Snapshot with ID {snapshotFile.SnapshotId} not found for snapshot file {snapshotFile.Id}");
-                }
             }
 
             _logger.LogInformation("Saving imported data to the database for user {UserId} in batches...", userId);
@@ -263,23 +182,26 @@ namespace Octockup.Server.Jobs
 
             try
             {
-                // Modules - маленькие, можно все сразу
+                // Modules - маленькие, можно все сразу, но DETACH после
                 _dbContext.Modules.AddRange(importData.Modules);
                 await _dbContext.SaveChangesAsync(cancellationToken);
+                _dbContext.ChangeTracker.Clear();
                 _logger.LogInformation("Imported {Count} modules", importData.Modules.Count);
 
-                // Backups - маленькие, можно все сразу
+                // Backups - маленькие, но DETACH после
                 _dbContext.Backups.AddRange(importData.Backups);
                 await _dbContext.SaveChangesAsync(cancellationToken);
+                _dbContext.ChangeTracker.Clear();
                 _logger.LogInformation("Imported {Count} backups", importData.Backups.Count);
 
-                // Schedules - маленькие, можно все сразу
+                // Schedules - маленькие, но DETACH после
                 _dbContext.Schedules.AddRange(importData.Schedules);
                 await _dbContext.SaveChangesAsync(cancellationToken);
+                _dbContext.ChangeTracker.Clear();
                 _logger.LogInformation("Imported {Count} schedules", importData.Schedules.Count);
 
-                // Snapshots - батчами
-                await SaveInBatchesAsync(importData.Snapshots, _dbContext.Snapshots, "snapshots", cancellationToken);
+                // Snapshots - батчами с DETACH
+                await SaveInBatchesWithDetachAsync(importData.Snapshots, _dbContext.Snapshots, "snapshots", cancellationToken);
 
                 // SnapshotFiles - БОЛЬШИЕ, обязательно батчами + очистка ChangeTracker
                 await SaveInBatchesWithDetachAsync(importData.SnapshotFiles, _dbContext.SnapshotFiles, "snapshot files", cancellationToken);
@@ -294,21 +216,6 @@ namespace Octockup.Server.Jobs
             }
 
             _logger.LogInformation("Successfully completed import for user {UserId} from file {FilePath}", userId, filePath);
-        }
-
-        private async Task SaveInBatchesAsync<T>(List<T> items, DbSet<T> dbSet, string entityName, CancellationToken ct) where T : class
-        {
-            int totalBatches = (items.Count + BATCH_SIZE - 1) / BATCH_SIZE;
-            for (int i = 0; i < items.Count; i += BATCH_SIZE)
-            {
-                var batch = items.Skip(i).Take(BATCH_SIZE).ToList();
-                dbSet.AddRange(batch);
-                await _dbContext.SaveChangesAsync(ct);
-
-                int currentBatch = (i / BATCH_SIZE) + 1;
-                _logger.LogInformation("Imported batch {CurrentBatch}/{TotalBatches} of {EntityName} ({Count} items)",
-                    currentBatch, totalBatches, entityName, batch.Count);
-            }
         }
 
         private async Task SaveInBatchesWithDetachAsync<T>(List<T> items, DbSet<T> dbSet, string entityName, CancellationToken ct) where T : class
