@@ -32,7 +32,7 @@ namespace Octockup.Server.Database
         public Dictionary<string, string> Parameters { get; private set; } = [];
 
         [Column("encrypted_parameters")]
-        private string EncryptedParameters { get; set; } = string.Empty;
+        public string EncryptedParameters { get; private set; } = string.Empty;
 
         public virtual User User { get; set; } = null!;
 
