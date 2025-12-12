@@ -4,6 +4,7 @@
 using EasyExtensions;
 using EasyExtensions.Abstractions;
 using EasyExtensions.AspNetCore.Extensions;
+using EasyExtensions.Quartz.Extensions;
 using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,9 +13,11 @@ using Octockup.Server.Database;
 using Octockup.Server.Models.Dto;
 using Octockup.Server.Models.Enums;
 using Octockup.Server.Models.Requests;
+using Octockup.Server.Jobs;
 using System.IO.Compression;
 using System.Text.Json;
 using System.IO.Pipelines;
+using Quartz;
 
 namespace Octockup.Server.Controllers
 {
@@ -22,11 +25,12 @@ namespace Octockup.Server.Controllers
     public class BackupController(
         AppDbContext _dbContext,
         IStreamCipher _streamCipher,
+        ISchedulerFactory _schedulerFactory,
         ILogger<BackupController> _logger) : ControllerBase
     {
         [Authorize]
         [HttpGet("/api/v1/backups/server")]
-        public async Task<IActionResult> GetServerBackup(CancellationToken ct)
+        public async Task<IActionResult> GetServerBackup([FromQuery] bool includeFiles = false, CancellationToken ct = default)
         {
             Guid userId = User.GetUserId();
 
@@ -73,12 +77,11 @@ namespace Octockup.Server.Controllers
 
             _logger.LogInformation("Exported {SnapshotCount} snapshots for user {UserId}.", snapshots.Count, userId);
 
-            var snapshotIds = snapshots.Select(s => s.Id).ToList();
-
-            var snapshotFiles = await _dbContext.SnapshotFiles
+            var snapshotIds = includeFiles ? snapshots.Select(s => s.Id).ToList() : [];
+            List<SnapshotFile> snapshotFiles = includeFiles ? await _dbContext.SnapshotFiles
                 .AsNoTracking()
                 .Where(sf => snapshotIds.Contains(sf.SnapshotId))
-                .ToListAsync(ct);
+                .ToListAsync(ct) : [];
 
             _logger.LogInformation("Exported {SnapshotFileCount} snapshot files for user {UserId}.", snapshotFiles.Count, userId);
 
@@ -242,6 +245,48 @@ namespace Octockup.Server.Controllers
             _dbContext.Backups.Remove(backup);
             await _dbContext.SaveChangesAsync();
             return Ok(new { message = "Backup deleted successfully." });
+        }
+
+        [Authorize]
+        [HttpPost("/api/v1/backups/server/import")]
+        public async Task<IActionResult> ImportServerBackup(IFormFile file, CancellationToken ct)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return this.ApiBadRequest("File is required");
+            }
+
+            Guid userId = User.GetUserId();
+            var user = await _dbContext.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userId, ct);
+
+            if (user == null)
+            {
+                return this.ApiNotFound("User not found: " + userId);
+            }
+
+            _logger.LogInformation("User {UserId} is importing server backup data.", userId);
+
+            // Create import directory if not exists
+            string importDir = Path.Combine(Path.GetTempPath(), "octockup-imports", userId.ToString());
+            Directory.CreateDirectory(importDir);
+
+            // Save uploaded file
+            string fileName = $"import-{DateTime.UtcNow:yyyyMMddHHmmss}.octockup";
+            string filePath = Path.Combine(importDir, fileName);
+
+            await using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
+            {
+                await file.CopyToAsync(fileStream, ct);
+            }
+
+            _logger.LogInformation("Saved import file for user {UserId} to {FilePath}", userId, filePath);
+
+            // Trigger the import job
+            await _schedulerFactory.TriggerJobAsync<ImportBackupJob>();
+
+            return Ok(new { message = "Import file uploaded successfully. Processing will begin shortly." });
         }
     }
 }

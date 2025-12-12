@@ -8,7 +8,7 @@ namespace Octockup.Server.Extensions
 {
     public static class WebApplicationBuilderExtensions
     {
-        private const string PostgresEnvPrefix = "OCTOCKUP_POSTGRES2_";
+        private const string PostgresEnvPrefix = "OCTOCKUP_POSTGRES_";
 
         public static WebApplicationBuilder SetupDatabaseAndKeys(this WebApplicationBuilder builder)
         {
