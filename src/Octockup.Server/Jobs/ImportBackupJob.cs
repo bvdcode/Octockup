@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+﻿// SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2025 Vadim Belov
 
 using EasyExtensions.Abstractions;
@@ -11,7 +11,7 @@ using System.Text.Json;
 
 namespace Octockup.Server.Jobs
 {
-    [JobTrigger(minutes: 1)]
+    [JobTrigger(days: 365, startNow: false)]
     public class ImportBackupJob(
         IStreamCipher _streamCipher,
         AppDbContext _dbContext,
@@ -77,6 +77,15 @@ namespace Octockup.Server.Jobs
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
 
+            int usersCount = await _dbContext.Users.CountAsync(cancellationToken);
+            if (usersCount == 1)
+            {
+                user = await _dbContext.Users
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(cancellationToken);
+                _logger.LogInformation("Only one user in the system, using user {UserId} for import", user?.Id);
+            }
+
             if (user == null)
             {
                 _logger.LogWarning("User {UserId} not found, skipping import", userId);
@@ -105,7 +114,7 @@ namespace Octockup.Server.Jobs
                 importData.Snapshots?.Count ?? 0,
                 importData.SnapshotFiles?.Count ?? 0);
 
-            // ?????? ????????? ??? ??? ????, EF ?????????? ? ID ? ???????????
+            // Просто добавляем всё как есть, EF разберется с ID и конфликтами
             if (importData.Modules != null)
             {
                 foreach (var module in importData.Modules)
