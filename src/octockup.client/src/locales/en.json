@@ -242,6 +242,12 @@
       "title": "Data Export",
       "description": "Export all backup configuration and metadata to a JSON file.",
       "button": "Export user data"
+    },
+    "dataImport": {
+      "title": "Data Import",
+      "description": "Import backup configuration and metadata from a previously exported file.",
+      "button": "Import user data",
+      "importing": "Importing..."
     }
   }
 }
