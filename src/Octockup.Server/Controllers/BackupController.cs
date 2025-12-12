@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+﻿// SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2025 Vadim Belov
 
 using EasyExtensions;
+using EasyExtensions.Abstractions;
 using EasyExtensions.AspNetCore.Extensions;
 using Mapster;
 using Microsoft.AspNetCore.Authorization;
@@ -11,12 +12,103 @@ using Octockup.Server.Database;
 using Octockup.Server.Models.Dto;
 using Octockup.Server.Models.Enums;
 using Octockup.Server.Models.Requests;
+using System.IO.Compression;
+using System.Text.Json;
 
 namespace Octockup.Server.Controllers
 {
     [ApiController]
-    public class BackupController(AppDbContext _dbContext) : ControllerBase
+    public class BackupController(
+        AppDbContext _dbContext,
+        IStreamCipher _streamCipher,
+        ILogger<BackupController> _logger) : ControllerBase
     {
+        [Authorize]
+        [HttpGet("/api/v1/backups/server")]
+        public async Task<IActionResult> GetServerBackup(CancellationToken ct)
+        {
+            Guid userId = User.GetUserId();
+
+            var user = await _dbContext.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userId, ct);
+
+            if (user == null)
+            {
+                return this.ApiNotFound("User not found: " + userId);
+            }
+
+            _logger.LogInformation("User {UserId} requested server backup data.", userId);
+
+            var modules = await _dbContext.Modules
+                .AsNoTracking()
+                .Where(m => m.UserId == userId)
+                .ToListAsync(ct);
+
+            _logger.LogInformation("Exported {ModuleCount} modules for user {UserId}.", modules.Count, userId);
+
+            var moduleIds = modules.Select(m => m.Id).ToList();
+
+            var backups = await _dbContext.Backups
+                .AsNoTracking()
+                .Where(b => moduleIds.Contains(b.SourceId))
+                .ToListAsync(ct);
+
+            _logger.LogInformation("Exported {BackupCount} backups for user {UserId}.", backups.Count, userId);
+
+            var backupIds = backups.Select(b => b.Id).ToList();
+
+            var schedules = await _dbContext.Schedules
+                .AsNoTracking()
+                .Where(s => backupIds.Contains(s.BackupId))
+                .ToListAsync(ct);
+
+            _logger.LogInformation("Exported {ScheduleCount} schedules for user {UserId}.", schedules.Count, userId);
+
+            var snapshots = await _dbContext.Snapshots
+                .AsNoTracking()
+                .Where(s => backupIds.Contains(s.BackupId))
+                .ToListAsync(ct);
+
+            _logger.LogInformation("Exported {SnapshotCount} snapshots for user {UserId}.", snapshots.Count, userId);
+
+            var snapshotIds = snapshots.Select(s => s.Id).ToList();
+
+            var snapshotFiles = await _dbContext.SnapshotFiles
+                .AsNoTracking()
+                .Where(sf => snapshotIds.Contains(sf.SnapshotId))
+                .ToListAsync(ct);
+
+            _logger.LogInformation("Exported {SnapshotFileCount} snapshot files for user {UserId}.", snapshotFiles.Count, userId);
+
+            Response.ContentType = "application/octet-stream";
+            Response.Headers.ContentDisposition =
+                $"attachment; filename=\"server-backup-{userId}.octockup\"";
+
+            await using var brotliStream = new BrotliStream(
+                Response.Body,
+                System.IO.Compression.CompressionLevel.Fastest,
+                leaveOpen: true);
+
+            using var encryptedStream = await _streamCipher.EncryptAsync(brotliStream, ct: ct);
+
+            await JsonSerializer.SerializeAsync(
+                encryptedStream,
+                new
+                {
+                    Modules = modules,
+                    Backups = backups,
+                    Schedules = schedules,
+                    Snapshots = snapshots,
+                    SnapshotFiles = snapshotFiles
+                }, cancellationToken: ct);
+
+            await encryptedStream.FlushAsync(ct);
+            await brotliStream.FlushAsync(ct);
+            return new EmptyResult();
+        }
+
+
         [Authorize]
         [HttpPatch("/api/v1/backups/{backupId:guid}/ignored-paths")]
         public async Task<IActionResult> UpdateIgnoredPaths([FromRoute] Guid backupId, [FromBody] List<string> ignoredPaths)

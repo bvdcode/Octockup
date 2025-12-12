@@ -8,7 +8,7 @@ namespace Octockup.Server.Converters
     /// </summary>
     public class UtcDateTimeConverter : ValueConverter<DateTime, string>
     {
-        public UtcDateTimeConverter(): base(v => ConvertToUtcString(v), v => DateTime.Parse(v).ToUniversalTime()) { }
+        public UtcDateTimeConverter() : base(v => ConvertToUtcString(v), v => DateTime.Parse(v).ToUniversalTime()) { }
 
         private static string ConvertToUtcString(DateTime value)
         {
