@@ -6,7 +6,7 @@ using Quartz;
 
 namespace Octockup.Server.Jobs
 {
-    [JobTrigger(repeatForever: false, startNow: true)]
+    [JobTrigger(days: 30, repeatForever: false, startNow: true)]
     public class MigrateParamsJob(
         IStreamCipher _crypto,
         AppDbContext _dbContext,
