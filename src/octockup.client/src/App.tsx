@@ -5,6 +5,7 @@ import {
   CloudDone,
   CloudDownload,
   GitHub,
+  Settings,
 } from "@mui/icons-material";
 import * as locales from "./locales";
 import HomePage from "./pages/Home";
@@ -19,6 +20,7 @@ import SchedulesPage from "./pages/Schedules";
 import ScheduleWizard from "./pages/ScheduleWizard";
 import SnapshotsPage from "./pages/Snapshots";
 import SnapshotFilesPage from "./pages/SnapshotFiles";
+import SettingsPage from "./pages/Settings";
 import { Fab } from "@mui/material";
 
 function App() {
@@ -110,6 +112,12 @@ function App() {
           {
             route: "/schedules/new",
             component: <ScheduleWizard />,
+          },
+          {
+            icon: <Settings />,
+            name: "Settings",
+            route: "/settings",
+            component: <SettingsPage />,
           },
         ]}
       />
