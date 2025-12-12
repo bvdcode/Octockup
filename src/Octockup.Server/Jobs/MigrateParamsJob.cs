@@ -17,12 +17,12 @@ namespace Octockup.Server.Jobs
             var modules = await _dbContext.Modules.ToListAsync();
             foreach (var module in modules)
             {
+#pragma warning disable CS0618 // Type or member is obsolete
                 if (module.Parameters.Count == 0)
                 {
                     continue;
                 }
 
-                var parameters = module.Parameters;
                 foreach (var item in module.Parameters)
                 {
                     module.Params(_crypto)[item.Key] = item.Value;
@@ -31,6 +31,7 @@ namespace Octockup.Server.Jobs
                 module.Parameters.Clear();
                 await _dbContext.SaveChangesAsync();
                 _logger.LogInformation("Finished migrating parameters for Module {ModuleId}.", module.Id);
+#pragma warning restore CS0618 // Type or member is obsolete
             }
         }
     }

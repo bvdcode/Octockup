@@ -49,6 +49,16 @@ namespace Octockup.Server.Controllers
                 .AsNoTracking()
                 .Where(m => m.UserId == userId)
                 .ToListAsync(ct);
+            foreach (var item in modules)
+            {
+                var paramsDict = item.Params(_streamCipher).Snapshot();
+                foreach (var param in paramsDict)
+                {
+#pragma warning disable CS0618 // Type or member is obsolete
+                    item.Parameters[param.Key] = param.Value;
+#pragma warning restore CS0618 // Type or member is obsolete
+                }
+            }
 
             _logger.LogInformation("Exported {ModuleCount} modules for user {UserId}.", modules.Count, userId);
 

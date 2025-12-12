@@ -184,11 +184,12 @@ namespace Octockup.Server.Jobs
             {
                 foreach (var module in importData.Modules)
                 {
+#pragma warning disable CS0618 // Type or member is obsolete
                     foreach (var item in module.Parameters)
                     {
-
                         module.Params(_crypto)[item.Key] = item.Value;
                     }
+#pragma warning restore CS0618 // Type or member is obsolete
                 }
 
                 // Modules - small, can be saved all at once, but DETACH after

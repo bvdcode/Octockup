@@ -43,6 +43,7 @@ namespace Octockup.Server.Database
 
             // ---------- Module.Parameters ----------
 
+#pragma warning disable CS0618 // Type or member is obsolete
             modelBuilder.Entity<Module>()
                 .Property(m => m.Parameters)
                 .HasConversion(
@@ -52,6 +53,7 @@ namespace Octockup.Server.Database
                         : JsonSerializer.Deserialize<Dictionary<string, string>>(v)!
                 )
                 .Metadata.SetValueComparer(dictComparer);
+#pragma warning restore CS0618 // Type or member is obsolete
         }
     }
 }
