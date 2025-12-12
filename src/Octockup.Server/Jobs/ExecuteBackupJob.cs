@@ -261,6 +261,7 @@ namespace Octockup.Server.Jobs
                             _logger.LogInformation("Chunk {shortHash} for file {FileName} already exists, skipping upload", shortHash, file.Name);
                             var storedChunkInfo = await storage.GetFileInfoAsync(path, cancellationToken)
                                 ?? throw new Exception($"Failed to get info for existing chunk {shortHash} in storage");
+                            _logger.LogInformation("Fetched existing chunk {shortHash} info: Size = {Size}", shortHash, storedChunkInfo.Size);
                             storedSize = storedChunkInfo.Size ?? 0;
                         }
 
