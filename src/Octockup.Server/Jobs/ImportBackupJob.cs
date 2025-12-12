@@ -66,6 +66,7 @@ namespace Octockup.Server.Jobs
 
             return new JsonSerializerOptions
             {
+                IncludeFields = true,
                 TypeInfoResolver = resolver,
                 PropertyNameCaseInsensitive = true
             };
@@ -188,6 +189,7 @@ namespace Octockup.Server.Jobs
                     foreach (var item in module.Parameters)
                     {
                         module.Params(_crypto)[item.Key] = item.Value;
+                        _logger.LogInformation("Restored parameter '{ParamKey}' for Module {ModuleId}.", item.Key, module.Id);
                     }
 #pragma warning restore CS0618 // Type or member is obsolete
                 }
