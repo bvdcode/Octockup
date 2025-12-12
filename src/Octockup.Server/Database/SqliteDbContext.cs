@@ -5,6 +5,7 @@ using System.Text.Json;
 
 namespace Octockup.Server.Database
 {
+    // Add-Migration Initial -Context SqliteDbContext -Output Migrations/Sqlite
     public class SqliteDbContext(DbContextOptions<SqliteDbContext> options) : AppDbContext(options)
     {
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)

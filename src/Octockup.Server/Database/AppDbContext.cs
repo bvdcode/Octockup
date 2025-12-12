@@ -13,6 +13,7 @@ namespace Octockup.Server.Database
         public DbSet<Module> Modules => Set<Module>();
         public DbSet<Schedule> Schedules => Set<Schedule>();
         public DbSet<Snapshot> Snapshots => Set<Snapshot>();
+        public DbSet<Notification> Notifications => Set<Notification>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<SnapshotFile> SnapshotFiles => Set<SnapshotFile>();
         public DbSet<UploadedHash> UploadedHashes => Set<UploadedHash>();

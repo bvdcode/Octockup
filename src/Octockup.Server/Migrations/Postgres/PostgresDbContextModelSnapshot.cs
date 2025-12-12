@@ -19,6 +19,9 @@ namespace Octockup.Server.Migrations.Postgres
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "10.0.1")
+                .HasAnnotation("Proxies:ChangeTracking", false)
+                .HasAnnotation("Proxies:CheckEquality", false)
+                .HasAnnotation("Proxies:LazyLoading", true)
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "hstore");
@@ -156,6 +159,53 @@ namespace Octockup.Server.Migrations.Postgres
                     b.HasIndex("UserId");
 
                     b.ToTable("modules");
+                });
+
+            modelBuilder.Entity("Octockup.Server.Database.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Details")
+                        .HasColumnType("text")
+                        .HasColumnName("details");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("message");
+
+                    b.Property<string>("Metadata")
+                        .HasColumnType("text")
+                        .HasColumnName("metadata");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("integer")
+                        .HasColumnName("priority");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("read_at");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("notifications");
                 });
 
             modelBuilder.Entity("Octockup.Server.Database.Schedule", b =>
@@ -400,6 +450,17 @@ namespace Octockup.Server.Migrations.Postgres
                 {
                     b.HasOne("Octockup.Server.Database.User", "User")
                         .WithMany("Modules")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Octockup.Server.Database.Notification", b =>
+                {
+                    b.HasOne("Octockup.Server.Database.User", "User")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
