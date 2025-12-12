@@ -129,6 +129,7 @@ namespace Octockup.Server.Jobs
                 if (modulesById.TryGetValue(backup.SourceId, out var source))
                 {
                     backup.Source = source;
+                    backup.SourceId = source.Id;
                 }
                 else
                 {
@@ -138,6 +139,7 @@ namespace Octockup.Server.Jobs
                 if (modulesById.TryGetValue(backup.StorageId, out var storage))
                 {
                     backup.Storage = storage;
+                    backup.StorageId = storage.Id;
                 }
                 else
                 {
@@ -151,6 +153,7 @@ namespace Octockup.Server.Jobs
                 if (backupsById.TryGetValue(schedule.BackupId, out var backup))
                 {
                     schedule.Backup = backup;
+                    schedule.BackupId = backup.Id;
                     backup.Schedules ??= [];
                     backup.Schedules.Add(schedule);
                 }
@@ -166,6 +169,7 @@ namespace Octockup.Server.Jobs
                 if (backupsById.TryGetValue(snapshot.BackupId, out var backup))
                 {
                     snapshot.Backup = backup;
+                    snapshot.BackupId = backup.Id;
                     backup.Snapshots ??= [];
                     backup.Snapshots.Add(snapshot);
                 }
@@ -181,6 +185,7 @@ namespace Octockup.Server.Jobs
                 if (snapshotsById.TryGetValue(snapshotFile.SnapshotId, out var snapshot))
                 {
                     snapshotFile.Snapshot = snapshot;
+                    snapshotFile.SnapshotId = snapshot.Id;
                     snapshot.Files ??= [];
                     snapshot.Files.Add(snapshotFile);
                 }
