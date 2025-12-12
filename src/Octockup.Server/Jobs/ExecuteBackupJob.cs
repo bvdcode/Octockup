@@ -148,7 +148,10 @@ namespace Octockup.Server.Jobs
 
                 cancellationToken.ThrowIfCancellationRequested();
                 previousFiles.TryGetValue(file.Path, out var foundFile);
-                if (foundFile != null && foundFile.Hashsum != null && file.Size == foundFile.Size && file.LastModified == foundFile.LastModified)
+                bool datesMatch = foundFile?.LastModified != null && file.LastModified != null &&
+                    Math.Abs((foundFile.LastModified.Value - file.LastModified.Value).TotalSeconds) < 1;
+                
+                if (foundFile != null && foundFile.Hashsum != null && file.Size == foundFile.Size && datesMatch)
                 {
                     _logger.LogInformation("Schedule {ScheduleId}: File {FileName} unchanged since last snapshot, skipping",
                         schedule.Id, file.Name);
