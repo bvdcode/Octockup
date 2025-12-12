@@ -17,12 +17,6 @@ namespace Octockup.Server.Jobs
         AppDbContext _dbContext,
         ILogger<ImportBackupJob> _logger) : IJob
     {
-        private static readonly JsonSerializerOptions _jsonOptions = new()
-        {
-            IncludeFields = true,
-            PropertyNameCaseInsensitive = true
-        };
-
         public async Task Execute(IJobExecutionContext context)
         {
             CancellationToken cancellationToken = context.CancellationToken;
@@ -105,7 +99,7 @@ namespace Octockup.Server.Jobs
             await _streamCipher.DecryptAsync(brotliStream, decryptedStream, ct: cancellationToken);
             decryptedStream.Seek(0, SeekOrigin.Begin);
 
-            var importData = await JsonSerializer.DeserializeAsync<ImportData>(decryptedStream, _jsonOptions, cancellationToken: cancellationToken);
+            var importData = await JsonSerializer.DeserializeAsync<ImportData>(decryptedStream, cancellationToken: cancellationToken);
             
             if (importData == null)
             {
@@ -120,7 +114,6 @@ namespace Octockup.Server.Jobs
                 importData.Snapshots?.Count ?? 0,
                 importData.SnapshotFiles?.Count ?? 0);
                 
-            // Отключаем tracking для всех сущностей из JSON
             if (importData.Modules != null)
             {
                 foreach (var module in importData.Modules)
@@ -128,7 +121,6 @@ namespace Octockup.Server.Jobs
                     var exists = await _dbContext.Modules.AnyAsync(m => m.Id == module.Id, cancellationToken);
                     if (!exists)
                     {
-                        _dbContext.Entry(module).State = EntityState.Detached;
                         _dbContext.Modules.Add(module);
                         _logger.LogInformation("Added module {Tag} with ID {Id}", module.Tag, module.Id);
                     }
@@ -147,7 +139,6 @@ namespace Octockup.Server.Jobs
                     var exists = await _dbContext.Backups.AnyAsync(b => b.Id == backup.Id, cancellationToken);
                     if (!exists)
                     {
-                        _dbContext.Entry(backup).State = EntityState.Detached;
                         _dbContext.Backups.Add(backup);
                         _logger.LogInformation("Added backup {Tag} with ID {Id}", backup.Tag, backup.Id);
                     }
@@ -166,7 +157,6 @@ namespace Octockup.Server.Jobs
                     var exists = await _dbContext.Schedules.AnyAsync(s => s.Id == schedule.Id, cancellationToken);
                     if (!exists)
                     {
-                        _dbContext.Entry(schedule).State = EntityState.Detached;
                         _dbContext.Schedules.Add(schedule);
                         _logger.LogInformation("Added schedule with ID {Id}", schedule.Id);
                     }
@@ -185,7 +175,6 @@ namespace Octockup.Server.Jobs
                     var exists = await _dbContext.Snapshots.AnyAsync(s => s.Id == snapshot.Id, cancellationToken);
                     if (!exists)
                     {
-                        _dbContext.Entry(snapshot).State = EntityState.Detached;
                         _dbContext.Snapshots.Add(snapshot);
                         _logger.LogInformation("Added snapshot with ID {Id}", snapshot.Id);
                     }
@@ -204,7 +193,6 @@ namespace Octockup.Server.Jobs
                     var exists = await _dbContext.SnapshotFiles.AnyAsync(sf => sf.Id == snapshotFile.Id, cancellationToken);
                     if (!exists)
                     {
-                        _dbContext.Entry(snapshotFile).State = EntityState.Detached;
                         _dbContext.SnapshotFiles.Add(snapshotFile);
                     }
                     else

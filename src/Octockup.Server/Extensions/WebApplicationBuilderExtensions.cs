@@ -22,7 +22,7 @@ namespace Octockup.Server.Extensions
             bool hasPostgresSettings = InjectPostgresSettings(builder.Configuration);
             if (hasPostgresSettings)
             {
-                builder.Services.AddPostgresDbContext<AppDbContext, PostgresDbContext>();
+                builder.Services.AddPostgresDbContext<AppDbContext, PostgresDbContext>(x => x.UseLazyLoadingProxies = false);
             }
             else
             {
