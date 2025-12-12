@@ -43,7 +43,17 @@ services:
     ports:
       - 8080:8080
     environment:
-      - OCTOCKUP_MASTER_KEY=${OCTOCKUP_MASTER_KEY} # 32 chars master key for encrypting sensitive data in the database
+      # Required: 32 chars master key for encrypting everything
+      - OCTOCKUP_MASTER_KEY=${OCTOCKUP_MASTER_KEY}
+
+      # Optional: Allow multiple users (default: false)
+      - OCTOCKUP_ALLOW_MULTIUSER=false
+
+      # Optional: Use PostgreSQL instead of default SQLite
+      - OCTOCKUP_POSTGRES_HOST=postgres-server
+      - OCTOCKUP_POSTGRES_DB=octockup
+      - OCTOCKUP_POSTGRES_USER=octockup_client
+      - OCTOCKUP_POSTGRES_PASSWORD=${OCTOCKUP_DB_PASS}
     volumes:
       - /data/octockup:/app/data
       # Mounts to backup if needed:
@@ -56,6 +66,8 @@ services:
 ```bash
 docker compose up -d
 ```
+
+4. First login
 
 ---
 
