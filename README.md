@@ -14,7 +14,6 @@ Octockup is an all-in-one client and server application for autobackup that incl
 
 <img width="835" height="311" alt="image" src="https://github.com/user-attachments/assets/4cdbc8fd-13cc-48d7-8964-8b32eb86bfa7" />
 
-
 ---
 
 ## Key Features
@@ -24,7 +23,9 @@ Octockup is an all-in-one client and server application for autobackup that incl
 - **Incremental Backups:** Save only the necessary changes with each backup.
 - **Connecting Various Sources:** You can connect YouTube, SSH, FTP, and many other sources to gather data.
 - **Web Interface:** User-friendly web interface for managing all application functions.
-
+- **Data Deduplication:** Efficient storage usage by avoiding duplicate data.
+- **Encryption:** All backup data is encrypted before leaving the server using AES-GCM.
+- **Dual Database Support:** Supports both SQLite (default) and PostgreSQL for flexible data management.
 
 ---
 
@@ -42,7 +43,7 @@ services:
     ports:
       - 8080:8080
     environment:
-      - MASTER_KEY=${OCTOCKUP_MASTER_KEY} # 32 chars master key for encrypting sensitive data in the database
+      - OCTOCKUP_MASTER_KEY=${OCTOCKUP_MASTER_KEY} # 32 chars master key for encrypting sensitive data in the database
     volumes:
       - /data/octockup:/app/data
       # Mounts to backup if needed:
@@ -132,9 +133,9 @@ flowchart LR
 
 This allows:
 
-* true **block-level deduplication**
-* **incremental backups**
-* efficient storage usage across all snapshots
+- true **block-level deduplication**
+- **incremental backups**
+- efficient storage usage across all snapshots
 
 ---
 
@@ -146,23 +147,25 @@ Octockup uses **content-addressed chunk-level deduplication**.
 2. Each chunk is hashed using **SHA-256**.
 3. Before uploading a chunk, Octockup checks the `UploadedHash` table:
 
-   * `(ModuleId + Hash)` must be unique.
+   - `(ModuleId + Hash)` must be unique.
+
 4. If the hash already exists:
 
-   * the chunk is **NOT uploaded again**
-   * only a reference is stored in `SnapshotFile.ChunkHashes`.
+   - the chunk is **NOT uploaded again**
+   - only a reference is stored in `SnapshotFile.ChunkHashes`.
+
 5. If the hash does not exist:
 
-   * the chunk is **compressed**
-   * **encrypted**
-   * uploaded to the storage
-   * recorded in `UploadedHash`.
+   - the chunk is **compressed**
+   - **encrypted**
+   - uploaded to the storage
+   - recorded in `UploadedHash`.
 
 As a result:
 
-* identical files across different backups are stored **only once**
-* even partial file changes reuse unchanged blocks
-* storage usage grows **only with truly new data**
+- identical files across different backups are stored **only once**
+- even partial file changes reuse unchanged blocks
+- storage usage grows **only with truly new data**
 
 Deduplication works **globally per storage**, not only per snapshot.
 
@@ -175,8 +178,9 @@ All backup data is encrypted **before leaving the server**.
 1. A global **MASTER_KEY** (32 bytes) is provided via environment variable.
 2. Every chunk is encrypted using:
 
-   * **AES-GCM**
-   * streamed encryption (no full-buffer loading)
+   - **AES-GCM**
+   - streamed encryption (no full-buffer loading)
+
 3. The encryption pipeline is:
 
 ```
@@ -187,21 +191,20 @@ Raw Chunk → Brotli Compression → AES-GCM Encryption → Upload
 5. The storage backend **never sees plaintext data**.
 6. During download:
 
-   * encrypted chunks are fetched
-   * decrypted and decompressed in memory
-   * reassembled into the original file stream.
+   - encrypted chunks are fetched
+   - decrypted and decompressed in memory
+   - reassembled into the original file stream.
 
 Security guarantees:
 
-* All data at rest in storage is **encrypted**
-* Authentication is provided by **GCM tags**
-* Tampered chunks are **automatically rejected**
-* The storage provider **cannot read backups**
+- All data at rest in storage is **encrypted**
+- Authentication is provided by **GCM tags**
+- Tampered chunks are **automatically rejected**
+- The storage provider **cannot read backups**
 
 The master key is **never stored** in the database and must be backed up securely.
 
 ---
-
 
 ## Updating
 

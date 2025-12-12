@@ -138,6 +138,7 @@ namespace Octockup.Server.Jobs
                 cancellationToken.ThrowIfCancellationRequested();
                 counter++;
                 report.Total = loader.Total;
+                report.IsEnumerationCompleted = loader.IsEnumerationCompleted;
                 await report.SendAsync(counter, $"Processing: {file.Name}", cancellationToken: cancellationToken);
                 if (schedule.Backup.IgnoredPaths != null && ScheduleHelpers.IsPathIgnored(file.Path, file.Name, schedule.Backup.IgnoredPaths))
                 {
@@ -320,6 +321,7 @@ namespace Octockup.Server.Jobs
             }
 
             report.Total = loader.Total;
+            report.IsEnumerationCompleted = true;
             await report.SendAsync(report.Processed, "Finalizing snapshot...", cancellationToken: cancellationToken);
             await _dbContext.SaveChangesAsync(cancellationToken);
             snapshot.CompletedAt = DateTime.UtcNow;

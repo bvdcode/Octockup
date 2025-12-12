@@ -15,6 +15,17 @@ namespace Octockup.Server.Collections
         private Exception? _loadingException;
         private readonly ManualResetEventSlim _itemOrCompleted = new(initialState: false);
 
+        public bool IsEnumerationCompleted
+        {
+            get
+            {
+                lock (_sync)
+                {
+                    return _isCompleted;
+                }
+            }
+        }
+
         public int Total
         {
             get
