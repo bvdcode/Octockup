@@ -360,6 +360,50 @@ namespace Octockup.Server.Modules
             }
         }
 
+        public async Task<BackupFileInfo?> GetFileInfoAsync(string path, CancellationToken cancellationToken = default)
+        {
+            ArgumentException.ThrowIfNullOrEmpty(path);
+            EnsureConnected();
+            ArgumentNullException.ThrowIfNull(_sftp);
+
+            var remote = NormalizeRemotePath(GetRemotePath(path));
+
+            try
+            {
+                if (!await _sftp.ExistsAsync(remote, cancellationToken))
+                {
+                    return null;
+                }
+
+                var attrs = await _sftp.GetAttributesAsync(remote, cancellationToken);
+
+                if (attrs == null || attrs.IsDirectory)
+                {
+                    return null;
+                }
+
+                var fileName = Path.GetFileName(path);
+
+                return new BackupFileInfo
+                {
+                    Path = path,
+                    Name = fileName,
+                    Size = attrs.Size,
+                    LastModified = attrs.LastWriteTime.ToUniversalTime()
+                };
+            }
+            catch (SftpPermissionDeniedException ex) when (_skipPermissionDenied)
+            {
+                _logger.LogWarning(ex, "Permission denied when accessing file info for SFTP path: {Path}", remote);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get file info for '{Path}' from SFTP", path);
+                return null;
+            }
+        }
+
         public void Dispose()
         {
             GC.SuppressFinalize(this);

@@ -229,6 +229,7 @@ namespace Octockup.Server.Jobs
                             continue;
                         }
 
+                        long storedSize = 0;
                         string path = ScheduleHelpers.SplitHash(hash, storage.PathSeparator);
                         bool exists = await storage.ExistsAsync(path, cancellationToken) ?? false;
                         if (!exists)
@@ -248,35 +249,34 @@ namespace Octockup.Server.Jobs
                                 }
                             }
                             compressed.Seek(0, SeekOrigin.Begin);
-
-                            // Encrypt and upload the chunk
-                            long storedSize;
                             using var encryptedStream = new MemoryStream();
                             await _crypto.EncryptAsync(compressed, encryptedStream, ct: cancellationToken);
                             encryptedStream.Seek(0, SeekOrigin.Begin);
                             storedSize = encryptedStream.Length;
                             await storage.UploadAsync(path, encryptedStream, cancellationToken);
                             uploadedChunks.Add(hash);
-
-                            bool chunkRecorded = await _dbContext.UploadedHashes.AnyAsync(x => x.Hash == hash, cancellationToken: cancellationToken);
-                            if (!chunkRecorded)
-                            {
-                                var uploadedHash = new UploadedHash
-                                {
-                                    Hash = hash,
-                                    OriginalSize = chunkLength,
-                                    StoredSize = storedSize,
-                                    ModuleId = schedule.Backup.StorageId,
-                                };
-                                await _dbContext.UploadedHashes.AddAsync(uploadedHash, cancellationToken);
-                                await _dbContext.SaveChangesAsync(cancellationToken);
-                            }
                         }
                         else
                         {
                             _logger.LogInformation("Chunk {shortHash} for file {FileName} already exists, skipping upload", shortHash, file.Name);
+                            var storedChunkInfo = await storage.GetFileInfoAsync(path, cancellationToken)
+                                ?? throw new Exception($"Failed to get info for existing chunk {shortHash} in storage");
+                            storedSize = storedChunkInfo.Size ?? 0;
                         }
 
+                        bool chunkRecorded = await _dbContext.UploadedHashes.AnyAsync(x => x.Hash == hash, cancellationToken: cancellationToken);
+                        if (!chunkRecorded)
+                        {
+                            var uploadedHash = new UploadedHash
+                            {
+                                Hash = hash,
+                                StoredSize = storedSize,
+                                OriginalSize = chunkLength,
+                                ModuleId = schedule.Backup.StorageId,
+                            };
+                            await _dbContext.UploadedHashes.AddAsync(uploadedHash, cancellationToken);
+                            await _dbContext.SaveChangesAsync(cancellationToken);
+                        }
                         await report.SendAsync(counter, $"Uploading: {file.Name}", processedBytes: chunkLength, cancellationToken: cancellationToken);
 
                         chunkHashes.Add(hash);

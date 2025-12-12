@@ -532,5 +532,80 @@ namespace Octockup.Server.Modules
                 _imapLock.Release();
             }
         }
+
+        public async Task<BackupFileInfo?> GetFileInfoAsync(string path, CancellationToken cancellationToken)
+        {
+            await EnsureConnectedAsync(cancellationToken);
+            if (_client == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                var parts = path.Split('/');
+                var fileName = parts[^1];
+                var folderPath = parts.Length > 1
+                    ? string.Join("/", parts[..^1])
+                    : string.Empty;
+
+                var uidStr = fileName.Replace(".eml", "");
+                if (!uint.TryParse(uidStr, out var uidValue))
+                {
+                    _logger.LogError("Invalid email UID in filename: {FileName}", fileName);
+                    return null;
+                }
+
+                var uid = new UniqueId(uidValue);
+
+                await _imapLock.WaitAsync(cancellationToken);
+                try
+                {
+                    IMailFolder folder;
+                    if (string.IsNullOrEmpty(folderPath))
+                    {
+                        folder = _client.Inbox;
+                    }
+                    else
+                    {
+                        var serverFolderPath = (_serverDirectorySeparator.HasValue && _serverDirectorySeparator.Value != '/')
+                            ? folderPath.Replace('/', _serverDirectorySeparator.Value)
+                            : folderPath;
+                        folder = await _client.GetFolderAsync(serverFolderPath, cancellationToken);
+                    }
+
+                    await folder.OpenAsync(FolderAccess.ReadOnly, cancellationToken);
+
+                    var summaries = await folder.FetchAsync([uid], MessageSummaryItems.UniqueId |
+                        MessageSummaryItems.InternalDate |
+                        MessageSummaryItems.Size, cancellationToken: cancellationToken);
+
+                    await folder.CloseAsync(cancellationToken: cancellationToken);
+
+                    var summary = summaries.FirstOrDefault();
+                    if (summary == null || !summary.UniqueId.IsValid)
+                    {
+                        return null;
+                    }
+
+                    return new BackupFileInfo
+                    {
+                        Path = path,
+                        Name = fileName,
+                        Size = summary.Size,
+                        LastModified = summary.InternalDate?.UtcDateTime
+                    };
+                }
+                finally
+                {
+                    _imapLock.Release();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get file info for email: {Path}", path);
+                return null;
+            }
+        }
     }
 }

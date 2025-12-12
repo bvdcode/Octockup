@@ -431,5 +431,49 @@ namespace Octockup.Server.Modules
             var result = await _s3.DeleteObjectAsync(_bucket, key, cancellationToken);
             return result.HttpStatusCode == System.Net.HttpStatusCode.NoContent;
         }
+
+        public async Task<BackupFileInfo?> GetFileInfoAsync(string path, CancellationToken cancellationToken)
+        {
+            ArgumentException.ThrowIfNullOrEmpty(path);
+            ArgumentNullException.ThrowIfNull(_s3);
+
+            var key = GetFullKey(path);
+
+            try
+            {
+                var request = new GetObjectMetadataRequest
+                {
+                    Key = key,
+                    BucketName = _bucket,
+                };
+
+                var response = await _s3.GetObjectMetadataAsync(request, cancellationToken);
+
+                if (response.HttpStatusCode != HttpStatusCode.OK)
+                {
+                    return null;
+                }
+
+                var fileName = Path.GetFileName(path);
+                var relativePath = ToRelativeKey(key, GetBasePrefix());
+
+                return new BackupFileInfo
+                {
+                    Path = relativePath,
+                    Name = fileName,
+                    Size = response.ContentLength,
+                    LastModified = response.LastModified?.ToUniversalTime()
+                };
+            }
+            catch (AmazonS3Exception s3Ex) when (s3Ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get file info for '{Path}' from S3", path);
+                return null;
+            }
+        }
     }
 }

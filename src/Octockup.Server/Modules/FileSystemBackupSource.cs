@@ -248,5 +248,41 @@ namespace Octockup.Server.Modules
                 throw new UnauthorizedAccessException("Invalid password for accessing the file system backup source.");
             }
         }
+
+        public Task<BackupFileInfo?> GetFileInfoAsync(string path, CancellationToken cancellationToken)
+        {
+            CheckPassword();
+            var fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, path));
+            if (!IsSubPathOf(fullPath, _baseDirectory))
+            {
+                throw new ArgumentException($"File path '{path}' escapes the base directory.");
+            }
+
+            if (!File.Exists(fullPath))
+            {
+                return Task.FromResult<BackupFileInfo?>(null);
+            }
+
+            try
+            {
+                var fileInfo = new FileInfo(fullPath);
+                var relativePath = Path.GetRelativePath(_baseDirectory, fullPath);
+
+                var result = new BackupFileInfo
+                {
+                    Path = relativePath,
+                    Name = fileInfo.Name,
+                    Size = fileInfo.Length,
+                    LastModified = fileInfo.LastWriteTimeUtc,
+                };
+
+                return Task.FromResult<BackupFileInfo?>(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get file info for '{FilePath}'", fullPath);
+                return Task.FromResult<BackupFileInfo?>(null);
+            }
+        }
     }
 }
