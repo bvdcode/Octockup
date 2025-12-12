@@ -14,6 +14,7 @@ using Octockup.Server.Models.Enums;
 using Octockup.Server.Models.Requests;
 using System.IO.Compression;
 using System.Text.Json;
+using System.IO.Pipelines;
 
 namespace Octockup.Server.Controllers
 {
@@ -90,20 +91,35 @@ namespace Octockup.Server.Controllers
                 System.IO.Compression.CompressionLevel.Fastest,
                 leaveOpen: true);
 
-            using var encryptedStream = await _streamCipher.EncryptAsync(brotliStream, ct: ct);
+            // Stream JSON through a Pipe to the encryptor to avoid buffering everything in memory.
+            var pipe = new Pipe();
+            var writer = pipe.Writer;
+            var reader = pipe.Reader;
 
-            await JsonSerializer.SerializeAsync(
-                encryptedStream,
-                new
-                {
-                    Modules = modules,
-                    Backups = backups,
-                    Schedules = schedules,
-                    Snapshots = snapshots,
-                    SnapshotFiles = snapshotFiles
-                }, cancellationToken: ct);
+            var encryptTask = Task.Run(async () =>
+            {
+                await using var inputStream = reader.AsStream(leaveOpen: false);
+                await _streamCipher.EncryptAsync(inputStream, brotliStream, ct: ct);
+            }, ct);
 
-            await encryptedStream.FlushAsync(ct);
+            var serializeTask = Task.Run(async () =>
+            {
+                await using var outputStream = writer.AsStream(leaveOpen: false);
+                await JsonSerializer.SerializeAsync(
+                    outputStream,
+                    new
+                    {
+                        Modules = modules,
+                        Backups = backups,
+                        Schedules = schedules,
+                        Snapshots = snapshots,
+                        SnapshotFiles = snapshotFiles
+                    }, cancellationToken: ct);
+                await writer.CompleteAsync();
+            }, ct);
+
+            await Task.WhenAll(encryptTask, serializeTask);
+
             await brotliStream.FlushAsync(ct);
             return new EmptyResult();
         }
