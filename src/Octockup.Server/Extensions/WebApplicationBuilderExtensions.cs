@@ -30,7 +30,24 @@ namespace Octockup.Server.Extensions
 
         private static bool InjectPostgresSettings(ConfigurationManager configuration)
         {
-            return false;
+            string host = Environment.GetEnvironmentVariable("OCTOCKUP_PG_HOST") ?? "postgres-server";
+            string port = Environment.GetEnvironmentVariable("OCTOCKUP_PG_PORT") ?? "5432";
+            string database = Environment.GetEnvironmentVariable("OCTOCKUP_PG_DATABASE") ?? "octockup";
+            string username = Environment.GetEnvironmentVariable("OCTOCKUP_PG_USERNAME") ?? "octockup_client";
+            string? password = Environment.GetEnvironmentVariable("OCTOCKUP_PG_PASSWORD");
+            if (string.IsNullOrEmpty(password))
+            {
+                return false;
+            }
+            configuration.AddInMemoryCollection(
+            [
+                new KeyValuePair<string, string?>("DatabaseSettings:Host", host),
+                new KeyValuePair<string, string?>("DatabaseSettings:Port", port),
+                new KeyValuePair<string, string?>("DatabaseSettings:Database", database),
+                new KeyValuePair<string, string?>("DatabaseSettings:Username", username),
+                new KeyValuePair<string, string?>("DatabaseSettings:Password", password)
+            ]);
+            return true;
         }
     }
 }
