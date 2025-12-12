@@ -19,7 +19,6 @@ namespace Octockup.Server.Jobs
             {
                 if (module.Parameters.Count == 0)
                 {
-                    _logger.LogInformation("Module {ModuleId} has no parameters to migrate.", module.Id);
                     continue;
                 }
 

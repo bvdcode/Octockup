@@ -15,7 +15,7 @@ namespace Octockup.Server.Jobs
 {
     [JobTrigger(days: 365, startNow: false)]
     public class ImportBackupJob(
-        IStreamCipher _streamCipher,
+        IStreamCipher _crypto,
         AppDbContext _dbContext,
         ILogger<ImportBackupJob> _logger) : IJob
     {
@@ -150,7 +150,7 @@ namespace Octockup.Server.Jobs
             await using var brotliStream = new BrotliStream(fileStream, CompressionMode.Decompress, leaveOpen: true);
             using var decryptedStream = new MemoryStream();
 
-            await _streamCipher.DecryptAsync(brotliStream, decryptedStream, ct: cancellationToken);
+            await _crypto.DecryptAsync(brotliStream, decryptedStream, ct: cancellationToken);
             decryptedStream.Seek(0, SeekOrigin.Begin);
 
             var importData = await JsonSerializer.DeserializeAsync<ImportData>(
@@ -182,6 +182,15 @@ namespace Octockup.Server.Jobs
 
             try
             {
+                foreach (var module in importData.Modules)
+                {
+                    foreach (var item in module.Parameters)
+                    {
+
+                        module.Params(_crypto)[item.Key] = item.Value;
+                    }
+                }
+
                 // Modules - small, can be saved all at once, but DETACH after
                 _dbContext.Modules.AddRange(importData.Modules);
                 await _dbContext.SaveChangesAsync(cancellationToken);
