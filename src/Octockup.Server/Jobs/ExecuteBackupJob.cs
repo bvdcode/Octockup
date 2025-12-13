@@ -39,12 +39,13 @@ namespace Octockup.Server.Jobs
             {
                 return;
             }
+
             cts.Cancel();
         }
 
         public async Task Execute(IJobExecutionContext context)
         {
-            CancellationTokenSource merged = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
+            using CancellationTokenSource merged = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
             CancellationToken cancellationToken = merged.Token;
 
             Schedule? next = await ScheduleHelpers.GetNextScheduleAsync(_dbContext.Schedules, cancellationToken);
@@ -54,50 +55,41 @@ namespace Octockup.Server.Jobs
             }
 
             _stoppingSchedules[next.Id] = merged;
+
             Guid userId = next.Backup.Source.UserId;
             ScheduleReport report = new(userId, next.Id, next.BackupId, _hubContext);
             report.StartBackgroundReporting(cancellationToken);
 
             try
             {
-                if (_providers.FirstOrDefault(x => x.Id == next.Backup.Source.BackupModuleId) is not IBackupSource foundSourceTypeProvider)
+                var sourceProvider = CreateSourceProvider(next, cancellationToken);
+                if (sourceProvider is null)
                 {
-                    next.ErrorMessage = $"Source provider not found: {next.Backup.Source.BackupModuleId}";
-                    next.Status = ScheduleStatus.Failed;
-                    next.FinishedAt = DateTime.UtcNow;
-                    await _dbContext.SaveChangesAsync(cancellationToken);
-                    _logger.LogWarning("{msg}", next.ErrorMessage);
-                    await report.SendAsync(0, next.ErrorMessage);
+                    await report.SendAsync(0, next.ErrorMessage ?? "Source provider not found.", cancellationToken: cancellationToken);
                     return;
                 }
-                IBackupSource foundSourceProvider = (IBackupSource)ActivatorUtilities.CreateInstance(_serviceProvider, foundSourceTypeProvider.GetType());
-                foundSourceProvider.SetParameters(next.Backup.Source.Params(_crypto).Snapshot());
 
-                if (_providers.FirstOrDefault(x => x.Id == next.Backup.Storage.BackupModuleId) is not IBackupStorage foundStorageTypeProvider)
+                var storageProvider = CreateStorageProvider(next, cancellationToken);
+                if (storageProvider is null)
                 {
-                    next.ErrorMessage = $"Storage provider not found: {next.Backup.Storage.BackupModuleId}";
-                    next.Status = ScheduleStatus.Failed;
-                    next.FinishedAt = DateTime.UtcNow;
-                    await _dbContext.SaveChangesAsync(cancellationToken);
-                    _logger.LogWarning("{msg}", next.ErrorMessage);
-                    await report.SendAsync(0, next.ErrorMessage, cancellationToken: cancellationToken);
+                    await report.SendAsync(0, next.ErrorMessage ?? "Storage provider not found.", cancellationToken: cancellationToken);
                     return;
                 }
-                IBackupStorage foundStorageProvider = (IBackupStorage)ActivatorUtilities.CreateInstance(_serviceProvider, foundStorageTypeProvider.GetType());
-                foundStorageProvider.SetParameters(next.Backup.Storage.Params(_crypto).Snapshot());
 
                 await report.SendAsync(0, "Listing files to backup...", cancellationToken: cancellationToken);
                 next.Status = ScheduleStatus.Running;
                 await _dbContext.SaveChangesAsync(cancellationToken);
 
                 // Set ignored paths before enumerating files
-                foundSourceProvider.SetIgnoredPaths(next.Backup.IgnoredPaths);
+                sourceProvider.SetIgnoredPaths(next.Backup.IgnoredPaths);
 
-                var filesToBackup = foundSourceProvider.GetFiles(recursive: true, cancellationToken: cancellationToken);
-                await BackupAsync(next, foundSourceProvider, foundStorageProvider, report, filesToBackup, cancellationToken);
+                var filesToBackup = sourceProvider.GetFiles(recursive: true, cancellationToken: cancellationToken);
+                await BackupAsync(next, sourceProvider, storageProvider, report, filesToBackup, cancellationToken);
+
                 next.Status = ScheduleStatus.Completed;
                 next.FinishedAt = DateTime.UtcNow;
                 await _dbContext.SaveChangesAsync(context.CancellationToken);
+
                 _logger.LogInformation("Schedule {ScheduleId} backup completed successfully", next.Id);
                 await report.SendAsync(report.Processed, "Backup completed successfully.", status: ScheduleStatus.Completed, cancellationToken: context.CancellationToken);
             }
@@ -107,6 +99,7 @@ namespace Octockup.Server.Jobs
                 next.Status = ScheduleStatus.Failed;
                 next.FinishedAt = DateTime.UtcNow;
                 await _dbContext.SaveChangesAsync(context.CancellationToken);
+
                 _logger.LogError(ex, "Schedule {ScheduleId} backup failed", next.Id);
                 await report.SendAsync(report.Processed, next.ErrorMessage, status: ScheduleStatus.Failed, cancellationToken: cancellationToken);
             }
@@ -114,6 +107,42 @@ namespace Octockup.Server.Jobs
             {
                 await report.DisposeAsync();
             }
+        }
+
+        private IBackupSource? CreateSourceProvider(Schedule schedule, CancellationToken cancellationToken)
+        {
+            if (_providers.FirstOrDefault(x => x.Id == schedule.Backup.Source.BackupModuleId) is not IBackupSource foundSourceTypeProvider)
+            {
+                schedule.ErrorMessage = $"Source provider not found: {schedule.Backup.Source.BackupModuleId}";
+                schedule.Status = ScheduleStatus.Failed;
+                schedule.FinishedAt = DateTime.UtcNow;
+                _dbContext.SaveChanges();
+                _logger.LogWarning("{msg}", schedule.ErrorMessage);
+
+                return null;
+            }
+
+            IBackupSource foundSourceProvider = (IBackupSource)ActivatorUtilities.CreateInstance(_serviceProvider, foundSourceTypeProvider.GetType());
+            foundSourceProvider.SetParameters(schedule.Backup.Source.Params(_crypto).Snapshot());
+            return foundSourceProvider;
+        }
+
+        private IBackupStorage? CreateStorageProvider(Schedule schedule, CancellationToken cancellationToken)
+        {
+            if (_providers.FirstOrDefault(x => x.Id == schedule.Backup.Storage.BackupModuleId) is not IBackupStorage foundStorageTypeProvider)
+            {
+                schedule.ErrorMessage = $"Storage provider not found: {schedule.Backup.Storage.BackupModuleId}";
+                schedule.Status = ScheduleStatus.Failed;
+                schedule.FinishedAt = DateTime.UtcNow;
+                _dbContext.SaveChanges();
+                _logger.LogWarning("{msg}", schedule.ErrorMessage);
+
+                return null;
+            }
+
+            IBackupStorage foundStorageProvider = (IBackupStorage)ActivatorUtilities.CreateInstance(_serviceProvider, foundStorageTypeProvider.GetType());
+            foundStorageProvider.SetParameters(schedule.Backup.Storage.Params(_crypto).Snapshot());
+            return foundStorageProvider;
         }
 
         private async Task BackupAsync(
@@ -141,6 +170,7 @@ namespace Octockup.Server.Jobs
                 report.Total = loader.Total;
                 report.IsEnumerationCompleted = loader.IsEnumerationCompleted;
                 await report.SendAsync(counter, $"Processing: {file.Name}", cancellationToken: cancellationToken);
+
                 if (schedule.Backup.IgnoredPaths != null && ScheduleHelpers.IsPathIgnored(file.Path, file.Name, schedule.Backup.IgnoredPaths))
                 {
                     _logger.LogInformation("Schedule {ScheduleId}: File {FileName} is ignored by path rules, skipping",
@@ -221,6 +251,7 @@ namespace Octockup.Server.Jobs
                     _logger.LogWarning("Unable to get stream for file {FileName}, skipping", file.Name);
                     continue;
                 }
+
                 using var chunker = new ChunkedStream(stream, ChunkSize);
 
                 cancellationToken.ThrowIfCancellationRequested();
@@ -228,7 +259,7 @@ namespace Octockup.Server.Jobs
                 try
                 {
                     // File-level incremental hasher
-                    using var fileHasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+                    using var fileHasher = IncrementalHash.CreateHash(System.Security.Cryptography.HashAlgorithmName.SHA256);
 
                     List<string> chunkHashes = [];
                     foreach (Stream chunk in chunker.GetChunks())
@@ -237,7 +268,7 @@ namespace Octockup.Server.Jobs
 
                         // Compute chunk hash while also updating the file hasher in a single pass
                         chunk.Seek(0, SeekOrigin.Begin);
-                        using var chunkHasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+                        using var chunkHasher = IncrementalHash.CreateHash(System.Security.Cryptography.HashAlgorithmName.SHA256);
                         int read;
                         long chunkLength = 0L;
                         while ((read = await chunk.ReadAsync(buffer.AsMemory(0, Math.Min(buffer.Length, ChunkSize)), cancellationToken)) > 0)
@@ -246,6 +277,7 @@ namespace Octockup.Server.Jobs
                             fileHasher.AppendData(buffer, 0, read);
                             chunkLength += read;
                         }
+
                         string hash = Convert.ToHexString(chunkHasher.GetHashAndReset()).ToLowerInvariant();
                         string shortHash = hash[^8..];
 
@@ -258,10 +290,8 @@ namespace Octockup.Server.Jobs
                             await chunk.DisposeAsync();
                             continue;
                         }
-                        else
-                        {
-                            _logger.LogInformation("Processing chunk {shortHash} for file {FileName}", shortHash, file.Path);
-                        }
+
+                        _logger.LogInformation("Processing chunk {shortHash} for file {FileName}", shortHash, file.Path);
 
                         long storedSize = 0;
                         string path = ScheduleHelpers.SplitHash(hash, storage.PathSeparator);
@@ -282,6 +312,7 @@ namespace Octockup.Server.Jobs
                                     await brotli.WriteAsync(buffer.AsMemory(0, r), cancellationToken);
                                 }
                             }
+
                             compressed.Seek(0, SeekOrigin.Begin);
                             using var encryptedStream = new MemoryStream();
                             await _crypto.EncryptAsync(compressed, encryptedStream, ct: cancellationToken);
@@ -312,6 +343,7 @@ namespace Octockup.Server.Jobs
                             await _dbContext.UploadedHashes.AddAsync(uploadedHash, cancellationToken);
                             await _dbContext.SaveChangesAsync(cancellationToken);
                         }
+
                         await report.SendAsync(counter, $"Uploading: {file.Name}", processedBytes: chunkLength, cancellationToken: cancellationToken);
 
                         chunkHashes.Add(hash);
@@ -357,11 +389,14 @@ namespace Octockup.Server.Jobs
             report.IsEnumerationCompleted = true;
             await report.SendAsync(report.Processed, "Finalizing snapshot...", cancellationToken: cancellationToken);
             await _dbContext.SaveChangesAsync(cancellationToken);
+
             snapshot.CompletedAt = DateTime.UtcNow;
             await _dbContext.SaveChangesAsync(cancellationToken);
+
             snapshot.TotalSize = await _dbContext.SnapshotFiles
                 .Where(x => x.SnapshotId == snapshot.Id)
                 .SumAsync(x => (long?)x.Size, cancellationToken: cancellationToken) ?? 0L;
+
             snapshot.FilesCount = await _dbContext.SnapshotFiles
                 .Where(x => x.SnapshotId == snapshot.Id)
                 .CountAsync(cancellationToken: cancellationToken);
