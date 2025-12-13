@@ -15,6 +15,7 @@ using Octockup.Server.Models;
 using Octockup.Server.Models.Enums;
 using Quartz;
 using System.Buffers;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Security.Cryptography;
@@ -30,22 +31,23 @@ namespace Octockup.Server.Jobs
         IHubContext<EventHub> _hubContext,
         IEnumerable<IBackupProvider> _providers) : IJob
     {
-        private static readonly Dictionary<Guid, CancellationTokenSource> _stoppingSchedules = [];
+        private static readonly ConcurrentDictionary<Guid, CancellationTokenSource> _stoppingSchedules = new();
         private const int ChunkSize = 8 * 1024 * 1024;
 
         public static void StopRunningBackup(Guid scheduleId)
         {
-            if (!_stoppingSchedules.TryGetValue(scheduleId, out CancellationTokenSource? cts))
+            if (!_stoppingSchedules.TryRemove(scheduleId, out CancellationTokenSource? cts))
             {
                 return;
             }
+
             try
             {
                 cts.Cancel();
             }
             catch (ObjectDisposedException)
             {
-                _stoppingSchedules.Remove(scheduleId);
+                // CTS already disposed, nothing to do
             }
         }
 
@@ -111,6 +113,8 @@ namespace Octockup.Server.Jobs
             }
             finally
             {
+                // Ensure we do not leak CTS for this schedule
+                _stoppingSchedules.TryRemove(next.Id, out _);
                 await report.DisposeAsync();
             }
         }
