@@ -4,12 +4,10 @@
 using EasyExtensions.Abstractions;
 using EasyExtensions.Quartz.Attributes;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.DependencyInjection;
 using Octockup.Server.Abstractions;
 using Octockup.Server.Database;
 using Octockup.Server.Helpers;
 using Octockup.Server.Hubs;
-using Octockup.Server.Models;
 using Quartz;
 using System.Collections.Concurrent;
 
