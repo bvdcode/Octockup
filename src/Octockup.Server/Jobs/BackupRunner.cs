@@ -195,7 +195,7 @@ namespace Octockup.Server.Jobs
             report.IsEnumerationCompleted = loader.IsEnumerationCompleted;
             await report.SendAsync(counter, $"Processing: {file.Name}", cancellationToken: cancellationToken);
 
-            if (schedule.Backup.IgnoredPaths != null && ScheduleHelpers.IsPathIgnored(file.Path, file.Name, schedule.Backup.IgnoredPaths))
+            if (ShouldIgnoreFile(schedule, file))
             {
                 _logger.LogInformation("Schedule {ScheduleId}: File {FileName} is ignored by path rules, skipping",
                     schedule.Id, file.Name);
@@ -464,6 +464,16 @@ namespace Octockup.Server.Jobs
             await _dbContext.Snapshots.AddAsync(snapshot, cancellationToken);
             await _dbContext.SaveChangesAsync(cancellationToken);
             return snapshot;
+        }
+
+        private static bool ShouldIgnoreFile(Schedule schedule, BackupFileInfo file)
+        {
+            if (schedule.Backup.IgnoredPaths is null)
+            {
+                return false;
+            }
+
+            return ScheduleHelpers.IsPathIgnored(file.Path, file.Name, schedule.Backup.IgnoredPaths);
         }
     }
 }
