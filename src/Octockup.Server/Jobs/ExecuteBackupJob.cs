@@ -126,8 +126,9 @@ namespace Octockup.Server.Jobs
         {
             Snapshot snapshot = await CreateNewSnapshotWithTracking(schedule.BackupId, cancellationToken);
             using LazyLoader<BackupFileInfo> loader = new(lazyFiles);
-            var uploadedChunks = await LoadChunkHashesAsync(schedule.Backup.StorageId, cancellationToken);
+            HashSet<string> uploadedChunks = await LoadChunkHashesAsync(schedule.Backup.StorageId, cancellationToken);
             var previousFiles = await GetFilesFromLastSnapshotAsync(schedule.BackupId, cancellationToken);
+            _logger.LogInformation("Previous snapshot had {Count} files", previousFiles.Count);
 
             int counter = 0;
             Stopwatch stopwatch = Stopwatch.StartNew();
@@ -374,18 +375,22 @@ namespace Octockup.Server.Jobs
                 .Where(x => x.BackupId == backupId && x.CompletedAt.HasValue)
                 .OrderByDescending(x => x.CreatedAt)
                 .FirstOrDefaultAsync(cancellationToken: cancellationToken);
+            _logger.LogInformation("Loaded previous snapshot for backup {BackupId}: {IsNonNull}",
+                backupId, previousSnapshot != null);
 
             previousSnapshot ??= await _dbContext.Snapshots
                     .Include(x => x.Files)
                     .Where(x => x.BackupId == backupId)
                     .OrderByDescending(x => x.CreatedAt)
                     .FirstOrDefaultAsync(cancellationToken: cancellationToken);
+            _logger.LogInformation("Loaded last snapshot (including incomplete) for backup {BackupId}: {IsNonNull}",
+                backupId, previousSnapshot != null);
 
             if (previousSnapshot == null)
             {
+                _logger.LogWarning("No previous snapshot found for backup {BackupId}", backupId);
                 return new Dictionary<string, SnapshotFile>();
             }
-
 
             return previousSnapshot.Files.ToDictionary(x => x.Path);
         }
