@@ -10,6 +10,7 @@ interface SchedulesState {
   deletingId: string | null;
   cancelingId: string | null;
   resettingId: string | null;
+  cleaningUp: boolean;
 }
 
 interface UseSchedulesReturn {
@@ -19,6 +20,7 @@ interface UseSchedulesReturn {
   deleteSchedule: (id: string) => Promise<void>;
   cancelSchedule: (id: string) => Promise<void>;
   resetError: (id: string) => Promise<void>;
+  cleanupCompletedSchedules: () => Promise<void>;
 }
 
 function getHttpStatus(e: unknown): number | null {
@@ -36,6 +38,7 @@ export function useSchedules(): UseSchedulesReturn {
     deletingId: null,
     cancelingId: null,
     resettingId: null,
+    cleaningUp: false,
   });
 
   const [items, setItems] = useState<ScheduleItem[]>([]);
@@ -74,6 +77,7 @@ export function useSchedules(): UseSchedulesReturn {
             ...prev,
             loading: false,
             error: null,
+            cleaningUp: false,
           }));
         })
         .catch((e) => {
@@ -129,6 +133,7 @@ export function useSchedules(): UseSchedulesReturn {
           deletingId: null,
           cancelingId: null,
           resettingId: null,
+          cleaningUp: false,
         });
       })
       .catch((e) => {
@@ -258,6 +263,32 @@ export function useSchedules(): UseSchedulesReturn {
     }
   };
 
+  const cleanupCompletedSchedules = async (): Promise<void> => {
+    setState((s) => ({ ...s, cleaningUp: true }));
+    try {
+      const toDelete = items.filter(
+        (item) =>
+          item.interval === null &&
+          (item.status === BackupStatus.Completed ||
+            item.status === BackupStatus.Failed) &&
+          item.status !== BackupStatus.Running,
+      );
+
+      await Promise.all(toDelete.map((item) => api.delete(item.id)));
+
+      setItems((prev) =>
+        prev.filter(
+          (x) =>
+            !(x.interval === null &&
+              (x.status === BackupStatus.Completed ||
+                x.status === BackupStatus.Failed)),
+        ),
+      );
+    } finally {
+      setState((s) => ({ ...s, cleaningUp: false }));
+    }
+  };
+
   return {
     items,
     scheduleReports,
@@ -265,5 +296,6 @@ export function useSchedules(): UseSchedulesReturn {
     deleteSchedule,
     cancelSchedule,
     resetError,
+    cleanupCompletedSchedules,
   };
 }

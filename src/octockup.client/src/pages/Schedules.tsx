@@ -11,7 +11,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useSchedules } from "../hooks/useSchedules";
-import { AddCircleOutline } from "@mui/icons-material";
+import { AddCircleOutline, DeleteSweep } from "@mui/icons-material";
 import { ScheduleCard } from "../components/ScheduleCard";
 
 export default function SchedulesPage() {
@@ -24,6 +24,7 @@ export default function SchedulesPage() {
     deleteSchedule,
     cancelSchedule,
     resetError,
+    cleanupCompletedSchedules,
   } = useSchedules();
 
   if (state.loading && items.length === 0) {
@@ -40,13 +41,24 @@ export default function SchedulesPage() {
     <Stack spacing={3}>
       <Box display="flex" alignItems="center" justifyContent="space-between">
         <Typography variant="h5">{t("schedules.title")}</Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddCircleOutline />}
-          onClick={() => navigate("/schedules/new")}
-        >
-          {t("schedules.newSchedule")}
-        </Button>
+        <Box display="flex" gap={2}>
+          <Button
+            variant="outlined"
+            color="error"
+            startIcon={<DeleteSweep />}
+            onClick={cleanupCompletedSchedules}
+            disabled={state.cleaningUp || state.loading}
+          >
+            {t("schedules.cleanup")}
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddCircleOutline />}
+            onClick={() => navigate("/schedules/new")}
+          >
+            {t("schedules.newSchedule")}
+          </Button>
+        </Box>
       </Box>
       {!hasItems ? (
         <Card>

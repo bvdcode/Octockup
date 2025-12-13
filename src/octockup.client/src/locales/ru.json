@@ -211,6 +211,7 @@
   "schedules": {
     "title": "Ваши расписания",
     "newSchedule": "Новое расписание",
+    "cleanup": "Очистить завершенные",
     "noSchedules": "Расписок пока нет.",
     "everyMinutes": "каждые {{count}} мин",
     "deleteTitle": "Удалить расписание",
