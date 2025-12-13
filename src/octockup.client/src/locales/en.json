@@ -187,7 +187,7 @@
   "schedules": {
     "title": "Your Schedules",
     "newSchedule": "New Schedule",
-    "cleanup": "Clean Completed",
+    "cleanup": "Clean one-time completed schedules",
     "noSchedules": "No schedules yet.",
     "everyMinutes": "every {{count}} min",
     "deleteTitle": "Delete schedule",
