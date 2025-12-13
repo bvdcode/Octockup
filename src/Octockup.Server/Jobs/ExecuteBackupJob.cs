@@ -149,13 +149,17 @@ namespace Octockup.Server.Jobs
 
                 cancellationToken.ThrowIfCancellationRequested();
                 previousFiles.TryGetValue(file.Path, out var foundFile);
-                bool datesMatch = foundFile?.LastModified != null && file.LastModified != null &&
-                    Math.Abs((foundFile.LastModified.Value - file.LastModified.Value).TotalSeconds) < 1;
+                
+                // For LastModified comparison, allow up to 2 seconds difference (IMAP servers can have slight time differences)
+                bool datesMatch = foundFile?.LastModified == null || file.LastModified == null ||
+                    Math.Abs((foundFile.LastModified.Value - file.LastModified.Value).TotalSeconds) < 2;
 
+                // If file exists in previous snapshot with same size and similar timestamp, reuse it
                 if (foundFile != null && foundFile.Hashsum != null && file.Size == foundFile.Size && datesMatch)
                 {
-                    _logger.LogInformation("Schedule {ScheduleId}: File {FileName} unchanged since last snapshot, skipping",
-                        schedule.Id, file.Name);
+                    _logger.LogDebug("Schedule {ScheduleId}: File {FileName} unchanged since last snapshot (size: {Size}, date match: {DateMatch}), reusing metadata",
+                        schedule.Id, file.Name, file.Size, datesMatch);
+                    
                     SnapshotFile snapshotFile = new()
                     {
                         Path = file.Path,
@@ -169,6 +173,7 @@ namespace Octockup.Server.Jobs
                     };
                     await _dbContext.SnapshotFiles.AddAsync(snapshotFile, cancellationToken);
 
+                    // Batch commit every 10 seconds
                     if (stopwatch.Elapsed.TotalSeconds > 10)
                     {
                         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -181,8 +186,12 @@ namespace Octockup.Server.Jobs
 
                 if (foundFile != null)
                 {
-                    _logger.LogInformation("Schedule {ScheduleId}: File {FileName} changed - Hashsum: {HasHashsum}, Size: {OldSize} vs {NewSize}, LastModified: {OldModified} vs {NewModified}",
-                        schedule.Id, file.Name, foundFile.Hashsum != null, foundFile.Size, file.Size, foundFile.LastModified, file.LastModified);
+                    _logger.LogInformation("Schedule {ScheduleId}: File {FileName} changed - HasHashsum: {HasHashsum}, Size: {OldSize} vs {NewSize}, LastModified: {OldModified} vs {NewModified} (diff: {DiffSeconds}s)",
+                        schedule.Id, file.Name, foundFile.Hashsum != null, foundFile.Size, file.Size, 
+                        foundFile.LastModified?.ToString("yyyy-MM-dd HH:mm:ss"), foundFile.LastModified?.ToString("yyyy-MM-dd HH:mm:ss"),
+                        foundFile.LastModified != null && file.LastModified != null 
+                            ? Math.Abs((foundFile.LastModified.Value - file.LastModified.Value).TotalSeconds) 
+                            : -1);
                 }
 
                 using var stream = await source.GetFileStreamAsync(file, cancellationToken);

@@ -232,7 +232,8 @@ namespace Octockup.Server.Modules
                     continue;
                 }
 
-                foreach (var file in EnumerateFolderFiles(folder, cancellationToken))
+                foreach (var file in EnumerateFolderFiles(folder, cancellationToken)
+                )
                 {
                     yield return file;
                 }
@@ -276,6 +277,13 @@ namespace Octockup.Server.Modules
                     openedFolder = string.IsNullOrEmpty(folder.FullName)
                         ? _client!.Inbox
                         : _client!.GetFolder(folder.FullName, cancellationToken);
+
+                    // Re-check NoSelect after getting fresh reference
+                    if ((openedFolder.Attributes & FolderAttributes.NoSelect) != 0)
+                    {
+                        _logger.LogDebug("Skipping NoSelect folder after fresh reference (namespace container): {Folder}", openedFolder.FullName);
+                        yield break;
+                    }
 
                     if (!openedFolder.IsOpen)
                     {
