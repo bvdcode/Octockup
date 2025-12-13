@@ -9,7 +9,6 @@ import { BackupStatusChip } from "./BackupStatusChip";
 import { BackupMetadata } from "./BackupMetadata";
 import { BackupProgress } from "./BackupProgress";
 import { BackupActions } from "./BackupActions";
-import { useSchedulesApi } from "../../api/schedulesApi";
 
 interface BackupCardProps {
   backup: BackupItem;
@@ -22,7 +21,7 @@ interface BackupCardProps {
   onRename: (backupId: string, newTag: string) => Promise<void>;
   onEditIgnoredPaths: (backupId: string) => void;
   onRunOnce: (backupId: string) => Promise<void>;
-  onCancel: (backupId: string) => Promise<void>;
+  onCancel: (scheduleId: string) => Promise<void>;
   onDelete: (backupId: string) => Promise<void>;
 }
 
@@ -41,8 +40,6 @@ export function BackupCard({
   onDelete,
 }: BackupCardProps) {
   const navigate = useNavigate();
-  const schedulesApi = useSchedulesApi();
-
   const status = getBackupOverallStatus(
     backup,
     scheduleToBackupMap,
@@ -155,10 +152,7 @@ export function BackupCard({
           }
           onEditIgnoredPaths={() => onEditIgnoredPaths(backup.id)}
           onRunOnce={() => onRunOnce(backup.id)}
-          onCancel={async (scheduleId: string) => {
-            await schedulesApi.cancel(scheduleId);
-            await onCancel(backup.id);
-          }}
+          onCancel={onCancel}
           onDelete={() => onDelete(backup.id)}
         />
       </CardContent>

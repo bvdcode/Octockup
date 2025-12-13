@@ -182,20 +182,50 @@ export default function BackupsPage() {
     }
   };
 
-  const handleCancel = async (backupId: string) => {
-    setState((s) => ({ ...s, cancelingId: backupId }));
+  const handleCancel = async (scheduleId: string) => {
+    const backupIdFromMap = scheduleToBackupMap[scheduleId];
+    const backupId =
+      backupIdFromMap ||
+      backups.find((b) => b.schedules?.some((s) => s.id === scheduleId))?.id ||
+      null;
+
+    if (backupId) {
+      setState((s) => ({ ...s, cancelingId: backupId }));
+    }
+
     try {
-      // Remove the schedule report immediately to prevent UI showing "running"
-      setScheduleReports((prev) => {
-        const newMap = new Map(prev);
-        newMap.delete(backupId);
-        return newMap;
-      });
+      // Optimistically clear running report and mark schedule as failed to stop showing Running
+      if (backupId) {
+        setScheduleReports((prev) => {
+          const newMap = new Map(prev);
+          newMap.delete(backupId);
+          return newMap;
+        });
+
+        setBackups((prev) =>
+          prev.map((b) =>
+            b.id !== backupId
+              ? b
+              : {
+                  ...b,
+                  schedules: b.schedules?.map((s) =>
+                    s.id === scheduleId
+                      ? { ...s, status: BackupStatus.Failed }
+                      : s,
+                  ),
+                },
+          ),
+        );
+      }
+
+      await schedulesApi.cancel(scheduleId);
 
       // Reload backups immediately to get fresh status
       await reloadBackups();
     } finally {
-      setState((s) => ({ ...s, cancelingId: null }));
+      if (backupId) {
+        setState((s) => ({ ...s, cancelingId: null }));
+      }
     }
   };
 
