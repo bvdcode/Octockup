@@ -2,7 +2,6 @@ import { Box, Card, CardContent, Divider, Typography } from "@mui/material";
 import { ArrowDownward } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import type { BackupItem, ScheduleReport } from "../../types/api";
-import { BackupStatus } from "../../types/api";
 import { getBackupOverallStatus } from "../../utils/backupUtils";
 import { getSourceIcon } from "../../constants/sourceIcons";
 import { EditableModuleTag } from "../EditableModuleTag";
@@ -15,7 +14,7 @@ import { useSchedulesApi } from "../../api/schedulesApi";
 interface BackupCardProps {
   backup: BackupItem;
   scheduleToBackupMap: Record<string, string>;
-  scheduleReports: Record<string, ScheduleReport>;
+  scheduleReports: Map<string, ScheduleReport>;
   runningId: string | null;
   cancelingId: string | null;
   deletingId: string | null;
@@ -23,7 +22,7 @@ interface BackupCardProps {
   onRename: (backupId: string, newTag: string) => Promise<void>;
   onEditIgnoredPaths: (backupId: string) => void;
   onRunOnce: (backupId: string) => Promise<void>;
-  onCancel: (backupId: string, scheduleId: string) => Promise<void>;
+  onCancel: (backupId: string) => Promise<void>;
   onDelete: (backupId: string) => Promise<void>;
 }
 
@@ -50,11 +49,7 @@ export function BackupCard({
     scheduleReports,
   );
 
-  const report = Object.entries(scheduleReports).find(
-    ([scheduleId, r]) =>
-      scheduleToBackupMap[scheduleId] === backup.id &&
-      r.status === BackupStatus.Running,
-  )?.[1];
+  const report = scheduleReports.get(backup.id);
 
   return (
     <Card
@@ -149,7 +144,6 @@ export function BackupCard({
         <Divider orientation="vertical" flexItem />
         <BackupActions
           backup={backup}
-          scheduleToBackupMap={scheduleToBackupMap}
           scheduleReports={scheduleReports}
           runningId={runningId}
           cancelingId={cancelingId}
@@ -163,7 +157,7 @@ export function BackupCard({
           onRunOnce={() => onRunOnce(backup.id)}
           onCancel={async (scheduleId: string) => {
             await schedulesApi.cancel(scheduleId);
-            await onCancel(backup.id, scheduleId);
+            await onCancel(backup.id);
           }}
           onDelete={() => onDelete(backup.id)}
         />

@@ -13,8 +13,7 @@ import { BackupStatus } from "../../types/api";
 
 interface BackupActionsProps {
   backup: BackupItem;
-  scheduleToBackupMap: Record<string, string>;
-  scheduleReports: Record<string, ScheduleReport>;
+  scheduleReports: Map<string, ScheduleReport>;
   runningId: string | null;
   cancelingId: string | null;
   deletingId: string | null;
@@ -29,7 +28,6 @@ interface BackupActionsProps {
 
 export function BackupActions({
   backup,
-  scheduleToBackupMap,
   scheduleReports,
   runningId,
   cancelingId,
@@ -44,12 +42,15 @@ export function BackupActions({
 }: BackupActionsProps) {
   const { t } = useTranslation();
 
-  const runningSchedule = Object.entries(scheduleReports).find(
-    ([scheduleId, r]) =>
-      scheduleToBackupMap[scheduleId] === backup.id &&
-      r.status === BackupStatus.Running,
-  );
-  const isRunning = !!runningSchedule;
+  const reportForBackup = scheduleReports.get(backup.id);
+  const isRunning = reportForBackup?.status === BackupStatus.Running;
+
+  // Find the running schedule ID for cancel action
+  const runningScheduleId = isRunning
+    ? (backup.schedules || []).find(
+        (s) => s.status === BackupStatus.Running,
+      )?.id
+    : undefined;
 
   return (
     <Box display="flex" flexDirection="column">
@@ -80,11 +81,12 @@ export function BackupActions({
           <IconButton
             size="small"
             aria-label={t("backups.stop")}
-            disabled={cancelingId === backup.id}
+            disabled={cancelingId === backup.id || !runningScheduleId}
             onClick={async (e) => {
               e.stopPropagation();
-              const scheduleId = runningSchedule[0];
-              await onCancel(scheduleId);
+              if (runningScheduleId) {
+                await onCancel(runningScheduleId);
+              }
             }}
           >
             {cancelingId === backup.id ? (

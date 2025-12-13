@@ -21,22 +21,17 @@ export type BackupOverallStatus =
  */
 export function getBackupOverallStatus(
   backup: BackupItem,
-  scheduleToBackupMap: Record<string, string>,
-  scheduleReports: Record<string, ScheduleReport>,
+  _scheduleToBackupMap: Record<string, string>,
+  scheduleReports: Map<string, ScheduleReport>,
 ): BackupOverallStatus {
   // Priority 1: Check for running schedules from backup.schedules OR scheduleReports
   const hasRunningInSchedules = (backup.schedules || []).some(
     (schedule) => schedule.status === BackupStatus.Running,
   );
 
-  const backupSchedules = Object.entries(scheduleToBackupMap)
-    .filter(([, bId]) => bId === backup.id)
-    .map(([scheduleId]) => scheduleReports[scheduleId])
-    .filter(Boolean);
-
-  const hasRunningInReports = backupSchedules.some(
-    (report) => report.status === BackupStatus.Running,
-  );
+  const reportForBackup = scheduleReports.get(backup.id);
+  const hasRunningInReports =
+    reportForBackup?.status === BackupStatus.Running;
 
   if (hasRunningInSchedules || hasRunningInReports) {
     return "running";
@@ -82,11 +77,13 @@ export function getBackupOverallStatus(
     return "warning";
   }
 
-  // Priority 4: Check for created/scheduled schedules
-  const hasScheduled = backupSchedules.some(
-    (report) => report.status === BackupStatus.Created,
+  // Priority 4: Scheduled - backup has pending schedules
+  const hasPendingSchedules = (backup.schedules || []).some(
+    (schedule) =>
+      schedule.status === BackupStatus.Created && !schedule.finishedAt,
   );
-  if (hasScheduled) {
+
+  if (hasPendingSchedules) {
     return "scheduled";
   }
 

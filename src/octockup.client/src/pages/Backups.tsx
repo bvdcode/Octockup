@@ -41,8 +41,8 @@ export default function BackupsPage() {
   });
   const [backups, setBackups] = useState<BackupItem[]>([]);
   const [scheduleReports, setScheduleReports] = useState<
-    Record<string, ScheduleReport>
-  >({});
+    Map<string, ScheduleReport>
+  >(new Map());
   const [scheduleToBackupMap, setScheduleToBackupMap] = useState<
     Record<string, string>
   >({});
@@ -110,36 +110,33 @@ export default function BackupsPage() {
     if (!connection || !isConnected) return;
 
     const handler = (report: ScheduleReport) => {
+      const backupId = report.backupId;
+
+      // Update schedule reports - one report per backup
       setScheduleReports((prev) => {
-        const prevReport = prev[report.scheduleId];
-
-        // If status changed from Running to Completed/Failed, reload backups
-        if (
-          prevReport?.status === BackupStatus.Running &&
-          report.status !== BackupStatus.Running
-        ) {
-          // Reload backups after a short delay to ensure backend updated
-          setTimeout(() => {
-            reloadBackups();
-          }, 500);
+        const newMap = new Map(prev);
+        if (report.status === BackupStatus.Running) {
+          // Keep running report for progress display
+          newMap.set(backupId, report);
+        } else {
+          // Remove completed/failed/cancelled report
+          newMap.delete(backupId);
         }
-
-        return {
-          ...prev,
-          [report.scheduleId]: report,
-        };
+        return newMap;
       });
 
-      // Update mapping if new schedule appeared
-      setScheduleToBackupMap((prev) => {
-        if (!prev[report.scheduleId]) {
-          return {
-            ...prev,
-            [report.scheduleId]: report.backupId,
-          };
-        }
-        return prev;
-      });
+      // Reload backups whenever status changes to get fresh data
+      if (report.status !== BackupStatus.Running) {
+        setTimeout(() => {
+          reloadBackups();
+        }, 500);
+      }
+
+      // Update mapping
+      setScheduleToBackupMap((prev) => ({
+        ...prev,
+        [report.scheduleId]: backupId,
+      }));
     };
 
     connection.on("ScheduleReport", handler);
@@ -185,14 +182,14 @@ export default function BackupsPage() {
     }
   };
 
-  const handleCancel = async (backupId: string, scheduleId: string) => {
+  const handleCancel = async (backupId: string) => {
     setState((s) => ({ ...s, cancelingId: backupId }));
     try {
       // Remove the schedule report immediately to prevent UI showing "running"
       setScheduleReports((prev) => {
-        const newReports = { ...prev };
-        delete newReports[scheduleId];
-        return newReports;
+        const newMap = new Map(prev);
+        newMap.delete(backupId);
+        return newMap;
       });
 
       // Reload backups immediately to get fresh status

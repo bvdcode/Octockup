@@ -7,7 +7,7 @@ import { getBackupOverallStatus } from "../../utils/backupUtils";
 interface BackupStatusChipProps {
   backup: BackupItem;
   scheduleToBackupMap: Record<string, string>;
-  scheduleReports: Record<string, ScheduleReport>;
+  scheduleReports: Map<string, ScheduleReport>;
 }
 
 export function BackupStatusChip({
