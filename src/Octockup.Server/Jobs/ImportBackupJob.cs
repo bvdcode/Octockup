@@ -21,6 +21,7 @@ namespace Octockup.Server.Jobs
     {
         private const int BATCH_SIZE = 500;
         private static readonly ConcurrentDictionary<Type, Action<object, Guid>?> _idSetterCache = new();
+        private static readonly Lazy<JsonSerializerOptions> _jsonOptions = new(CreateOptions);
 
         public static JsonSerializerOptions CreateOptions()
         {
@@ -84,8 +85,7 @@ namespace Octockup.Server.Jobs
                 return;
             }
 
-            var userDirs = Directory.GetDirectories(importBaseDir);
-            foreach (var userDir in userDirs)
+            foreach (var userDir in Directory.GetDirectories(importBaseDir))
             {
                 if (!Guid.TryParse(Path.GetFileName(userDir), out Guid userId))
                 {
@@ -93,36 +93,47 @@ namespace Octockup.Server.Jobs
                     continue;
                 }
 
-                var importFiles = Directory.GetFiles(userDir, "*.octockup");
-                foreach (var importFile in importFiles)
+                await ProcessUserDirectoryAsync(userId, userDir, cancellationToken);
+            }
+        }
+
+        private async Task ProcessUserDirectoryAsync(Guid userId, string userDir, CancellationToken cancellationToken)
+        {
+            foreach (var importFile in Directory.GetFiles(userDir, "*.octockup"))
+            {
+                await ProcessSingleFileWithFailureHandlingAsync(userId, importFile, cancellationToken);
+            }
+
+            // Delete directory only when empty
+            if (!Directory.EnumerateFileSystemEntries(userDir).Any())
+            {
+                Directory.Delete(userDir);
+                _logger.LogInformation("Deleted empty user import directory: {UserDir}", userDir);
+            }
+        }
+
+        private async Task ProcessSingleFileWithFailureHandlingAsync(Guid userId, string importFile, CancellationToken cancellationToken)
+        {
+            try
+            {
+                _logger.LogInformation("Processing import file: {ImportFile}", importFile);
+                await ProcessImportFileAsync(userId, importFile, cancellationToken);
+
+                File.Delete(importFile);
+                _logger.LogInformation("Successfully processed and deleted import file: {ImportFile}", importFile);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to process import file: {ImportFile}", importFile);
+
+                string failedPath = importFile + ".failed";
+                if (File.Exists(failedPath))
                 {
-                    try
-                    {
-                        _logger.LogInformation("Processing import file: {ImportFile}", importFile);
-                        await ProcessImportFileAsync(userId, importFile, cancellationToken);
-
-                        File.Delete(importFile);
-                        _logger.LogInformation("Successfully processed and deleted import file: {ImportFile}", importFile);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to process import file: {ImportFile}", importFile);
-
-                        string failedPath = importFile + ".failed";
-                        if (File.Exists(failedPath))
-                        {
-                            File.Delete(failedPath);
-                        }
-                        File.Move(importFile, failedPath);
-                        _logger.LogInformation("Renamed failed import file to: {FailedPath}", failedPath);
-                    }
+                    File.Delete(failedPath);
                 }
 
-                if (!Directory.EnumerateFileSystemEntries(userDir).Any())
-                {
-                    Directory.Delete(userDir);
-                    _logger.LogInformation("Deleted empty user import directory: {UserDir}", userDir);
-                }
+                File.Move(importFile, failedPath);
+                _logger.LogInformation("Renamed failed import file to: {FailedPath}", failedPath);
             }
         }
 
@@ -130,20 +141,8 @@ namespace Octockup.Server.Jobs
         {
             _logger.LogInformation("Starting import for user {UserId} from file {FilePath}", userId, filePath);
 
-            var user = await _dbContext.Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
-
-            int usersCount = await _dbContext.Users.CountAsync(cancellationToken);
-            if (usersCount == 1)
-            {
-                user = await _dbContext.Users
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(cancellationToken);
-                _logger.LogInformation("Only one user in the system, using user {UserId} for import", user?.Id);
-            }
-
-            if (user == null)
+            var user = await ResolveTargetUserAsync(userId, cancellationToken);
+            if (user is null)
             {
                 _logger.LogWarning("User {UserId} not found, skipping import", userId);
                 return;
@@ -157,7 +156,8 @@ namespace Octockup.Server.Jobs
             decryptedStream.Seek(0, SeekOrigin.Begin);
 
             var importData = await JsonSerializer.DeserializeAsync<ImportData>(
-                decryptedStream, options: CreateOptions(),
+                decryptedStream,
+                options: _jsonOptions.Value,
                 cancellationToken: cancellationToken);
 
             if (importData == null)
@@ -166,14 +166,15 @@ namespace Octockup.Server.Jobs
                 return;
             }
 
-            _logger.LogInformation("Import data contains: {ModuleCount} modules, {BackupCount} backups, {ScheduleCount} schedules, {SnapshotCount} snapshots, {SnapshotFileCount} snapshot files",
+            _logger.LogInformation(
+                "Import data contains: {ModuleCount} modules, {BackupCount} backups, {ScheduleCount} schedules, {SnapshotCount} snapshots, {SnapshotFileCount} snapshot files",
                 importData.Modules.Count,
                 importData.Backups.Count,
                 importData.Schedules.Count,
                 importData.Snapshots.Count,
                 importData.SnapshotFiles.Count);
 
-            // Simply update UserId WITHOUT restoring navigations!
+            // Simply update UserId WITHOUT restoring navigations
             foreach (var item in importData.Modules)
             {
                 item.UserId = user.Id;
@@ -185,16 +186,7 @@ namespace Octockup.Server.Jobs
 
             try
             {
-                foreach (var module in importData.Modules)
-                {
-#pragma warning disable CS0618 // Type or member is obsolete
-                    foreach (var item in module.Parameters)
-                    {
-                        module.Params(_crypto)[item.Key] = item.Value;
-                        _logger.LogInformation("Restored parameter '{ParamKey}' for Module {ModuleId}.", item.Key, module.Id);
-                    }
-#pragma warning restore CS0618 // Type or member is obsolete
-                }
+                RestoreModuleParameters(importData);
 
                 // Modules - small, can be saved all at once, but DETACH after
                 _dbContext.Modules.AddRange(importData.Modules);
@@ -232,8 +224,45 @@ namespace Octockup.Server.Jobs
             _logger.LogInformation("Successfully completed import for user {UserId} from file {FilePath}", userId, filePath);
         }
 
+        private async Task<User?> ResolveTargetUserAsync(Guid userId, CancellationToken cancellationToken)
+        {
+            var user = await _dbContext.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+
+            int usersCount = await _dbContext.Users.CountAsync(cancellationToken);
+            if (usersCount == 1)
+            {
+                user = await _dbContext.Users
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(cancellationToken);
+                _logger.LogInformation("Only one user in the system, using user {UserId} for import", user?.Id);
+            }
+
+            return user;
+        }
+
+        private void RestoreModuleParameters(ImportData importData)
+        {
+            foreach (var module in importData.Modules)
+            {
+#pragma warning disable CS0618 // Type or member is obsolete
+                foreach (var item in module.Parameters)
+                {
+                    module.Params(_crypto)[item.Key] = item.Value;
+                    _logger.LogInformation("Restored parameter '{ParamKey}' for Module {ModuleId}.", item.Key, module.Id);
+                }
+#pragma warning restore CS0618 // Type or member is obsolete
+            }
+        }
+
         private async Task SaveInBatchesWithDetachAsync<T>(List<T> items, DbSet<T> dbSet, string entityName, CancellationToken ct) where T : class
         {
+            if (items.Count == 0)
+            {
+                return;
+            }
+
             int totalBatches = (items.Count + BATCH_SIZE - 1) / BATCH_SIZE;
             for (int i = 0; i < items.Count; i += BATCH_SIZE)
             {
@@ -245,8 +274,12 @@ namespace Octockup.Server.Jobs
                 _dbContext.ChangeTracker.Clear();
 
                 int currentBatch = (i / BATCH_SIZE) + 1;
-                _logger.LogInformation("Imported batch {CurrentBatch}/{TotalBatches} of {EntityName} ({Count} items), memory freed",
-                    currentBatch, totalBatches, entityName, batch.Count);
+                _logger.LogInformation(
+                    "Imported batch {CurrentBatch}/{TotalBatches} of {EntityName} ({Count} items), memory freed",
+                    currentBatch,
+                    totalBatches,
+                    entityName,
+                    batch.Count);
             }
         }
 
