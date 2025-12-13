@@ -258,6 +258,13 @@ namespace Octockup.Server.Modules
                 yield break;
             }
 
+            // Skip folders that cannot be opened (NoSelect folders - namespace containers)
+            if ((folder.Attributes & FolderAttributes.NoSelect) != 0)
+            {
+                _logger.LogDebug("Skipping NoSelect folder (namespace container): {Folder}", folder.FullName);
+                yield break;
+            }
+
             IMailFolder? openedFolder = null;
 
             IEnumerable<BackupFileInfo> ProcessFolder()
