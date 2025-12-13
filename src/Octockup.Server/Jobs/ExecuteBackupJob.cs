@@ -157,7 +157,7 @@ namespace Octockup.Server.Jobs
                 // If file exists in previous snapshot with same size and similar timestamp, reuse it
                 if (foundFile != null && foundFile.Hashsum != null && file.Size == foundFile.Size && datesMatch)
                 {
-                    _logger.LogDebug("Schedule {ScheduleId}: File {FileName} unchanged since last snapshot (size: {Size}, date match: {DateMatch}), reusing metadata",
+                    _logger.LogInformation("Schedule {ScheduleId}: File {FileName} unchanged since last snapshot (size: {Size}, date match: {DateMatch}), reusing metadata",
                         schedule.Id, file.Name, file.Size, datesMatch);
                     
                     SnapshotFile snapshotFile = new()
@@ -200,7 +200,7 @@ namespace Octockup.Server.Jobs
                 }
                 else
                 {
-                    _logger.LogDebug("Schedule {ScheduleId}: File {FileName} NOT found in previous snapshot",
+                    _logger.LogInformation("Schedule {ScheduleId}: File {FileName} NOT found in previous snapshot",
                         schedule.Id, file.Name);
                 }
 
