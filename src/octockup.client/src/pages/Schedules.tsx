@@ -43,8 +43,6 @@ export default function SchedulesPage() {
         <Typography variant="h5">{t("schedules.title")}</Typography>
         <Box display="flex" gap={2}>
           <Button
-            variant="outlined"
-            color="error"
             startIcon={<DeleteSweep />}
             onClick={cleanupCompletedSchedules}
             disabled={state.cleaningUp || state.loading}
