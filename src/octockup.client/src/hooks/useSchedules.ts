@@ -24,7 +24,7 @@ interface UseSchedulesReturn {
 }
 
 function getHttpStatus(e: unknown): number | null {
-  const anyErr = e as any;
+  const anyErr = e as { response?: { status?: number } };
   return anyErr?.response?.status ?? null;
 }
 
@@ -48,6 +48,7 @@ export function useSchedules(): UseSchedulesReturn {
 
   const retryAttemptRef = useRef(0);
   const retryTimerRef = useRef<number | null>(null);
+  const refetchRef = useRef<((silentOn5xx?: boolean) => void) | null>(null);
 
   const scheduleRetry = useCallback(() => {
     const attempt = retryAttemptRef.current + 1;
@@ -57,7 +58,7 @@ export function useSchedules(): UseSchedulesReturn {
       clearTimeout(retryTimerRef.current);
     }
     retryTimerRef.current = setTimeout(() => {
-      refetchSchedules(true);
+      refetchRef.current?.(true);
     }, delay) as unknown as number;
   }, []);
 
@@ -118,6 +119,8 @@ export function useSchedules(): UseSchedulesReturn {
     [api, scheduleRetry, items.length],
   );
 
+  refetchRef.current = refetchSchedules;
+
   useEffect(() => {
     let active = true;
 
@@ -150,6 +153,7 @@ export function useSchedules(): UseSchedulesReturn {
           deletingId: null,
           cancelingId: null,
           resettingId: null,
+          cleaningUp: false,
         });
       });
 
@@ -270,8 +274,7 @@ export function useSchedules(): UseSchedulesReturn {
         (item) =>
           item.interval === null &&
           (item.status === BackupStatus.Completed ||
-            item.status === BackupStatus.Failed) &&
-          item.status !== BackupStatus.Running,
+            item.status === BackupStatus.Failed),
       );
 
       await Promise.all(toDelete.map((item) => api.delete(item.id)));
