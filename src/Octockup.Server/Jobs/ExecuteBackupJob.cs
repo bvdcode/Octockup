@@ -157,8 +157,8 @@ namespace Octockup.Server.Jobs
                 // If file exists in previous snapshot with same size and similar timestamp, reuse it
                 if (foundFile != null && foundFile.Hashsum != null && file.Size == foundFile.Size && datesMatch)
                 {
-                    _logger.LogInformation("Schedule {ScheduleId}: File {FileName} unchanged since last snapshot (size: {Size}, date match: {DateMatch}), reusing metadata",
-                        schedule.Id, file.Name, file.Size, datesMatch);
+                    _logger.LogInformation("File {FileName} unchanged since last snapshot (size: {Size}, date match: {DateMatch}), reusing metadata",
+                        file.Name, file.Size, datesMatch);
 
                     SnapshotFile snapshotFile = new()
                     {
@@ -187,8 +187,9 @@ namespace Octockup.Server.Jobs
                 // Diagnostic: why file was not skipped
                 if (foundFile != null)
                 {
-                    _logger.LogWarning("Schedule {ScheduleId}: File {FileName} NOT skipped - foundFile!=null: true, hasHashsum: {HasHashsum}, sizeMatch: {SizeMatch} ({OldSize} vs {NewSize}), datesMatch: {DatesMatch}, oldDate: {OldDate}, newDate: {NewDate}, diffSec: {DiffSec}",
-                        schedule.Id, file.Name,
+                    _logger.LogWarning("File {FileName} NOT skipped - foundFile!=null: true, hasHashsum: {HasHashsum}, sizeMatch: " +
+                        "{SizeMatch} ({OldSize} vs {NewSize}), datesMatch: {DatesMatch}, oldDate: {OldDate}, newDate: {NewDate}, diffSec: {DiffSec}",
+                        file.Name,
                         foundFile.Hashsum != null,
                         file.Size == foundFile.Size, foundFile.Size, file.Size,
                         datesMatch,
@@ -200,14 +201,13 @@ namespace Octockup.Server.Jobs
                 }
                 else
                 {
-                    _logger.LogInformation("Schedule {ScheduleId}: File {FileName} NOT found in previous snapshot",
-                        schedule.Id, file.Name);
+                    _logger.LogInformation("File {FileName} NOT found in previous snapshot", file.Path);
                 }
 
                 if (foundFile != null)
                 {
-                    _logger.LogInformation("Schedule {ScheduleId}: File {FileName} changed - HasHashsum: {HasHashsum}, Size: {OldSize} vs {NewSize}, LastModified: {OldModified} vs {NewModified} (diff: {DiffSeconds}s)",
-                        schedule.Id, file.Name, foundFile.Hashsum != null, foundFile.Size, file.Size,
+                    _logger.LogInformation("File {FileName} changed - HasHashsum: {HasHashsum}, Size: {OldSize} vs {NewSize}, LastModified: {OldModified} vs {NewModified} (diff: {DiffSeconds}s)",
+                        file.Name, foundFile.Hashsum != null, foundFile.Size, file.Size,
                         foundFile.LastModified?.ToString("yyyy-MM-dd HH:mm:ss"), foundFile.LastModified?.ToString("yyyy-MM-dd HH:mm:ss"),
                         foundFile.LastModified != null && file.LastModified != null
                             ? Math.Abs((foundFile.LastModified.Value - file.LastModified.Value).TotalSeconds)
@@ -217,8 +217,7 @@ namespace Octockup.Server.Jobs
                 using var stream = await source.GetFileStreamAsync(file, cancellationToken);
                 if (stream == Stream.Null)
                 {
-                    _logger.LogWarning("Schedule {ScheduleId}: Unable to get stream for file {FileName}, skipping",
-                        schedule.Id, file.Name);
+                    _logger.LogWarning("Unable to get stream for file {FileName}, skipping", file.Name);
                     continue;
                 }
                 using var chunker = new ChunkedStream(stream, ChunkSize);
@@ -371,11 +370,13 @@ namespace Octockup.Server.Jobs
         private async Task<IDictionary<string, SnapshotFile>> GetFilesFromLastSnapshotAsync(Guid backupId, CancellationToken cancellationToken)
         {
             var previousSnapshot = await _dbContext.Snapshots
+                .Include(x => x.Files)
                 .Where(x => x.BackupId == backupId && x.CompletedAt.HasValue)
                 .OrderByDescending(x => x.CreatedAt)
                 .FirstOrDefaultAsync(cancellationToken: cancellationToken);
 
             previousSnapshot ??= await _dbContext.Snapshots
+                    .Include(x => x.Files)
                     .Where(x => x.BackupId == backupId)
                     .OrderByDescending(x => x.CreatedAt)
                     .FirstOrDefaultAsync(cancellationToken: cancellationToken);
@@ -385,10 +386,8 @@ namespace Octockup.Server.Jobs
                 return new Dictionary<string, SnapshotFile>();
             }
 
-            return await _dbContext.SnapshotFiles
-                .AsNoTracking()
-                .Where(x => x.SnapshotId == previousSnapshot.Id)
-                .ToDictionaryAsync(x => x.Path, cancellationToken: cancellationToken);
+
+            return previousSnapshot.Files.ToDictionary(x => x.Path);
         }
 
         private Task<HashSet<string>> LoadChunkHashesAsync(Guid storageId, CancellationToken cancellationToken)
