@@ -203,55 +203,30 @@ namespace Octockup.Server.Jobs
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            previousFiles.TryGetValue(file.Path, out var foundFile);
+            previousFiles.TryGetValue(file.Path, out var previousFile);
 
-            // For LastModified comparison, allow up to 2 seconds difference (IMAP servers can have slight time differences)
-            bool datesMatch = foundFile?.LastModified == null || file.LastModified == null ||
-                Math.Abs((foundFile.LastModified.Value - file.LastModified.Value).TotalSeconds) < 2;
-
-            // If file exists in previous snapshot with same size and similar timestamp, reuse it
-            if (foundFile != null && foundFile.Hashsum != null && file.Size == foundFile.Size && datesMatch)
+            if (previousFile != null && CanReusePreviousFile(previousFile, file, out bool datesMatch))
             {
-                _logger.LogInformation("File {FileName} unchanged since last snapshot (size: {Size}, date match: {DateMatch}), reusing metadata",
-                    file.Name, file.Size, datesMatch);
-
-                SnapshotFile snapshotFile = new()
-                {
-                    Path = file.Path,
-                    Snapshot = snapshot,
-                    Size = file.Size ?? 0,
-                    SnapshotId = snapshot.Id,
-                    Hashsum = foundFile.Hashsum,
-                    Name = file.Name ?? file.Path,
-                    LastModified = file.LastModified,
-                    ChunkHashes = foundFile.ChunkHashes,
-                };
-                await _dbContext.SnapshotFiles.AddAsync(snapshotFile, cancellationToken);
-
-                // Batch commit every 10 seconds
-                if (stopwatch.Elapsed.TotalSeconds > 10)
-                {
-                    await _dbContext.SaveChangesAsync(cancellationToken);
-                    stopwatch.Restart();
-                }
-
-                await report.SendAsync(counter, $"Processing: {file.Name}", processedBytes: snapshotFile.Size, cancellationToken: cancellationToken);
+                await ReusePreviousFileAsync(snapshot, previousFile, file, datesMatch, stopwatch, report, counter, cancellationToken);
                 return counter;
             }
 
             // Diagnostic: why file was not skipped
-            if (foundFile != null)
+            if (previousFile != null)
             {
+                bool diagnosticDatesMatch = previousFile.LastModified == null || file.LastModified == null ||
+                    Math.Abs((previousFile.LastModified.Value - file.LastModified.Value).TotalSeconds) < 2;
+
                 _logger.LogWarning("File {FileName} NOT skipped - foundFile!=null: true, hasHashsum: {HasHashsum}, sizeMatch: " +
                     "{SizeMatch} ({OldSize} vs {NewSize}), datesMatch: {DatesMatch}, oldDate: {OldDate}, newDate: {NewDate}, diffSec: {DiffSec}",
                     file.Name,
-                    foundFile.Hashsum != null,
-                    file.Size == foundFile.Size, foundFile.Size, file.Size,
-                    datesMatch,
-                    foundFile.LastModified?.ToString("yyyy-MM-dd HH:mm:ss.fff"),
+                    previousFile.Hashsum != null,
+                    file.Size == previousFile.Size, previousFile.Size, file.Size,
+                    diagnosticDatesMatch,
+                    previousFile.LastModified?.ToString("yyyy-MM-dd HH:mm:ss.fff"),
                     file.LastModified?.ToString("yyyy-MM-dd HH:mm:ss.fff"),
-                    foundFile.LastModified != null && file.LastModified != null
-                        ? Math.Abs((foundFile.LastModified.Value - file.LastModified.Value).TotalSeconds).ToString("F3")
+                    previousFile.LastModified != null && file.LastModified != null
+                        ? Math.Abs((previousFile.LastModified.Value - file.LastModified.Value).TotalSeconds).ToString("F3")
                         : "N/A");
             }
             else
@@ -259,13 +234,13 @@ namespace Octockup.Server.Jobs
                 _logger.LogInformation("File {FileName} NOT found in previous snapshot", file.Path);
             }
 
-            if (foundFile != null)
+            if (previousFile != null)
             {
                 _logger.LogInformation("File {FileName} changed - HasHashsum: {HasHashsum}, Size: {OldSize} vs {NewSize}, LastModified: {OldModified} vs {NewModified} (diff: {DiffSeconds}s)",
-                    file.Name, foundFile.Hashsum != null, foundFile.Size, file.Size,
-                    foundFile.LastModified?.ToString("yyyy-MM-dd HH:mm:ss"), foundFile.LastModified?.ToString("yyyy-MM-dd HH:mm:ss"),
-                    foundFile.LastModified != null && file.LastModified != null
-                        ? Math.Abs((foundFile.LastModified.Value - file.LastModified.Value).TotalSeconds)
+                    file.Name, previousFile.Hashsum != null, previousFile.Size, file.Size,
+                    previousFile.LastModified?.ToString("yyyy-MM-dd HH:mm:ss"), previousFile.LastModified?.ToString("yyyy-MM-dd HH:mm:ss"),
+                    previousFile.LastModified != null && file.LastModified != null
+                        ? Math.Abs((previousFile.LastModified.Value - file.LastModified.Value).TotalSeconds)
                         : -1);
             }
 
@@ -409,6 +384,49 @@ namespace Octockup.Server.Jobs
             }
 
             return counter;
+        }
+
+        private static bool CanReusePreviousFile(SnapshotFile previousFile, BackupFileInfo currentFile, out bool datesMatch)
+        {
+            datesMatch = previousFile.LastModified == null || currentFile.LastModified == null ||
+                Math.Abs((previousFile.LastModified.Value - currentFile.LastModified.Value).TotalSeconds) < 2;
+
+            return previousFile.Hashsum != null && currentFile.Size == previousFile.Size && datesMatch;
+        }
+
+        private async Task ReusePreviousFileAsync(
+            Snapshot snapshot,
+            SnapshotFile previousFile,
+            BackupFileInfo currentFile,
+            bool datesMatch,
+            Stopwatch stopwatch,
+            ScheduleReport report,
+            int counter,
+            CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("File {FileName} unchanged since last snapshot (size: {Size}, date match: {DateMatch}), reusing metadata",
+                currentFile.Name, currentFile.Size, datesMatch);
+
+            SnapshotFile snapshotFile = new()
+            {
+                Path = currentFile.Path,
+                Snapshot = snapshot,
+                Size = currentFile.Size ?? 0,
+                SnapshotId = snapshot.Id,
+                Hashsum = previousFile.Hashsum,
+                Name = currentFile.Name ?? currentFile.Path,
+                LastModified = currentFile.LastModified,
+                ChunkHashes = previousFile.ChunkHashes,
+            };
+            await _dbContext.SnapshotFiles.AddAsync(snapshotFile, cancellationToken);
+
+            if (stopwatch.Elapsed.TotalSeconds > 10)
+            {
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                stopwatch.Restart();
+            }
+
+            await report.SendAsync(counter, $"Processing: {currentFile.Name}", processedBytes: snapshotFile.Size, cancellationToken: cancellationToken);
         }
 
         private async Task FinalizeSnapshotAsync(
