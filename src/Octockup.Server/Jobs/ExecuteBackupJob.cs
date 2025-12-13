@@ -184,6 +184,26 @@ namespace Octockup.Server.Jobs
                     continue;
                 }
 
+                // Diagnostic: why file was not skipped
+                if (foundFile != null)
+                {
+                    _logger.LogWarning("Schedule {ScheduleId}: File {FileName} NOT skipped - foundFile!=null: true, hasHashsum: {HasHashsum}, sizeMatch: {SizeMatch} ({OldSize} vs {NewSize}), datesMatch: {DatesMatch}, oldDate: {OldDate}, newDate: {NewDate}, diffSec: {DiffSec}",
+                        schedule.Id, file.Name,
+                        foundFile.Hashsum != null,
+                        file.Size == foundFile.Size, foundFile.Size, file.Size,
+                        datesMatch,
+                        foundFile.LastModified?.ToString("yyyy-MM-dd HH:mm:ss.fff"),
+                        file.LastModified?.ToString("yyyy-MM-dd HH:mm:ss.fff"),
+                        foundFile.LastModified != null && file.LastModified != null 
+                            ? Math.Abs((foundFile.LastModified.Value - file.LastModified.Value).TotalSeconds).ToString("F3")
+                            : "N/A");
+                }
+                else
+                {
+                    _logger.LogDebug("Schedule {ScheduleId}: File {FileName} NOT found in previous snapshot",
+                        schedule.Id, file.Name);
+                }
+
                 if (foundFile != null)
                 {
                     _logger.LogInformation("Schedule {ScheduleId}: File {FileName} changed - HasHashsum: {HasHashsum}, Size: {OldSize} vs {NewSize}, LastModified: {OldModified} vs {NewModified} (diff: {DiffSeconds}s)",
