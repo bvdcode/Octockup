@@ -38,14 +38,14 @@ export function BackupProgress({ report }: BackupProgressProps) {
         sx={{ height: 4, borderRadius: 1, mb: 0.5 }}
       />
       <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Tooltip title={report.message} placement="top" arrow>
+        <Tooltip title={report.message} placement="top-start" arrow>
           <Typography
             variant="caption"
             color="text.secondary"
             noWrap
             sx={{ flex: 1, mr: 1 }}
           >
-            {report.message}
+            {report.currentPath || report.currentFile || report.message}
           </Typography>
         </Tooltip>
         <Typography

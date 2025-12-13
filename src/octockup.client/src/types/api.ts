@@ -113,6 +113,8 @@ export interface ScheduleReport {
   speed: number;
   elapsed?: string;
   isEnumerationCompleted: boolean;
+  currentPath: string;
+  currentFile: string;
 }
 
 export interface SnapshotFileDto {
