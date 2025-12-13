@@ -251,21 +251,66 @@ namespace Octockup.Server.Jobs
                 return counter;
             }
 
-            using var chunker = new ChunkedStream(stream, ChunkSize);
+            var (fileHash, chunkHashes) = await ProcessChunksAsync(
+                schedule,
+                file,
+                storage,
+                report,
+                uploadedChunks,
+                stream,
+                stopwatch,
+                counter,
+                cancellationToken);
 
-            cancellationToken.ThrowIfCancellationRequested();
+            SnapshotFile snapshotFile = new()
+            {
+                Path = file.Path,
+                Hashsum = fileHash,
+                Snapshot = snapshot,
+                Size = file.Size ?? 0,
+                SnapshotId = snapshot.Id,
+                ChunkHashes = chunkHashes,
+                Name = file.Name ?? file.Path,
+                LastModified = file.LastModified,
+            };
+            await _dbContext.SnapshotFiles.AddAsync(snapshotFile, cancellationToken);
+            snapshot.TotalSize += snapshotFile.Size;
+            snapshot.FilesCount += 1;
+
+            if (stopwatch.Elapsed.TotalSeconds > 10)
+            {
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                stopwatch.Restart();
+            }
+
+            _logger.LogInformation("Schedule {ScheduleId}: {Message} ({Processed}/{Total})",
+                schedule.Id, report.Message, report.Processed, report.Total);
+
+            return counter;
+        }
+
+        private async Task<(string FileHash, List<string> ChunkHashes)> ProcessChunksAsync(
+            Schedule schedule,
+            BackupFileInfo file,
+            IBackupStorage storage,
+            ScheduleReport report,
+            HashSet<string> uploadedChunks,
+            Stream stream,
+            Stopwatch stopwatch,
+            int counter,
+            CancellationToken cancellationToken)
+        {
+            using var chunker = new ChunkedStream(stream, ChunkSize);
             byte[] buffer = ArrayPool<byte>.Shared.Rent(ChunkSize);
             try
             {
-                // File-level incremental hasher
                 using var fileHasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-
                 List<string> chunkHashes = [];
+
                 foreach (Stream chunk in chunker.GetChunks())
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    // Compute chunk hash while also updating the file hasher in a single pass
                     chunk.Seek(0, SeekOrigin.Begin);
                     using var chunkHasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
                     int read;
@@ -300,7 +345,6 @@ namespace Octockup.Server.Jobs
                         string size = $"{(chunkLength / (1024.0 * 1024.0)):F2} MB";
                         _logger.LogInformation("Uploading chunk {shortHash} for file {FileName}, size: {size}", shortHash, file.Name, size);
 
-                        // Compress the chunk (second pass over in-memory chunk stream)
                         chunk.Seek(0, SeekOrigin.Begin);
                         await using var compressed = new MemoryStream();
                         await using (var brotli = new BrotliStream(compressed, CompressionLevel.Optimal, leaveOpen: true))
@@ -351,39 +395,13 @@ namespace Octockup.Server.Jobs
                     await chunk.DisposeAsync();
                 }
 
-                // Finalize file hash after all chunks processed
                 string fileHash = Convert.ToHexString(fileHasher.GetHashAndReset()).ToLowerInvariant();
-
-                SnapshotFile snapshotFile = new()
-                {
-                    Path = file.Path,
-                    Hashsum = fileHash,
-                    Snapshot = snapshot,
-                    Size = file.Size ?? 0,
-                    SnapshotId = snapshot.Id,
-                    ChunkHashes = chunkHashes,
-                    Name = file.Name ?? file.Path,
-                    LastModified = file.LastModified,
-                };
-                await _dbContext.SnapshotFiles.AddAsync(snapshotFile, cancellationToken);
-                snapshot.TotalSize += snapshotFile.Size;
-                snapshot.FilesCount += 1;
-
-                if (stopwatch.Elapsed.TotalSeconds > 10)
-                {
-                    await _dbContext.SaveChangesAsync(cancellationToken);
-                    stopwatch.Restart();
-                }
-
-                _logger.LogInformation("Schedule {ScheduleId}: {Message} ({Processed}/{Total})",
-                    schedule.Id, report.Message, report.Processed, report.Total);
+                return (fileHash, chunkHashes);
             }
             finally
             {
                 ArrayPool<byte>.Shared.Return(buffer);
             }
-
-            return counter;
         }
 
         private static bool CanReusePreviousFile(SnapshotFile previousFile, BackupFileInfo currentFile, out bool datesMatch)
