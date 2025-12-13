@@ -23,7 +23,7 @@ interface BackupCardProps {
   onRename: (backupId: string, newTag: string) => Promise<void>;
   onEditIgnoredPaths: (backupId: string) => void;
   onRunOnce: (backupId: string) => Promise<void>;
-  onCancel: (backupId: string) => Promise<void>;
+  onCancel: (backupId: string, scheduleId: string) => Promise<void>;
   onDelete: (backupId: string) => Promise<void>;
 }
 
@@ -163,7 +163,7 @@ export function BackupCard({
           onRunOnce={() => onRunOnce(backup.id)}
           onCancel={async (scheduleId: string) => {
             await schedulesApi.cancel(scheduleId);
-            await onCancel(backup.id);
+            await onCancel(backup.id, scheduleId);
           }}
           onDelete={() => onDelete(backup.id)}
         />

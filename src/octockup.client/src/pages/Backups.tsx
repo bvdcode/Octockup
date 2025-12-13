@@ -185,11 +185,17 @@ export default function BackupsPage() {
     }
   };
 
-  const handleCancel = async (backupId: string) => {
+  const handleCancel = async (backupId: string, scheduleId: string) => {
     setState((s) => ({ ...s, cancelingId: backupId }));
     try {
-      // Canceling is handled by BackupActions component
-      // Reload after cancel to update status
+      // Remove the schedule report immediately to prevent UI showing "running"
+      setScheduleReports((prev) => {
+        const newReports = { ...prev };
+        delete newReports[scheduleId];
+        return newReports;
+      });
+
+      // Reload backups immediately to get fresh status
       await reloadBackups();
     } finally {
       setState((s) => ({ ...s, cancelingId: null }));
