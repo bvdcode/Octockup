@@ -1,4 +1,10 @@
-import { Box, LinearProgress, Tooltip, Typography } from "@mui/material";
+import {
+  Box,
+  Divider,
+  LinearProgress,
+  Tooltip,
+  Typography,
+} from "@mui/material";
 import { AccessTime } from "@mui/icons-material";
 import type { ScheduleReport } from "../../types/api";
 import {
@@ -67,8 +73,11 @@ export function BackupProgress({ report }: BackupProgressProps) {
         </Box>
         <Box display="flex" alignItems="center" gap={1}>
           <Typography variant="caption" color="text.secondary">
-            {remainingFiles.toLocaleString()} left
-            {etaSeconds !== null && ` • ~${formatDurationShort(etaSeconds)} left`}
+            {remainingFiles.toLocaleString()} left{" "}
+          </Typography>
+          {<Divider orientation="vertical" flexItem />}
+          <Typography variant="caption" color="text.secondary">
+            {etaSeconds !== null && `~${formatDurationShort(etaSeconds)}`}
           </Typography>
           {report && !report.isEnumerationCompleted && (
             <Box
