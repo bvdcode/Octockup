@@ -405,29 +405,13 @@ namespace Octockup.Server.Jobs
 
         private async Task<IDictionary<string, SnapshotFile>> GetFilesFromLastSnapshotAsync(Guid backupId, CancellationToken cancellationToken)
         {
-            var previousSnapshot = await _dbContext.Snapshots
-                .Include(x => x.Files)
-                .Where(x => x.BackupId == backupId && x.CompletedAt.HasValue)
+            var files = await _dbContext.Snapshots
+                .AsNoTracking()
+                .Where(x => x.BackupId == backupId)
                 .OrderByDescending(x => x.CreatedAt)
-                .FirstOrDefaultAsync(cancellationToken: cancellationToken);
-            _logger.LogInformation("Loaded previous snapshot for backup {BackupId}: {IsNonNull}",
-                backupId, previousSnapshot != null);
-
-            previousSnapshot ??= await _dbContext.Snapshots
-                    .Include(x => x.Files)
-                    .Where(x => x.BackupId == backupId)
-                    .OrderByDescending(x => x.CreatedAt)
-                    .FirstOrDefaultAsync(cancellationToken: cancellationToken);
-            _logger.LogInformation("Loaded last snapshot (including incomplete) for backup {BackupId}: {IsNonNull}",
-                backupId, previousSnapshot != null);
-
-            if (previousSnapshot == null)
-            {
-                _logger.LogWarning("No previous snapshot found for backup {BackupId}", backupId);
-                return new Dictionary<string, SnapshotFile>();
-            }
-
-            return previousSnapshot.Files.ToDictionary(x => x.Path);
+                .SelectMany(x => x.Files)
+                .ToListAsync(cancellationToken: cancellationToken);
+            return files.ToDictionary(x => x.Path, x => x);
         }
 
         private Task<HashSet<string>> LoadChunkHashesAsync(Guid storageId, CancellationToken cancellationToken)
