@@ -377,6 +377,15 @@ namespace Octockup.Server.Jobs
                 }
             }
 
+            await FinalizeSnapshotAsync(snapshot, loader, report, cancellationToken);
+        }
+
+        private async Task FinalizeSnapshotAsync(
+            Snapshot snapshot,
+            LazyLoader<BackupFileInfo> loader,
+            ScheduleReport report,
+            CancellationToken cancellationToken)
+        {
             report.Total = loader.Total;
             report.IsEnumerationCompleted = true;
             await report.SendAsync(report.Processed, "Finalizing snapshot...", cancellationToken: cancellationToken);
