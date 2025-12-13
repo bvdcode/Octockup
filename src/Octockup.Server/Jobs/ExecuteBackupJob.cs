@@ -149,7 +149,7 @@ namespace Octockup.Server.Jobs
 
                 cancellationToken.ThrowIfCancellationRequested();
                 previousFiles.TryGetValue(file.Path, out var foundFile);
-                
+
                 // For LastModified comparison, allow up to 2 seconds difference (IMAP servers can have slight time differences)
                 bool datesMatch = foundFile?.LastModified == null || file.LastModified == null ||
                     Math.Abs((foundFile.LastModified.Value - file.LastModified.Value).TotalSeconds) < 2;
@@ -159,7 +159,7 @@ namespace Octockup.Server.Jobs
                 {
                     _logger.LogInformation("Schedule {ScheduleId}: File {FileName} unchanged since last snapshot (size: {Size}, date match: {DateMatch}), reusing metadata",
                         schedule.Id, file.Name, file.Size, datesMatch);
-                    
+
                     SnapshotFile snapshotFile = new()
                     {
                         Path = file.Path,
@@ -194,7 +194,7 @@ namespace Octockup.Server.Jobs
                         datesMatch,
                         foundFile.LastModified?.ToString("yyyy-MM-dd HH:mm:ss.fff"),
                         file.LastModified?.ToString("yyyy-MM-dd HH:mm:ss.fff"),
-                        foundFile.LastModified != null && file.LastModified != null 
+                        foundFile.LastModified != null && file.LastModified != null
                             ? Math.Abs((foundFile.LastModified.Value - file.LastModified.Value).TotalSeconds).ToString("F3")
                             : "N/A");
                 }
@@ -207,10 +207,10 @@ namespace Octockup.Server.Jobs
                 if (foundFile != null)
                 {
                     _logger.LogInformation("Schedule {ScheduleId}: File {FileName} changed - HasHashsum: {HasHashsum}, Size: {OldSize} vs {NewSize}, LastModified: {OldModified} vs {NewModified} (diff: {DiffSeconds}s)",
-                        schedule.Id, file.Name, foundFile.Hashsum != null, foundFile.Size, file.Size, 
+                        schedule.Id, file.Name, foundFile.Hashsum != null, foundFile.Size, file.Size,
                         foundFile.LastModified?.ToString("yyyy-MM-dd HH:mm:ss"), foundFile.LastModified?.ToString("yyyy-MM-dd HH:mm:ss"),
-                        foundFile.LastModified != null && file.LastModified != null 
-                            ? Math.Abs((foundFile.LastModified.Value - file.LastModified.Value).TotalSeconds) 
+                        foundFile.LastModified != null && file.LastModified != null
+                            ? Math.Abs((foundFile.LastModified.Value - file.LastModified.Value).TotalSeconds)
                             : -1);
                 }
 
@@ -257,6 +257,10 @@ namespace Octockup.Server.Jobs
                             await report.SendAsync(counter, $"Processing: {file.Name}", processedBytes: chunkLength, cancellationToken: cancellationToken);
                             await chunk.DisposeAsync();
                             continue;
+                        }
+                        else
+                        {
+                            _logger.LogInformation("Processing chunk {shortHash} for file {FileName}", shortHash, file.Path);
                         }
 
                         long storedSize = 0;
