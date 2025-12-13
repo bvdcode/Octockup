@@ -23,6 +23,8 @@ namespace Octockup.Server.Models
         public double Speed { get; private set; }
         public int Total { get; set; }
         public bool IsEnumerationCompleted { get; set; }
+        public string CurrentPath { get; set; } = string.Empty;
+        public string CurrentFile { get; set; } = string.Empty;
 
         private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
         private readonly CancellationTokenSource _backgroundTaskCts = new();

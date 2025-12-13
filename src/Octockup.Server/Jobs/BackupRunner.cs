@@ -176,6 +176,8 @@ namespace Octockup.Server.Jobs
             counter++;
             report.Total = loader.Total;
             report.IsEnumerationCompleted = loader.IsEnumerationCompleted;
+            report.CurrentFile = file.Name ?? Path.GetFileName(file.Path);
+            report.CurrentPath = file.Path;
             await report.SendAsync(counter, $"Processing: {file.Name}", cancellationToken: cancellationToken);
 
             if (ShouldIgnoreFile(schedule, file))
