@@ -1,7 +1,12 @@
 import { Box, LinearProgress, Tooltip, Typography } from "@mui/material";
 import { AccessTime } from "@mui/icons-material";
 import type { ScheduleReport } from "../../types/api";
-import { formatSpeed, formatElapsed } from "../../utils/formatUtils";
+import {
+  formatSpeed,
+  formatElapsed,
+  parseElapsedToSeconds,
+  formatDurationShort,
+} from "../../utils/formatUtils";
 import { EnumerationProgress } from "./EnumerationProgress";
 
 interface BackupProgressProps {
@@ -11,6 +16,13 @@ interface BackupProgressProps {
 export function BackupProgress({ report }: BackupProgressProps) {
   const progress =
     report.total > 0 ? (report.processed / report.total) * 100 : 0;
+
+  const remainingFiles = Math.max(report.total - report.processed, 0);
+  const elapsedSeconds = parseElapsedToSeconds(report.elapsed);
+  const etaSeconds =
+    progress > 0 && elapsedSeconds !== null
+      ? elapsedSeconds * (100 / progress - 1)
+      : null;
 
   return (
     <Box sx={{ mt: 1 }}>
@@ -53,7 +65,11 @@ export function BackupProgress({ report }: BackupProgressProps) {
             </Box>
           )}
         </Box>
-        <Box>
+        <Box display="flex" alignItems="center" gap={1}>
+          <Typography variant="caption" color="text.secondary">
+            {remainingFiles.toLocaleString()} left
+            {etaSeconds !== null && ` • ~${formatDurationShort(etaSeconds)} left`}
+          </Typography>
           {report && !report.isEnumerationCompleted && (
             <Box
               sx={{

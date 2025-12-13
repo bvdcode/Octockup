@@ -241,7 +241,6 @@ namespace Octockup.Server.Jobs
                 report,
                 uploadedChunks,
                 stream,
-                stopwatch,
                 counter,
                 cancellationToken);
 
@@ -279,7 +278,6 @@ namespace Octockup.Server.Jobs
             ScheduleReport report,
             HashSet<string> uploadedChunks,
             Stream stream,
-            Stopwatch stopwatch,
             int counter,
             CancellationToken cancellationToken)
         {

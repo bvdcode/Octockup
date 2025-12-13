@@ -40,6 +40,48 @@ export function formatElapsed(elapsed?: string): string {
   }
 }
 
+export function parseElapsedToSeconds(elapsed?: string): number | null {
+  if (!elapsed) return null;
+  const parts = elapsed.split(":");
+  if (parts.length < 3) return null;
+
+  let hours = 0;
+  let minutes = 0;
+  let seconds = 0;
+
+  if (parts[0].includes(".")) {
+    const dayHour = parts[0].split(".");
+    const days = parseInt(dayHour[0]);
+    if (Number.isNaN(days)) return null;
+    const hh = parseInt(dayHour[1]);
+    if (Number.isNaN(hh)) return null;
+    hours = hh + days * 24;
+  } else {
+    const hh = parseInt(parts[0]);
+    if (Number.isNaN(hh)) return null;
+    hours = hh;
+  }
+
+  minutes = parseInt(parts[1]);
+  if (Number.isNaN(minutes)) return null;
+  seconds = Math.floor(parseFloat(parts[2]));
+  if (Number.isNaN(seconds)) return null;
+
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
+export function formatDurationShort(totalSeconds: number): string {
+  if (!Number.isFinite(totalSeconds) || totalSeconds < 0) return "";
+  const seconds = Math.round(totalSeconds);
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
 export function formatSize(bytes: number): string {
   if (bytes === 0) return "0 B";
   

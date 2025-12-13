@@ -50,9 +50,11 @@ namespace Octockup.Server.Jobs
             Schedule? next = await ScheduleHelpers.GetNextScheduleAsync(_dbContext.Schedules, cancellationToken);
             if (next == null)
             {
+                _logger.LogDebug("No schedules ready for execution at {Time}", DateTimeOffset.UtcNow);
                 return;
             }
 
+            _logger.LogInformation("Starting backup job for schedule {ScheduleId}", next.Id);
             _stoppingSchedules[next.Id] = merged;
 
             try
@@ -70,6 +72,7 @@ namespace Octockup.Server.Jobs
             finally
             {
                 _stoppingSchedules.TryRemove(next.Id, out _);
+                _logger.LogInformation("Finished backup job for schedule {ScheduleId}", next.Id);
             }
         }
     }
