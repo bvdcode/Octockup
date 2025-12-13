@@ -1,6 +1,5 @@
 import { Box, Card, CardContent, Divider, Typography } from "@mui/material";
 import { ArrowDownward } from "@mui/icons-material";
-import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import type { BackupItem, ScheduleReport } from "../../types/api";
 import { BackupStatus } from "../../types/api";
@@ -23,7 +22,7 @@ interface BackupCardProps {
   savingIgnoredPathsId: string | null;
   onRename: (backupId: string, newTag: string) => Promise<void>;
   onEditIgnoredPaths: (backupId: string) => void;
-  onRunOnce: (backupId: string, backup: BackupItem) => Promise<void>;
+  onRunOnce: (backupId: string) => Promise<void>;
   onCancel: (backupId: string) => Promise<void>;
   onDelete: (backupId: string) => Promise<void>;
 }
@@ -42,7 +41,6 @@ export function BackupCard({
   onCancel,
   onDelete,
 }: BackupCardProps) {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const schedulesApi = useSchedulesApi();
 
@@ -162,7 +160,7 @@ export function BackupCard({
             navigate(`/backups/${backup.id}/snapshots`)
           }
           onEditIgnoredPaths={() => onEditIgnoredPaths(backup.id)}
-          onRunOnce={() => onRunOnce(backup.id, backup)}
+          onRunOnce={() => onRunOnce(backup.id)}
           onCancel={async (scheduleId: string) => {
             await schedulesApi.cancel(scheduleId);
             await onCancel(backup.id);

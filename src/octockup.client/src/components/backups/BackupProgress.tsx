@@ -1,11 +1,5 @@
-import {
-  Box,
-  LinearProgress,
-  Tooltip,
-  Typography,
-} from "@mui/material";
+import { Box, LinearProgress, Tooltip, Typography } from "@mui/material";
 import { AccessTime } from "@mui/icons-material";
-import { useTranslation } from "react-i18next";
 import type { ScheduleReport } from "../../types/api";
 import { formatSpeed, formatElapsed } from "../../utils/formatUtils";
 import { EnumerationProgress } from "./EnumerationProgress";
@@ -15,13 +9,11 @@ interface BackupProgressProps {
 }
 
 export function BackupProgress({ report }: BackupProgressProps) {
-  const { t } = useTranslation();
   const progress =
     report.total > 0 ? (report.processed / report.total) * 100 : 0;
 
   return (
     <Box sx={{ mt: 1 }}>
-      {!report.isEnumerationCompleted && <EnumerationProgress />}
       <LinearProgress
         variant="determinate"
         value={progress}
@@ -43,22 +35,37 @@ export function BackupProgress({ report }: BackupProgressProps) {
           color="text.secondary"
           sx={{ whiteSpace: "nowrap" }}
         >
-          {report.processed.toLocaleString()} /{" "}
-          {report.total.toLocaleString()} • {progress.toFixed(0)}%
+          {report.processed.toLocaleString()} / {report.total.toLocaleString()}{" "}
+          • {progress.toFixed(0)}%
         </Typography>
       </Box>
-      <Box display="flex" gap={2} mt={0.5}>
-        <Typography variant="caption" color="text.secondary">
-          {formatSpeed(report.speed)}
-        </Typography>
-        {report.elapsed && (
-          <Box display="flex" alignItems="center" gap={0.5}>
-            <AccessTime sx={{ fontSize: 14 }} color="action" />
-            <Typography variant="caption" color="text.secondary">
-              {formatElapsed(report.elapsed)}
-            </Typography>
-          </Box>
-        )}
+      <Box display="flex" justifyContent="space-between" gap={2} mt={0.5}>
+        <Box display="flex" alignItems="center" gap={1}>
+          <Typography variant="caption" color="text.secondary">
+            {formatSpeed(report.speed)}
+          </Typography>
+          {report.elapsed && (
+            <Box display="flex" alignItems="center" gap={0.5}>
+              <AccessTime sx={{ fontSize: 14 }} color="action" />
+              <Typography variant="caption" color="text.secondary">
+                {formatElapsed(report.elapsed)}
+              </Typography>
+            </Box>
+          )}
+        </Box>
+        <Box>
+          {report && !report.isEnumerationCompleted && (
+            <Box
+              sx={{
+                bottom: 8,
+                right: 8,
+                zIndex: 1,
+              }}
+            >
+              <EnumerationProgress />
+            </Box>
+          )}
+        </Box>
       </Box>
     </Box>
   );

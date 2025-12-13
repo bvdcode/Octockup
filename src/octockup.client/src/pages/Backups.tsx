@@ -8,7 +8,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { AddCircleOutline } from "@mui/icons-material";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import type { BackupItem, ScheduleReport } from "../types/api";
@@ -52,6 +52,23 @@ export default function BackupsPage() {
   const [savingIgnoredPathsId, setSavingIgnoredPathsId] = useState<
     string | null
   >(null);
+
+  const reloadBackups = useCallback(async () => {
+    try {
+      const backupList = await backupsApi.list();
+      setBackups(backupList);
+
+      const mapping: Record<string, string> = {};
+      backupList.forEach((backup) => {
+        backup.schedules?.forEach((schedule) => {
+          mapping[schedule.id] = schedule.backupId;
+        });
+      });
+      setScheduleToBackupMap(mapping);
+    } catch {
+      // Silent fail
+    }
+  }, [backupsApi]);
 
   useEffect(() => {
     let active = true;
@@ -103,23 +120,7 @@ export default function BackupsPage() {
         ) {
           // Reload backups after a short delay to ensure backend updated
           setTimeout(() => {
-            backupsApi
-              .list()
-              .then((backupList) => {
-                setBackups(backupList);
-
-                // Update mapping
-                const mapping: Record<string, string> = {};
-                backupList.forEach((backup) => {
-                  backup.schedules?.forEach((schedule) => {
-                    mapping[schedule.id] = schedule.backupId;
-                  });
-                });
-                setScheduleToBackupMap(mapping);
-              })
-              .catch(() => {
-                // Silent fail
-              });
+            reloadBackups();
           }, 500);
         }
 
@@ -146,7 +147,7 @@ export default function BackupsPage() {
     return () => {
       connection.off("ScheduleReport", handler);
     };
-  }, [connection, isConnected, backupsApi]);
+  }, [connection, isConnected, reloadBackups]);
 
   const handleRename = async (backupId: string, newTag: string) => {
     await backupsApi.rename(backupId, newTag);
@@ -169,7 +170,7 @@ export default function BackupsPage() {
     }
   };
 
-  const handleRunOnce = async (backupId: string, backup: BackupItem) => {
+  const handleRunOnce = async (backupId: string) => {
     setState((s) => ({ ...s, runningId: backupId }));
     try {
       await schedulesApi.create({
@@ -177,39 +178,8 @@ export default function BackupsPage() {
         startAt: new Date().toISOString(),
       });
 
-      setBackups((prev) =>
-        prev.map((b) =>
-          b.id === backupId
-            ? {
-                ...b,
-                schedules: [
-                  ...(b.schedules || []),
-                  {
-                    id: `temp-${Date.now()}`,
-                    backupId,
-                    startAt: new Date().toISOString(),
-                    status: BackupStatus.Running,
-                    finishedAt: null,
-                    errorMessage: null,
-                    interval: null,
-                    backup: {
-                      id: backup.id,
-                      tag: backup.tag,
-                      sourceId: backup.sourceId,
-                      storageId: backup.storageId,
-                      ignoredPaths: backup.ignoredPaths,
-                      source: backup.source,
-                      storage: backup.storage,
-                      snapshots: backup.snapshots,
-                      createdAt: backup.createdAt,
-                      updatedAt: backup.updatedAt,
-                    },
-                  },
-                ],
-              }
-            : b,
-        ),
-      );
+      // Reload backups to get the actual schedule from server
+      await reloadBackups();
     } finally {
       setState((s) => ({ ...s, runningId: null }));
     }
@@ -219,6 +189,8 @@ export default function BackupsPage() {
     setState((s) => ({ ...s, cancelingId: backupId }));
     try {
       // Canceling is handled by BackupActions component
+      // Reload after cancel to update status
+      await reloadBackups();
     } finally {
       setState((s) => ({ ...s, cancelingId: null }));
     }
