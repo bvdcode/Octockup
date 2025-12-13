@@ -184,10 +184,10 @@ export default function BackupsPage() {
 
   const handleCancel = async (scheduleId: string) => {
     const backupIdFromMap = scheduleToBackupMap[scheduleId];
-    const backupId =
-      backupIdFromMap ||
-      backups.find((b) => b.schedules?.some((s) => s.id === scheduleId))?.id ||
+    const backupEntry =
+      backups.find((b) => b.schedules?.some((s) => s.id === scheduleId)) ||
       null;
+    const backupId = backupIdFromMap || backupEntry?.id || null;
 
     if (backupId) {
       setState((s) => ({ ...s, cancelingId: backupId }));
@@ -195,28 +195,33 @@ export default function BackupsPage() {
 
     try {
       // Optimistically clear running report and mark schedule as failed to stop showing Running
-      if (backupId) {
-        setScheduleReports((prev) => {
-          const newMap = new Map(prev);
+      setScheduleReports((prev) => {
+        const newMap = new Map(prev);
+        if (backupId) {
           newMap.delete(backupId);
-          return newMap;
-        });
+        }
+        return newMap;
+      });
 
-        setBackups((prev) =>
-          prev.map((b) =>
-            b.id !== backupId
-              ? b
-              : {
-                  ...b,
-                  schedules: b.schedules?.map((s) =>
-                    s.id === scheduleId
-                      ? { ...s, status: BackupStatus.Failed }
-                      : s,
-                  ),
-                },
-          ),
-        );
-      }
+      setBackups((prev) =>
+        prev.map((b) => {
+          if (!b.schedules) return b;
+          const hasSchedule = b.schedules.some((s) => s.id === scheduleId);
+          if (!hasSchedule) return b;
+          return {
+            ...b,
+            schedules: b.schedules.map((s) =>
+              s.id === scheduleId
+                ? {
+                    ...s,
+                    status: BackupStatus.Failed,
+                    finishedAt: new Date().toISOString(),
+                  }
+                : s,
+            ),
+          };
+        }),
+      );
 
       await schedulesApi.cancel(scheduleId);
 

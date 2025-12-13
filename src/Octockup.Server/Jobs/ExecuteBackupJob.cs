@@ -39,8 +39,14 @@ namespace Octockup.Server.Jobs
             {
                 return;
             }
-
-            cts.Cancel();
+            try
+            {
+                cts.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                _stoppingSchedules.Remove(scheduleId);
+            }
         }
 
         public async Task Execute(IJobExecutionContext context)
@@ -62,14 +68,14 @@ namespace Octockup.Server.Jobs
 
             try
             {
-                var sourceProvider = CreateSourceProvider(next, cancellationToken);
+                var sourceProvider = CreateSourceProvider(next);
                 if (sourceProvider is null)
                 {
                     await report.SendAsync(0, next.ErrorMessage ?? "Source provider not found.", cancellationToken: cancellationToken);
                     return;
                 }
 
-                var storageProvider = CreateStorageProvider(next, cancellationToken);
+                var storageProvider = CreateStorageProvider(next);
                 if (storageProvider is null)
                 {
                     await report.SendAsync(0, next.ErrorMessage ?? "Storage provider not found.", cancellationToken: cancellationToken);
@@ -109,7 +115,7 @@ namespace Octockup.Server.Jobs
             }
         }
 
-        private IBackupSource? CreateSourceProvider(Schedule schedule, CancellationToken cancellationToken)
+        private IBackupSource? CreateSourceProvider(Schedule schedule)
         {
             if (_providers.FirstOrDefault(x => x.Id == schedule.Backup.Source.BackupModuleId) is not IBackupSource foundSourceTypeProvider)
             {
@@ -127,7 +133,7 @@ namespace Octockup.Server.Jobs
             return foundSourceProvider;
         }
 
-        private IBackupStorage? CreateStorageProvider(Schedule schedule, CancellationToken cancellationToken)
+        private IBackupStorage? CreateStorageProvider(Schedule schedule)
         {
             if (_providers.FirstOrDefault(x => x.Id == schedule.Backup.Storage.BackupModuleId) is not IBackupStorage foundStorageTypeProvider)
             {

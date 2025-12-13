@@ -43,14 +43,16 @@ export function BackupActions({
   const { t } = useTranslation();
 
   const reportForBackup = scheduleReports.get(backup.id);
-  const isRunning = reportForBackup?.status === BackupStatus.Running;
+  const isRunningFromReport = reportForBackup?.status === BackupStatus.Running;
 
-  // Find the running schedule ID for cancel action
-  const runningScheduleId = isRunning
-    ? (backup.schedules || []).find(
-        (s) => s.status === BackupStatus.Running,
-      )?.id
-    : undefined;
+  // Find the running or just-created schedule so we can cancel immediately
+  const activeSchedule = (backup.schedules || []).find(
+    (s) =>
+      s.status === BackupStatus.Running || s.status === BackupStatus.Created,
+  );
+  const runningScheduleId = activeSchedule?.id;
+
+  const isRunning = isRunningFromReport || !!activeSchedule;
 
   return (
     <Box display="flex" flexDirection="column">
