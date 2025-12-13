@@ -3,23 +3,15 @@
 
 using EasyExtensions.Abstractions;
 using EasyExtensions.Quartz.Attributes;
-using EasyExtensions.Streams;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Octockup.Server.Abstractions;
-using Octockup.Server.Collections;
 using Octockup.Server.Database;
 using Octockup.Server.Helpers;
 using Octockup.Server.Hubs;
 using Octockup.Server.Models;
-using Octockup.Server.Models.Enums;
 using Quartz;
-using System.Buffers;
 using System.Collections.Concurrent;
-using System.Diagnostics;
-using System.IO.Compression;
-using System.Security.Cryptography;
 
 namespace Octockup.Server.Jobs
 {
@@ -33,7 +25,6 @@ namespace Octockup.Server.Jobs
         IEnumerable<IBackupProvider> _providers) : IJob
     {
         private static readonly ConcurrentDictionary<Guid, CancellationTokenSource> _stoppingSchedules = new();
-        private const int ChunkSize = 8 * 1024 * 1024;
 
         public static void StopRunningBackup(Guid scheduleId)
         {
@@ -48,7 +39,6 @@ namespace Octockup.Server.Jobs
             }
             catch (ObjectDisposedException)
             {
-                // CTS already disposed, nothing to do
             }
         }
 
@@ -79,7 +69,6 @@ namespace Octockup.Server.Jobs
             }
             finally
             {
-                // Ensure we do not leak CTS for this schedule
                 _stoppingSchedules.TryRemove(next.Id, out _);
             }
         }
