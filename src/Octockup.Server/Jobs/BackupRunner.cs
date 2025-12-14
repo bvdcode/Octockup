@@ -28,6 +28,10 @@ namespace Octockup.Server.Jobs
         IEnumerable<IBackupProvider> providers)
     {
         private const int ChunkSize = 8 * 1024 * 1024;
+        private readonly List<UploadedHash> _pendingUploadedHashes = [];
+        private readonly Stopwatch _uploadedHashesStopwatch = Stopwatch.StartNew();
+        private const int UploadedHashesFlushCount = 500; // flush every 500 new hashes
+        private static readonly TimeSpan UploadedHashesFlushInterval = TimeSpan.FromSeconds(5);
 
         public async Task RunAsync(Schedule schedule, CancellationToken cancellationToken)
         {
@@ -369,6 +373,13 @@ namespace Octockup.Server.Jobs
                     cancellationToken.ThrowIfCancellationRequested();
 
                     await chunk.DisposeAsync();
+
+                    // Periodically flush batched UploadedHashes to DB
+                    if (_pendingUploadedHashes.Count >= UploadedHashesFlushCount ||
+                        _uploadedHashesStopwatch.Elapsed > UploadedHashesFlushInterval)
+                    {
+                        await FlushUploadedHashesAsync(cancellationToken);
+                    }
                 }
 
                 string fileHash = Convert.ToHexString(fileHasher.GetHashAndReset()).ToLowerInvariant();
@@ -402,8 +413,21 @@ namespace Octockup.Server.Jobs
                 OriginalSize = originalSize,
                 ModuleId = storageModuleId,
             };
-            await dbContext.UploadedHashes.AddAsync(uploadedHash, cancellationToken);
+            _pendingUploadedHashes.Add(uploadedHash);
+        }
+
+        private async Task FlushUploadedHashesAsync(CancellationToken cancellationToken)
+        {
+            if (_pendingUploadedHashes.Count == 0)
+            {
+                _uploadedHashesStopwatch.Restart();
+                return;
+            }
+
+            await dbContext.UploadedHashes.AddRangeAsync(_pendingUploadedHashes, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
+            _pendingUploadedHashes.Clear();
+            _uploadedHashesStopwatch.Restart();
         }
 
         private static bool CanReusePreviousFile(SnapshotFile previousFile, BackupFileInfo currentFile, out bool datesMatch)
@@ -471,6 +495,7 @@ namespace Octockup.Server.Jobs
             ScheduleReport report,
             CancellationToken cancellationToken)
         {
+            await FlushUploadedHashesAsync(cancellationToken);
             report.Total = loader.Total;
             report.IsEnumerationCompleted = true;
             await report.SendAsync(report.Processed, "Finalizing snapshot...", cancellationToken: cancellationToken);
