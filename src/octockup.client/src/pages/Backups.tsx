@@ -283,8 +283,9 @@ export default function BackupsPage() {
                 failed: 2,
                 warning: 3,
                 scheduled: 4,
-                success: 5,
-                idle: 6,
+                created: 5,
+                success: 6,
+                idle: 7,
               };
 
               const priorityA = priorityMap[statusA] || 999;
