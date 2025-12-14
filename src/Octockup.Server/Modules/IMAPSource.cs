@@ -383,35 +383,31 @@ namespace Octockup.Server.Modules
                 }
             }
 
-            IEnumerable<BackupFileInfo>? results = null;
-            Exception? exception = null;
-
-            try
+            using var enumerator = ProcessFolder().GetEnumerator();
+            while (true)
             {
-                results = ProcessFolder();
-            }
-            catch (ImapCommandException ex) when (ex.Message.Contains("Unknown Mailbox"))
-            {
-                _logger.LogWarning("Folder {Folder} does not exist or is not accessible, skipping", folder.FullName);
-                yield break;
-            }
-            catch (Exception ex)
-            {
-                exception = ex;
-            }
-
-            if (exception != null)
-            {
-                _logger.LogError(exception, "Error enumerating folder {Folder}", folder.FullName);
-                yield break;
-            }
-
-            if (results != null)
-            {
-                foreach (var result in results)
+                bool moveNext;
+                try
                 {
-                    yield return result;
+                    moveNext = enumerator.MoveNext();
                 }
+                catch (ImapCommandException ex) when (ex.Message.Contains("Unknown Mailbox"))
+                {
+                    _logger.LogWarning("Folder {Folder} does not exist or is not accessible, skipping", folder.FullName);
+                    yield break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error enumerating folder {Folder}", folder.FullName);
+                    yield break;
+                }
+
+                if (!moveNext)
+                {
+                    break;
+                }
+
+                yield return enumerator.Current;
             }
         }
 
