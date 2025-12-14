@@ -44,6 +44,7 @@
     "warning": "Warning",
     "scheduled": "Scheduled",
     "success": "Success",
+    "created": "Created",
     "idle": "Idle"
   },
   "sources": {

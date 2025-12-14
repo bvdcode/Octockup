@@ -7,17 +7,19 @@ export type BackupOverallStatus =
   | "warning"
   | "scheduled"
   | "success"
+  | "created"
   | "idle";
 
 /**
  * Determines the overall status of a backup based on its schedules and snapshots
  * Priority (from highest to lowest):
  * 1. Running - backup is currently executing (blue)
- * 2. Failed - no successful snapshots at all (red, critical!)
- * 3. Warning - has successful snapshot, but schedule after it failed (orange)
- * 4. Scheduled - has pending schedules (yellow)
+ * 2. Scheduled - has pending schedules (yellow)
+ * 3. Failed - has failed schedules with errors (red)
+ * 4. Warning - has successful snapshot, but schedule after it failed (orange)
  * 5. Success - has successful snapshots, no errors after them (green)
- * 6. Idle - no activity (gray)
+ * 6. Created - new backup, no snapshots yet (gray)
+ * 7. Idle - has snapshots, no active schedules (gray)
  */
 export function getBackupOverallStatus(
   backup: BackupItem,
@@ -37,6 +39,16 @@ export function getBackupOverallStatus(
     return "running";
   }
 
+  // Priority 2: Scheduled - check for pending schedules FIRST (before checking snapshots)
+  const hasPendingSchedules = (backup.schedules || []).some(
+    (schedule) =>
+      schedule.status === BackupStatus.Created && !schedule.finishedAt,
+  );
+
+  if (hasPendingSchedules) {
+    return "scheduled";
+  }
+
   // Analyze snapshots - successful = has completedAt
   const completedSnapshots = (backup.snapshots || []).filter(
     (snapshot) => snapshot.completedAt,
@@ -48,9 +60,20 @@ export function getBackupOverallStatus(
       new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime(),
   )[0];
 
-  // Priority 2: Failed - no successful snapshots at all
+  // Priority 3: No snapshots yet - check if there are any failed schedules
   if (!latestSuccessfulSnapshot) {
-    return "failed";
+    // If there are failed schedules with errors, show as failed (red)
+    const hasFailedSchedules = (backup.schedules || []).some(
+      (schedule) =>
+        schedule.status === BackupStatus.Failed && schedule.errorMessage,
+    );
+
+    if (hasFailedSchedules) {
+      return "failed";
+    }
+
+    // Otherwise, it's just a new backup - show as created (gray)
+    return "created";
   }
 
   // Check schedules from backup.schedules (persistent data)
@@ -67,7 +90,7 @@ export function getBackupOverallStatus(
     return scheduleFinishTime > snapshotTime;
   });
 
-  // Priority 3: Warning - has successful snapshot, but schedule failed after it
+  // Priority 4: Warning - has successful snapshot, but schedule failed after it
   const hasFailedScheduleAfterSnapshot = schedulesAfterSnapshot.some(
     (schedule) =>
       (schedule.status === BackupStatus.Failed ||
@@ -79,21 +102,11 @@ export function getBackupOverallStatus(
     return "warning";
   }
 
-  // Priority 4: Scheduled - backup has pending schedules
-  const hasPendingSchedules = (backup.schedules || []).some(
-    (schedule) =>
-      schedule.status === BackupStatus.Created && !schedule.finishedAt,
-  );
-
-  if (hasPendingSchedules) {
-    return "scheduled";
-  }
-
   // Priority 5: Success - has successful snapshot(s) and no errors after
   if (latestSuccessfulSnapshot) {
     return "success";
   }
 
-  // Priority 6: Idle - no activity
+  // Priority 6: Idle - has snapshots but no active schedules
   return "idle";
 }

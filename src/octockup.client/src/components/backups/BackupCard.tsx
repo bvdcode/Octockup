@@ -66,6 +66,8 @@ export function BackupCard({
             ? theme.palette.warning.light
             : status === "success"
             ? theme.palette.success.main
+            : status === "created"
+            ? theme.palette.grey[500]
             : theme.palette.grey[300]
         }`,
       })}
