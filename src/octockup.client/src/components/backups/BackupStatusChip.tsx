@@ -35,7 +35,9 @@ export function BackupStatusChip({
   if (status === "failed") {
     const failedSchedule = (backup.schedules || []).find(
       (schedule) =>
-        schedule.status === BackupStatus.Failed && schedule.errorMessage,
+        (schedule.status === BackupStatus.Failed ||
+          schedule.status === BackupStatus.Canceled) &&
+        schedule.errorMessage,
     );
     errorMessage = failedSchedule?.errorMessage || t("backups.unknownError");
   }

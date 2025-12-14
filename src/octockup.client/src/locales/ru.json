@@ -233,7 +233,8 @@
       "created": "Создано",
       "running": "Выполняется",
       "failed": "Ошибка",
-      "completed": "Завершено"
+      "completed": "Завершено",
+      "canceled": "Отменено"
     },
     "nextRun": {
       "label": "След. запуск",

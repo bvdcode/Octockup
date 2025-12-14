@@ -83,6 +83,7 @@ export enum BackupStatus {
   Running = 1,
   Failed = 2,
   Completed = 3,
+  Canceled = 4,
 }
 
 export interface ScheduleItem {

@@ -70,7 +70,9 @@ export function getBackupOverallStatus(
   // Priority 3: Warning - has successful snapshot, but schedule failed after it
   const hasFailedScheduleAfterSnapshot = schedulesAfterSnapshot.some(
     (schedule) =>
-      schedule.status === BackupStatus.Failed && schedule.errorMessage,
+      (schedule.status === BackupStatus.Failed ||
+        schedule.status === BackupStatus.Canceled) &&
+      schedule.errorMessage,
   );
 
   if (hasFailedScheduleAfterSnapshot) {

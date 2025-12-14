@@ -68,6 +68,11 @@ namespace Octockup.Server.Jobs
                 logger.LogInformation("Schedule {ScheduleId} backup completed successfully", schedule.Id);
                 await report.SendAsync(report.Processed, "Backup completed successfully.", status: ScheduleStatus.Completed, cancellationToken: cancellationToken);
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                await HandleCancellationAsync(schedule, report);
+                return;
+            }
             catch (Exception ex)
             {
                 schedule.ErrorMessage = $"Backup failed: {ex.Message}";
@@ -407,6 +412,22 @@ namespace Octockup.Server.Jobs
                 Math.Abs((previousFile.LastModified.Value - currentFile.LastModified.Value).TotalSeconds) < 2;
 
             return previousFile.Hashsum != null && currentFile.Size == previousFile.Size && datesMatch;
+        }
+
+        private async Task HandleCancellationAsync(Schedule schedule, ScheduleReport report)
+        {
+            logger.LogInformation("Schedule {ScheduleId} backup canceled", schedule.Id);
+
+            schedule.Status = ScheduleStatus.Canceled;
+            schedule.ErrorMessage = "Backup was canceled.";
+            schedule.FinishedAt = DateTime.UtcNow;
+            await dbContext.SaveChangesAsync(CancellationToken.None);
+
+            await report.SendAsync(
+                report.Processed,
+                "Backup canceled.",
+                status: ScheduleStatus.Canceled,
+                cancellationToken: CancellationToken.None);
         }
 
         private async Task ReusePreviousFileAsync(
