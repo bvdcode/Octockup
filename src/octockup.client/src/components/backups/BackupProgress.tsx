@@ -61,7 +61,13 @@ export function BackupProgress({ report }: BackupProgressProps) {
           • {progress.toFixed(0)}%
         </Typography>
       </Box>
-      <Box display="flex" justifyContent="space-between" gap={2} mt={0.5}>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        gap={2}
+        mt={0.5}
+      >
         <Box display="flex" alignItems="center" gap={1}>
           <Typography variant="caption" color="text.secondary">
             {formatSpeed(report.speed)}
@@ -84,15 +90,10 @@ export function BackupProgress({ report }: BackupProgressProps) {
             {etaSeconds !== null && `~${formatDurationShort(etaSeconds)}`}
           </Typography>
           {report && !report.isEnumerationCompleted && (
-            <Box
-              sx={{
-                bottom: 8,
-                right: 8,
-                zIndex: 1,
-              }}
-            >
+            <>
+              <Divider orientation="vertical" flexItem />
               <EnumerationProgress />
-            </Box>
+            </>
           )}
         </Box>
       </Box>

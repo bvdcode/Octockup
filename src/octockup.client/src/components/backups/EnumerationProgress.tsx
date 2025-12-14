@@ -5,7 +5,7 @@ export function EnumerationProgress() {
   const { t } = useTranslation();
 
   return (
-    <Box display="flex" alignItems="center" gap={0.5} mb={0.5}>
+    <Box display="flex" alignItems="center" gap={0.5}>
       <CircularProgress
         size={12}
         sx={{
