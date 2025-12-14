@@ -29,6 +29,7 @@ export function BackupStatusChip({
     scheduled: "warning",
     success: "success",
     idle: "default",
+    created: "default",
   } as const;
 
   let errorMessage = "";
