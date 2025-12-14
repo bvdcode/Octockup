@@ -412,11 +412,11 @@ namespace Octockup.Server.Modules
 
             PutObjectRequest req = new()
             {
+                Key = key,
                 InputStream = data,
                 BucketName = _bucket,
                 UseChunkEncoding = false,
                 ContentType = MediaTypeNames.Application.Octet,
-                Key = key
             };
 
             return _s3.PutObjectAsync(req, cancellationToken);

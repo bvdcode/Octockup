@@ -21,7 +21,7 @@ namespace Octockup.Server.Modules
         private bool _useSsl;
         private ICollection<string>? _ignoredPaths;
         private ImapClient? _client;
-        private int _batchSize = 100;
+        private int _batchSize = 1000;
         private string? _rootPath;
         private readonly SemaphoreSlim _imapLock = new(1, 1);
         private char? _serverDirectorySeparator;
