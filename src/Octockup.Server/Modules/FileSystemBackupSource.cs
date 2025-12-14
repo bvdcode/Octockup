@@ -75,8 +75,58 @@ namespace Octockup.Server.Modules
                 throw new InvalidOperationException("Configured base directory is outside of root directory.");
             }
 
-            var searchOption = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
-            var files = Directory.EnumerateFiles(_baseDirectory, "*", searchOption);
+            if (recursive)
+            {
+                // Use manual traversal to skip ignored directories entirely
+                foreach (var file in EnumerateFilesRecursive(_baseDirectory, cancellationToken))
+                {
+                    yield return file;
+                }
+            }
+            else
+            {
+                // Non-recursive: just enumerate files in base directory
+                foreach (var file in Directory.EnumerateFiles(_baseDirectory, "*", SearchOption.TopDirectoryOnly))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var fileInfo = new FileInfo(file);
+                    var relativePath = Path.GetRelativePath(_baseDirectory, file);
+
+                    // Check if file is ignored
+                    if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + relativePath, fileInfo.Name, _ignoredPaths))
+                    {
+                        _logger.LogDebug("Skipping ignored file: {Name}", relativePath);
+                        continue;
+                    }
+
+                    yield return new BackupFileInfo
+                    {
+                        Path = relativePath,
+                        Name = fileInfo.Name,
+                        Size = fileInfo.Length,
+                        LastModified = fileInfo.LastWriteTimeUtc,
+                    };
+                }
+            }
+        }
+
+        private IEnumerable<BackupFileInfo> EnumerateFilesRecursive(string directory, CancellationToken cancellationToken)
+        {
+            // First, enumerate files in current directory
+            IEnumerable<string> files;
+            try
+            {
+                files = Directory.EnumerateFiles(directory, "*", SearchOption.TopDirectoryOnly);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Access denied to directory: {Directory}", directory);
+                yield break;
+            }
+            catch (DirectoryNotFoundException)
+            {
+                yield break;
+            }
 
             foreach (var file in files)
             {
@@ -84,7 +134,7 @@ namespace Octockup.Server.Modules
                 var fileInfo = new FileInfo(file);
                 var relativePath = Path.GetRelativePath(_baseDirectory, file);
 
-                // Check if file or its path is ignored
+                // Check if file is ignored
                 if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + relativePath, fileInfo.Name, _ignoredPaths))
                 {
                     _logger.LogDebug("Skipping ignored file: {Name}", relativePath);
@@ -99,6 +149,41 @@ namespace Octockup.Server.Modules
                     LastModified = fileInfo.LastWriteTimeUtc,
                 };
             }
+
+            // Then, recursively enumerate subdirectories (skipping ignored ones)
+            IEnumerable<string> subdirs;
+            try
+            {
+                subdirs = Directory.EnumerateDirectories(directory, "*", SearchOption.TopDirectoryOnly);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Access denied to enumerate subdirectories of: {Directory}", directory);
+                yield break;
+            }
+            catch (DirectoryNotFoundException)
+            {
+                yield break;
+            }
+
+            foreach (var subdir in subdirs)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var relativePath = Path.GetRelativePath(_baseDirectory, subdir);
+
+                // Check if directory is ignored - skip entire subtree if so
+                if (_ignoredPaths != null && ScheduleHelpers.IsDirectoryIgnored(relativePath, _ignoredPaths, PathSeparator))
+                {
+                    _logger.LogDebug("Skipping ignored directory: {Name}", relativePath);
+                    continue;
+                }
+
+                // Recurse into non-ignored directories
+                foreach (var file in EnumerateFilesRecursive(subdir, cancellationToken))
+                {
+                    yield return file;
+                }
+            }
         }
 
         public IEnumerable<string> GetDirectories(bool recursive = false, CancellationToken cancellationToken = default)
@@ -112,22 +197,71 @@ namespace Octockup.Server.Modules
                 throw new InvalidOperationException("Configured base directory is outside of root directory.");
             }
 
-            var searchOption = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
-            var directories = Directory.EnumerateDirectories(_baseDirectory, "*", searchOption);
+            if (recursive)
+            {
+                // Use manual traversal to skip ignored directories entirely
+                foreach (var dir in EnumerateDirectoriesRecursive(_baseDirectory, cancellationToken))
+                {
+                    yield return dir;
+                }
+            }
+            else
+            {
+                // Non-recursive: just enumerate directories in base directory
+                foreach (var dir in Directory.EnumerateDirectories(_baseDirectory, "*", SearchOption.TopDirectoryOnly))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var relativePath = Path.GetRelativePath(_baseDirectory, dir);
 
-            foreach (var dir in directories)
+                    // Check if directory is ignored
+                    if (_ignoredPaths != null && ScheduleHelpers.IsDirectoryIgnored(relativePath, _ignoredPaths, PathSeparator))
+                    {
+                        _logger.LogDebug("Skipping ignored directory: {Name}", relativePath);
+                        continue;
+                    }
+
+                    yield return relativePath;
+                }
+            }
+        }
+
+        private IEnumerable<string> EnumerateDirectoriesRecursive(string directory, CancellationToken cancellationToken)
+        {
+            IEnumerable<string> subdirs;
+            try
+            {
+                subdirs = Directory.EnumerateDirectories(directory, "*", SearchOption.TopDirectoryOnly);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Access denied to enumerate subdirectories of: {Directory}", directory);
+                yield break;
+            }
+            catch (DirectoryNotFoundException)
+            {
+                yield break;
+            }
+
+            foreach (var subdir in subdirs)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var relativePath = Path.GetRelativePath(_baseDirectory, dir);
+                var relativePath = Path.GetRelativePath(_baseDirectory, subdir);
 
-                // Check if directory is ignored
-                if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + relativePath, null, _ignoredPaths))
+                // Check if directory is ignored - skip entire subtree if so
+                if (_ignoredPaths != null && ScheduleHelpers.IsDirectoryIgnored(relativePath, _ignoredPaths, PathSeparator))
                 {
                     _logger.LogDebug("Skipping ignored directory: {Name}", relativePath);
                     continue;
                 }
 
+                // Return this directory
                 yield return relativePath;
+
+                // Recurse into non-ignored directories
+                foreach (var nestedDir in EnumerateDirectoriesRecursive(subdir, cancellationToken))
+                {
+                    yield return nestedDir;
+                }
             }
         }
 

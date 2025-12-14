@@ -96,13 +96,14 @@ namespace Octockup.Server.Helpers
         }
 
         /// <summary>
-        /// Checks if a path should be ignored based on ignore patterns.
-        /// Patterns starting with '/' match from root (StartsWith).
-        /// Patterns without '/' match anywhere in path (Contains).
-        /// Supports simple wildcards: '*' matches any characters.
+        /// Checks if a directory should be ignored during enumeration.
+        /// This allows skipping entire directory trees without iterating their contents.
         /// </summary>
-        public static bool IsPathIgnored(string path, string? fileName, ICollection<string> ignoredPaths)
+        public static bool IsDirectoryIgnored(string relativePath, ICollection<string> ignoredPaths, char pathSeparator)
         {
+            // Normalize path to use forward slashes for pattern matching
+            var normalizedPath = "/" + relativePath.Replace(pathSeparator, '/').Trim('/');
+
             foreach (var pattern in ignoredPaths)
             {
                 if (string.IsNullOrWhiteSpace(pattern))
@@ -110,10 +111,56 @@ namespace Octockup.Server.Helpers
                     continue;
                 }
 
-                var trimmedPattern = pattern.Trim();
+                var trimmedPattern = pattern.Trim().Replace('\\', '/').TrimEnd('/');
+
+                if (trimmedPattern.StartsWith('/'))
+                {
+                    // Pattern starts with '/' → match from root
+                    // Check if directory matches the pattern or is a subdirectory of it
+                    if (MatchesDirectoryPattern(normalizedPath, trimmedPattern))
+                    {
+                        return true;
+                    }
+                }
+                else
+                {
+                    // Pattern without leading '/' → match anywhere in path
+                    // Check if the pattern appears as a segment or segment sequence in the path
+                    if (ContainsPathPattern(normalizedPath, "/" + trimmedPattern))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Checks if a path should be ignored based on ignore patterns.
+        /// Patterns starting with '/' match from root.
+        /// Patterns without leading '/' match anywhere in path.
+        /// Supports simple wildcards: '*' matches any characters.
+        /// </summary>
+        public static bool IsPathIgnored(string path, string? fileName, ICollection<string> ignoredPaths)
+        {
+            // Normalize path to use forward slashes
+            var normalizedPath = path.Replace('\\', '/');
+            if (!normalizedPath.StartsWith('/'))
+            {
+                normalizedPath = "/" + normalizedPath;
+            }
+
+            foreach (var pattern in ignoredPaths)
+            {
+                if (string.IsNullOrWhiteSpace(pattern))
+                {
+                    continue;
+                }
+
+                var trimmedPattern = pattern.Trim().Replace('\\', '/').TrimEnd('/');
 
                 // Check if filename matches exactly (for patterns like "swap.img")
-                if (fileName != null && fileName.Equals(trimmedPattern, StringComparison.OrdinalIgnoreCase))
+                if (fileName != null && !trimmedPattern.Contains('/') && MatchesPattern(fileName, trimmedPattern))
                 {
                     return true;
                 }
@@ -121,25 +168,105 @@ namespace Octockup.Server.Helpers
                 // Pattern starts with '/' → match from root
                 if (trimmedPattern.StartsWith('/'))
                 {
-                    if (MatchesPattern(path, trimmedPattern))
+                    if (MatchesPathPattern(normalizedPath, trimmedPattern))
                     {
                         return true;
                     }
                 }
                 else
                 {
-                    // Pattern without '/' → match anywhere in path
-                    // Split path by '/' and check each segment
-                    var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
-                    foreach (var segment in segments)
+                    // Pattern without leading '/' → match anywhere in path
+                    // This should match segment sequences like "postgres/data/18/docker/pg_wal"
+                    if (ContainsPathPattern(normalizedPath, "/" + trimmedPattern))
                     {
-                        if (MatchesPattern("/" + segment, "/" + trimmedPattern))
-                        {
-                            return true;
-                        }
+                        return true;
                     }
                 }
             }
+            return false;
+        }
+
+        /// <summary>
+        /// Checks if a path matches a pattern, where the pattern matches the path or any parent directory.
+        /// </summary>
+        private static bool MatchesPathPattern(string path, string pattern)
+        {
+            // Check exact match or path starts with pattern as a directory
+            if (MatchesPattern(path, pattern))
+            {
+                return true;
+            }
+
+            // Check if path is inside a directory that matches the pattern
+            if (!pattern.Contains('*'))
+            {
+                // For non-wildcard patterns, check if path starts with pattern + /
+                return path.StartsWith(pattern + "/", StringComparison.OrdinalIgnoreCase) ||
+                       path.Equals(pattern, StringComparison.OrdinalIgnoreCase);
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Checks if a directory path matches a pattern (for directory skipping).
+        /// </summary>
+        private static bool MatchesDirectoryPattern(string dirPath, string pattern)
+        {
+            // Directory matches if it equals the pattern, is inside the pattern, or the pattern is inside the directory
+            if (!pattern.Contains('*'))
+            {
+                // Exact match
+                if (dirPath.Equals(pattern, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+                // Directory is inside ignored path
+                if (dirPath.StartsWith(pattern + "/", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+                // Ignored path is inside this directory (we should skip because children will be ignored)
+                // Actually no - we should NOT skip parent directories, only the exact ones
+                return false;
+            }
+
+            return MatchesPattern(dirPath, pattern);
+        }
+
+        /// <summary>
+        /// Checks if a path contains a pattern anywhere (for patterns without leading /).
+        /// </summary>
+        private static bool ContainsPathPattern(string path, string patternWithSlash)
+        {
+            if (!patternWithSlash.Contains('*'))
+            {
+                // Check if pattern appears anywhere as a path segment sequence
+                // e.g., "/a/b/postgres/data/x" contains "/postgres/data"
+                int idx = path.IndexOf(patternWithSlash, StringComparison.OrdinalIgnoreCase);
+                if (idx >= 0)
+                {
+                    // Found - now check it's at segment boundary
+                    int endIdx = idx + patternWithSlash.Length;
+                    // Must end at end of string or at a path separator
+                    return endIdx >= path.Length || path[endIdx] == '/';
+                }
+                return false;
+            }
+
+            // For wildcard patterns, we need to check each possible starting position
+            var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            var patternSegments = patternWithSlash.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+            for (int startIdx = 0; startIdx <= segments.Length - patternSegments.Length; startIdx++)
+            {
+                var subPath = "/" + string.Join("/", segments.Skip(startIdx));
+                if (MatchesPattern(subPath, patternWithSlash))
+                {
+                    return true;
+                }
+            }
+
             return false;
         }
 
