@@ -476,7 +476,7 @@ namespace Octockup.Server.Jobs
                 .OrderByDescending(x => x.CreatedAt)
                 .SelectMany(x => x.Files)
                 .ToListAsync(cancellationToken: cancellationToken);
-            return files.ToDictionary(x => x.Path, x => x);
+            return files.DistinctBy(x => x.Hashsum).ToDictionary(x => x.Path, x => x);
         }
 
         private Task<HashSet<string>> LoadChunkHashesAsync(Guid storageId, CancellationToken cancellationToken)
