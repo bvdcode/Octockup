@@ -40,9 +40,8 @@ export default function BackupsPage() {
     cancelingId: null,
   });
   const [backups, setBackups] = useState<BackupItem[]>([]);
-  const [scheduleReports, setScheduleReports] = useState<
-    Map<string, ScheduleReport>
-  >(new Map());
+  const [scheduleReports] = useState<Map<string, ScheduleReport>>(new Map());
+  const [, setReportsVersion] = useState(0);
   const [scheduleToBackupMap, setScheduleToBackupMap] = useState<
     Record<string, string>
   >({});
@@ -112,18 +111,15 @@ export default function BackupsPage() {
     const handler = (report: ScheduleReport) => {
       const backupId = report.backupId;
 
-      // Update schedule reports - one report per backup
-      setScheduleReports((prev) => {
-        const newMap = new Map(prev);
-        if (report.status === BackupStatus.Running) {
-          // Keep running report for progress display
-          newMap.set(backupId, report);
-        } else {
-          // Remove completed/failed/cancelled report
-          newMap.delete(backupId);
-        }
-        return newMap;
-      });
+      // Mutate the Map directly instead of cloning it
+      if (report.status === BackupStatus.Running) {
+        scheduleReports.set(backupId, report);
+      } else {
+        scheduleReports.delete(backupId);
+      }
+
+      // Force re-render by incrementing version
+      setReportsVersion((v) => v + 1);
 
       // Reload backups whenever status changes to get fresh data
       if (report.status !== BackupStatus.Running) {
@@ -144,7 +140,7 @@ export default function BackupsPage() {
     return () => {
       connection.off("ScheduleReport", handler);
     };
-  }, [connection, isConnected, reloadBackups]);
+  }, [connection, isConnected, reloadBackups, scheduleReports]);
 
   const handleRename = async (backupId: string, newTag: string) => {
     await backupsApi.rename(backupId, newTag);
@@ -195,13 +191,10 @@ export default function BackupsPage() {
 
     try {
       // Optimistically clear running report and mark schedule as failed to stop showing Running
-      setScheduleReports((prev) => {
-        const newMap = new Map(prev);
-        if (backupId) {
-          newMap.delete(backupId);
-        }
-        return newMap;
-      });
+      if (backupId) {
+        scheduleReports.delete(backupId);
+        setReportsVersion((v) => v + 1);
+      }
 
       setBackups((prev) =>
         prev.map((b) => {
