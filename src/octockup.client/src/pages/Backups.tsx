@@ -6,9 +6,10 @@ import {
   Typography,
   CardContent,
   CircularProgress,
+  Divider,
 } from "@mui/material";
 import { AddCircleOutline } from "@mui/icons-material";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import type { BackupItem, ScheduleReport } from "../types/api";
@@ -19,6 +20,7 @@ import { BackupStatus } from "../types/api";
 import { getBackupOverallStatus } from "../utils/backupUtils";
 import { EditIgnoredPathsDialog } from "../components/EditIgnoredPathsDialog";
 import { BackupCard } from "../components/backups/BackupCard";
+import { formatSize } from "../utils/formatUtils";
 
 interface State {
   loading: boolean;
@@ -234,6 +236,28 @@ export default function BackupsPage() {
     setState((s) => ({ ...s, deletingId: null }));
   };
 
+  const totalStats = useMemo(() => {
+    let totalFiles = 0;
+    let totalSize = 0;
+
+    backups.forEach((backup) => {
+      const lastSnapshot = backup.snapshots
+        ?.filter((s) => s.completedAt)
+        .sort(
+          (a, b) =>
+            new Date(b.completedAt!).getTime() -
+            new Date(a.completedAt!).getTime(),
+        )[0];
+
+      if (lastSnapshot) {
+        totalFiles += lastSnapshot.filesCount;
+        totalSize += lastSnapshot.totalSize;
+      }
+    });
+
+    return { totalFiles, totalSize };
+  }, [backups]);
+
   if (state.loading && backups.length === 0) {
     return (
       <Box display="flex" justifyContent="center" p={4}>
@@ -246,6 +270,19 @@ export default function BackupsPage() {
     <Stack spacing={3}>
       <Box display="flex" alignItems="center" justifyContent="space-between">
         <Typography variant="h5">{t("backups.title")}</Typography>
+        <Box display="flex" alignItems="center" gap={2}>
+          <Typography variant="body2" color="text.secondary">
+            {t("backups.totalFiles", {
+              count: totalStats.totalFiles,
+            })}
+          </Typography>
+          <Divider orientation="vertical" flexItem />
+          <Typography variant="body2" color="text.secondary">
+            {t("backups.totalSize", {
+              size: formatSize(totalStats.totalSize),
+            })}
+          </Typography>
+        </Box>
         <Button
           variant="contained"
           startIcon={<AddCircleOutline />}
