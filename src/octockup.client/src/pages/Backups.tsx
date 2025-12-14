@@ -7,6 +7,9 @@ import {
   CardContent,
   CircularProgress,
   Divider,
+  Select,
+  MenuItem,
+  FormControl,
 } from "@mui/material";
 import { AddCircleOutline } from "@mui/icons-material";
 import { useEffect, useState, useCallback, useMemo } from "react";
@@ -53,6 +56,9 @@ export default function BackupsPage() {
   const [savingIgnoredPathsId, setSavingIgnoredPathsId] = useState<
     string | null
   >(null);
+  const [selectedStorageId, setSelectedStorageId] = useState<string | null>(
+    null,
+  );
 
   const reloadBackups = useCallback(async () => {
     try {
@@ -240,7 +246,11 @@ export default function BackupsPage() {
     let totalFiles = 0;
     let totalSize = 0;
 
-    backups.forEach((backup) => {
+    const filteredBackups = selectedStorageId
+      ? backups.filter((b) => b.storageId === selectedStorageId)
+      : backups;
+
+    filteredBackups.forEach((backup) => {
       const lastSnapshot = backup.snapshots
         ?.filter((s) => s.completedAt)
         .sort(
@@ -256,7 +266,28 @@ export default function BackupsPage() {
     });
 
     return { totalFiles, totalSize };
+  }, [backups, selectedStorageId]);
+
+  const uniqueStorages = useMemo(() => {
+    const storageMap = new Map<string, { id: string; tag: string }>();
+    backups.forEach((backup) => {
+      if (!storageMap.has(backup.storageId)) {
+        storageMap.set(backup.storageId, {
+          id: backup.storageId,
+          tag: backup.storage.tag,
+        });
+      }
+    });
+    return Array.from(storageMap.values()).sort((a, b) =>
+      a.tag.localeCompare(b.tag),
+    );
   }, [backups]);
+
+  const filteredBackups = useMemo(() => {
+    return selectedStorageId
+      ? backups.filter((b) => b.storageId === selectedStorageId)
+      : backups;
+  }, [backups, selectedStorageId]);
 
   if (state.loading && backups.length === 0) {
     return (
@@ -269,8 +300,9 @@ export default function BackupsPage() {
   return (
     <Stack spacing={3}>
       <Box display="flex" alignItems="center" justifyContent="space-between">
-        <Typography variant="h5">{t("backups.title")}</Typography>
         <Box display="flex" alignItems="center" gap={2}>
+          <Typography variant="h5">{t("backups.title")}</Typography>
+          <Divider orientation="vertical" flexItem />
           <Typography variant="body2" color="text.secondary">
             {t("backups.totalFiles", {
               count: totalStats.totalFiles,
@@ -283,13 +315,33 @@ export default function BackupsPage() {
             })}
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddCircleOutline />}
-          onClick={() => navigate("/backups/new")}
-        >
-          {t("backups.newBackup")}
-        </Button>
+        <Box display="flex" alignItems="center" gap={2}>
+          <FormControl size="small" sx={{ minWidth: 150 }}>
+            <Select
+              value={selectedStorageId || "all"}
+              onChange={(e) =>
+                setSelectedStorageId(
+                  e.target.value === "all" ? null : e.target.value,
+                )
+              }
+              displayEmpty
+            >
+              <MenuItem value="all">{t("backups.allStorages")}</MenuItem>
+              {uniqueStorages.map((storage) => (
+                <MenuItem key={storage.id} value={storage.id}>
+                  {storage.tag}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Button
+            variant="contained"
+            startIcon={<AddCircleOutline />}
+            onClick={() => navigate("/backups/new")}
+          >
+            {t("backups.newBackup")}
+          </Button>
+        </Box>
       </Box>
       {backups.length === 0 ? (
         <Card>
@@ -301,7 +353,7 @@ export default function BackupsPage() {
         </Card>
       ) : (
         <Stack spacing={1}>
-          {backups
+          {filteredBackups
             .slice()
             .sort((a, b) => {
               const statusA = getBackupOverallStatus(

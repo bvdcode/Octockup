@@ -175,7 +175,9 @@
     "lastBackup": "Последний бэкап: {{relativeTime}}",
     "status": "Статус",
     "unknownError": "Неизвестная ошибка",
-    "enumerating": "Подсчёт файлов..."
+    "enumerating": "Подсчёт файлов...",
+    "filterByStorage": "Фильтр по хранилищу",
+    "allStorages": "Все хранилища"
   },
   "snapshots": {
     "title": "Снапшоты",

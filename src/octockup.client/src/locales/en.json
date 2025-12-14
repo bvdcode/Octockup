@@ -151,7 +151,9 @@
     "lastBackup": "Last backup: {{relativeTime}}",
     "status": "Status",
     "unknownError": "Unknown error",
-    "enumerating": "Enumerating..."
+    "enumerating": "Enumerating...",
+    "filterByStorage": "Filter by storage",
+    "allStorages": "All storages"
   },
   "snapshots": {
     "title": "Snapshots",
