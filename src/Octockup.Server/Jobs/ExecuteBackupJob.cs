@@ -40,7 +40,7 @@ namespace Octockup.Server.Jobs
         {
             List<Task> tasks = [];
             List<IServiceScope> scopes = [];
-            const int concurrencyLevel = 2;
+            const int concurrencyLevel = 4;
             List<Guid> runningIds = [];
 
             for (int i = 0; i < concurrencyLevel; i++)
