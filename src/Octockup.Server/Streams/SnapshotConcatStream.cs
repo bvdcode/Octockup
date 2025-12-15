@@ -79,7 +79,6 @@ namespace Octockup.Server.Streams
             Stream decompressed = algorithm switch
             {
                 CompressionAlgorithm.None => decrypted,
-                CompressionAlgorithm.Brotli => CompressionHelpers.CreateLegacyDecompressionStream(decrypted, leaveOpen: false),
                 CompressionHelpers.Algorithm => CompressionHelpers.CreateDecompressionStream(decrypted, leaveOpen: false),
                 _ => throw new NotSupportedException($"Unsupported compression algorithm: {algorithm}"),
             };

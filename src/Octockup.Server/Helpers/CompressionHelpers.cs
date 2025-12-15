@@ -1,5 +1,4 @@
 ﻿using EasyExtensions.Models.Enums;
-using System.IO.Compression;
 
 namespace Octockup.Server.Helpers
 {
@@ -19,15 +18,6 @@ namespace Octockup.Server.Helpers
         public static Stream CreateDecompressionStream(Stream decrypted, bool leaveOpen = true)
         {
             return new ZstdSharp.DecompressionStream(decrypted, leaveOpen: leaveOpen);
-        }
-
-        internal static BrotliStream CreateLegacyDecompressionStream(Stream decrypted, bool leaveOpen)
-        {
-            return new BrotliStream(
-                decrypted,
-                CompressionMode.Decompress,
-                leaveOpen: leaveOpen
-            );
         }
 
         internal static bool ShouldCompressChunk(string fileNameOrPath, long chunkLength)
