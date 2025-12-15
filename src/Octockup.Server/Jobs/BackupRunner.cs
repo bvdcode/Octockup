@@ -220,7 +220,7 @@ namespace Octockup.Server.Jobs
 
             if (previousFile != null && CanReusePreviousFile(previousFile, file, out bool datesMatch))
             {
-                await ReusePreviousFileAsync(snapshot, previousFile, file, datesMatch, stopwatch, report, counter, cancellationToken);
+                await ReusePreviousFileAsync(schedule, snapshot, previousFile, file, datesMatch, stopwatch, report, counter, cancellationToken);
                 return counter;
             }
 
@@ -292,6 +292,11 @@ namespace Octockup.Server.Jobs
             if (stopwatch.Elapsed.TotalSeconds > 10)
             {
                 await dbContext.SaveChangesAsync(cancellationToken);
+                // Clear change tracker to release memory from tracked entities
+                dbContext.ChangeTracker.Clear();
+                // Re-attach entities to continue tracking them
+                dbContext.Attach(snapshot);
+                dbContext.Attach(schedule);
                 stopwatch.Restart();
             }
 
@@ -313,6 +318,9 @@ namespace Octockup.Server.Jobs
         {
             using var chunker = new ChunkedStream(stream, ChunkSize);
             byte[] buffer = ArrayPool<byte>.Shared.Rent(ChunkSize);
+            // Reusable streams to avoid allocations per chunk
+            MemoryStream? compressedStream = null;
+            MemoryStream? encryptedStream = null;
             try
             {
                 using var fileHasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
@@ -357,8 +365,18 @@ namespace Octockup.Server.Jobs
                         logger.LogInformation("Uploading chunk {shortHash} for file {FileName}, size: {size}", shortHash, file.Name, size);
 
                         chunk.Seek(0, SeekOrigin.Begin);
-                        await using var compressed = new MemoryStream();
-                        await using (var brotli = new BrotliStream(compressed, CompressionLevel.Optimal, leaveOpen: true))
+                        
+                        // Reuse or create compressed stream
+                        if (compressedStream == null)
+                        {
+                            compressedStream = new MemoryStream(ChunkSize);
+                        }
+                        else
+                        {
+                            compressedStream.SetLength(0);
+                        }
+                        
+                        await using (var brotli = new BrotliStream(compressedStream, CompressionLevel.Optimal, leaveOpen: true))
                         {
                             int r;
                             while ((r = await chunk.ReadAsync(buffer.AsMemory(0, Math.Min(buffer.Length, ChunkSize)), cancellationToken)) > 0)
@@ -367,9 +385,19 @@ namespace Octockup.Server.Jobs
                             }
                         }
 
-                        compressed.Seek(0, SeekOrigin.Begin);
-                        using var encryptedStream = new MemoryStream();
-                        await crypto.EncryptAsync(compressed, encryptedStream, ct: cancellationToken);
+                        compressedStream.Seek(0, SeekOrigin.Begin);
+                        
+                        // Reuse or create encrypted stream
+                        if (encryptedStream == null)
+                        {
+                            encryptedStream = new MemoryStream(ChunkSize);
+                        }
+                        else
+                        {
+                            encryptedStream.SetLength(0);
+                        }
+                        
+                        await crypto.EncryptAsync(compressedStream, encryptedStream, ct: cancellationToken);
                         encryptedStream.Seek(0, SeekOrigin.Begin);
                         storedSize = encryptedStream.Length;
                         await storage.UploadAsync(path, encryptedStream, cancellationToken);
@@ -407,6 +435,8 @@ namespace Octockup.Server.Jobs
             finally
             {
                 ArrayPool<byte>.Shared.Return(buffer);
+                compressedStream?.Dispose();
+                encryptedStream?.Dispose();
             }
         }
 
@@ -474,6 +504,7 @@ namespace Octockup.Server.Jobs
         }
 
         private async Task ReusePreviousFileAsync(
+            Schedule schedule,
             Snapshot snapshot,
             SnapshotFile previousFile,
             BackupFileInfo currentFile,
@@ -498,10 +529,17 @@ namespace Octockup.Server.Jobs
                 ChunkHashes = previousFile.ChunkHashes,
             };
             await dbContext.SnapshotFiles.AddAsync(snapshotFile, cancellationToken);
+            snapshot.TotalSize += snapshotFile.Size;
+            snapshot.FilesCount += 1;
 
             if (stopwatch.Elapsed.TotalSeconds > 10)
             {
                 await dbContext.SaveChangesAsync(cancellationToken);
+                // Clear change tracker to release memory from tracked entities
+                dbContext.ChangeTracker.Clear();
+                // Re-attach entities to continue tracking them
+                dbContext.Attach(snapshot);
+                dbContext.Attach(schedule);
                 stopwatch.Restart();
             }
 
@@ -535,13 +573,24 @@ namespace Octockup.Server.Jobs
 
         private async Task<IDictionary<string, SnapshotFile>> GetFilesFromLastSnapshotAsync(Guid backupId, CancellationToken cancellationToken)
         {
-            var files = await dbContext.Snapshots
+            var lastSnapshot = await dbContext.Snapshots
                 .AsNoTracking()
-                .Where(x => x.BackupId == backupId)
+                .Where(x => x.BackupId == backupId && x.CompletedAt != null)
                 .OrderByDescending(x => x.CreatedAt)
-                .SelectMany(x => x.Files)
+                .Take(1)
+                .FirstOrDefaultAsync(cancellationToken: cancellationToken);
+
+            if (lastSnapshot == null)
+            {
+                return new Dictionary<string, SnapshotFile>();
+            }
+
+            var files = await dbContext.SnapshotFiles
+                .AsNoTracking()
+                .Where(x => x.SnapshotId == lastSnapshot.Id)
                 .ToListAsync(cancellationToken: cancellationToken);
-            return files.DistinctBy(x => x.Path).ToDictionary(x => x.Path, x => x);
+
+            return files.ToDictionary(x => x.Path, x => x);
         }
 
         private Task<HashSet<string>> LoadChunkHashesAsync(Guid storageId, CancellationToken cancellationToken)

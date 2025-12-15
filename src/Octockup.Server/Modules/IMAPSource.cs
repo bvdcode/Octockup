@@ -494,10 +494,15 @@ namespace Octockup.Server.Modules
                     }
 
                     await folder.OpenAsync(FolderAccess.ReadOnly, cancellationToken);
-                    var message = await folder.GetMessageAsync(uid);
+                    var message = await folder.GetMessageAsync(uid, cancellationToken);
                     await folder.CloseAsync(cancellationToken: cancellationToken);
 
-                    var ms = new MemoryStream();
+                    // Pre-allocate MemoryStream with known size to avoid resizing
+                    int initialCapacity = file.Size.HasValue && file.Size.Value > 0 && file.Size.Value < int.MaxValue
+                        ? (int)file.Size.Value
+                        : 64 * 1024; // 64KB default
+                    
+                    var ms = new MemoryStream(initialCapacity);
                     await message.WriteToAsync(ms, cancellationToken);
                     ms.Position = 0;
 

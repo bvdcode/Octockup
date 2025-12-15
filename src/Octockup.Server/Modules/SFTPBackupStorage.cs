@@ -317,6 +317,12 @@ namespace Octockup.Server.Modules
                 var stream = _sftp.OpenRead(remote);
                 return stream ?? Stream.Null;
             }
+            catch (SftpPathNotFoundException ex)
+            {
+                // File was deleted/moved between enumeration and download - this is normal for temp files
+                _logger.LogWarning(ex, "File no longer exists on SFTP server: {Path}", remote);
+                return Stream.Null;
+            }
             catch (SftpPermissionDeniedException ex) when (_skipPermissionDenied)
             {
                 _logger.LogWarning(ex, "Permission denied when downloading file from SFTP: {Path}", remote);

@@ -8,10 +8,11 @@ namespace Octockup.Server.Collections
         private readonly IEnumerable<T> _lazyCollection = lazyCollection ?? throw new ArgumentNullException(nameof(lazyCollection));
 
         private readonly object _sync = new();
-        private readonly List<T> _buffer = [];
+        private readonly Queue<T> _buffer = new();
 
         private bool _loadingStarted;
         private bool _isCompleted;
+        private int _totalLoaded;
         private Exception? _loadingException;
         private readonly ManualResetEventSlim _itemOrCompleted = new(initialState: false);
 
@@ -32,7 +33,7 @@ namespace Octockup.Server.Collections
             {
                 lock (_sync)
                 {
-                    return _buffer.Count;
+                    return _totalLoaded;
                 }
             }
         }
@@ -41,18 +42,18 @@ namespace Octockup.Server.Collections
         {
             StartBackgroundLoadingIfNeeded();
 
-            var index = 0;
-
             while (true)
             {
                 T item;
                 bool shouldWait;
+                bool hasItem;
 
                 lock (_sync)
                 {
-                    if (index < _buffer.Count)
+                    if (_buffer.Count > 0)
                     {
-                        item = _buffer[index++];
+                        item = _buffer.Dequeue();
+                        hasItem = true;
                         shouldWait = false;
                     }
                     else if (_isCompleted)
@@ -67,6 +68,7 @@ namespace Octockup.Server.Collections
                     else
                     {
                         shouldWait = true;
+                        hasItem = false;
                         item = default!;
                     }
                 }
@@ -78,7 +80,10 @@ namespace Octockup.Server.Collections
                     continue;
                 }
 
-                yield return item;
+                if (hasItem)
+                {
+                    yield return item;
+                }
             }
         }
 
@@ -106,7 +111,8 @@ namespace Octockup.Server.Collections
                         {
                             lock (_sync)
                             {
-                                _buffer.Add(item);
+                                _buffer.Enqueue(item);
+                                _totalLoaded++;
                                 _itemOrCompleted.Set();
                             }
                         }
