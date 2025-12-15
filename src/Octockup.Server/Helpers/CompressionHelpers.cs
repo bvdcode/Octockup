@@ -9,10 +9,7 @@ namespace Octockup.Server.Helpers
         /// Specifies the compression algorithm to use.
         /// </summary>
         public const CompressionAlgorithm Algorithm = CompressionAlgorithm.Zstd;
-
-        public const string AppExtension = "oct";
-        public const string CompressionExtension = "zst";
-        public const string LegacyCompressionExtension = "br";
+        public const string Extension = "oct";
 
         public static Stream CreateCompressionStream(Stream compressedStream)
         {
@@ -31,26 +28,6 @@ namespace Octockup.Server.Helpers
                 CompressionMode.Decompress,
                 leaveOpen: leaveOpen
             );
-        }
-
-        internal static CompressionAlgorithm DetectAlgorithmFromPath(string path)
-        {
-            if (path.EndsWith($"{CompressionExtension}.{AppExtension}"))
-            {
-                return CompressionAlgorithm.Zstd;
-            }
-            else if (path.EndsWith($"{LegacyCompressionExtension}.{AppExtension}"))
-            {
-                return CompressionAlgorithm.Brotli;
-            }
-            else if (path.EndsWith($".{AppExtension}"))
-            {
-                return CompressionAlgorithm.None;
-            }
-            else
-            {
-                throw new InvalidDataException("Unknown compression format for path: " + path);
-            }
         }
 
         internal static bool ShouldCompressChunk(string fileNameOrPath, long chunkLength)

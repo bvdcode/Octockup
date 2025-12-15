@@ -354,77 +354,68 @@ namespace Octockup.Server.Jobs
                     logger.LogInformation("Processing chunk {shortHash} for file {FileName}", shortHash, file.Path);
 
                     long storedSize = 0;
-                    string path = ScheduleHelpers.SplitHash(hash, storage.PathSeparator);
+                    string path = ScheduleHelpers.SplitPlainHash(hash, storage.PathSeparator);
                     bool exists = await storage.ExistsAsync(path, cancellationToken) ?? false;
                     CompressionAlgorithm algorithm;
-                    if (!exists)
+                    if (exists)
                     {
-                        string size = $"{(chunkLength / (1024.0 * 1024.0)):F2} MB";
-                        logger.LogInformation("Uploading chunk {shortHash} for file {FileName}, size: {size}", shortHash, file.Name, size);
+                        throw new InvalidOperationException($"Chunk {shortHash} for file {file.Name} already exists in storage according to ExistsAsync check, but was not found in DB. Hash: {hash}, Path: {path}");
+                    }
+                    string size = $"{(chunkLength / (1024.0 * 1024.0)):F2} MB";
+                    logger.LogInformation("Uploading chunk {shortHash} for file {FileName}, size: {size}", shortHash, file.Name, size);
 
-                        chunk.Seek(0, SeekOrigin.Begin);
+                    chunk.Seek(0, SeekOrigin.Begin);
 
-                        Stream src = chunk;
-                        bool needsCompression = CompressionHelpers.ShouldCompressChunk(file.Name ?? file.Path, chunkLength);
-                        if (needsCompression)
+                    Stream src = chunk;
+                    bool needsCompression = CompressionHelpers.ShouldCompressChunk(file.Name ?? file.Path, chunkLength);
+                    if (needsCompression)
+                    {
+                        await using var compressedStream = new MemoryStream();
+                        await using (var compressed = CompressionHelpers.CreateCompressionStream(compressedStream))
                         {
-                            await using var compressedStream = new MemoryStream();
-                            await using (var compressed = CompressionHelpers.CreateCompressionStream(compressedStream))
+                            int r;
+                            while ((r = await chunk.ReadAsync(buffer.AsMemory(0, Math.Min(buffer.Length, ChunkSize)), cancellationToken)) > 0)
                             {
-                                int r;
-                                while ((r = await chunk.ReadAsync(buffer.AsMemory(0, Math.Min(buffer.Length, ChunkSize)), cancellationToken)) > 0)
-                                {
-                                    await compressed.WriteAsync(buffer.AsMemory(0, r), cancellationToken);
-                                }
+                                await compressed.WriteAsync(buffer.AsMemory(0, r), cancellationToken);
                             }
-                            compressedStream.Seek(0, SeekOrigin.Begin);
-                            if (compressedStream.Length >= chunkLength)
-                            {
-                                // Compression did not reduce size enough, use original
-                                logger.LogInformation("Chunk {shortHash} for file {FileName} compression did not reduce size enough ({originalSize} to {compressedSize}), using original",
-                                    shortHash, file.Name, size,
-                                    $"{(compressedStream.Length / (1024.0 * 1024.0)):F2} MB");
-                                chunk.Seek(0, SeekOrigin.Begin);
-                                src = chunk;
-                                algorithm = CompressionAlgorithm.None;
-                            }
-                            else
-                            {
-                                src = compressedStream;
-                                algorithm = CompressionHelpers.Algorithm;
-                                logger.LogInformation("Chunk {shortHash} for file {FileName} compressed from {originalSize} to {compressedSize} using {algorithm}",
-                                    shortHash, file.Name, size,
-                                    $"{(src.Length / (1024.0 * 1024.0)):F2} MB",
-                                    algorithm);
-                            }
+                        }
+                        compressedStream.Seek(0, SeekOrigin.Begin);
+                        if (compressedStream.Length >= chunkLength)
+                        {
+                            // Compression did not reduce size enough, use original
+                            logger.LogInformation("Chunk {shortHash} for file {FileName} compression did not reduce size enough ({originalSize} to {compressedSize}), using original",
+                                shortHash, file.Name, size,
+                                $"{(compressedStream.Length / (1024.0 * 1024.0)):F2} MB");
+                            chunk.Seek(0, SeekOrigin.Begin);
+                            src = chunk;
+                            algorithm = CompressionAlgorithm.None;
                         }
                         else
                         {
-                            algorithm = CompressionAlgorithm.None;
-                            logger.LogInformation("Chunk {shortHash} for file {FileName} is not compressed due to insufficient size reduction", shortHash, file.Name);
+                            src = compressedStream;
+                            algorithm = CompressionHelpers.Algorithm;
+                            logger.LogInformation("Chunk {shortHash} for file {FileName} compressed from {originalSize} to {compressedSize} using {algorithm}",
+                                shortHash, file.Name, size,
+                                $"{(src.Length / (1024.0 * 1024.0)):F2} MB",
+                                algorithm);
                         }
-
-                        using var encryptedStream = new MemoryStream();
-                        if (src.CanSeek)
-                        {
-                            src.Seek(0, SeekOrigin.Begin);
-                        }
-                        await crypto.EncryptAsync(src, encryptedStream, ct: cancellationToken);
-                        encryptedStream.Seek(0, SeekOrigin.Begin);
-                        storedSize = encryptedStream.Length;
-                        await storage.UploadAsync(path, encryptedStream, cancellationToken);
-                        uploadedChunks.Add(hash);
                     }
                     else
                     {
-                        logger.LogInformation("Chunk {shortHash} for file {FileName} already exists, skipping upload", shortHash, file.Name);
-                        var storedChunkInfo = await storage.GetFileInfoAsync(path, cancellationToken)
-                            ?? throw new Exception($"Failed to get info for existing chunk {shortHash} in storage");
-                        logger.LogInformation("Fetched existing chunk {shortHash} info: Size = {Size}", shortHash, storedChunkInfo.Size);
-                        storedSize = storedChunkInfo.Size ?? 0;
-                        algorithm = CompressionHelpers.DetectAlgorithmFromPath(storedChunkInfo.Name ?? storedChunkInfo.Path);
-                        uploadedChunks.Add(hash);
+                        algorithm = CompressionAlgorithm.None;
+                        logger.LogInformation("Chunk {shortHash} for file {FileName} is not compressed due to insufficient size reduction", shortHash, file.Name);
                     }
+
+                    using var encryptedStream = new MemoryStream();
+                    if (src.CanSeek)
+                    {
+                        src.Seek(0, SeekOrigin.Begin);
+                    }
+                    await crypto.EncryptAsync(src, encryptedStream, ct: cancellationToken);
+                    encryptedStream.Seek(0, SeekOrigin.Begin);
+                    storedSize = encryptedStream.Length;
+                    await storage.UploadAsync(path, encryptedStream, cancellationToken);
+                    uploadedChunks.Add(hash);
 
                     await EnsureUploadedHashRecordedAsync(schedule.Backup.StorageId, hash, storedSize, chunkLength, algorithm, cancellationToken);
 

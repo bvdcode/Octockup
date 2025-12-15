@@ -89,15 +89,10 @@ namespace Octockup.Server.Helpers
             return schedule.FinishedAt.Value.Add(interval);
         }
 
-        public static string SplitHash(string hash, char pathSeparator)
+        public static string SplitPlainHash(string hash, char pathSeparator)
         {
             // format: aa/bb/ccddeeff...
-            return $"{hash[..2]}{pathSeparator}{hash.Substring(2, 2)}{pathSeparator}{hash[4..]}.{CompressionHelpers.CompressionExtension}.{CompressionHelpers.AppExtension}";
-        }
-
-        public static string SplitLegacyHash(string hash, char pathSeparator)
-        {
-            return $"{hash[..2]}{pathSeparator}{hash.Substring(2, 2)}{pathSeparator}{hash[4..]}.{CompressionHelpers.LegacyCompressionExtension}.{CompressionHelpers.AppExtension}";
+            return $"{hash[..2]}{pathSeparator}{hash.Substring(2, 2)}{pathSeparator}{hash[4..]}.{CompressionHelpers.Extension}";
         }
 
         /// <summary>

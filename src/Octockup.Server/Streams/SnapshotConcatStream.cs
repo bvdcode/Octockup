@@ -1,4 +1,5 @@
 ﻿using EasyExtensions.Abstractions;
+using EasyExtensions.Models.Enums;
 using Octockup.Server.Abstractions;
 using Octockup.Server.Database;
 using Octockup.Server.Helpers;
@@ -51,20 +52,11 @@ namespace Octockup.Server.Streams
                 hash
             );
 
-            string path = ScheduleHelpers.SplitHash(hash, _storage.PathSeparator);
-            string legacyPath = ScheduleHelpers.SplitLegacyHash(hash, _storage.PathSeparator);
-            bool legacyExists = await _storage.ExistsAsync(legacyPath).ConfigureAwait(false) ?? false;
-            if (legacyExists == true)
+            string path = ScheduleHelpers.SplitPlainHash(hash, _storage.PathSeparator);
+            bool exists = await _storage.ExistsAsync(path).ConfigureAwait(false) ?? false;
+            if (exists != true)
             {
-                path = legacyPath;
-            }
-            else
-            {
-                bool? exists = await _storage.ExistsAsync(path).ConfigureAwait(false);
-                if (exists != true)
-                {
-                    throw new IOException($"Chunk '{hash}' not found in storage.");
-                }
+                throw new IOException($"Chunk '{hash}' not found in storage.");
             }
 
             var fileInfo = new BackupFileInfo
@@ -83,10 +75,14 @@ namespace Octockup.Server.Streams
                 .DecryptAsync(encryptedChunkStream)
                 .ConfigureAwait(false);
 
-            var decompressed = legacyExists
-                ? CompressionHelpers.CreateLegacyDecompressionStream(decrypted, leaveOpen: false)
-                : CompressionHelpers.CreateDecompressionStream(decrypted, leaveOpen: false);
-
+            CompressionAlgorithm algorithm;
+            Stream decompressed = algorithm switch
+            {
+                CompressionAlgorithm.None => decrypted,
+                CompressionAlgorithm.Brotli => CompressionHelpers.CreateLegacyDecompressionStream(decrypted, leaveOpen: false),
+                CompressionHelpers.Algorithm => CompressionHelpers.CreateDecompressionStream(decrypted, leaveOpen: false),
+                _ => throw new NotSupportedException($"Unsupported compression algorithm: {algorithm}"),
+            };
             _currentChunkStream = decompressed;
             return true;
         }
