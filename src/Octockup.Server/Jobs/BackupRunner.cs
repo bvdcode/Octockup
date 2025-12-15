@@ -550,24 +550,17 @@ namespace Octockup.Server.Jobs
 
         private async Task<IDictionary<string, SnapshotFile>> GetFilesFromLastSnapshotAsync(Guid backupId, CancellationToken cancellationToken)
         {
-            var lastSnapshot = await dbContext.Snapshots
+            const int maxFilesToFetch = 1_000_000;
+
+            var files = await dbContext.Snapshots
                 .AsNoTracking()
-                .Where(x => x.BackupId == backupId && x.CompletedAt != null)
+                .Where(x => x.BackupId == backupId)
                 .OrderByDescending(x => x.CreatedAt)
-                .Take(1)
-                .FirstOrDefaultAsync(cancellationToken: cancellationToken);
-
-            if (lastSnapshot == null)
-            {
-                return new Dictionary<string, SnapshotFile>();
-            }
-
-            var files = await dbContext.SnapshotFiles
-                .AsNoTracking()
-                .Where(x => x.SnapshotId == lastSnapshot.Id)
+                .SelectMany(x => x.Files)
+                .Take(maxFilesToFetch)
                 .ToListAsync(cancellationToken: cancellationToken);
 
-            return files.ToDictionary(x => x.Path, x => x);
+            return files.DistinctBy(x => x.Path).ToDictionary(x => x.Path, x => x);
         }
 
         private Task<HashSet<string>> LoadChunkHashesAsync(Guid storageId, CancellationToken cancellationToken)
