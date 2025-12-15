@@ -55,21 +55,19 @@ namespace Octockup.Server.Helpers
 
         internal static bool ShouldCompressChunk(string fileNameOrPath, long chunkLength)
         {
-            bool isTooSmall = chunkLength < 1024; // 1 KB
-            if (isTooSmall)
+            if (chunkLength < 1024)
             {
                 return false;
             }
-            string[] extensionsNotToCompress =
+            string ext = Path.GetExtension(fileNameOrPath).ToLowerInvariant();
+            string[] skip =
             [
-                ".zip", ".rar", ".7z", ".gz", ".bz2", ".xz", // Compressed archives
-                ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", // Images
-                ".mp4", ".mkv", ".avi", ".mov", ".wmv", // Videos
-                ".mp3", ".flac", ".wav", ".aac", // Audio
-                ".pdf", // PDF documents
+                ".zip", ".rar", ".7z", ".gz", ".bz2", ".xz",
+                ".jpg", ".jpeg", ".gif", ".png", ".webp", ".avif", ".heic",
+                ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".webm",
+                ".mp3", ".aac", ".m4a", ".ogg", ".opus", ".flac",
             ];
-            string fileExtension = Path.GetExtension(fileNameOrPath).ToLowerInvariant();
-            return !extensionsNotToCompress.Contains(fileExtension);
+            return !skip.Contains(ext);
         }
     }
 }

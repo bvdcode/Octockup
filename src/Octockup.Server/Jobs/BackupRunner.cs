@@ -251,7 +251,7 @@ namespace Octockup.Server.Jobs
             {
                 logger.LogInformation("File {FileName} changed - HasHashsum: {HasHashsum}, Size: {OldSize} vs {NewSize}, LastModified: {OldModified} vs {NewModified} (diff: {DiffSeconds}s)",
                     file.Name, previousFile.Hashsum != null, previousFile.Size, file.Size,
-                    previousFile.LastModified?.ToString("yyyy-MM-dd HH:mm:ss"), previousFile.LastModified?.ToString("yyyy-MM-dd HH:mm:ss"),
+                    previousFile.LastModified?.ToString("yyyy-MM-dd HH:mm:ss"), file.LastModified?.ToString("yyyy-MM-dd HH:mm:ss"),
                     previousFile.LastModified != null && file.LastModified != null
                         ? Math.Abs((previousFile.LastModified.Value - file.LastModified.Value).TotalSeconds)
                         : -1);
@@ -378,7 +378,7 @@ namespace Octockup.Server.Jobs
                                 }
                             }
                             compressedStream.Seek(0, SeekOrigin.Begin);
-                            if (compressedStream.Length >= chunkLength * 0.95)
+                            if (compressedStream.Length >= chunkLength)
                             {
                                 // Compression did not reduce size enough, use original
                                 logger.LogInformation("Chunk {shortHash} for file {FileName} compression did not reduce size enough ({originalSize} to {compressedSize}), using original",
@@ -405,6 +405,10 @@ namespace Octockup.Server.Jobs
                         }
 
                         using var encryptedStream = new MemoryStream();
+                        if (src.CanSeek)
+                        {
+                            src.Seek(0, SeekOrigin.Begin);
+                        }
                         await crypto.EncryptAsync(src, encryptedStream, ct: cancellationToken);
                         encryptedStream.Seek(0, SeekOrigin.Begin);
                         storedSize = encryptedStream.Length;
