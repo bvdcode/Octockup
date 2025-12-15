@@ -198,36 +198,7 @@ export default function BackupsPage() {
     }
 
     try {
-      // Optimistically clear running report and mark schedule as failed to stop showing Running
-      if (backupId) {
-        scheduleReports.delete(backupId);
-        setReportsVersion((v) => v + 1);
-      }
-
-      setBackups((prev) =>
-        prev.map((b) => {
-          if (!b.schedules) return b;
-          const hasSchedule = b.schedules.some((s) => s.id === scheduleId);
-          if (!hasSchedule) return b;
-          return {
-            ...b,
-            schedules: b.schedules.map((s) =>
-              s.id === scheduleId
-                ? {
-                    ...s,
-                    status: BackupStatus.Failed,
-                    finishedAt: new Date().toISOString(),
-                  }
-                : s,
-            ),
-          };
-        }),
-      );
-
       await schedulesApi.cancel(scheduleId);
-
-      // Reload backups immediately to get fresh status
-      await reloadBackups();
     } finally {
       if (backupId) {
         setState((s) => ({ ...s, cancelingId: null }));

@@ -318,9 +318,6 @@ namespace Octockup.Server.Jobs
         {
             using var chunker = new ChunkedStream(stream, ChunkSize);
             byte[] buffer = ArrayPool<byte>.Shared.Rent(ChunkSize);
-            // Reusable streams to avoid allocations per chunk
-            MemoryStream? compressedStream = null;
-            MemoryStream? encryptedStream = null;
             try
             {
                 using var fileHasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
@@ -366,16 +363,7 @@ namespace Octockup.Server.Jobs
 
                         chunk.Seek(0, SeekOrigin.Begin);
                         
-                        // Reuse or create compressed stream
-                        if (compressedStream == null)
-                        {
-                            compressedStream = new MemoryStream(ChunkSize);
-                        }
-                        else
-                        {
-                            compressedStream.SetLength(0);
-                        }
-                        
+                        await using var compressedStream = new MemoryStream();
                         await using (var brotli = new BrotliStream(compressedStream, CompressionLevel.Optimal, leaveOpen: true))
                         {
                             int r;
@@ -387,16 +375,7 @@ namespace Octockup.Server.Jobs
 
                         compressedStream.Seek(0, SeekOrigin.Begin);
                         
-                        // Reuse or create encrypted stream
-                        if (encryptedStream == null)
-                        {
-                            encryptedStream = new MemoryStream(ChunkSize);
-                        }
-                        else
-                        {
-                            encryptedStream.SetLength(0);
-                        }
-                        
+                        using var encryptedStream = new MemoryStream();
                         await crypto.EncryptAsync(compressedStream, encryptedStream, ct: cancellationToken);
                         encryptedStream.Seek(0, SeekOrigin.Begin);
                         storedSize = encryptedStream.Length;
@@ -435,8 +414,6 @@ namespace Octockup.Server.Jobs
             finally
             {
                 ArrayPool<byte>.Shared.Return(buffer);
-                compressedStream?.Dispose();
-                encryptedStream?.Dispose();
             }
         }
 
