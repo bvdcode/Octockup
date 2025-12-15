@@ -57,11 +57,14 @@ namespace Octockup.Server.Jobs
                 return;
             }
 
-            using CancellationTokenSource scheduleCts = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
+            // Don't link to context.CancellationToken - long-running backups should only be
+            // canceled manually via StopRunningBackup, not when Quartz job context expires
+            CancellationTokenSource scheduleCts = new();
 
             if (!_runningSchedules.TryAdd(next.Id, scheduleCts))
             {
                 _logger.LogInformation("Schedule {ScheduleId} is already running, skipping duplicate run attempt", next.Id);
+                scheduleCts.Dispose();
                 return;
             }
 
@@ -83,6 +86,7 @@ namespace Octockup.Server.Jobs
             finally
             {
                 _runningSchedules.TryRemove(next.Id, out _);
+                scheduleCts.Dispose();
                 _logger.LogInformation("Finished backup job for schedule {ScheduleId}", next.Id);
             }
         }

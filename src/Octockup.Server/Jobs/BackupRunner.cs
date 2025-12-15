@@ -72,9 +72,28 @@ namespace Octockup.Server.Jobs
                 logger.LogInformation("Schedule {ScheduleId} backup completed successfully", schedule.Id);
                 await report.SendAsync(report.Processed, "Backup completed successfully.", status: ScheduleStatus.Completed, cancellationToken: cancellationToken);
             }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            catch (OperationCanceledException ex)
             {
-                await HandleCancellationAsync(schedule, report);
+                // Log the actual cancellation source for debugging
+                logger.LogWarning(ex, "Schedule {ScheduleId} received OperationCanceledException. " +
+                    "Token.IsCancellationRequested={IsCancellationRequested}, InnerException={InnerException}",
+                    schedule.Id, cancellationToken.IsCancellationRequested, ex.InnerException?.Message);
+
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    await HandleCancellationAsync(schedule, report);
+                }
+                else
+                {
+                    // Cancellation from somewhere else (timeout, network issue, etc.)
+                    schedule.ErrorMessage = $"Backup interrupted: {ex.Message}";
+                    schedule.Status = ScheduleStatus.Failed;
+                    schedule.FinishedAt = DateTime.UtcNow;
+                    await dbContext.SaveChangesAsync(CancellationToken.None);
+
+                    logger.LogError(ex, "Schedule {ScheduleId} backup interrupted unexpectedly", schedule.Id);
+                    await report.SendAsync(report.Processed, schedule.ErrorMessage, status: ScheduleStatus.Failed, cancellationToken: CancellationToken.None);
+                }
                 return;
             }
             catch (Exception ex)
@@ -82,10 +101,10 @@ namespace Octockup.Server.Jobs
                 schedule.ErrorMessage = $"Backup failed: {ex.Message}";
                 schedule.Status = ScheduleStatus.Failed;
                 schedule.FinishedAt = DateTime.UtcNow;
-                await dbContext.SaveChangesAsync(cancellationToken);
+                await dbContext.SaveChangesAsync(CancellationToken.None);
 
                 logger.LogError(ex, "Schedule {ScheduleId} backup failed", schedule.Id);
-                await report.SendAsync(report.Processed, schedule.ErrorMessage, status: ScheduleStatus.Failed, cancellationToken: cancellationToken);
+                await report.SendAsync(report.Processed, schedule.ErrorMessage, status: ScheduleStatus.Failed, cancellationToken: CancellationToken.None);
             }
             finally
             {
