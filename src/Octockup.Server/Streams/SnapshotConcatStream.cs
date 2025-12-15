@@ -11,7 +11,7 @@ namespace Octockup.Server.Streams
     public sealed class SnapshotConcatStream(
         ILogger _logger,
         IBackupStorage _storage,
-        IReadOnlyList<string> _hashes,
+        IReadOnlyList<(string, CompressionAlgorithm)> _hashes,
         SnapshotFile _snapshotFile,
         IStreamCipher _crypto,
         CancellationToken _cancellationToken = default) : Stream
@@ -44,7 +44,7 @@ namespace Octockup.Server.Streams
                 return false;
             }
 
-            string hash = _hashes[_currentIndex];
+            string hash = _hashes[_currentIndex].Item1;
             _logger.LogInformation(
                 "Loading chunk {Index}/{Total} with hash {Hash}",
                 _currentIndex + 1,
@@ -75,7 +75,7 @@ namespace Octockup.Server.Streams
                 .DecryptAsync(encryptedChunkStream)
                 .ConfigureAwait(false);
 
-            CompressionAlgorithm algorithm;
+            CompressionAlgorithm algorithm = _hashes[_currentIndex].Item2;
             Stream decompressed = algorithm switch
             {
                 CompressionAlgorithm.None => decrypted,

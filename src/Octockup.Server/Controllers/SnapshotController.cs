@@ -2,6 +2,7 @@
 // Copyright (c) 2025 Vadim Belov
 
 using EasyExtensions.Abstractions;
+using EasyExtensions.Models.Enums;
 using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -51,10 +52,16 @@ namespace Octockup.Server.Controllers
                 return BadRequest("Storage provider is not a backup storage");
             }
 
-            var hashes = snapshotFile.ChunkHashes?.ToList() ?? [];
-            if (hashes.Count == 0)
+            var fileHashes = snapshotFile.ChunkHashes?.ToList() ?? [];
+            List<(string, CompressionAlgorithm)> hashes = [];
+            foreach (var fileHash in fileHashes)
             {
-                return NotFound("No chunks for this file.");
+                var found = await _dbContext.UploadedHashes.FirstOrDefaultAsync(x => x.Hash == fileHash);
+                if (found == null)
+                {
+                    return BadRequest("Chunk hash metadata not found in DB: " + fileHash);
+                }
+                hashes.Add((found.Hash, found.CompressionAlgorithm));
             }
 
             var stream = new SnapshotConcatStream(
