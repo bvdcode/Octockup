@@ -9,6 +9,5 @@ namespace Octockup.Server.Models.Enums
         Running = 1,
         Failed = 2,
         Completed = 3,
-        Canceled = 4
     }
 }

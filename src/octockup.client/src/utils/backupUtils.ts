@@ -77,6 +77,7 @@ export function getBackupOverallStatus(
   }
 
   // Check schedules from backup.schedules (persistent data)
+  // Only consider Failed schedules that have actual errors
   const finishedSchedules = (backup.schedules || []).filter(
     (schedule) => schedule.finishedAt,
   );
@@ -90,12 +91,11 @@ export function getBackupOverallStatus(
     return scheduleFinishTime > snapshotTime;
   });
 
-  // Priority 4: Warning - has successful snapshot, but schedule failed after it
+  // Priority 4: Warning - has successful snapshot, but schedule failed after it WITH ERROR
+  // Failed without errorMessage don't indicate problems
   const hasFailedScheduleAfterSnapshot = schedulesAfterSnapshot.some(
     (schedule) =>
-      (schedule.status === BackupStatus.Failed ||
-        schedule.status === BackupStatus.Canceled) &&
-      schedule.errorMessage,
+      schedule.status === BackupStatus.Failed && schedule.errorMessage,
   );
 
   if (hasFailedScheduleAfterSnapshot) {

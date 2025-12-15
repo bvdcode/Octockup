@@ -12,8 +12,6 @@ export function statusColor(
       return "info";
     case BackupStatus.Failed:
       return "error";
-    case BackupStatus.Canceled:
-      return "warning";
     case BackupStatus.Created:
     default:
       return "default";
@@ -97,8 +95,7 @@ export function calculateNextRunTime(
   if (
     item.finishedAt &&
     (item.status === BackupStatus.Completed ||
-      item.status === BackupStatus.Failed ||
-      item.status === BackupStatus.Canceled)
+      item.status === BackupStatus.Failed)
   ) {
     const finishedAt = parseUtcDate(item.finishedAt);
     if (finishedAt) {

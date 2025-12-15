@@ -491,7 +491,7 @@ namespace Octockup.Server.Jobs
         {
             logger.LogInformation("Schedule {ScheduleId} backup canceled", schedule.Id);
 
-            schedule.Status = ScheduleStatus.Canceled;
+            schedule.Status = ScheduleStatus.Failed;
             schedule.ErrorMessage = "Backup was canceled.";
             schedule.FinishedAt = DateTime.UtcNow;
             await dbContext.SaveChangesAsync(CancellationToken.None);
@@ -499,7 +499,7 @@ namespace Octockup.Server.Jobs
             await report.SendAsync(
                 report.Processed,
                 "Backup canceled.",
-                status: ScheduleStatus.Canceled,
+                status: ScheduleStatus.Failed,
                 cancellationToken: CancellationToken.None);
         }
 

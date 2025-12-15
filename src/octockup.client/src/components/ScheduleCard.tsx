@@ -35,8 +35,6 @@ function getStatusIcon(status: BackupStatus) {
       return <CheckCircle sx={{ color: "success.main" }} />;
     case BackupStatus.Failed:
       return <ErrorOutline sx={{ color: "error.main" }} />;
-    case BackupStatus.Canceled:
-      return <StopCircle sx={{ color: "warning.main" }} />;
     case BackupStatus.Running:
       return <Pending sx={{ color: "info.main" }} />;
     case BackupStatus.Created:
@@ -98,8 +96,6 @@ export function ScheduleCard({
             ? theme.palette.success.main
             : item.status === BackupStatus.Failed
             ? theme.palette.error.main
-            : item.status === BackupStatus.Canceled
-            ? theme.palette.warning.main
             : item.status === BackupStatus.Running
             ? theme.palette.info.main
             : theme.palette.warning.main

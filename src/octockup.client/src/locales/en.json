@@ -212,8 +212,7 @@
       "created": "Created",
       "running": "Running",
       "failed": "Failed",
-      "completed": "Completed",
-      "canceled": "Canceled"
+      "completed": "Completed"
     },
     "nextRun": {
       "label": "Next run",

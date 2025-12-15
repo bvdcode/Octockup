@@ -233,11 +233,10 @@
     "intervalDays": "каждые {{count}} дн.",
     "intervalMinutes": "каждые {{count}} мин",
     "status": {
-      "created": "Создано",
+      "created": "Ожидает",
       "running": "Выполняется",
       "failed": "Ошибка",
-      "completed": "Завершено",
-      "canceled": "Отменено"
+      "completed": "Завершено"
     },
     "nextRun": {
       "label": "След. запуск",
