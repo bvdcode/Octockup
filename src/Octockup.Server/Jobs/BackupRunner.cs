@@ -451,16 +451,11 @@ namespace Octockup.Server.Jobs
             CompressionAlgorithm algorithm,
             CancellationToken cancellationToken)
         {
-            var foundChunk = await dbContext.UploadedHashes
+            bool chunkRecorded = await dbContext.UploadedHashes
                 .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Hash == hash && x.ModuleId == storageModuleId, cancellationToken);
-            if (foundChunk != null)
+                .AnyAsync(x => x.Hash == hash && x.ModuleId == storageModuleId, cancellationToken);
+            if (chunkRecorded)
             {
-                if (foundChunk.CompressionAlgorithm != algorithm)
-                {
-                    throw new InvalidOperationException($"Hash {hash} for storage module {storageModuleId} already exists with different compression algorithm. " +
-                        $"Existing: {foundChunk.CompressionAlgorithm}, New: {algorithm}");
-                }
                 return;
             }
 
