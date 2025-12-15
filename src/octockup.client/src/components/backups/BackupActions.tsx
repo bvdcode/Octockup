@@ -79,66 +79,60 @@ export function BackupActions({
         </IconButton>
       </Tooltip>
       {isRunning ? (
-        <Tooltip title={t("backups.stop")} placement="left">
-          <IconButton
-            size="small"
-            aria-label={t("backups.stop")}
-            disabled={cancelingId === backup.id || !runningScheduleId}
-            onClick={async (e) => {
-              e.stopPropagation();
-              if (runningScheduleId) {
-                await onCancel(runningScheduleId);
-              }
-            }}
-          >
-            {cancelingId === backup.id ? (
-              <CircularProgress size={20} />
-            ) : (
-              <StopCircle color="error" />
-            )}
-          </IconButton>
-        </Tooltip>
-      ) : (
-        <Tooltip title={t("backups.runOnce")} placement="left">
-          <IconButton
-            size="small"
-            aria-label={t("backups.runOnce")}
-            disabled={runningId === backup.id || status === "running"}
-            onClick={async (e) => {
-              e.stopPropagation();
-              await onRunOnce();
-            }}
-          >
-            {runningId === backup.id ? (
-              <CircularProgress size={20} />
-            ) : (
-              <PlayArrow color="success" />
-            )}
-          </IconButton>
-        </Tooltip>
-      )}
-      <Tooltip title={t("backups.deleteTooltip")} placement="left">
         <IconButton
           size="small"
-          aria-label={t("common.delete")}
-          disabled={deletingId === backup.id}
+          aria-label={t("backups.stop")}
+          disabled={cancelingId === backup.id || !runningScheduleId}
           onClick={async (e) => {
             e.stopPropagation();
-            const result = await confirm({
-              title: t("backups.deleteTitle"),
-              description: t("backups.deleteText"),
-              confirmationText: t("common.delete"),
-              cancellationText: t("common.cancel"),
-              confirmationButtonProps: { color: "error" },
-            });
-            if (result.confirmed) {
-              await onDelete();
+            if (runningScheduleId) {
+              await onCancel(runningScheduleId);
             }
           }}
         >
-          <DeleteOutline color="primary" />
+          {cancelingId === backup.id ? (
+            <CircularProgress size={20} />
+          ) : (
+            <StopCircle color="error" />
+          )}
         </IconButton>
-      </Tooltip>
+      ) : (
+        <IconButton
+          size="small"
+          aria-label={t("backups.runOnce")}
+          disabled={runningId === backup.id || status === "running"}
+          onClick={async (e) => {
+            e.stopPropagation();
+            await onRunOnce();
+          }}
+        >
+          {runningId === backup.id ? (
+            <CircularProgress size={20} />
+          ) : (
+            <PlayArrow color="success" />
+          )}
+        </IconButton>
+      )}
+      <IconButton
+        size="small"
+        aria-label={t("common.delete")}
+        disabled={deletingId === backup.id}
+        onClick={async (e) => {
+          e.stopPropagation();
+          const result = await confirm({
+            title: t("backups.deleteTitle"),
+            description: t("backups.deleteText"),
+            confirmationText: t("common.delete"),
+            cancellationText: t("common.cancel"),
+            confirmationButtonProps: { color: "error" },
+          });
+          if (result.confirmed) {
+            await onDelete();
+          }
+        }}
+      >
+        <DeleteOutline color="primary" />
+      </IconButton>
     </Box>
   );
 }
