@@ -98,7 +98,7 @@ namespace Octockup.Server.Controllers
 
             Response.ContentType = "application/octet-stream";
             Response.Headers.ContentDisposition =
-                $"attachment; filename=\"server-backup-{userId}.{CompressionHelpers.Extension}.oct\"";
+                $"attachment; filename=\"server-backup-{userId}.{CompressionHelpers.CompressionExtension}.{CompressionHelpers.AppExtension}\"";
 
             await using var compressedStream = CompressionHelpers.CreateCompressionStream(Response.Body);
 
@@ -282,7 +282,7 @@ namespace Octockup.Server.Controllers
             Directory.CreateDirectory(importDir);
 
             // Save uploaded file
-            string fileName = $"import-{DateTime.UtcNow:yyyyMMddHHmmss}.octockup";
+            string fileName = $"import-{DateTime.UtcNow:yyyyMMddHHmmss}.{CompressionHelpers.AppExtension}";
             string filePath = Path.Combine(importDir, fileName);
 
             _logger.LogInformation("Saving import file for user {UserId} to {FilePath}", userId, filePath);

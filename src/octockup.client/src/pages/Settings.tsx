@@ -112,7 +112,7 @@ export default function SettingsPage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".octockup"
+              accept=".oct"
               style={{ display: "none" }}
               onChange={handleFileChange}
             />

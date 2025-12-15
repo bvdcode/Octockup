@@ -100,7 +100,7 @@ namespace Octockup.Server.Jobs
 
         private async Task ProcessUserDirectoryAsync(Guid userId, string userDir, CancellationToken cancellationToken)
         {
-            foreach (var importFile in Directory.GetFiles(userDir, "*.octockup"))
+            foreach (var importFile in Directory.GetFiles(userDir, "*." + CompressionHelpers.AppExtension))
             {
                 await ProcessSingleFileWithFailureHandlingAsync(userId, importFile, cancellationToken);
             }

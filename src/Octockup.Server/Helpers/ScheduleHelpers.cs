@@ -92,12 +92,12 @@ namespace Octockup.Server.Helpers
         public static string SplitHash(string hash, char pathSeparator)
         {
             // format: aa/bb/ccddeeff...
-            return $"{hash[..2]}{pathSeparator}{hash.Substring(2, 2)}{pathSeparator}{hash[4..]}.{CompressionHelpers.Extension}.oct";
+            return $"{hash[..2]}{pathSeparator}{hash.Substring(2, 2)}{pathSeparator}{hash[4..]}.{CompressionHelpers.CompressionExtension}.{CompressionHelpers.AppExtension}";
         }
 
         public static string SplitLegacyHash(string hash, char pathSeparator)
         {
-            return $"{hash[..2]}{pathSeparator}{hash.Substring(2, 2)}{pathSeparator}{hash[4..]}.{CompressionHelpers.LegacyExtension}.oct";
+            return $"{hash[..2]}{pathSeparator}{hash.Substring(2, 2)}{pathSeparator}{hash[4..]}.{CompressionHelpers.LegacyCompressionExtension}.{CompressionHelpers.AppExtension}";
         }
 
         /// <summary>
