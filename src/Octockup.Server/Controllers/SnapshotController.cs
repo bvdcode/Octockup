@@ -80,6 +80,7 @@ namespace Octockup.Server.Controllers
                 EnableRangeProcessing = false,
             };
 
+            Response.ContentLength = snapshotFile.Size;
             return result;
         }
 
