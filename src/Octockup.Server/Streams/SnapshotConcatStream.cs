@@ -52,11 +52,19 @@ namespace Octockup.Server.Streams
             );
 
             string path = ScheduleHelpers.SplitHash(hash, _storage.PathSeparator);
-
-            bool? exists = await _storage.ExistsAsync(path).ConfigureAwait(false);
-            if (exists != true)
+            string legacyPath = ScheduleHelpers.SplitLegacyHash(hash, _storage.PathSeparator);
+            bool legacyExists = await _storage.ExistsAsync(legacyPath).ConfigureAwait(false) ?? false;
+            if (legacyExists == true)
             {
-                throw new IOException($"Chunk '{hash}' not found in storage.");
+                path = legacyPath;
+            }
+            else
+            {
+                bool? exists = await _storage.ExistsAsync(path).ConfigureAwait(false);
+                if (exists != true)
+                {
+                    throw new IOException($"Chunk '{hash}' not found in storage.");
+                }
             }
 
             var fileInfo = new BackupFileInfo
@@ -75,11 +83,9 @@ namespace Octockup.Server.Streams
                 .DecryptAsync(encryptedChunkStream)
                 .ConfigureAwait(false);
 
-            var decompressed = new BrotliStream(
-                decrypted,
-                CompressionMode.Decompress,
-                leaveOpen: false
-            );
+            var decompressed = legacyExists
+                ? CompressionHelpers.CreateLegacyDecompressionStream(decrypted, leaveOpen: false)
+                : CompressionHelpers.CreateDecompressionStream(decrypted, leaveOpen: false);
 
             _currentChunkStream = decompressed;
             return true;

@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Database;
+using Octockup.Server.Helpers;
 using Octockup.Server.Jobs;
 using Octockup.Server.Models.Dto;
 using Octockup.Server.Models.Enums;
@@ -99,10 +100,7 @@ namespace Octockup.Server.Controllers
             Response.Headers.ContentDisposition =
                 $"attachment; filename=\"server-backup-{userId}.octockup\"";
 
-            await using var brotliStream = new BrotliStream(
-                Response.Body,
-                System.IO.Compression.CompressionLevel.Fastest,
-                leaveOpen: true);
+            await using var compressedStream = CompressionHelpers.CreateCompressionStream(Response.Body);
 
             // Stream JSON through a Pipe to the encryptor to avoid buffering everything in memory.
             var pipe = new Pipe();
@@ -112,7 +110,7 @@ namespace Octockup.Server.Controllers
             var encryptTask = Task.Run(async () =>
             {
                 await using var inputStream = reader.AsStream(leaveOpen: false);
-                await _streamCipher.EncryptAsync(inputStream, brotliStream, ct: ct);
+                await _streamCipher.EncryptAsync(inputStream, compressedStream, ct: ct);
             }, ct);
 
             var serializeTask = Task.Run(async () =>
@@ -133,7 +131,7 @@ namespace Octockup.Server.Controllers
 
             await Task.WhenAll(encryptTask, serializeTask);
 
-            await brotliStream.FlushAsync(ct);
+            await compressedStream.FlushAsync(ct);
             return new EmptyResult();
         }
 

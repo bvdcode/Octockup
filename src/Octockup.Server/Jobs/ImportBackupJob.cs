@@ -5,6 +5,7 @@ using EasyExtensions.Abstractions;
 using EasyExtensions.Quartz.Attributes;
 using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Database;
+using Octockup.Server.Helpers;
 using Quartz;
 using System.Collections.Concurrent;
 using System.IO.Compression;
@@ -149,10 +150,10 @@ namespace Octockup.Server.Jobs
             }
 
             await using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-            await using var brotliStream = new BrotliStream(fileStream, CompressionMode.Decompress, leaveOpen: true);
+            await using var decompressedStream = CompressionHelpers.CreateDecompressionStream(fileStream);
             using var decryptedStream = new MemoryStream();
 
-            await _crypto.DecryptAsync(brotliStream, decryptedStream, ct: cancellationToken);
+            await _crypto.DecryptAsync(decompressedStream, decryptedStream, ct: cancellationToken);
             decryptedStream.Seek(0, SeekOrigin.Begin);
 
             var importData = await JsonSerializer.DeserializeAsync<ImportData>(

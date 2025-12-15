@@ -14,7 +14,6 @@ using Octockup.Server.Models;
 using Octockup.Server.Models.Enums;
 using System.Buffers;
 using System.Diagnostics;
-using System.IO.Compression;
 using System.Security.Cryptography;
 
 namespace Octockup.Server.Jobs
@@ -364,12 +363,12 @@ namespace Octockup.Server.Jobs
                         chunk.Seek(0, SeekOrigin.Begin);
                         
                         await using var compressedStream = new MemoryStream();
-                        await using (var brotli = new BrotliStream(compressedStream, CompressionLevel.Optimal, leaveOpen: true))
+                        await using (var compressed = CompressionHelpers.CreateCompressionStream(compressedStream))
                         {
                             int r;
                             while ((r = await chunk.ReadAsync(buffer.AsMemory(0, Math.Min(buffer.Length, ChunkSize)), cancellationToken)) > 0)
                             {
-                                await brotli.WriteAsync(buffer.AsMemory(0, r), cancellationToken);
+                                await compressed.WriteAsync(buffer.AsMemory(0, r), cancellationToken);
                             }
                         }
 

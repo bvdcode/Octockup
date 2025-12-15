@@ -21,13 +21,13 @@
 		<PackageReference Include="FluentFTP" Version="53.0.2" />
 		<PackageReference Include="AWSSDK.S3" Version="4.0.14.3" />
 		<PackageReference Include="FluentValidation" Version="12.1.1" />
-		<PackageReference Include="EasyExtensions.Quartz" Version="3.0.16" />
-		<PackageReference Include="EasyExtensions.Crypto" Version="3.0.16" />
-		<PackageReference Include="EasyExtensions.AspNetCore" Version="3.0.16" />
+		<PackageReference Include="EasyExtensions.Quartz" Version="3.0.17" />
+		<PackageReference Include="EasyExtensions.Crypto" Version="3.0.17" />
+		<PackageReference Include="EasyExtensions.AspNetCore" Version="3.0.17" />
 		<PackageReference Include="SQLitePCLRaw.bundle_e_sqlcipher" Version="2.1.11" />
-		<PackageReference Include="EasyExtensions.EntityFrameworkCore" Version="3.0.16" />
+		<PackageReference Include="EasyExtensions.EntityFrameworkCore" Version="3.0.17" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Proxies" Version="10.0.1" />
-		<PackageReference Include="EasyExtensions.AspNetCore.Authorization" Version="3.0.16" />
+		<PackageReference Include="EasyExtensions.AspNetCore.Authorization" Version="3.0.17" />
 		<PackageReference Include="EasyExtensions.EntityFrameworkCore.Npgsql" Version="3.0.16" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="10.0.1" />
 		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1" />
@@ -38,6 +38,7 @@
 		<PackageReference Include="Microsoft.AspNetCore.SpaProxy">
 			<Version>10.0.1</Version>
 		</PackageReference>
+		<PackageReference Include="ZstdSharp.Port" Version="0.8.6" />
 		<ProjectReference Include="..\octockup.client\octockup.client.esproj">
 			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
 		</ProjectReference>
