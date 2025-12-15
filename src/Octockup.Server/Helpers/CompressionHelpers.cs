@@ -10,9 +10,9 @@ namespace Octockup.Server.Helpers
         public const CompressionAlgorithm Algorithm = CompressionAlgorithm.Zstd;
         public const string Extension = "oct";
 
-        public static Stream CreateCompressionStream(Stream compressedStream)
+        public static Stream CreateCompressionStream(Stream compressedStream, bool leaveOpen = true)
         {
-            return new ZstdSharp.CompressionStream(compressedStream, level: 3, leaveOpen: true);
+            return new ZstdSharp.CompressionStream(compressedStream, level: 3, leaveOpen: leaveOpen);
         }
 
         public static Stream CreateDecompressionStream(Stream decrypted, bool leaveOpen = true)

@@ -366,11 +366,12 @@ namespace Octockup.Server.Jobs
 
                     chunk.Seek(0, SeekOrigin.Begin);
 
-                    Stream src = chunk;
+                    Stream src;
+                    MemoryStream? compressedStream = null;
                     bool needsCompression = CompressionHelpers.ShouldCompressChunk(file.Name ?? file.Path, chunkLength);
                     if (needsCompression)
                     {
-                        await using var compressedStream = new MemoryStream();
+                        compressedStream = new MemoryStream();
                         await using (var compressed = CompressionHelpers.CreateCompressionStream(compressedStream))
                         {
                             int r;
@@ -386,6 +387,8 @@ namespace Octockup.Server.Jobs
                             logger.LogInformation("Chunk {shortHash} for file {FileName} compression did not reduce size enough ({originalSize} to {compressedSize}), using original",
                                 shortHash, file.Name, size,
                                 $"{(compressedStream.Length / (1024.0 * 1024.0)):F2} MB");
+                            await compressedStream.DisposeAsync();
+                            compressedStream = null;
                             chunk.Seek(0, SeekOrigin.Begin);
                             src = chunk;
                             algorithm = CompressionAlgorithm.None;
@@ -403,26 +406,37 @@ namespace Octockup.Server.Jobs
                     else
                     {
                         algorithm = CompressionAlgorithm.None;
+                        src = chunk;
                         logger.LogInformation("Chunk {shortHash} for file {FileName} is not compressed due to insufficient size reduction", shortHash, file.Name);
                     }
 
-                    using var encryptedStream = new MemoryStream();
-                    if (src.CanSeek)
+                    try
                     {
-                        src.Seek(0, SeekOrigin.Begin);
+                        using var encryptedStream = new MemoryStream();
+                        if (src.CanSeek)
+                        {
+                            src.Seek(0, SeekOrigin.Begin);
+                        }
+                        await crypto.EncryptAsync(src, encryptedStream, ct: cancellationToken);
+                        encryptedStream.Seek(0, SeekOrigin.Begin);
+                        storedSize = encryptedStream.Length;
+                        await storage.UploadAsync(path, encryptedStream, cancellationToken);
+                        uploadedChunks.Add(hash);
+
+                        await EnsureUploadedHashRecordedAsync(schedule.Backup.StorageId, hash, storedSize, chunkLength, algorithm, cancellationToken);
+
+                        await report.SendAsync(counter, $"Uploading: {file.Name}", processedBytes: chunkLength, cancellationToken: cancellationToken);
+
+                        chunkHashes.Add(hash);
+                        cancellationToken.ThrowIfCancellationRequested();
                     }
-                    await crypto.EncryptAsync(src, encryptedStream, ct: cancellationToken);
-                    encryptedStream.Seek(0, SeekOrigin.Begin);
-                    storedSize = encryptedStream.Length;
-                    await storage.UploadAsync(path, encryptedStream, cancellationToken);
-                    uploadedChunks.Add(hash);
-
-                    await EnsureUploadedHashRecordedAsync(schedule.Backup.StorageId, hash, storedSize, chunkLength, algorithm, cancellationToken);
-
-                    await report.SendAsync(counter, $"Uploading: {file.Name}", processedBytes: chunkLength, cancellationToken: cancellationToken);
-
-                    chunkHashes.Add(hash);
-                    cancellationToken.ThrowIfCancellationRequested();
+                    finally
+                    {
+                        if (compressedStream != null)
+                        {
+                            await compressedStream.DisposeAsync();
+                        }
+                    }
 
                     await chunk.DisposeAsync();
 
