@@ -98,7 +98,7 @@ namespace Octockup.Server.Controllers
 
             Response.ContentType = "application/octet-stream";
             Response.Headers.ContentDisposition =
-                $"attachment; filename=\"server-backup-{userId}.octockup\"";
+                $"attachment; filename=\"server-backup-{userId}.{CompressionHelpers.Extension}.oct\"";
 
             await using var compressedStream = CompressionHelpers.CreateCompressionStream(Response.Body);
 

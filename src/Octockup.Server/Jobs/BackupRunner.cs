@@ -437,6 +437,7 @@ namespace Octockup.Server.Jobs
                 StoredSize = storedSize,
                 OriginalSize = originalSize,
                 ModuleId = storageModuleId,
+                CompressionAlgorithm = CompressionHelpers.Algorithm
             };
             _pendingUploadedHashes.Add(uploadedHash);
         }

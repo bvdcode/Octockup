@@ -364,6 +364,10 @@ namespace Octockup.Server.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("id");
 
+                    b.Property<int>("CompressionAlgorithm")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("compression_algorithm");
+
                     b.Property<string>("CreatedAt")
                         .IsRequired()
                         .HasColumnType("TEXT")
