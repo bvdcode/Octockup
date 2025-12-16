@@ -108,6 +108,15 @@ namespace Octockup.Server.Jobs
             }
             finally
             {
+                try
+                {
+                    await FlushUploadedHashesAsync(CancellationToken.None);
+                }
+                catch (Exception flushEx)
+                {
+                    logger.LogError(flushEx, "Failed to flush pending uploaded hashes after backup execution");
+                }
+
                 await report.DisposeAsync();
             }
         }
@@ -355,18 +364,7 @@ namespace Octockup.Server.Jobs
 
                     long storedSize = 0;
                     string path = ScheduleHelpers.SplitPlainHash(hash, storage.PathSeparator);
-                    bool exists = await storage.ExistsAsync(path, cancellationToken) ?? false;
                     CompressionAlgorithm algorithm;
-                    if (exists)
-                    {
-                        bool recordedInDb = await dbContext.UploadedHashes
-                            .AsNoTracking()
-                            .AnyAsync(x => x.Hash == hash && x.ModuleId == schedule.Backup.StorageId, cancellationToken);
-                        if (!recordedInDb)
-                        {
-                            throw new InvalidOperationException($"Chunk {shortHash} for file {file.Name} already exists in storage according to ExistsAsync check, but was not found in DB. Hash: {hash}, Path: {path}");
-                        }
-                    }
                     string size = $"{(chunkLength / (1024.0 * 1024.0)):F2} MB";
                     logger.LogInformation("Uploading chunk {shortHash} for file {FileName}, size: {size}", shortHash, file.Name, size);
 
