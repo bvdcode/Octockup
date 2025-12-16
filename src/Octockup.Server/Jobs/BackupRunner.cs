@@ -359,7 +359,13 @@ namespace Octockup.Server.Jobs
                     CompressionAlgorithm algorithm;
                     if (exists)
                     {
-                        throw new InvalidOperationException($"Chunk {shortHash} for file {file.Name} already exists in storage according to ExistsAsync check, but was not found in DB. Hash: {hash}, Path: {path}");
+                        bool recordedInDb = await dbContext.UploadedHashes
+                            .AsNoTracking()
+                            .AnyAsync(x => x.Hash == hash && x.ModuleId == schedule.Backup.StorageId, cancellationToken);
+                        if (!recordedInDb)
+                        {
+                            throw new InvalidOperationException($"Chunk {shortHash} for file {file.Name} already exists in storage according to ExistsAsync check, but was not found in DB. Hash: {hash}, Path: {path}");
+                        }
                     }
                     string size = $"{(chunkLength / (1024.0 * 1024.0)):F2} MB";
                     logger.LogInformation("Uploading chunk {shortHash} for file {FileName}, size: {size}", shortHash, file.Name, size);
