@@ -1,4 +1,7 @@
-﻿using MailKit;
+﻿// SPDX-License-Identifier: MIT
+// Copyright (c) 2025 Vadim Belov | bvdcode | belov.us
+
+using MailKit;
 using MailKit.Net.Imap;
 using Octockup.Server.Abstractions;
 using Octockup.Server.Helpers;

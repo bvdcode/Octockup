@@ -1,4 +1,7 @@
-﻿using EasyExtensions.EntityFrameworkCore.Abstractions;
+﻿// SPDX-License-Identifier: MIT
+// Copyright (c) 2025 Vadim Belov | bvdcode | belov.us
+
+using EasyExtensions.EntityFrameworkCore.Abstractions;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Octockup.Server.Database

@@ -1,4 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+﻿// SPDX-License-Identifier: MIT
+// Copyright (c) 2025 Vadim Belov | bvdcode | belov.us
+
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Octockup.Server.Converters
 {

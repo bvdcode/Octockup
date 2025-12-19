@@ -1,4 +1,7 @@
-﻿using EasyExtensions.Abstractions;
+﻿// SPDX-License-Identifier: MIT
+// Copyright (c) 2025 Vadim Belov | bvdcode | belov.us
+
+using EasyExtensions.Abstractions;
 using EasyExtensions.Models.Enums;
 using Octockup.Server.Abstractions;
 using Octockup.Server.Database;
