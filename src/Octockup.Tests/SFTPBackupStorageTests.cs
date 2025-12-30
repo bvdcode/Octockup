@@ -1,4 +1,7 @@
-﻿using Microsoft.Extensions.Logging.Abstractions;
+﻿// SPDX-License-Identifier: MIT
+// Copyright (c) 2025 Vadim Belov <https://belov.us>
+
+using Microsoft.Extensions.Logging.Abstractions;
 using Octockup.Server.Modules;
 
 namespace Octockup.Tests

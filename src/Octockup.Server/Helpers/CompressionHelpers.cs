@@ -1,4 +1,7 @@
-﻿using EasyExtensions.Models.Enums;
+﻿// SPDX-License-Identifier: MIT
+// Copyright (c) 2025 Vadim Belov <https://belov.us>
+
+using EasyExtensions.Models.Enums;
 
 namespace Octockup.Server.Helpers
 {
@@ -33,6 +36,7 @@ namespace Octockup.Server.Helpers
                 ".jpg", ".jpeg", ".gif", ".png", ".webp", ".avif", ".heic",
                 ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".webm",
                 ".mp3", ".aac", ".m4a", ".ogg", ".opus", ".flac",
+                ".zst", ".br", ".xz", ".lz4", ".lzma"
             ];
             return !skip.Contains(ext);
         }

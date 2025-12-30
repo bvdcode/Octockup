@@ -1,4 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿// SPDX-License-Identifier: MIT
+// Copyright (c) 2025 Vadim Belov <https://belov.us>
+
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Octockup.Server.Converters;
 using System.Text.Json;

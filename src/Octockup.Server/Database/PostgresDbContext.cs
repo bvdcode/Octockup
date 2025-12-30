@@ -1,4 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿// SPDX-License-Identifier: MIT
+// Copyright (c) 2025 Vadim Belov <https://belov.us>
+
+using Microsoft.EntityFrameworkCore;
 
 namespace Octockup.Server.Database
 {

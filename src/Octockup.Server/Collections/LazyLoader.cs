@@ -1,4 +1,7 @@
-﻿using System.Collections;
+﻿// SPDX-License-Identifier: MIT
+// Copyright (c) 2025 Vadim Belov <https://belov.us>
+
+using System.Collections;
 using System.Runtime.ExceptionServices;
 
 namespace Octockup.Server.Collections

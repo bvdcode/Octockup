@@ -1,5 +1,5 @@
-﻿// SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (c) 2025 Vadim Belov
+﻿// SPDX-License-Identifier: MIT
+// Copyright (c) 2025 Vadim Belov <https://belov.us>
 
 using Amazon.S3;
 using Amazon.S3.Model;
@@ -20,6 +20,7 @@ namespace Octockup.Server.Modules
         private string? _path;
         private string? _bucket;
         private AmazonS3Client? _s3;
+        private bool _useChunkEncoding = true;
         private bool _validateChecksums = false;
         private ICollection<string>? _ignoredPaths;
 
@@ -55,6 +56,13 @@ namespace Octockup.Server.Modules
 
             string accessKey = parameters["accessKey"];
             string secretKey = parameters["secretKey"];
+
+            bool hasChunkEncodingParam = parameters.TryGetValue("useChunkEncoding", out var chunkEncodingStr);
+            if (hasChunkEncodingParam)
+            {
+                bool parsed = bool.TryParse(chunkEncodingStr, out var chunkEncodingBool);
+                _useChunkEncoding = parsed && chunkEncodingBool;
+            }
 
             _s3 = new AmazonS3Client(accessKey, secretKey, config);
         }
@@ -415,7 +423,7 @@ namespace Octockup.Server.Modules
                 Key = key,
                 InputStream = data,
                 BucketName = _bucket,
-                UseChunkEncoding = false,
+                UseChunkEncoding = _useChunkEncoding,
                 ContentType = MediaTypeNames.Application.Octet,
             };
 
