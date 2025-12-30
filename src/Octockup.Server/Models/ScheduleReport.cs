@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Hubs;
 using Octockup.Server.Models.Enums;
 using System.Diagnostics;
+using System.Linq;
 
 namespace Octockup.Server.Models
 {
@@ -29,6 +30,9 @@ namespace Octockup.Server.Models
         private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
         private readonly CancellationTokenSource _backgroundTaskCts = new();
         private Task? _backgroundTask;
+        private static readonly TimeSpan SpeedWindow = TimeSpan.FromMinutes(1);
+        private readonly Queue<(DateTime Timestamp, long Bytes)> _speedSamples = new();
+        private readonly Lock _speedLock = new();
 
         public void StartBackgroundReporting(CancellationToken cancellationToken)
         {
@@ -45,7 +49,7 @@ namespace Octockup.Server.Models
                     await Task.Delay(500, cancellationToken);
                     if (!cancellationToken.IsCancellationRequested)
                     {
-                        Speed = ProcessedBytes / Math.Max(1, _stopwatch.Elapsed.TotalSeconds);
+                        UpdateSpeed(0, forceSample: true);
                         await _hubContext.Clients.User(UserId.ToString()).SendAsync("ScheduleReport", this, cancellationToken);
                     }
                 }
@@ -66,12 +70,43 @@ namespace Octockup.Server.Models
             Timestamp = DateTime.UtcNow;
             Message = message;
             Processed = processedFiles;
+            UpdateSpeed(processedBytes, forceSample: processedBytes == 0);
+            await _hubContext.Clients.User(UserId.ToString()).SendAsync("ScheduleReport", this, cancellationToken: cancellationToken);
+        }
+
+        private void UpdateSpeed(long processedBytes, bool forceSample)
+        {
+            var now = DateTime.UtcNow;
             if (processedBytes > 0)
             {
                 ProcessedBytes += processedBytes;
             }
-            Speed = ProcessedBytes / Math.Max(1, _stopwatch.Elapsed.TotalSeconds);
-            await _hubContext.Clients.User(UserId.ToString()).SendAsync("ScheduleReport", this, cancellationToken: cancellationToken);
+
+            lock (_speedLock)
+            {
+                if (forceSample || processedBytes > 0 || _speedSamples.Count == 0)
+                {
+                    _speedSamples.Enqueue((now, ProcessedBytes));
+                }
+
+                while (_speedSamples.Count > 0 && now - _speedSamples.Peek().Timestamp > SpeedWindow)
+                {
+                    _speedSamples.Dequeue();
+                }
+
+                if (_speedSamples.Count >= 2)
+                {
+                    var first = _speedSamples.Peek();
+                    var last = _speedSamples.Last();
+                    var deltaBytes = last.Bytes - first.Bytes;
+                    var deltaSeconds = (last.Timestamp - first.Timestamp).TotalSeconds;
+                    Speed = deltaSeconds > 0 ? deltaBytes / deltaSeconds : 0;
+                }
+                else
+                {
+                    Speed = 0;
+                }
+            }
         }
 
         public async ValueTask DisposeAsync()
