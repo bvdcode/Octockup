@@ -67,7 +67,7 @@ export default function SnapshotFilesPage() {
   };
 
   const filteredFiles = files.filter((file) =>
-    file.path.toLowerCase().includes(searchQuery.toLowerCase())
+    file.path.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const columns: GridColDef<SnapshotFileDto>[] = [
@@ -128,7 +128,7 @@ export default function SnapshotFilesPage() {
   }
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={3} display="flex" flexDirection="column" flex={1}>
       {state.error && <Alert severity="error">{state.error}</Alert>}
       <Box display="flex" alignItems="center" gap={2}>
         <Button
@@ -147,12 +147,13 @@ export default function SnapshotFilesPage() {
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
       />
-      <Box sx={{ height: 600, width: "100%" }}>
+      <Box flex={1}>
         <DataGrid
           rows={filteredFiles}
           columns={columns}
           loading={state.loading}
-          pageSizeOptions={[25, 50, 100]}
+          pageSizeOptions={[10, 25, 50, 100]}
+          autoPageSize
           initialState={{
             pagination: { paginationModel: { pageSize: 25 } },
             columns: {

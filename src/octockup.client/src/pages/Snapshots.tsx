@@ -1,20 +1,18 @@
 import {
   Box,
   Card,
-  Paper,
   Stack,
   Alert,
-  Table,
   Button,
-  TableRow,
-  TableBody,
-  TableCell,
-  TableHead,
   Typography,
   CardContent,
-  TableContainer,
   CircularProgress,
 } from "@mui/material";
+import {
+  DataGrid,
+  type GridColDef,
+  type GridRowParams,
+} from "@mui/x-data-grid";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowBack } from "@mui/icons-material";
@@ -62,6 +60,43 @@ export default function SnapshotsPage() {
     };
   }, [backupId, snapshotsApi]);
 
+  const columns: GridColDef[] = [
+    {
+      field: "completedAt",
+      headerName: t("snapshots.completedAt"),
+      flex: 1,
+      minWidth: 200,
+      valueGetter: (value: string | null) =>
+        value ? new Date(value).getTime() : 0,
+      renderCell: (params) =>
+        params.row.completedAt
+          ? new Date(params.row.completedAt).toLocaleString()
+          : t("snapshots.never"),
+    },
+    {
+      field: "filesCount",
+      headerName: t("snapshots.filesCount"),
+      flex: 1,
+      minWidth: 150,
+      align: "right",
+      headerAlign: "right",
+      valueFormatter: (value: number) => value.toLocaleString(),
+    },
+    {
+      field: "totalSize",
+      headerName: t("snapshots.totalSize"),
+      flex: 1,
+      minWidth: 150,
+      align: "right",
+      headerAlign: "right",
+      valueFormatter: (value: number) => formatSize(value),
+    },
+  ];
+
+  const handleRowClick = (params: GridRowParams) => {
+    navigate(`/backups/${backupId}/snapshots/${params.row.id}/files`);
+  };
+
   if (state.error && snapshots.length === 0) {
     return (
       <Box p={2}>
@@ -71,7 +106,7 @@ export default function SnapshotsPage() {
   }
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={3} display="flex" flexDirection="column" flex={1}>
       {state.error && <Alert severity="error">{state.error}</Alert>}
       <Box display="flex" alignItems="center" gap={2}>
         <Button
@@ -96,42 +131,28 @@ export default function SnapshotsPage() {
           </CardContent>
         </Card>
       ) : (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>{t("snapshots.completedAt")}</TableCell>
-                <TableCell align="right">{t("snapshots.filesCount")}</TableCell>
-                <TableCell align="right">{t("snapshots.totalSize")}</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {snapshots.map((snapshot) => (
-                <TableRow
-                  key={snapshot.id}
-                  sx={{ 
-                    "&:last-child td, &:last-child th": { border: 0 },
-                    cursor: "pointer",
-                    "&:hover": { backgroundColor: "action.hover" }
-                  }}
-                  onClick={() => navigate(`/backups/${backupId}/snapshots/${snapshot.id}/files`)}
-                >
-                  <TableCell component="th" scope="row">
-                    {snapshot.completedAt
-                      ? new Date(snapshot.completedAt).toLocaleString()
-                      : t("snapshots.never")}
-                  </TableCell>
-                  <TableCell align="right">
-                    {snapshot.filesCount.toLocaleString()}
-                  </TableCell>
-                  <TableCell align="right">
-                    {formatSize(snapshot.totalSize)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <Box flex={1}>
+          <DataGrid
+            rows={snapshots}
+            columns={columns}
+            pageSizeOptions={[10, 25, 50, 100]}
+            autoPageSize
+            pagination
+            initialState={{
+              sorting: {
+                sortModel: [{ field: "completedAt", sort: "desc" }],
+              },
+            }}
+            onRowClick={handleRowClick}
+            disableRowSelectionOnClick
+            sx={{
+              cursor: "pointer",
+              "& .MuiDataGrid-row:hover": {
+                cursor: "pointer",
+              },
+            }}
+          />
+        </Box>
       )}
     </Stack>
   );
