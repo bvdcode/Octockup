@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using MimeKit;
 using Octockup.Server.Abstractions;
 using Octockup.Server.Database;
+using Octockup.Server.Helpers;
 using Octockup.Server.Models.Dto;
 using Octockup.Server.Streams;
 
@@ -59,7 +60,10 @@ namespace Octockup.Server.Controllers
                 var found = await _dbContext.UploadedHashes.FirstOrDefaultAsync(x => x.Hash == fileHash);
                 if (found == null)
                 {
-                    return BadRequest("Chunk hash metadata not found in DB: " + fileHash);
+                    _logger.LogWarning("Chunk hash metadata not found in DB: {FileHash}", fileHash);
+                    _logger.LogWarning("Trying to proceed with the download, but it may fail if the chunk is not found in storage or if the chunk is compressed with an unsupported algorithm");
+                    hashes.Add((fileHash, CompressionHelpers.Algorithm));
+                    continue;
                 }
                 hashes.Add((found.Hash, found.CompressionAlgorithm));
             }
