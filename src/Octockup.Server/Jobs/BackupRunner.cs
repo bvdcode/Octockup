@@ -372,47 +372,22 @@ namespace Octockup.Server.Jobs
 
                     Stream src;
                     MemoryStream? compressedStream = null;
-                    bool needsCompression = CompressionHelpers.ShouldCompressChunk(file.Name ?? file.Path, chunkLength);
-                    if (needsCompression)
+                    compressedStream = new MemoryStream();
+                    await using (var compressed = CompressionHelpers.CreateCompressionStream(compressedStream))
                     {
-                        compressedStream = new MemoryStream();
-                        await using (var compressed = CompressionHelpers.CreateCompressionStream(compressedStream))
+                        int r;
+                        while ((r = await chunk.ReadAsync(buffer.AsMemory(0, Math.Min(buffer.Length, ChunkSize)), cancellationToken)) > 0)
                         {
-                            int r;
-                            while ((r = await chunk.ReadAsync(buffer.AsMemory(0, Math.Min(buffer.Length, ChunkSize)), cancellationToken)) > 0)
-                            {
-                                await compressed.WriteAsync(buffer.AsMemory(0, r), cancellationToken);
-                            }
-                        }
-                        compressedStream.Seek(0, SeekOrigin.Begin);
-                        if (compressedStream.Length >= chunkLength)
-                        {
-                            // Compression did not reduce size enough, use original
-                            logger.LogInformation("Chunk {shortHash} for file {FileName} compression did not reduce size enough ({originalSize} to {compressedSize}), using original",
-                                shortHash, file.Name, size,
-                                $"{(compressedStream.Length / (1024.0 * 1024.0)):F2} MB");
-                            await compressedStream.DisposeAsync();
-                            compressedStream = null;
-                            chunk.Seek(0, SeekOrigin.Begin);
-                            src = chunk;
-                            algorithm = CompressionAlgorithm.None;
-                        }
-                        else
-                        {
-                            src = compressedStream;
-                            algorithm = CompressionHelpers.Algorithm;
-                            logger.LogInformation("Chunk {shortHash} for file {FileName} compressed from {originalSize} to {compressedSize} using {algorithm}",
-                                shortHash, file.Name, size,
-                                $"{(src.Length / (1024.0 * 1024.0)):F2} MB",
-                                algorithm);
+                            await compressed.WriteAsync(buffer.AsMemory(0, r), cancellationToken);
                         }
                     }
-                    else
-                    {
-                        algorithm = CompressionAlgorithm.None;
-                        src = chunk;
-                        logger.LogInformation("Chunk {shortHash} for file {FileName} is not compressed due to insufficient size reduction", shortHash, file.Name);
-                    }
+                    compressedStream.Seek(0, SeekOrigin.Begin);
+                    src = compressedStream;
+                    algorithm = CompressionHelpers.Algorithm;
+                    logger.LogInformation("Chunk {shortHash} for file {FileName} compressed from {originalSize} to {compressedSize} using {algorithm}",
+                        shortHash, file.Name, size,
+                        $"{(src.Length / (1024.0 * 1024.0)):F2} MB",
+                        algorithm);
 
                     try
                     {

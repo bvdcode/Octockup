@@ -15,7 +15,7 @@ namespace Octockup.Server.Helpers
 
         public static Stream CreateCompressionStream(Stream compressedStream, bool leaveOpen = true)
         {
-            return new ZstdSharp.CompressionStream(compressedStream, level: 3, leaveOpen: leaveOpen);
+            return new ZstdSharp.CompressionStream(compressedStream, level: 2, leaveOpen: leaveOpen);
         }
 
         public static Stream CreateDecompressionStream(Stream decrypted, bool leaveOpen = true)
