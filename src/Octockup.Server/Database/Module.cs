@@ -56,7 +56,7 @@ namespace Octockup.Server.Database
             }
 
             var bytes = Convert.FromBase64String(EncryptedParameters);
-            var json = cipher.Decrypt(bytes);
+            var json = cipher.DecryptString(bytes);
             _paramsCache = JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? new(StringComparer.Ordinal);
             return _paramsCache;
         }
@@ -68,7 +68,7 @@ namespace Octockup.Server.Database
                 .ToDictionary(x => x.Key, x => x.Value, StringComparer.Ordinal);
 
             var json = JsonSerializer.Serialize(normalized);
-            var bytes = cipher.Encrypt(json);
+            var bytes = cipher.EncryptString(json);
 
             EncryptedParameters = Convert.ToBase64String(bytes);
             _paramsCache = normalized;
