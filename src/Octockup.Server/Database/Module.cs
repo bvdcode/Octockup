@@ -37,6 +37,7 @@ namespace Octockup.Server.Database
         [Column("encrypted_parameters")]
         public string EncryptedParameters { get; private set; } = string.Empty;
 
+        [DeleteBehavior(DeleteBehavior.Restrict)]
         public virtual User User { get; set; } = null!;
 
         [NotMapped] private Dictionary<string, string>? _paramsCache;

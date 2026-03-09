@@ -23,8 +23,12 @@ namespace Octockup.Server.Database
         [Column("ignored_paths")]
         public ICollection<string> IgnoredPaths { get; set; } = [];
 
+        [DeleteBehavior(DeleteBehavior.Restrict)]
         public virtual Module Source { get; set; } = null!;
+
+        [DeleteBehavior(DeleteBehavior.Restrict)]
         public virtual Module Storage { get; set; } = null!;
+
         public virtual ICollection<Snapshot> Snapshots { get; set; } = [];
         public virtual ICollection<Schedule> Schedules { get; set; } = [];
     }

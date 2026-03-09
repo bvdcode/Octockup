@@ -28,6 +28,7 @@ namespace Octockup.Server.Database
         [Column("compression_algorithm")]
         public CompressionAlgorithm CompressionAlgorithm { get; set; }
 
+        [DeleteBehavior(DeleteBehavior.Restrict)]
         public virtual Module Module { get; set; } = null!;
     }
 }

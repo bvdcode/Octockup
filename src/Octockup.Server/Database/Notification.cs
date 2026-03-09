@@ -2,6 +2,7 @@
 // Copyright (c) 2025 Vadim Belov <https://belov.us>
 
 using EasyExtensions.EntityFrameworkCore.Abstractions;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Octockup.Server.Database
@@ -27,6 +28,7 @@ namespace Octockup.Server.Database
         [Column("priority")]
         public int Priority { get; set; }
 
+        [DeleteBehavior(DeleteBehavior.Restrict)]
         public virtual User User { get; set; } = null!;
     }
 }

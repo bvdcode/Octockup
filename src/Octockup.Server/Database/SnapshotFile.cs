@@ -32,6 +32,7 @@ namespace Octockup.Server.Database
         [Column("chunk_hashes")]
         public ICollection<string> ChunkHashes { get; set; } = [];
 
+        [DeleteBehavior(DeleteBehavior.Restrict)]
         public virtual Snapshot Snapshot { get; set; } = null!;
     }
 }

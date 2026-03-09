@@ -2,6 +2,7 @@
 // Copyright (c) 2025 Vadim Belov <https://belov.us>
 
 using EasyExtensions.EntityFrameworkCore.Abstractions;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Octockup.Server.Database
@@ -21,7 +22,9 @@ namespace Octockup.Server.Database
         [Column("files_count")]
         public int FilesCount { get; set; }
 
+        [DeleteBehavior(DeleteBehavior.Restrict)]
         public virtual Backup Backup { get; set; } = null!;
+
         public virtual ICollection<SnapshotFile> Files { get; set; } = [];
     }
 }
