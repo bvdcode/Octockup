@@ -24,9 +24,12 @@ import { BackupStatus } from "../types/api";
 import { confirm } from "material-ui-confirm";
 import { useTranslation } from "react-i18next";
 import type { ScheduleItem, ScheduleReport } from "../types/api";
-import { parseUtcDate } from "../utils/dateUtils";
 import { formatSpeed, formatElapsed } from "../utils/formatUtils";
-import { formatNextRun, formatInterval } from "../utils/scheduleUtils";
+import {
+  calculateNextRunTime,
+  formatNextRun,
+  formatInterval,
+} from "../utils/scheduleUtils";
 import { getSourceIcon } from "../constants/sourceIcons";
 
 function getStatusIcon(status: BackupStatus) {
@@ -202,6 +205,7 @@ function ScheduleInfo({
   progress: number;
 }) {
   const { t } = useTranslation();
+  const nextRun = calculateNextRunTime(item);
 
   const renderIntervalInfo = () => {
     if (!item.interval) {
@@ -251,12 +255,18 @@ function ScheduleInfo({
             </Typography>
           </Box>
         )}
-        <Typography
-          variant="caption"
-          sx={{ color: "text.secondary", display: "block", fontSize: "0.7rem" }}
-        >
-          {parseUtcDate(item.startAt)!.toLocaleString()}
-        </Typography>
+        {nextRun && (
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              display: "block",
+              fontSize: "0.7rem",
+            }}
+          >
+            {nextRun.toLocaleString()}
+          </Typography>
+        )}
       </Box>
     </Box>
   );
