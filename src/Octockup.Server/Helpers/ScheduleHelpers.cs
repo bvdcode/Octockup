@@ -54,19 +54,23 @@ namespace Octockup.Server.Helpers
 
         public static DateTime? CalculateNextRun(Schedule schedule, DateTime now)
         {
+            DateTime utcNow = NormalizeUtc(now);
+            DateTime startAtUtc = NormalizeUtc(schedule.StartAt);
+            DateTime? finishedAtUtc = schedule.FinishedAt.HasValue ? NormalizeUtc(schedule.FinishedAt.Value) : null;
+
             if (schedule.Status == ScheduleStatus.Running)
             {
                 // Currently running → interrupted, run now
-                return DateTime.UtcNow;
+                return utcNow;
             }
 
             // One-time job (Interval = null)
             if (schedule.Interval is null)
             {
                 // Not started yet → next start
-                if (schedule.FinishedAt is null)
+                if (finishedAtUtc is null)
                 {
-                    return schedule.StartAt;
+                    return startAtUtc;
                 }
 
                 // already executed → no more runs
@@ -77,19 +81,30 @@ namespace Octockup.Server.Helpers
             TimeSpan interval = schedule.Interval.Value;
 
             // If StartAt is in the future → not started yet
-            if (schedule.StartAt > now)
+            if (startAtUtc > utcNow)
             {
-                return schedule.StartAt;
+                return startAtUtc;
             }
 
             // If never finished yet → first run = StartAt
-            if (schedule.FinishedAt is null)
+            if (finishedAtUtc is null)
             {
-                return schedule.StartAt;
+                return startAtUtc;
             }
 
             // Next run strictly from last finish
-            return schedule.FinishedAt.Value.Add(interval);
+            return finishedAtUtc.Value.Add(interval);
+        }
+
+        private static DateTime NormalizeUtc(DateTime value)
+        {
+            return value.Kind switch
+            {
+                DateTimeKind.Utc => value,
+                DateTimeKind.Local => value.ToUniversalTime(),
+                DateTimeKind.Unspecified => DateTime.SpecifyKind(value, DateTimeKind.Utc),
+                _ => value
+            };
         }
 
         public static string SplitPlainHash(string hash, char pathSeparator)

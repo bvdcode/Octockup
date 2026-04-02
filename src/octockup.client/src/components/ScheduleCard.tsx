@@ -255,7 +255,7 @@ function ScheduleInfo({
           variant="caption"
           sx={{ color: "text.secondary", display: "block", fontSize: "0.7rem" }}
         >
-          {parseUtcDate(item.startAt)!.toLocaleDateString()}
+          {parseUtcDate(item.startAt)!.toLocaleString()}
         </Typography>
       </Box>
     </Box>

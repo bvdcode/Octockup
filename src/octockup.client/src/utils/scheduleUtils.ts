@@ -91,19 +91,20 @@ export function calculateNextRunTime(
     return null; // Cannot determine until current run finishes
   }
 
-  // Calculate based on last finished time or start time
-  if (
-    item.finishedAt &&
-    (item.status === BackupStatus.Completed ||
-      item.status === BackupStatus.Failed)
-  ) {
+  // Keep behavior aligned with backend ScheduleHelpers.CalculateNextRun.
+  // For periodic schedules: if never finished, next run is StartAt (not StartAt + interval).
+  if (startAt > now) {
+    return startAt;
+  }
+
+  if (item.finishedAt) {
     const finishedAt = parseUtcDate(item.finishedAt);
     if (finishedAt) {
       return new Date(finishedAt.getTime() + intervalMinutes * 60000);
     }
   }
 
-  return new Date(startAt.getTime() + intervalMinutes * 60000);
+  return startAt;
 }
 
 export function formatNextRun(
