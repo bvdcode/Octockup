@@ -18,7 +18,7 @@ namespace Octockup.Server.Migrations.Postgres
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.3")
+                .HasAnnotation("ProductVersion", "10.0.7")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "hstore");
@@ -70,6 +70,14 @@ namespace Octockup.Server.Migrations.Postgres
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
+
+                    b.Property<bool>("DisableCompression")
+                        .HasColumnType("boolean")
+                        .HasColumnName("disable_compression");
+
+                    b.Property<bool>("DisableEncryption")
+                        .HasColumnType("boolean")
+                        .HasColumnName("disable_encryption");
 
                     b.PrimitiveCollection<string[]>("IgnoredPaths")
                         .IsRequired()

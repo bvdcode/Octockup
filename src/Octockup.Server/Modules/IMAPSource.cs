@@ -76,9 +76,13 @@ namespace Octockup.Server.Modules
 
                 try
                 {
-                    await _client.ConnectAsync(_host, _port, _useSsl, cancellationToken);
-                    await _client.AuthenticateAsync(_username, _password, cancellationToken);
-                    _logger.LogInformation("Successfully connected to IMAP server {Host}:{Port}", _host, _port);
+                    string host = _host ?? throw new InvalidOperationException("IMAP host is not configured.");
+                    string username = _username ?? throw new InvalidOperationException("IMAP username is not configured.");
+                    string password = _password ?? throw new InvalidOperationException("IMAP password is not configured.");
+
+                    await _client.ConnectAsync(host, _port, _useSsl, cancellationToken);
+                    await _client.AuthenticateAsync(username, password, cancellationToken);
+                    _logger.LogInformation("Successfully connected to IMAP server {Host}:{Port}", host, _port);
 
                     // Cache the directory separator from the server
                     var personalNamespace = _client.GetFolder(_client.PersonalNamespaces[0]);
@@ -200,7 +204,8 @@ namespace Octockup.Server.Modules
             _imapLock.Wait(cancellationToken);
             try
             {
-                inboxFolder = _client.Inbox;
+                var client = _client ?? throw new InvalidOperationException("IMAP client is not connected.");
+                inboxFolder = client.Inbox ?? throw new InvalidOperationException("IMAP server did not provide an Inbox folder.");
                 inboxFullName = inboxFolder.FullName;
             }
             finally
@@ -277,9 +282,16 @@ namespace Octockup.Server.Modules
                 try
                 {
                     // Get a fresh reference to the folder to avoid stale references
+                    var client = _client ?? throw new InvalidOperationException("IMAP client is not connected.");
                     openedFolder = string.IsNullOrEmpty(folder.FullName)
-                        ? _client!.Inbox
-                        : _client!.GetFolder(folder.FullName, cancellationToken);
+                        ? client.Inbox
+                        : client.GetFolder(folder.FullName, cancellationToken);
+
+                    if (openedFolder == null)
+                    {
+                        _logger.LogDebug("Skipping unavailable IMAP folder: {Folder}", folder.FullName);
+                        yield break;
+                    }
 
                     // Re-check NoSelect after getting fresh reference
                     if ((openedFolder.Attributes & FolderAttributes.NoSelect) != 0)
@@ -482,10 +494,16 @@ namespace Octockup.Server.Modules
                 await _imapLock.WaitAsync(cancellationToken);
                 try
                 {
-                    IMailFolder folder;
+                    var client = _client;
+                    if (client == null)
+                    {
+                        return Stream.Null;
+                    }
+
+                    IMailFolder? folder;
                     if (string.IsNullOrEmpty(folderPath))
                     {
-                        folder = _client.Inbox;
+                        folder = client.Inbox;
                     }
                     else
                     {
@@ -493,7 +511,13 @@ namespace Octockup.Server.Modules
                         var serverFolderPath = (_serverDirectorySeparator.HasValue && _serverDirectorySeparator.Value != '/')
                             ? folderPath.Replace('/', _serverDirectorySeparator.Value)
                             : folderPath;
-                        folder = await _client.GetFolderAsync(serverFolderPath, cancellationToken);
+                        folder = await client.GetFolderAsync(serverFolderPath, cancellationToken);
+                    }
+
+                    if (folder == null)
+                    {
+                        _logger.LogWarning("IMAP folder not found for email path: {Path}", file.Path);
+                        return Stream.Null;
                     }
 
                     await folder.OpenAsync(FolderAccess.ReadOnly, cancellationToken);
@@ -580,17 +604,29 @@ namespace Octockup.Server.Modules
                 await _imapLock.WaitAsync(cancellationToken);
                 try
                 {
-                    IMailFolder folder;
+                    var client = _client;
+                    if (client == null)
+                    {
+                        return null;
+                    }
+
+                    IMailFolder? folder;
                     if (string.IsNullOrEmpty(folderPath))
                     {
-                        folder = _client.Inbox;
+                        folder = client.Inbox;
                     }
                     else
                     {
                         var serverFolderPath = (_serverDirectorySeparator.HasValue && _serverDirectorySeparator.Value != '/')
                             ? folderPath.Replace('/', _serverDirectorySeparator.Value)
                             : folderPath;
-                        folder = await _client.GetFolderAsync(serverFolderPath, cancellationToken);
+                        folder = await client.GetFolderAsync(serverFolderPath, cancellationToken);
+                    }
+
+                    if (folder == null)
+                    {
+                        _logger.LogWarning("IMAP folder not found for email path: {Path}", path);
+                        return null;
                     }
 
                     await folder.OpenAsync(FolderAccess.ReadOnly, cancellationToken);
