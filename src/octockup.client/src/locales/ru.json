@@ -208,6 +208,8 @@
     "ignoredPathsPlaceholder": "path/to/ignore\nlogs\nnode_modules",
     "noIgnoredPaths": "Нет игнорируемых путей",
     "applyPreset": "Применить рекомендуемые пути",
+    "disableCompression": "Отключить сжатие",
+    "disableEncryption": "Отключить шифрование",
     "createBackup": "Создать бэкап",
     "createError": "Не удалось создать бэкап."
   },

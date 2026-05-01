@@ -184,6 +184,8 @@
     "ignoredPathsPlaceholder": "path/to/ignore\nlogs\nnode_modules",
     "noIgnoredPaths": "No ignored paths",
     "applyPreset": "Apply recommended paths",
+    "disableCompression": "Disable compression",
+    "disableEncryption": "Disable encryption",
     "createBackup": "Create Backup",
     "createError": "Failed to create backup."
   },

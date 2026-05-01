@@ -11,6 +11,8 @@ namespace Octockup.Server.Models.Dto
         public Guid StorageId { get; set; }
         public string Tag { get; set; } = string.Empty;
         public ICollection<string> IgnoredPaths { get; set; } = [];
+        public bool DisableCompression { get; set; }
+        public bool DisableEncryption { get; set; }
         public ModuleDto Source { get; set; } = null!;
         public ModuleDto Storage { get; set; } = null!;
         public ICollection<SnapshotDto> Snapshots { get; set; } = [];

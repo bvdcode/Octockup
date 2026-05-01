@@ -53,25 +53,37 @@ namespace Octockup.Server.Controllers
                 return BadRequest("Storage provider is not a backup storage");
             }
 
-            var fileHashes = snapshotFile.ChunkHashes?.ToList() ?? [];
-            List<(string, CompressionAlgorithm)> hashes = [];
-            foreach (var fileHash in fileHashes)
+            var chunkKeys = snapshotFile.ChunkHashes?.ToList() ?? [];
+            var uploadedHashes = await _dbContext.UploadedHashes
+                .AsNoTracking()
+                .Where(x => x.ModuleId == snapshotFile.Snapshot.Backup.StorageId && chunkKeys.Contains(x.Hash))
+                .ToDictionaryAsync(x => x.Hash);
+
+            List<ChunkStorageDescriptor> chunks = [];
+            foreach (var chunkKey in chunkKeys)
             {
-                var found = await _dbContext.UploadedHashes.FirstOrDefaultAsync(x => x.Hash == fileHash);
-                if (found == null)
+                if (uploadedHashes.TryGetValue(chunkKey, out var found))
                 {
-                    _logger.LogWarning("Chunk hash metadata not found in DB: {FileHash}", fileHash);
-                    _logger.LogWarning("Trying to proceed with the download, but it may fail if the chunk is not found in storage or if the chunk is compressed with an unsupported algorithm");
-                    hashes.Add((fileHash, CompressionHelpers.Algorithm));
+                    chunks.Add(ChunkStorageHelpers.Parse(found.Hash, found.CompressionAlgorithm));
                     continue;
                 }
-                hashes.Add((found.Hash, found.CompressionAlgorithm));
+
+                _logger.LogWarning("Chunk hash metadata not found in DB: {ChunkKey}", chunkKey);
+                try
+                {
+                    chunks.Add(ChunkStorageHelpers.Parse(chunkKey));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Unsupported chunk key metadata: {ChunkKey}", chunkKey);
+                    return BadRequest("Unsupported chunk metadata.");
+                }
             }
 
             var stream = new SnapshotConcatStream(
                 _logger,
                 storage,
-                hashes,
+                chunks,
                 snapshotFile,
                 _crypto,
                 HttpContext.RequestAborted

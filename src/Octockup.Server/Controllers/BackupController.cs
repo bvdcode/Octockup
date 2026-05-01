@@ -234,7 +234,9 @@ namespace Octockup.Server.Controllers
                 Tag = request.Tag,
                 SourceId = source.Id,
                 StorageId = storage.Id,
-                IgnoredPaths = request.IgnoredPaths ?? []
+                IgnoredPaths = request.IgnoredPaths ?? [],
+                DisableCompression = request.DisableCompression,
+                DisableEncryption = request.DisableEncryption
             };
             await _dbContext.Backups.AddAsync(backup);
             await _dbContext.SaveChangesAsync();

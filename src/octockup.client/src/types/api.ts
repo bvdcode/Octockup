@@ -42,6 +42,8 @@ export interface BackupItem {
   sourceId: string;
   storageId: string;
   ignoredPaths: string[];
+  disableCompression: boolean;
+  disableEncryption: boolean;
   source: Module;
   storage: Module;
   schedules: ScheduleItem[];
@@ -56,6 +58,8 @@ export interface ScheduleBackupItem {
   sourceId: string;
   storageId: string;
   ignoredPaths: string[];
+  disableCompression: boolean;
+  disableEncryption: boolean;
   source: Module;
   storage: Module;
   snapshots: SnapshotDto[];
@@ -76,6 +80,8 @@ export interface CreateBackupRequest {
   storageId: string;
   tag: string;
   ignoredPaths: string[];
+  disableCompression: boolean;
+  disableEncryption: boolean;
 }
 
 export enum BackupStatus {

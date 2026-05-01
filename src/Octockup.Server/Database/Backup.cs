@@ -23,6 +23,12 @@ namespace Octockup.Server.Database
         [Column("ignored_paths")]
         public ICollection<string> IgnoredPaths { get; set; } = [];
 
+        [Column("disable_compression")]
+        public bool DisableCompression { get; set; }
+
+        [Column("disable_encryption")]
+        public bool DisableEncryption { get; set; }
+
         [DeleteBehavior(DeleteBehavior.Restrict)]
         public virtual Module Source { get; set; } = null!;
 

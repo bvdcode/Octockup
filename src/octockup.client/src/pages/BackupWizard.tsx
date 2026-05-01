@@ -5,11 +5,14 @@ import {
   Stack,
   Alert,
   Button,
+  Checkbox,
   Divider,
   MenuItem,
   TextField,
   Typography,
   CardContent,
+  FormControlLabel,
+  FormGroup,
   CircularProgress,
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
@@ -48,6 +51,9 @@ export default function BackupWizard() {
   const [tag, setTag] = useState<string>("");
   const [userEditedTag, setUserEditedTag] = useState<boolean>(false);
   const [ignoredPathsInput, setIgnoredPathsInput] = useState<string>("");
+  const [disableCompression, setDisableCompression] =
+    useState<boolean>(false);
+  const [disableEncryption, setDisableEncryption] = useState<boolean>(false);
 
   useEffect(() => {
     let active = true;
@@ -269,6 +275,26 @@ export default function BackupWizard() {
                     ) : null;
                   })()}
               </Stack>
+              <FormGroup row sx={{ gap: 2 }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={disableCompression}
+                      onChange={(e) => setDisableCompression(e.target.checked)}
+                    />
+                  }
+                  label={t("backupWizard.disableCompression")}
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={disableEncryption}
+                      onChange={(e) => setDisableEncryption(e.target.checked)}
+                    />
+                  }
+                  label={t("backupWizard.disableEncryption")}
+                />
+              </FormGroup>
             </Stack>
           </Stack>
         </CardContent>
@@ -291,6 +317,8 @@ export default function BackupWizard() {
                 ignoredPaths: ignoredPathsInput
                   .split(/\r?\n/)
                   .filter((x) => x.trim() !== ""),
+                disableCompression,
+                disableEncryption,
               };
               await backupsApi.create(payload);
               navigate("/backups");

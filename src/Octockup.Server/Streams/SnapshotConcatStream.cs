@@ -14,7 +14,7 @@ namespace Octockup.Server.Streams
     public sealed class SnapshotConcatStream(
         ILogger _logger,
         IBackupStorage _storage,
-        IReadOnlyList<(string, CompressionAlgorithm)> _hashes,
+        IReadOnlyList<ChunkStorageDescriptor> _chunks,
         SnapshotFile _snapshotFile,
         IStreamCipher _crypto,
         CancellationToken _cancellationToken = default) : Stream
@@ -41,49 +41,48 @@ namespace Octockup.Server.Streams
             await DisposeCurrentChunkAsync().ConfigureAwait(false);
 
             _currentIndex++;
-            if (_currentIndex >= _hashes.Count)
+            if (_currentIndex >= _chunks.Count)
             {
                 _currentChunkStream = null;
                 return false;
             }
 
-            string hash = _hashes[_currentIndex].Item1;
+            var chunk = _chunks[_currentIndex];
             _logger.LogInformation(
-                "Loading chunk {Index}/{Total} with hash {Hash}",
+                "Loading chunk {Index}/{Total} with key {Key}",
                 _currentIndex + 1,
-                _hashes.Count,
-                hash
+                _chunks.Count,
+                chunk.Key
             );
 
-            string path = ScheduleHelpers.SplitPlainHash(hash, _storage.PathSeparator);
+            string path = ChunkStorageHelpers.GetStoragePath(chunk.Key, _storage.PathSeparator);
             bool exists = await _storage.ExistsAsync(path).ConfigureAwait(false) ?? false;
             if (exists != true)
             {
-                throw new IOException($"Chunk '{hash}' not found in storage.");
+                throw new IOException($"Chunk '{chunk.Key}' not found in storage.");
             }
 
             var fileInfo = new BackupFileInfo
             {
                 Path = path,
-                Name = hash,
+                Name = chunk.Key,
                 Size = null,
                 LastModified = _snapshotFile.LastModified,
             };
 
-            var encryptedChunkStream = await _storage
+            var storedChunkStream = await _storage
                 .GetFileStreamAsync(fileInfo)
                 .ConfigureAwait(false);
 
-            Stream decrypted = await _crypto
-                .DecryptAsync(encryptedChunkStream)
-                .ConfigureAwait(false);
+            Stream restored = chunk.IsEncrypted
+                ? await _crypto.DecryptAsync(storedChunkStream).ConfigureAwait(false)
+                : storedChunkStream;
 
-            CompressionAlgorithm algorithm = _hashes[_currentIndex].Item2;
-            Stream decompressed = algorithm switch
+            Stream decompressed = chunk.CompressionAlgorithm switch
             {
-                CompressionAlgorithm.None => decrypted,
-                CompressionHelpers.Algorithm => CompressionHelpers.CreateDecompressionStream(decrypted, leaveOpen: false),
-                _ => throw new NotSupportedException($"Unsupported compression algorithm: {algorithm}"),
+                CompressionAlgorithm.None => restored,
+                CompressionHelpers.Algorithm => CompressionHelpers.CreateDecompressionStream(restored, leaveOpen: false),
+                _ => throw new NotSupportedException($"Unsupported compression algorithm: {chunk.CompressionAlgorithm}"),
             };
             _currentChunkStream = decompressed;
             return true;
@@ -161,8 +160,8 @@ namespace Octockup.Server.Streams
                 _logger.LogInformation(
                     "Read canceled at position {Position} (chunk {Index}/{Total}).",
                     _position,
-                    Math.Min(_currentIndex + 1, _hashes.Count),
-                    _hashes.Count
+                    Math.Min(_currentIndex + 1, _chunks.Count),
+                    _chunks.Count
                 );
                 throw;
             }
