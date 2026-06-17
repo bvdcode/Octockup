@@ -55,6 +55,40 @@ namespace Octockup.Tests
             });
         }
 
+        [Test]
+        public async Task ReadAsync_WhenLegacyChunkMetadataSaysZstdButPayloadIsPlain_ReadsPlainPayload()
+        {
+            byte[] content = [9, 8, 7, 6];
+            var storage = new InMemoryStorage(new MemoryStream(content));
+            var snapshotFile = new SnapshotFile
+            {
+                Path = "Bundles/Bundles",
+                Name = "Bundles",
+                Size = content.Length
+            };
+            var legacyChunkWithWrongMetadata = new ChunkStorageDescriptor(
+                Hash,
+                Hash,
+                CompressionHelpers.Algorithm,
+                IsEncrypted: true);
+
+            await using var stream = new SnapshotConcatStream(
+                NullLogger.Instance,
+                storage,
+                [legacyChunkWithWrongMetadata],
+                snapshotFile,
+                new PassThroughCipher());
+
+            byte[] buffer = new byte[1024];
+            int read = await stream.ReadAsync(buffer);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(read, Is.EqualTo(content.Length));
+                Assert.That(buffer.Take(read), Is.EqualTo(content));
+            });
+        }
+
         private sealed class InMemoryStorage(Stream stream) : IBackupStorage
         {
             public string Id => nameof(InMemoryStorage);

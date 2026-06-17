@@ -78,14 +78,78 @@ namespace Octockup.Server.Streams
                 ? await _crypto.DecryptAsync(storedChunkStream).ConfigureAwait(false)
                 : storedChunkStream;
 
-            Stream decompressed = chunk.CompressionAlgorithm switch
+            var (source, compressionAlgorithm) = await ResolveLegacyCompressionAsync(restored, chunk).ConfigureAwait(false);
+
+            Stream decompressed = compressionAlgorithm switch
             {
-                CompressionAlgorithm.None => restored,
-                CompressionHelpers.Algorithm => CompressionHelpers.CreateDecompressionStream(restored, leaveOpen: false),
-                _ => throw new NotSupportedException($"Unsupported compression algorithm: {chunk.CompressionAlgorithm}"),
+                CompressionAlgorithm.None => source,
+                CompressionHelpers.Algorithm => CompressionHelpers.CreateDecompressionStream(source, leaveOpen: false),
+                _ => throw new NotSupportedException($"Unsupported compression algorithm: {compressionAlgorithm}"),
             };
             _currentChunkStream = decompressed;
             return true;
+        }
+
+        private async Task<(Stream Source, CompressionAlgorithm CompressionAlgorithm)> ResolveLegacyCompressionAsync(
+            Stream restored,
+            ChunkStorageDescriptor chunk)
+        {
+            if (chunk.Key != chunk.ContentHash || chunk.CompressionAlgorithm != CompressionHelpers.Algorithm)
+            {
+                return (restored, chunk.CompressionAlgorithm);
+            }
+
+            byte[] prefix = new byte[4];
+            int read = 0;
+            while (read < prefix.Length)
+            {
+                int current = await restored
+                    .ReadAsync(prefix.AsMemory(read, prefix.Length - read))
+                    .ConfigureAwait(false);
+
+                if (current == 0)
+                {
+                    break;
+                }
+
+                read += current;
+            }
+
+            var source = new PrefixStream(prefix, read, restored);
+            if (IsZstdFrame(prefix.AsSpan(0, read)))
+            {
+                return (source, chunk.CompressionAlgorithm);
+            }
+
+            _logger.LogWarning(
+                "Legacy chunk {Key} is marked as {Algorithm}, but its restored payload is not a Zstd frame. Reading it as uncompressed data.",
+                chunk.Key,
+                chunk.CompressionAlgorithm);
+
+            return (source, CompressionAlgorithm.None);
+        }
+
+        private static bool IsZstdFrame(ReadOnlySpan<byte> prefix)
+        {
+            if (prefix.Length < 4)
+            {
+                return false;
+            }
+
+            bool isStandardFrame =
+                prefix[0] == 0x28 &&
+                prefix[1] == 0xb5 &&
+                prefix[2] == 0x2f &&
+                prefix[3] == 0xfd;
+
+            bool isSkippableFrame =
+                prefix[0] >= 0x50 &&
+                prefix[0] <= 0x5f &&
+                prefix[1] == 0x2a &&
+                prefix[2] == 0x4d &&
+                prefix[3] == 0x18;
+
+            return isStandardFrame || isSkippableFrame;
         }
 
         private async ValueTask DisposeCurrentChunkAsync()
@@ -249,6 +313,71 @@ namespace Octockup.Server.Streams
         {
             await DisposeCurrentChunkAsync().ConfigureAwait(false);
             await base.DisposeAsync().ConfigureAwait(false);
+        }
+
+        private sealed class PrefixStream(byte[] prefix, int prefixLength, Stream inner) : Stream
+        {
+            private int _prefixPosition;
+
+            public override bool CanRead => true;
+            public override bool CanSeek => false;
+            public override bool CanWrite => false;
+            public override long Length => throw new NotSupportedException();
+
+            public override long Position
+            {
+                get => throw new NotSupportedException();
+                set => throw new NotSupportedException();
+            }
+
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                if (_prefixPosition < prefixLength)
+                {
+                    int read = Math.Min(count, prefixLength - _prefixPosition);
+                    prefix.AsSpan(_prefixPosition, read).CopyTo(buffer.AsSpan(offset, read));
+                    _prefixPosition += read;
+                    return read;
+                }
+
+                return inner.Read(buffer, offset, count);
+            }
+
+            public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+            {
+                if (_prefixPosition < prefixLength)
+                {
+                    int read = Math.Min(buffer.Length, prefixLength - _prefixPosition);
+                    prefix.AsMemory(_prefixPosition, read).CopyTo(buffer);
+                    _prefixPosition += read;
+                    return read;
+                }
+
+                return await inner.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+            }
+
+            protected override void Dispose(bool disposing)
+            {
+                if (disposing)
+                {
+                    inner.Dispose();
+                }
+
+                base.Dispose(disposing);
+            }
+
+            public override async ValueTask DisposeAsync()
+            {
+                await inner.DisposeAsync().ConfigureAwait(false);
+                await base.DisposeAsync().ConfigureAwait(false);
+            }
+
+            public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+            public override void SetLength(long value) => throw new NotSupportedException();
+            public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+            public override void Flush()
+            {
+            }
         }
     }
 }
