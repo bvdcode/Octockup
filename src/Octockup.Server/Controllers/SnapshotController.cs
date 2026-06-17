@@ -93,11 +93,15 @@ namespace Octockup.Server.Controllers
                 .Select(snapshotFile => CreateArchiveEntry(snapshotFile, chunksByFile[snapshotFile.Id], storage, cancellationToken))
                 .ToList();
 
-            string fileName = $"snapshot-{snapshotId:N}.zip";
+            string fileName = SnapshotArchiveFileName.Create(
+                snapshot.Backup.Tag,
+                snapshot.CreatedAt,
+                snapshot.CompletedAt,
+                snapshot.Id);
 
             Response.ContentType = "application/zip";
             Response.ContentLength = StoredZipArchiveWriter.CalculateContentLength(entries);
-            Response.Headers.ContentDisposition = $"attachment; filename=\"{fileName}\"";
+            Response.Headers.ContentDisposition = SnapshotArchiveFileName.CreateContentDisposition(fileName);
 
             await StoredZipArchiveWriter
                 .WriteAsync(Response.Body, entries, cancellationToken)
