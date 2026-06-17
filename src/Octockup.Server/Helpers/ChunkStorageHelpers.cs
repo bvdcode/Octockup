@@ -9,7 +9,8 @@ namespace Octockup.Server.Helpers
         string Key,
         string ContentHash,
         CompressionAlgorithm CompressionAlgorithm,
-        bool IsEncrypted);
+        bool IsEncrypted,
+        long? OriginalSize = null);
 
     public static class ChunkStorageHelpers
     {
@@ -36,7 +37,8 @@ namespace Octockup.Server.Helpers
 
         public static ChunkStorageDescriptor Parse(
             string key,
-            CompressionAlgorithm? legacyCompressionAlgorithm = null)
+            CompressionAlgorithm? legacyCompressionAlgorithm = null,
+            long? originalSize = null)
         {
             if (!key.StartsWith(Version + "-", StringComparison.Ordinal))
             {
@@ -44,7 +46,8 @@ namespace Octockup.Server.Helpers
                     key,
                     key,
                     legacyCompressionAlgorithm ?? CompressionHelpers.Algorithm,
-                    IsEncrypted: true);
+                    IsEncrypted: true,
+                    originalSize);
             }
 
             string[] parts = key.Split('-', 4);
@@ -57,7 +60,8 @@ namespace Octockup.Server.Helpers
                 key,
                 parts[3],
                 FromCompressionCode(parts[1]),
-                FromEncryptionCode(parts[2]));
+                FromEncryptionCode(parts[2]),
+                originalSize);
         }
 
         public static string GetStoragePath(string key, char pathSeparator)

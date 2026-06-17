@@ -89,6 +89,42 @@ namespace Octockup.Tests
             });
         }
 
+        [Test]
+        public async Task ReadAsync_WhenSnapshotSizeIsSmallerThanChunkOriginalSize_UsesChunkOriginalSize()
+        {
+            byte[] content = [1, 1, 2, 3, 5, 8];
+            var storage = new InMemoryStorage(new MemoryStream(content));
+            var snapshotFile = new SnapshotFile
+            {
+                Path = "oxide/data/Boxlooters/box_data.json",
+                Name = "box_data.json",
+                Size = 3
+            };
+            var chunk = new ChunkStorageDescriptor(
+                Hash,
+                Hash,
+                CompressionAlgorithm.None,
+                IsEncrypted: false,
+                OriginalSize: content.Length);
+
+            await using var stream = new SnapshotConcatStream(
+                NullLogger.Instance,
+                storage,
+                [chunk],
+                snapshotFile,
+                new PassThroughCipher());
+
+            byte[] buffer = new byte[1024];
+            int read = await stream.ReadAsync(buffer);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(stream.Length, Is.EqualTo(content.Length));
+                Assert.That(read, Is.EqualTo(content.Length));
+                Assert.That(buffer.Take(read), Is.EqualTo(content));
+            });
+        }
+
         private sealed class InMemoryStorage(Stream stream) : IBackupStorage
         {
             public string Id => nameof(InMemoryStorage);

@@ -17,18 +17,23 @@ namespace Octockup.Server.Streams
         IReadOnlyList<ChunkStorageDescriptor> _chunks,
         SnapshotFile _snapshotFile,
         IStreamCipher _crypto,
-        CancellationToken _cancellationToken = default) : Stream
+        CancellationToken _cancellationToken = default,
+        long? _lengthOverride = null) : Stream
     {
         private int _currentIndex = -1;
 
         private Stream? _currentChunkStream;
+        private readonly long _length = _lengthOverride
+            ?? (_chunks.Count > 0 && _chunks.All(x => x.OriginalSize.HasValue)
+                ? _chunks.Sum(x => x.OriginalSize!.Value)
+                : _snapshotFile.Size);
         private long _position;
 
         public override bool CanRead => true;
         public override bool CanSeek => false;
         public override bool CanWrite => false;
 
-        public override long Length => _snapshotFile.Size;
+        public override long Length => _length;
 
         public override long Position
         {

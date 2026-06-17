@@ -147,7 +147,7 @@ namespace Octockup.Server.Controllers
             {
                 if (uploadedHashes.TryGetValue(chunkKey, out var found))
                 {
-                    chunks.Add(ChunkStorageHelpers.Parse(found.Hash, found.CompressionAlgorithm));
+                    chunks.Add(ChunkStorageHelpers.Parse(found.Hash, found.CompressionAlgorithm, found.OriginalSize));
                     continue;
                 }
 
@@ -163,13 +163,15 @@ namespace Octockup.Server.Controllers
                 }
             }
 
+            long restoredSize = GetRestoredFileSize(snapshotFile, chunks);
             var stream = new SnapshotConcatStream(
                 _logger,
                 storage,
                 chunks,
                 snapshotFile,
                 _crypto,
-                HttpContext.RequestAborted
+                HttpContext.RequestAborted,
+                restoredSize
             );
 
             string contentType = MimeTypes.GetMimeType(snapshotFile.Name) ?? "application/octet-stream";
@@ -179,7 +181,7 @@ namespace Octockup.Server.Controllers
                 EnableRangeProcessing = false,
             };
 
-            Response.ContentLength = snapshotFile.Size;
+            Response.ContentLength = restoredSize;
             return result;
         }
 
@@ -250,7 +252,7 @@ namespace Octockup.Server.Controllers
 
             return new StoredZipArchiveEntry(
                 entryName,
-                snapshotFile.Size,
+                GetRestoredFileSize(snapshotFile, chunks),
                 snapshotFile.LastModified,
                 cancellationToken =>
                 {
@@ -260,10 +262,23 @@ namespace Octockup.Server.Controllers
                         chunks,
                         snapshotFile,
                         _crypto,
-                        requestCancellationToken);
+                        requestCancellationToken,
+                        GetRestoredFileSize(snapshotFile, chunks));
 
                     return Task.FromResult<Stream>(stream);
                 });
+        }
+
+        private static long GetRestoredFileSize(
+            SnapshotFile snapshotFile,
+            IReadOnlyList<ChunkStorageDescriptor> chunks)
+        {
+            if (chunks.Count > 0 && chunks.All(x => x.OriginalSize.HasValue))
+            {
+                return chunks.Sum(x => x.OriginalSize!.Value);
+            }
+
+            return snapshotFile.Size;
         }
 
         private async Task<Dictionary<Guid, IReadOnlyList<ChunkStorageDescriptor>>> ResolveChunksByFileAsync(
@@ -299,7 +314,7 @@ namespace Octockup.Server.Controllers
                 {
                     if (uploadedHashes.TryGetValue(chunkKey, out var found))
                     {
-                        chunkDescriptors.Add(ChunkStorageHelpers.Parse(found.Hash, found.CompressionAlgorithm));
+                        chunkDescriptors.Add(ChunkStorageHelpers.Parse(found.Hash, found.CompressionAlgorithm, found.OriginalSize));
                         continue;
                     }
 
