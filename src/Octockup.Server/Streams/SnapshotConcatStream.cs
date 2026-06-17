@@ -97,6 +97,37 @@ namespace Octockup.Server.Streams
             }
         }
 
+        private async Task FinishCurrentChunkAsync(CancellationToken cancellationToken)
+        {
+            if (_currentChunkStream == null)
+            {
+                return;
+            }
+
+            byte[] buffer = new byte[8192];
+            try
+            {
+                while (true)
+                {
+                    int read = await _currentChunkStream
+                        .ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (read == 0)
+                    {
+                        return;
+                    }
+
+                    throw new InvalidDataException(
+                        $"Snapshot file '{_snapshotFile.Path}' produced more data than its recorded size.");
+                }
+            }
+            finally
+            {
+                await DisposeCurrentChunkAsync().ConfigureAwait(false);
+            }
+        }
+
         public override async ValueTask<int> ReadAsync(
             Memory<byte> buffer,
             CancellationToken cancellationToken = default)
@@ -134,8 +165,19 @@ namespace Octockup.Server.Streams
                         break;
                     }
 
+                    long remaining = Length - _position;
+                    if (remaining <= 0)
+                    {
+                        await FinishCurrentChunkAsync(ct).ConfigureAwait(false);
+                        break;
+                    }
+
+                    Memory<byte> target = remaining < buffer.Length
+                        ? buffer[..(int)remaining]
+                        : buffer;
+
                     int read = await _currentChunkStream
-                        .ReadAsync(buffer, ct)
+                        .ReadAsync(target, ct)
                         .ConfigureAwait(false);
 
                     if (read == 0)
@@ -151,6 +193,7 @@ namespace Octockup.Server.Streams
 
                     if (_position >= Length)
                     {
+                        await FinishCurrentChunkAsync(ct).ConfigureAwait(false);
                         break;
                     }
                 }

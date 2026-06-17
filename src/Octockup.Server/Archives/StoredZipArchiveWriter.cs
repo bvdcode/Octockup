@@ -55,7 +55,7 @@ namespace Octockup.Server.Archives
             var source = string.IsNullOrWhiteSpace(path) ? fallbackName : path;
             var segments = source
                 .Replace('\\', '/')
-                .Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Split('/', StringSplitOptions.RemoveEmptyEntries)
                 .Select(NormalizeSegment)
                 .Where(x => x.Length > 0)
                 .ToArray();
@@ -333,8 +333,7 @@ namespace Octockup.Server.Archives
         private static string NormalizeSegment(string segment)
         {
             var normalized = segment
-                .Replace('\0', '_')
-                .Trim();
+                .Replace('\0', '_');
 
             if (normalized is "" or ".")
             {
