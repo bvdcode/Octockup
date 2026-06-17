@@ -162,7 +162,11 @@
     "filesCount": "Files",
     "totalSize": "Size",
     "inProgress": "In progress...",
-    "never": "Never"
+    "never": "Never",
+    "actions": "Actions",
+    "download": "Download",
+    "copyLink": "Copy link",
+    "linkCopied": "Snapshot download link copied."
   },
   "snapshotFiles": {
     "title": "Snapshot Files",

@@ -186,7 +186,11 @@
     "filesCount": "Файлов",
     "totalSize": "Размер",
     "inProgress": "В процессе...",
-    "never": "Никогда"
+    "never": "Никогда",
+    "actions": "Действия",
+    "download": "Скачать",
+    "copyLink": "Скопировать ссылку",
+    "linkCopied": "Ссылка на скачивание снапшота скопирована."
   },
   "snapshotFiles": {
     "title": "Файлы снапшота",

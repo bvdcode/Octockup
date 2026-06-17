@@ -4,6 +4,8 @@ import {
   Stack,
   Alert,
   Button,
+  Tooltip,
+  IconButton,
   Typography,
   CardContent,
   CircularProgress,
@@ -15,11 +17,12 @@ import {
 } from "@mui/x-data-grid";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowBack } from "@mui/icons-material";
+import { ArrowBack, ContentCopy, Download } from "@mui/icons-material";
 import { formatSize } from "../utils/formatUtils";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSnapshotsApi } from "../api/snapshotsApi";
 import type { SnapshotDto } from "../types/api";
+import { useAuthStore } from "@bvdcode/react-kit";
 
 interface State {
   loading: boolean;
@@ -31,11 +34,13 @@ export default function SnapshotsPage() {
   const navigate = useNavigate();
   const { backupId } = useParams<{ backupId: string }>();
   const snapshotsApi = useSnapshotsApi();
+  const accessToken = useAuthStore((s) => s.accessToken);
   const [state, setState] = useState<State>({
     loading: true,
     error: backupId ? null : "Backup ID is missing",
   });
   const [snapshots, setSnapshots] = useState<SnapshotDto[]>([]);
+  const [copyMessage, setCopyMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!backupId) return;
@@ -60,7 +65,21 @@ export default function SnapshotsPage() {
     };
   }, [backupId, snapshotsApi]);
 
-  const columns: GridColDef[] = [
+  const createSnapshotDownloadUrl = (snapshotId: string) => {
+    const path = `/api/v1/snapshots/${snapshotId}/download?access_token=${encodeURIComponent(accessToken || "")}`;
+    return new URL(path, window.location.origin).toString();
+  };
+
+  const handleDownload = (snapshotId: string) => {
+    window.open(createSnapshotDownloadUrl(snapshotId), "_blank");
+  };
+
+  const handleCopyDownloadLink = async (snapshotId: string) => {
+    await navigator.clipboard.writeText(createSnapshotDownloadUrl(snapshotId));
+    setCopyMessage(t("snapshots.linkCopied"));
+  };
+
+  const columns: GridColDef<SnapshotDto>[] = [
     {
       field: "completedAt",
       headerName: t("snapshots.completedAt"),
@@ -91,6 +110,49 @@ export default function SnapshotsPage() {
       headerAlign: "right",
       valueFormatter: (value: number) => formatSize(value),
     },
+    {
+      field: "actions",
+      headerName: t("snapshots.actions"),
+      width: 120,
+      sortable: false,
+      filterable: false,
+      align: "center",
+      headerAlign: "center",
+      renderCell: (params) => (
+        <Box display="flex" gap={0.5}>
+          <Tooltip title={t("snapshots.download")}>
+            <span>
+              <IconButton
+                size="small"
+                color="primary"
+                disabled={!accessToken || !params.row.completedAt}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleDownload(params.row.id);
+                }}
+              >
+                <Download />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title={t("snapshots.copyLink")}>
+            <span>
+              <IconButton
+                size="small"
+                color="primary"
+                disabled={!accessToken || !params.row.completedAt}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void handleCopyDownloadLink(params.row.id);
+                }}
+              >
+                <ContentCopy />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Box>
+      ),
+    },
   ];
 
   const handleRowClick = (params: GridRowParams) => {
@@ -108,6 +170,11 @@ export default function SnapshotsPage() {
   return (
     <Stack spacing={3} display="flex" flexDirection="column" flex={1}>
       {state.error && <Alert severity="error">{state.error}</Alert>}
+      {copyMessage && (
+        <Alert severity="success" onClose={() => setCopyMessage(null)}>
+          {copyMessage}
+        </Alert>
+      )}
       <Box display="flex" alignItems="center" gap={2}>
         <Button
           variant="outlined"

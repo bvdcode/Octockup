@@ -2,6 +2,8 @@
 // Copyright (c) 2025 Vadim Belov <https://belov.us>
 
 using EasyExtensions.Abstractions;
+using EasyExtensions;
+using EasyExtensions.AspNetCore.Extensions;
 using EasyExtensions.Models.Enums;
 using Mapster;
 using Microsoft.AspNetCore.Authorization;
@@ -9,6 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MimeKit;
 using Octockup.Server.Abstractions;
+using Octockup.Server.Archives;
 using Octockup.Server.Database;
 using Octockup.Server.Helpers;
 using Octockup.Server.Models.Dto;
@@ -23,6 +26,86 @@ namespace Octockup.Server.Controllers
         ILogger<SnapshotController> _logger,
         IEnumerable<IBackupProvider> _providers) : ControllerBase
     {
+        [Authorize]
+        [HttpGet("/api/v1/snapshots/{snapshotId:guid}/download")]
+        public async Task<IActionResult> DownloadSnapshotArchive(
+            [FromRoute] Guid snapshotId,
+            CancellationToken cancellationToken)
+        {
+            Guid userId = User.GetUserId();
+
+            var snapshot = await _dbContext.Snapshots
+                .AsNoTracking()
+                .Include(s => s.Backup)
+                    .ThenInclude(b => b.Source)
+                .Include(s => s.Backup)
+                    .ThenInclude(b => b.Storage)
+                .FirstOrDefaultAsync(
+                    s => s.Id == snapshotId && s.Backup.Source.UserId == userId,
+                    cancellationToken);
+
+            if (snapshot == null)
+            {
+                return NotFound();
+            }
+
+            if (snapshot.CompletedAt == null)
+            {
+                return BadRequest("Snapshot is not completed.");
+            }
+
+            var provider = _providers
+                .FirstOrDefault(p => p.Id == snapshot.Backup.Storage.BackupModuleId);
+
+            if (provider == null)
+            {
+                return NotFound();
+            }
+
+            provider.SetParameters(snapshot.Backup.Storage.Params(_crypto).Snapshot());
+            if (provider is not IBackupStorage storage)
+            {
+                return BadRequest("Storage provider is not a backup storage");
+            }
+
+            var snapshotFiles = await _dbContext.SnapshotFiles
+                .AsNoTracking()
+                .Where(sf => sf.SnapshotId == snapshotId)
+                .OrderBy(sf => sf.Path)
+                .ThenBy(sf => sf.Name)
+                .ToListAsync(cancellationToken);
+
+            Dictionary<Guid, IReadOnlyList<ChunkStorageDescriptor>> chunksByFile;
+            try
+            {
+                chunksByFile = await ResolveChunksByFileAsync(
+                    snapshot.Backup.StorageId,
+                    snapshotFiles,
+                    cancellationToken);
+            }
+            catch (Exception ex) when (ex is FormatException or NotSupportedException)
+            {
+                _logger.LogError(ex, "Unsupported chunk metadata while creating archive for snapshot {SnapshotId}.", snapshotId);
+                return BadRequest("Unsupported chunk metadata.");
+            }
+
+            var entries = snapshotFiles
+                .Select(snapshotFile => CreateArchiveEntry(snapshotFile, chunksByFile[snapshotFile.Id], storage, cancellationToken))
+                .ToList();
+
+            string fileName = $"snapshot-{snapshotId:N}.zip";
+
+            Response.ContentType = "application/zip";
+            Response.ContentLength = StoredZipArchiveWriter.CalculateContentLength(entries);
+            Response.Headers.ContentDisposition = $"attachment; filename=\"{fileName}\"";
+
+            await StoredZipArchiveWriter
+                .WriteAsync(Response.Body, entries, cancellationToken)
+                .ConfigureAwait(false);
+
+            return new EmptyResult();
+        }
+
         [Authorize]
         [HttpGet("/api/v1/snapshots/{snapshotId:guid}/files/{fileId:guid}/download")]
         public async Task<IActionResult> DownloadSnapshotFile([FromRoute] Guid snapshotId, [FromRoute] Guid fileId)
@@ -153,6 +236,81 @@ namespace Octockup.Server.Controllers
                 result.Add(dto);
             }
             return Ok(result);
+        }
+
+        private StoredZipArchiveEntry CreateArchiveEntry(
+            SnapshotFile snapshotFile,
+            IReadOnlyList<ChunkStorageDescriptor> chunks,
+            IBackupStorage storage,
+            CancellationToken requestCancellationToken)
+        {
+            string entryName = StoredZipArchiveWriter.NormalizeEntryName(
+                snapshotFile.Path,
+                snapshotFile.Name.Length > 0 ? snapshotFile.Name : snapshotFile.Id.ToString("N"));
+
+            return new StoredZipArchiveEntry(
+                entryName,
+                snapshotFile.Size,
+                snapshotFile.LastModified,
+                cancellationToken =>
+                {
+                    var stream = new SnapshotConcatStream(
+                        _logger,
+                        storage,
+                        chunks,
+                        snapshotFile,
+                        _crypto,
+                        requestCancellationToken);
+
+                    return Task.FromResult<Stream>(stream);
+                });
+        }
+
+        private async Task<Dictionary<Guid, IReadOnlyList<ChunkStorageDescriptor>>> ResolveChunksByFileAsync(
+            Guid storageId,
+            IReadOnlyList<SnapshotFile> snapshotFiles,
+            CancellationToken cancellationToken)
+        {
+            var chunkKeys = snapshotFiles
+                .SelectMany(x => x.ChunkHashes ?? [])
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+
+            var uploadedHashes = new Dictionary<string, UploadedHash>(StringComparer.Ordinal);
+            foreach (var batch in chunkKeys.Chunk(500))
+            {
+                var found = await _dbContext.UploadedHashes
+                    .AsNoTracking()
+                    .Where(x => x.ModuleId == storageId && batch.Contains(x.Hash))
+                    .ToListAsync(cancellationToken);
+
+                foreach (var item in found)
+                {
+                    uploadedHashes[item.Hash] = item;
+                }
+            }
+
+            var result = new Dictionary<Guid, IReadOnlyList<ChunkStorageDescriptor>>();
+            foreach (var snapshotFile in snapshotFiles)
+            {
+                var chunkDescriptors = new List<ChunkStorageDescriptor>();
+
+                foreach (string chunkKey in snapshotFile.ChunkHashes ?? [])
+                {
+                    if (uploadedHashes.TryGetValue(chunkKey, out var found))
+                    {
+                        chunkDescriptors.Add(ChunkStorageHelpers.Parse(found.Hash, found.CompressionAlgorithm));
+                        continue;
+                    }
+
+                    _logger.LogWarning("Chunk hash metadata not found in DB: {ChunkKey}", chunkKey);
+                    chunkDescriptors.Add(ChunkStorageHelpers.Parse(chunkKey));
+                }
+
+                result[snapshotFile.Id] = chunkDescriptors;
+            }
+
+            return result;
         }
     }
 }
