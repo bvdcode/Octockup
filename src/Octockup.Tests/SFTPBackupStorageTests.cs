@@ -2,7 +2,10 @@
 // Copyright (c) 2025 Vadim Belov <https://belov.us>
 
 using Microsoft.Extensions.Logging.Abstractions;
+using Octockup.Server.Models;
 using Octockup.Server.Modules;
+using Renci.SshNet.Common;
+using System.Net.Sockets;
 
 namespace Octockup.Tests
 {
@@ -25,11 +28,11 @@ namespace Octockup.Tests
             _storage = new SFTPBackupStorage(new NullLogger<SFTPBackupStorage>());
             Dictionary<string, string> parameters = new()
             {
-                { "host", "1.2.3.4" },
-                { "port", "22" },
-                { "username", "test" },
-                { "password", "123" },
-                { "path", "/" },
+                { "host", GetRequiredEnvironmentVariable("OCTOCKUP_TEST_SFTP_HOST") },
+                { "port", Environment.GetEnvironmentVariable("OCTOCKUP_TEST_SFTP_PORT") ?? "22" },
+                { "username", GetRequiredEnvironmentVariable("OCTOCKUP_TEST_SFTP_USERNAME") },
+                { "password", GetRequiredEnvironmentVariable("OCTOCKUP_TEST_SFTP_PASSWORD") },
+                { "path", Environment.GetEnvironmentVariable("OCTOCKUP_TEST_SFTP_PATH") ?? "/" },
                 { "skipPermissionDenied", "true" }
             };
             _storage.SetParameters(parameters);
@@ -38,18 +41,75 @@ namespace Octockup.Tests
         [Test]
         public void SftpStorage_GetFiles_Root_NotEmpty()
         {
-            var files = _storage.GetFiles(recursive: true);
+            List<BackupFileInfo> files = GetOrSkip(() => _storage.GetFiles(recursive: true).ToList());
             Assert.That(files.Any());
         }
 
         [Test]
         public async Task SftpStorage_GetFileStream_Success()
         {
-            var files = _storage.GetFiles(recursive: true);
+            List<BackupFileInfo> files = GetOrSkip(() => _storage.GetFiles(recursive: true).ToList());
             Assert.That(files.Any());
-            var firstFile = files.First();
-            using var stream = await _storage.GetFileStreamAsync(firstFile);
+            BackupFileInfo firstFile = files.First();
+            using Stream stream = await GetOrSkipAsync(() => _storage.GetFileStreamAsync(firstFile));
             Assert.That(stream.Length, Is.GreaterThan(0));
+        }
+
+        private static string GetRequiredEnvironmentVariable(string name)
+        {
+            string? value = Environment.GetEnvironmentVariable(name);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                Assert.Ignore($"{name} is not configured.");
+            }
+
+            return value;
+        }
+
+        private static T GetOrSkip<T>(Func<T> action)
+        {
+            try
+            {
+                return action();
+            }
+            catch (SshAuthenticationException ex)
+            {
+                Assert.Ignore("SFTP credentials are invalid: " + ex.Message);
+                throw;
+            }
+            catch (SshConnectionException ex)
+            {
+                Assert.Ignore("SFTP service is unavailable: " + ex.Message);
+                throw;
+            }
+            catch (SocketException ex)
+            {
+                Assert.Ignore("SFTP service is unavailable: " + ex.Message);
+                throw;
+            }
+        }
+
+        private static async Task<T> GetOrSkipAsync<T>(Func<Task<T>> action)
+        {
+            try
+            {
+                return await action();
+            }
+            catch (SshAuthenticationException ex)
+            {
+                Assert.Ignore("SFTP credentials are invalid: " + ex.Message);
+                throw;
+            }
+            catch (SshConnectionException ex)
+            {
+                Assert.Ignore("SFTP service is unavailable: " + ex.Message);
+                throw;
+            }
+            catch (SocketException ex)
+            {
+                Assert.Ignore("SFTP service is unavailable: " + ex.Message);
+                throw;
+            }
         }
     }
 }

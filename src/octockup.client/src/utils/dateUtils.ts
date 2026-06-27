@@ -26,20 +26,21 @@ export function parseUtcDate(
  * Future: "in 2 minutes", "tomorrow", "in 1 week"
  */
 export function formatRelativeTime(
-  date: Date | string | null | undefined, 
-  t: (key: string, options?: any) => string,
-  mode: "past" | "future" = "past"
+  date: Date | string | null | undefined,
+  t: (key: string, options?: Record<string, number | string>) => string,
+  mode: "past" | "future" = "past",
 ): string {
   if (!date) return t("common.never");
-  
+
   const dateObj = typeof date === "string" ? parseUtcDate(date) : date;
   if (!dateObj) return t("common.never");
-  
+
   const now = new Date();
-  const diffMs = mode === "past" 
-    ? now.getTime() - dateObj.getTime()
-    : dateObj.getTime() - now.getTime();
-  
+  const diffMs =
+    mode === "past"
+      ? now.getTime() - dateObj.getTime()
+      : dateObj.getTime() - now.getTime();
+
   const diffSeconds = Math.floor(diffMs / 1000);
   const diffMinutes = Math.floor(diffSeconds / 60);
   const diffHours = Math.floor(diffMinutes / 60);
@@ -47,7 +48,7 @@ export function formatRelativeTime(
   const diffWeeks = Math.floor(diffDays / 7);
   const diffMonths = Math.floor(diffDays / 30);
   const diffYears = Math.floor(diffDays / 365);
-  
+
   if (mode === "past") {
     if (diffSeconds < 60) {
       return t("time.justNow");

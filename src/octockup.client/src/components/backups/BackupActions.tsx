@@ -121,7 +121,11 @@ export function BackupActions({
           e.stopPropagation();
           const result = await confirm({
             title: t("backups.deleteTitle"),
-            description: t("backups.deleteText"),
+            description: t("backups.deleteText", {
+              tag: backup.tag,
+              schedules: backup.schedules?.length ?? 0,
+              snapshots: backup.snapshots?.length ?? 0,
+            }),
             confirmationText: t("common.delete"),
             cancellationText: t("common.cancel"),
             confirmationButtonProps: { color: "error" },

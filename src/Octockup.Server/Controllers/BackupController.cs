@@ -15,6 +15,7 @@ using Octockup.Server.Jobs;
 using Octockup.Server.Models.Dto;
 using Octockup.Server.Models.Enums;
 using Octockup.Server.Models.Requests;
+using Octockup.Server.Services;
 using Quartz;
 using System.IO.Compression;
 using System.IO.Pipelines;
@@ -27,6 +28,7 @@ namespace Octockup.Server.Controllers
         AppDbContext _dbContext,
         IStreamCipher _streamCipher,
         ISchedulerFactory _schedulerFactory,
+        BackupDeletionService _backupDeletionService,
         ILogger<BackupController> _logger) : ControllerBase
     {
         [Authorize]
@@ -247,14 +249,17 @@ namespace Octockup.Server.Controllers
         [HttpDelete("/api/v1/backups/{backupId:guid}")]
         public async Task<IActionResult> DeleteBackup([FromRoute] Guid backupId)
         {
-            var backup = await _dbContext.Backups.FindAsync(backupId);
-            if (backup == null)
+            var result = await _backupDeletionService.DeleteAsync(
+                User.GetUserId(),
+                backupId,
+                HttpContext.RequestAborted);
+
+            if (result.Deleted)
             {
-                return this.ApiNotFound("Backup not found: " + backupId);
+                return Ok(result);
             }
-            _dbContext.Backups.Remove(backup);
-            await _dbContext.SaveChangesAsync();
-            return Ok(new { message = "Backup deleted successfully." });
+
+            return this.ApiBadRequest(result.ErrorMessage ?? "Backup could not be deleted.");
         }
 
         [Authorize]

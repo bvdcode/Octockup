@@ -1,8 +1,10 @@
 import {
   Box,
   Card,
+  Alert,
   Stack,
   Button,
+  Snackbar,
   Typography,
   CardContent,
   CircularProgress,
@@ -11,7 +13,9 @@ import {
   MenuItem,
   FormControl,
 } from "@mui/material";
-import { AddCircleOutline } from "@mui/icons-material";
+import { AddCircleOutline, CleaningServices } from "@mui/icons-material";
+import { isAxiosError } from "axios";
+import { confirm } from "material-ui-confirm";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -30,6 +34,16 @@ interface State {
   deletingId: string | null;
   runningId: string | null;
   cancelingId: string | null;
+  garbageCollectingStorageId: string | null;
+}
+
+interface SnackbarState {
+  message: string;
+  severity: "success" | "error";
+}
+
+interface ApiErrorResponse {
+  message?: string;
 }
 
 export default function BackupsPage() {
@@ -43,7 +57,9 @@ export default function BackupsPage() {
     deletingId: null,
     runningId: null,
     cancelingId: null,
+    garbageCollectingStorageId: null,
   });
+  const [snackbar, setSnackbar] = useState<SnackbarState | null>(null);
   const [backups, setBackups] = useState<BackupItem[]>([]);
   const [scheduleReports] = useState<Map<string, ScheduleReport>>(new Map());
   const [, setReportsVersion] = useState(0);
@@ -208,9 +224,24 @@ export default function BackupsPage() {
 
   const handleDelete = async (backupId: string) => {
     setState((s) => ({ ...s, deletingId: backupId }));
-    await backupsApi.delete(backupId);
-    setBackups((prev) => prev.filter((x) => x.id !== backupId));
-    setState((s) => ({ ...s, deletingId: null }));
+    try {
+      const result = await backupsApi.delete(backupId);
+      setBackups((prev) => prev.filter((x) => x.id !== backupId));
+      setSnackbar({
+        severity: "success",
+        message: t("backups.deleteSuccess", {
+          schedules: result.deletedSchedules,
+          snapshots: result.deletedSnapshots,
+        }),
+      });
+    } catch (error) {
+      const message = isAxiosError<ApiErrorResponse>(error)
+        ? error.response?.data?.message || t("backups.deleteFailed")
+        : t("backups.deleteFailed");
+      setSnackbar({ severity: "error", message });
+    } finally {
+      setState((s) => ({ ...s, deletingId: null }));
+    }
   };
 
   const totalStats = useMemo(() => {
@@ -253,6 +284,57 @@ export default function BackupsPage() {
       a.tag.localeCompare(b.tag),
     );
   }, [backups]);
+
+  const selectedStorage = useMemo(() => {
+    return uniqueStorages.find((storage) => storage.id === selectedStorageId);
+  }, [selectedStorageId, uniqueStorages]);
+
+  const handleGarbageCollect = async () => {
+    if (!selectedStorage) {
+      return;
+    }
+
+    const result = await confirm({
+      title: t("backups.garbageCollectTitle"),
+      description: t("backups.garbageCollectText", {
+        storage: selectedStorage.tag,
+      }),
+      confirmationText: t("backups.garbageCollect"),
+      cancellationText: t("common.cancel"),
+      confirmationButtonProps: { color: "warning" },
+    });
+
+    if (!result.confirmed) {
+      return;
+    }
+
+    setState((s) => ({
+      ...s,
+      garbageCollectingStorageId: selectedStorage.id,
+    }));
+
+    try {
+      const collectResult = await backupsApi.collectStorageGarbage(
+        selectedStorage.id,
+      );
+      setSnackbar({
+        severity: collectResult.failedDeletes > 0 ? "error" : "success",
+        message: t("backups.garbageCollectSuccess", {
+          deleted: collectResult.deletedObjects,
+          missing: collectResult.missingObjects,
+          failed: collectResult.failedDeletes,
+          size: formatSize(collectResult.freedStoredSize),
+        }),
+      });
+    } catch (error) {
+      const message = isAxiosError<ApiErrorResponse>(error)
+        ? error.response?.data?.message || t("backups.garbageCollectFailed")
+        : t("backups.garbageCollectFailed");
+      setSnackbar({ severity: "error", message });
+    } finally {
+      setState((s) => ({ ...s, garbageCollectingStorageId: null }));
+    }
+  };
 
   const filteredBackups = useMemo(() => {
     return selectedStorageId
@@ -305,6 +387,20 @@ export default function BackupsPage() {
               ))}
             </Select>
           </FormControl>
+          <Button
+            variant="outlined"
+            startIcon={
+              state.garbageCollectingStorageId ? (
+                <CircularProgress size={16} />
+              ) : (
+                <CleaningServices />
+              )
+            }
+            disabled={!selectedStorage || !!state.garbageCollectingStorageId}
+            onClick={handleGarbageCollect}
+          >
+            {t("backups.garbageCollect")}
+          </Button>
           <Button
             variant="contained"
             startIcon={<AddCircleOutline />}
@@ -396,6 +492,18 @@ export default function BackupsPage() {
             />
           );
         })()}
+      <Snackbar
+        open={snackbar !== null}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar(null)}
+      >
+        <Alert
+          severity={snackbar?.severity ?? "success"}
+          onClose={() => setSnackbar(null)}
+        >
+          {snackbar?.message}
+        </Alert>
+      </Snackbar>
     </Stack>
   );
 }

@@ -52,6 +52,25 @@ export interface BackupItem {
   updatedAt?: string;
 }
 
+export interface BackupDeletionResult {
+  deleted: boolean;
+  errorMessage?: string | null;
+  deletedSchedules: number;
+  deletedSnapshots: number;
+  deletedSnapshotFiles: number;
+}
+
+export interface StorageGarbageCollectionResult {
+  storageId: string;
+  uploadedHashesScanned: number;
+  referencedChunks: number;
+  orphanChunks: number;
+  deletedObjects: number;
+  missingObjects: number;
+  failedDeletes: number;
+  freedStoredSize: number;
+}
+
 export interface ScheduleBackupItem {
   id: string;
   tag: string;

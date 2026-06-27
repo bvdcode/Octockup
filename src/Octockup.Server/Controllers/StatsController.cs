@@ -9,51 +9,53 @@ using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Database;
 using Octockup.Server.Models.Dto;
 using Octockup.Server.Models.Enums;
+using Octockup.Server.Services;
 
 namespace Octockup.Server.Controllers
 {
     [ApiController]
-    public class StatsController(AppDbContext _dbContext) : ControllerBase
+    public class StatsController(
+        AppDbContext _dbContext,
+        ChunkReferenceCollector _chunkReferenceCollector) : ControllerBase
     {
         [Authorize]
         [HttpGet("/api/v1/stats")]
-        public IActionResult GetStats()
+        public async Task<IActionResult> GetStats(CancellationToken cancellationToken)
         {
-            int totalUsers = _dbContext.Users.Count();
+            int totalUsers = await _dbContext.Users.CountAsync(cancellationToken);
             Guid userId = User.GetUserId();
-            var storages = _dbContext.Modules.Where(m => m.UserId == userId && m.Destination == ModuleDestination.Target);
-            HashSet<string> chunkHashes = [];
+            List<Module> storages = await _dbContext.Modules
+                .AsNoTracking()
+                .Where(m => m.UserId == userId && m.Destination == ModuleDestination.Target)
+                .ToListAsync(cancellationToken);
+
             List<StorageStatsDto> storageStats = [];
-            foreach (var storage in storages)
+            foreach (Module storage in storages)
             {
                 StorageStatsDto stats = storage.Adapt<StorageStatsDto>();
-                var backups = _dbContext.Backups.Where(b => b.StorageId == storage.Id);
-                var chunks = _dbContext.UploadedHashes.Where(c => c.ModuleId == storage.Id);
-                stats.TotalBackups = backups.Count();
-                stats.TotalOriginalSize = chunks.Sum(c => c.OriginalSize);
-                stats.TotalStoredSize = chunks.Sum(c => c.StoredSize);
+                stats.TotalBackups = await _dbContext.Backups
+                    .Where(b => b.StorageId == storage.Id)
+                    .CountAsync(cancellationToken);
 
-                foreach (var backup in backups)
-                {
-                    var snapshots = _dbContext.Snapshots
-                        .Include(x => x.Files)
-                        .OrderBy(x => x.CreatedAt)
-                        .Where(s => s.BackupId == backup.Id);
-                    foreach (var snapshot in snapshots)
+                var chunkSizes = await _dbContext.UploadedHashes
+                    .AsNoTracking()
+                    .Where(c => c.ModuleId == storage.Id)
+                    .GroupBy(c => c.ModuleId)
+                    .Select(g => new
                     {
-                        foreach (var file in snapshot.Files)
-                        {
-                            foreach (var chunkHash in file.ChunkHashes)
-                            {
-                                bool added = chunkHashes.Add(chunkHash);
-                                if (!added)
-                                {
-                                    stats.DeduplicatedChunks++;
-                                }
-                            }
-                        }
-                    }
-                }
+                        TotalOriginalSize = g.Sum(c => (long?)c.OriginalSize) ?? 0,
+                        TotalStoredSize = g.Sum(c => (long?)c.StoredSize) ?? 0
+                    })
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                stats.TotalOriginalSize = chunkSizes?.TotalOriginalSize ?? 0;
+                stats.TotalStoredSize = chunkSizes?.TotalStoredSize ?? 0;
+
+                (HashSet<string> referencedChunks, long referenceCount) = await _chunkReferenceCollector
+                    .CollectWithReferenceCountForStorageAsync(storage.Id, cancellationToken);
+
+                long deduplicatedChunks = referenceCount - referencedChunks.Count;
+                stats.DeduplicatedChunks = (int)Math.Min(int.MaxValue, Math.Max(0, deduplicatedChunks));
                 storageStats.Add(stats);
             }
             return Ok(new

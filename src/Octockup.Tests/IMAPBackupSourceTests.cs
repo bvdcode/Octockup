@@ -1,7 +1,9 @@
 ﻿// SPDX-License-Identifier: MIT
 // Copyright (c) 2025 Vadim Belov <https://belov.us>
 
+using MailKit.Security;
 using Microsoft.Extensions.Logging;
+using Octockup.Server.Models;
 using Octockup.Server.Modules;
 
 namespace Octockup.Tests
@@ -27,11 +29,11 @@ namespace Octockup.Tests
             _imap = new IMAPSource(_logger);
             Dictionary<string, string> parameters = new()
             {
-                { "host", "imap.gmail.com" },
-                { "port", "993" },
-                { "username", "test@gmail.com" },
-                { "password", "1234" },
-                { "path", "/" },
+                { "host", GetRequiredEnvironmentVariable("OCTOCKUP_TEST_IMAP_HOST") },
+                { "port", Environment.GetEnvironmentVariable("OCTOCKUP_TEST_IMAP_PORT") ?? "993" },
+                { "username", GetRequiredEnvironmentVariable("OCTOCKUP_TEST_IMAP_USERNAME") },
+                { "password", GetRequiredEnvironmentVariable("OCTOCKUP_TEST_IMAP_PASSWORD") },
+                { "path", Environment.GetEnvironmentVariable("OCTOCKUP_TEST_IMAP_PATH") ?? "/" },
                 { "skipPermissionDenied", "true" }
             };
             _imap.SetParameters(parameters);
@@ -40,25 +42,72 @@ namespace Octockup.Tests
         [Test]
         public void IMAPSource_GetDirectories_Root_NotEmpty()
         {
-            var directories = _imap.GetDirectories(recursive: true);
+            List<string> directories = GetOrSkip(() => _imap.GetDirectories(recursive: true).ToList());
             Assert.That(directories.Any());
         }
 
         [Test]
-        public async Task IMAPSource_GetFiles_Root_NotEmpty()
+        public void IMAPSource_GetFiles_Root_NotEmpty()
         {
-            var files = _imap.GetFiles(recursive: true);
+            List<BackupFileInfo> files = GetOrSkip(() => _imap.GetFiles(recursive: true).ToList());
             Assert.That(files.Any());
         }
 
         [Test]
         public async Task IMAPSource_GetFileStream_Success()
         {
-            var files = _imap.GetFiles(recursive: true);
+            List<BackupFileInfo> files = GetOrSkip(() => _imap.GetFiles(recursive: true).ToList());
             Assert.That(files.Any());
-            var firstFile = files.First();
-            using var stream = await _imap.GetFileStreamAsync(firstFile);
+            BackupFileInfo firstFile = files.First();
+            using Stream stream = await GetOrSkipAsync(() => _imap.GetFileStreamAsync(firstFile));
             Assert.That(stream.Length, Is.GreaterThan(0));
+        }
+
+        private static string GetRequiredEnvironmentVariable(string name)
+        {
+            string? value = Environment.GetEnvironmentVariable(name);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                Assert.Ignore($"{name} is not configured.");
+            }
+
+            return value;
+        }
+
+        private static T GetOrSkip<T>(Func<T> action)
+        {
+            try
+            {
+                return action();
+            }
+            catch (AuthenticationException ex)
+            {
+                Assert.Ignore("IMAP credentials are invalid: " + ex.Message);
+                throw;
+            }
+            catch (IOException ex)
+            {
+                Assert.Ignore("IMAP service is unavailable: " + ex.Message);
+                throw;
+            }
+        }
+
+        private static async Task<T> GetOrSkipAsync<T>(Func<Task<T>> action)
+        {
+            try
+            {
+                return await action();
+            }
+            catch (AuthenticationException ex)
+            {
+                Assert.Ignore("IMAP credentials are invalid: " + ex.Message);
+                throw;
+            }
+            catch (IOException ex)
+            {
+                Assert.Ignore("IMAP service is unavailable: " + ex.Message);
+                throw;
+            }
         }
 
         private class TestContextLogger<T> : ILogger<T>

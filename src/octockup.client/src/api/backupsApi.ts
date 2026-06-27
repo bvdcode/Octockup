@@ -1,7 +1,12 @@
 import { useMemo } from "react";
 import type { AxiosInstance } from "axios";
 import { useAxios } from "@bvdcode/react-kit";
-import type { BackupItem, CreateBackupRequest } from "../types/api";
+import type {
+  BackupDeletionResult,
+  BackupItem,
+  CreateBackupRequest,
+  StorageGarbageCollectionResult,
+} from "../types/api";
 
 class BackupsApiClient {
   private axiosFactory: () => AxiosInstance;
@@ -23,10 +28,20 @@ class BackupsApiClient {
     await this.axios().post("/api/v1/backups", request);
   }
 
-  async delete(backupId: string): Promise<void> {
-    await this.axios().delete(
+  async delete(backupId: string): Promise<BackupDeletionResult> {
+    const result = await this.axios().delete<BackupDeletionResult>(
       `/api/v1/backups/${encodeURIComponent(backupId)}`,
     );
+    return result.data;
+  }
+
+  async collectStorageGarbage(
+    storageId: string,
+  ): Promise<StorageGarbageCollectionResult> {
+    const result = await this.axios().post<StorageGarbageCollectionResult>(
+      `/api/v1/storages/${encodeURIComponent(storageId)}/garbage-collect`,
+    );
+    return result.data;
   }
 
   async rename(backupId: string, newTag: string): Promise<void> {

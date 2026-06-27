@@ -9,47 +9,54 @@ namespace Octockup.Server.Helpers
 {
     public static class ScheduleHelpers
     {
-        public static async Task<Schedule?> GetNextScheduleAsync(IQueryable<Schedule> _schedules, CancellationToken cancellationToken)
+        public static async Task<Schedule?> GetNextScheduleAsync(IQueryable<Schedule> schedules, CancellationToken cancellationToken)
+        {
+            IReadOnlyList<Schedule> readySchedules = await GetReadySchedulesAsync(
+                schedules,
+                1,
+                cancellationToken);
+
+            return readySchedules.FirstOrDefault();
+        }
+
+        public static async Task<IReadOnlyList<Schedule>> GetReadySchedulesAsync(
+            IQueryable<Schedule> schedulesQuery,
+            int maxCount,
+            CancellationToken cancellationToken)
         {
             DateTime now = DateTime.UtcNow;
 
-            var schedules = await _schedules
+            List<Schedule> schedules = await schedulesQuery
                 .Include(x => x.Backup)
                 .ThenInclude(b => b.Source)
                 .Include(x => x.Backup)
                 .ThenInclude(b => b.Storage)
                 .ToListAsync(cancellationToken: cancellationToken);
 
-            Schedule? best = null;
-            DateTime? bestTime = null;
+            List<(Schedule Schedule, DateTime NextRun)> readySchedules = [];
 
-            foreach (var sch in schedules)
+            foreach (Schedule schedule in schedules)
             {
-                if (sch.Status == ScheduleStatus.Running)
-                {
-                    return sch;
-                }
-
-                DateTime? nextRun = CalculateNextRun(sch, now);
-                if (nextRun == null)
+                DateTime? nextRun = CalculateNextRun(schedule, now);
+                if (nextRun is null)
                 {
                     continue;
                 }
 
-                // Only consider schedules due to run now or earlier
                 if (nextRun > now)
                 {
                     continue;
                 }
 
-                if (bestTime == null || nextRun < bestTime)
-                {
-                    best = sch;
-                    bestTime = nextRun;
-                }
+                readySchedules.Add((schedule, nextRun.Value));
             }
 
-            return best;
+            return readySchedules
+                .OrderBy(x => x.NextRun)
+                .ThenBy(x => x.Schedule.Id)
+                .Take(maxCount)
+                .Select(x => x.Schedule)
+                .ToList();
         }
 
         public static DateTime? CalculateNextRun(Schedule schedule, DateTime now)
