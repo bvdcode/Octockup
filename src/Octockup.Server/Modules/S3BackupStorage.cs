@@ -8,10 +8,11 @@ using Octockup.Server.Helpers;
 using Octockup.Server.Models;
 using System.Net;
 using System.Net.Mime;
+using System.Runtime.CompilerServices;
 
 namespace Octockup.Server.Modules
 {
-    public class S3BackupStorage(ILogger<S3BackupStorage> _logger) : IBackupStorage
+    public class S3BackupStorage(ILogger<S3BackupStorage> _logger) : IBackupStorage, IBackupStorageInventory
     {
         public char PathSeparator => '/';
         public string Id => GetType().FullName!;
@@ -33,6 +34,10 @@ namespace Octockup.Server.Modules
 
         public void SetParameters(IReadOnlyDictionary<string, string> parameters)
         {
+            _validateChecksums = parameters.TryGetValue("validateChecksums", out var validateStr) &&
+                                 bool.TryParse(validateStr, out var validateBool) &&
+                                 validateBool;
+
             var config = new AmazonS3Config
             {
                 UseHttp = false,
@@ -48,9 +53,6 @@ namespace Octockup.Server.Modules
                     : Amazon.Runtime.ResponseChecksumValidation.WHEN_REQUIRED
             };
 
-            _validateChecksums = parameters.TryGetValue("validateChecksums", out var validateStr) &&
-                                 bool.TryParse(validateStr, out var validateBool) &&
-                                 validateBool;
             _path = parameters["path"].Trim().Trim('/');
             _bucket = parameters["bucket"];
 
@@ -409,6 +411,77 @@ namespace Octockup.Server.Modules
             }
             while (continuationToken != null);
             return files;
+        }
+
+        public async IAsyncEnumerable<BackupFileInfo> GetFilesAsync(
+            bool recursive = false,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(_s3);
+            ArgumentException.ThrowIfNullOrEmpty(_bucket);
+
+            string basePrefix = GetBasePrefix();
+            string? continuationToken = null;
+
+            do
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                ListObjectsV2Request request = new()
+                {
+                    BucketName = _bucket,
+                    Prefix = basePrefix,
+                    ContinuationToken = continuationToken
+                };
+
+                ListObjectsV2Response response = await _s3
+                    .ListObjectsV2Async(request, cancellationToken)
+                    .ConfigureAwait(false);
+
+                IEnumerable<S3Object> objects = response.S3Objects ?? Enumerable.Empty<S3Object>();
+                foreach (S3Object obj in objects)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    if (obj == null || string.IsNullOrEmpty(obj.Key) || obj.Key.EndsWith(PathSeparator))
+                    {
+                        continue;
+                    }
+
+                    string relativeKey = ToRelativeKey(obj.Key, basePrefix);
+                    if (string.IsNullOrEmpty(relativeKey))
+                    {
+                        continue;
+                    }
+
+                    if (!recursive && relativeKey.Contains(PathSeparator))
+                    {
+                        continue;
+                    }
+
+                    if (_ignoredPaths != null)
+                    {
+                        string fileName = Path.GetFileName(relativeKey);
+                        if (ScheduleHelpers.IsPathIgnored(PathSeparator + relativeKey, fileName, _ignoredPaths))
+                        {
+                            _logger.LogDebug("Skipping ignored S3 file: {Name}", relativeKey);
+                            continue;
+                        }
+                    }
+
+                    yield return new BackupFileInfo
+                    {
+                        Size = obj.Size,
+                        Path = relativeKey,
+                        Name = Path.GetFileName(relativeKey),
+                        LastModified = obj.LastModified?.ToUniversalTime()
+                    };
+                }
+
+                continuationToken = response.IsTruncated == true
+                    ? response.NextContinuationToken
+                    : null;
+            }
+            while (continuationToken != null);
         }
 
         public Task UploadAsync(string path, Stream data, CancellationToken cancellationToken = default)

@@ -7,10 +7,11 @@ using Octockup.Server.Models;
 using Renci.SshNet;
 using Renci.SshNet.Common;
 using Renci.SshNet.Sftp;
+using System.Runtime.CompilerServices;
 
 namespace Octockup.Server.Modules
 {
-    public class SFTPBackupStorage(ILogger<SFTPBackupStorage> _logger) : IBackupStorage, IDisposable
+    public class SFTPBackupStorage(ILogger<SFTPBackupStorage> _logger) : IBackupStorage, IBackupStorageInventory, IDisposable
     {
         public char PathSeparator => '/';
         public string Id => GetType().FullName!;
@@ -303,6 +304,18 @@ namespace Octockup.Server.Modules
                         LastModified = entry.LastWriteTime.ToUniversalTime()
                     };
                 }
+            }
+        }
+
+        public async IAsyncEnumerable<BackupFileInfo> GetFilesAsync(
+            bool recursive = false,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            foreach (BackupFileInfo file in GetFiles(recursive, cancellationToken))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return file;
+                await Task.Yield();
             }
         }
 

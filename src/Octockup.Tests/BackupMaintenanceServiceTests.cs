@@ -12,6 +12,7 @@ using Octockup.Server.Helpers;
 using Octockup.Server.Models;
 using Octockup.Server.Models.Enums;
 using Octockup.Server.Services;
+using System.Runtime.CompilerServices;
 
 namespace Octockup.Tests
 {
@@ -76,7 +77,7 @@ namespace Octockup.Tests
         }
 
         [Test]
-        public async Task CollectAsync_RemovesOnlyUnreferencedUploadedHashes()
+        public async Task RunAsync_WhenStorageContainsOrphanChunk_DeletesOnlyUnreferencedChunk()
         {
             await using SqliteConnection connection = new("Data Source=:memory:");
             await connection.OpenAsync();
@@ -93,29 +94,50 @@ namespace Octockup.Tests
             });
             await dbContext.SaveChangesAsync();
 
+            string referencedPath = ChunkStorageHelpers.GetStoragePath(ReferencedHash, '/');
+            string orphanPath = ChunkStorageHelpers.GetStoragePath(OrphanHash, '/');
             TestStorage storage = new();
-            StorageGarbageCollectionService service = new(
+            storage.Files[referencedPath] = new BackupFileInfo
+            {
+                Path = referencedPath,
+                Name = Path.GetFileName(referencedPath),
+                Size = 12
+            };
+            storage.Files[orphanPath] = new BackupFileInfo
+            {
+                Path = orphanPath,
+                Name = Path.GetFileName(orphanPath),
+                Size = 10
+            };
+            StorageCleanupRunner runner = new(
                 new TestCipher(),
                 dbContext,
-                NullLogger<StorageGarbageCollectionService>.Instance,
+                NullLogger<StorageCleanupRunner>.Instance,
                 [storage],
                 new ChunkReferenceCollector(dbContext));
+            StorageCleanupJobState state = new(
+                Guid.NewGuid(),
+                userId,
+                storageId,
+                "storage");
 
-            var result = await service.CollectAsync(userId, storageId, CancellationToken.None);
+            await runner.RunAsync(
+                state,
+                (_, _) => Task.CompletedTask,
+                CancellationToken.None);
 
             dbContext.ChangeTracker.Clear();
+            var result = state.Snapshot();
 
             Assert.Multiple(() =>
             {
-                Assert.That(result.UploadedHashesScanned, Is.EqualTo(2));
+                Assert.That(result.ChunkObjectsScanned, Is.EqualTo(2));
                 Assert.That(result.ReferencedChunks, Is.EqualTo(1));
-                Assert.That(result.OrphanChunks, Is.EqualTo(1));
+                Assert.That(result.OrphanObjects, Is.EqualTo(1));
                 Assert.That(result.DeletedObjects, Is.EqualTo(1));
-                Assert.That(result.FreedStoredSize, Is.EqualTo(10));
-                Assert.That(storage.DeletedPaths, Is.EqualTo(new[]
-                {
-                    ChunkStorageHelpers.GetStoragePath(OrphanHash, storage.PathSeparator)
-                }));
+                Assert.That(result.FreedBytes, Is.EqualTo(10));
+                Assert.That(result.UploadedHashRowsDeleted, Is.EqualTo(1));
+                Assert.That(storage.DeletedPaths, Is.EqualTo(new[] { orphanPath }));
                 Assert.That(dbContext.UploadedHashes.Select(x => x.Hash), Is.EqualTo(new[]
                 {
                     ReferencedHash
@@ -216,13 +238,14 @@ namespace Octockup.Tests
         {
         }
 
-        private class TestStorage : IBackupStorage
+        private class TestStorage : IBackupStorage, IBackupStorageInventory
         {
             public string Id => nameof(TestStorage);
             public string Name => nameof(TestStorage);
             public char PathSeparator => '/';
             public IEnumerable<string> RequiredParameters => [];
             public List<string> DeletedPaths { get; } = [];
+            public Dictionary<string, BackupFileInfo> Files { get; } = new(StringComparer.Ordinal);
 
             public void SetParameters(IReadOnlyDictionary<string, string> parameters)
             {
@@ -240,15 +263,28 @@ namespace Octockup.Tests
 
             public IEnumerable<string> GetDirectories(bool recursive = false, CancellationToken cancellationToken = default) => [];
 
-            public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false, CancellationToken cancellationToken = default) => [];
+            public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false, CancellationToken cancellationToken = default) =>
+                Files.Values;
+
+            public async IAsyncEnumerable<BackupFileInfo> GetFilesAsync(
+                bool recursive = false,
+                [EnumeratorCancellation] CancellationToken cancellationToken = default)
+            {
+                foreach (BackupFileInfo file in Files.Values)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    yield return file;
+                    await Task.Yield();
+                }
+            }
 
             public Task<bool?> ExistsAsync(string path, CancellationToken cancellationToken = default) =>
-                Task.FromResult<bool?>(false);
+                Task.FromResult<bool?>(Files.ContainsKey(path));
 
             public Task<bool?> DeleteAsync(string path, CancellationToken cancellationToken = default)
             {
                 DeletedPaths.Add(path);
-                return Task.FromResult<bool?>(true);
+                return Task.FromResult<bool?>(Files.Remove(path));
             }
 
             public Task UploadAsync(string path, Stream data, CancellationToken cancellationToken = default) =>

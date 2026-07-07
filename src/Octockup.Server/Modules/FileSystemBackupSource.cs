@@ -4,10 +4,14 @@
 using Octockup.Server.Abstractions;
 using Octockup.Server.Helpers;
 using Octockup.Server.Models;
+using System.Runtime.CompilerServices;
 
 namespace Octockup.Server.Modules
 {
-    public class FileSystemBackupSource(ILogger<FileSystemBackupSource> _logger) : IBackupStorage
+    public class FileSystemBackupSource(ILogger<FileSystemBackupSource> _logger) :
+        IBackupStorage,
+        IBackupStorageInventory,
+        IBackupStorageCapacityProvider
     {
         public string Name => "File System";
         public string Id => GetType().FullName!;
@@ -107,6 +111,18 @@ namespace Octockup.Server.Modules
                         LastModified = fileInfo.LastWriteTimeUtc,
                     };
                 }
+            }
+        }
+
+        public async IAsyncEnumerable<BackupFileInfo> GetFilesAsync(
+            bool recursive = false,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            foreach (BackupFileInfo file in GetFiles(recursive, cancellationToken))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return file;
+                await Task.Yield();
             }
         }
 
@@ -322,7 +338,7 @@ namespace Octockup.Server.Modules
             }
             if (!File.Exists(fullPath))
             {
-                return Task.FromResult<bool?>(null);
+                return Task.FromResult<bool?>(false);
             }
             try
             {
@@ -351,6 +367,20 @@ namespace Octockup.Server.Modules
                 await data.CopyToAsync(fileStream, cancellationToken);
             }
             File.Move(tempFile, fullPath, true);
+        }
+
+        public Task<StorageCapacityInfo?> GetCapacityAsync(CancellationToken cancellationToken = default)
+        {
+            CheckPassword();
+            Directory.CreateDirectory(_baseDirectory);
+            DriveInfo drive = new(Path.GetPathRoot(_baseDirectory)!);
+            StorageCapacityInfo capacity = new()
+            {
+                TotalBytes = drive.TotalSize,
+                AvailableBytes = drive.AvailableFreeSpace
+            };
+
+            return Task.FromResult<StorageCapacityInfo?>(capacity);
         }
 
         private IEnumerable<string> GetRequiredParameters()
