@@ -293,6 +293,7 @@
     },
     "metrics": {
       "loading": "Loading...",
+      "notScanned": "Not scanned yet",
       "indexedObjects": "Indexed objects",
       "indexedSize": "Indexed size",
       "referencedChunks": "Referenced chunks",

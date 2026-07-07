@@ -317,6 +317,7 @@
     },
     "metrics": {
       "loading": "Загрузка...",
+      "notScanned": "Ещё не сканировалось",
       "indexedObjects": "Объектов в индексе",
       "indexedSize": "Размер в индексе",
       "referencedChunks": "Используемых чанков",

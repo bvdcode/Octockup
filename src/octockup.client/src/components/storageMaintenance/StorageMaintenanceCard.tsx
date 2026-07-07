@@ -43,6 +43,19 @@ function formatBytes(value: number | null | undefined, loadingLabel: string) {
     : formatSize(value);
 }
 
+function formatReferencedChunks(
+  value: number | null | undefined,
+  loading: boolean,
+  loadingLabel: string,
+  notScannedLabel: string,
+) {
+  if (value !== null && value !== undefined) {
+    return value.toLocaleString();
+  }
+
+  return loading ? loadingLabel : notScannedLabel;
+}
+
 function isActiveJob(job?: StorageCleanupJob): boolean {
   return (
     job?.status === StorageCleanupStatus.Pending ||
@@ -72,7 +85,8 @@ export function StorageMaintenanceCard({
   const { t } = useTranslation();
   const active = isActiveJob(job);
   const loadingLabel = t("storageMaintenance.metrics.loading");
-  const referencedChunks = job && job.referencedChunks > 0
+  const notScannedLabel = t("storageMaintenance.metrics.notScanned");
+  const referencedChunks = job
     ? job.referencedChunks
     : storage.referencedChunks;
 
@@ -132,7 +146,12 @@ export function StorageMaintenanceCard({
             />
             <Metric
               label={t("storageMaintenance.metrics.referencedChunks")}
-              value={formatCount(referencedChunks, loadingLabel)}
+              value={formatReferencedChunks(
+                referencedChunks,
+                statsLoading,
+                loadingLabel,
+                notScannedLabel,
+              )}
             />
             <Metric
               label={t("storageMaintenance.metrics.backups")}
