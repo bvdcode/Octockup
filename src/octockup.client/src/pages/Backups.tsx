@@ -13,9 +13,8 @@ import {
   MenuItem,
   FormControl,
 } from "@mui/material";
-import { AddCircleOutline, CleaningServices } from "@mui/icons-material";
+import { AddCircleOutline } from "@mui/icons-material";
 import { isAxiosError } from "axios";
-import { confirm } from "material-ui-confirm";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -34,7 +33,6 @@ interface State {
   deletingId: string | null;
   runningId: string | null;
   cancelingId: string | null;
-  garbageCollectingStorageId: string | null;
 }
 
 interface SnackbarState {
@@ -57,7 +55,6 @@ export default function BackupsPage() {
     deletingId: null,
     runningId: null,
     cancelingId: null,
-    garbageCollectingStorageId: null,
   });
   const [snackbar, setSnackbar] = useState<SnackbarState | null>(null);
   const [backups, setBackups] = useState<BackupItem[]>([]);
@@ -285,57 +282,6 @@ export default function BackupsPage() {
     );
   }, [backups]);
 
-  const selectedStorage = useMemo(() => {
-    return uniqueStorages.find((storage) => storage.id === selectedStorageId);
-  }, [selectedStorageId, uniqueStorages]);
-
-  const handleGarbageCollect = async () => {
-    if (!selectedStorage) {
-      return;
-    }
-
-    const result = await confirm({
-      title: t("backups.garbageCollectTitle"),
-      description: t("backups.garbageCollectText", {
-        storage: selectedStorage.tag,
-      }),
-      confirmationText: t("backups.garbageCollect"),
-      cancellationText: t("common.cancel"),
-      confirmationButtonProps: { color: "warning" },
-    });
-
-    if (!result.confirmed) {
-      return;
-    }
-
-    setState((s) => ({
-      ...s,
-      garbageCollectingStorageId: selectedStorage.id,
-    }));
-
-    try {
-      const collectResult = await backupsApi.collectStorageGarbage(
-        selectedStorage.id,
-      );
-      setSnackbar({
-        severity: collectResult.failedDeletes > 0 ? "error" : "success",
-        message: t("backups.garbageCollectSuccess", {
-          deleted: collectResult.deletedObjects,
-          missing: collectResult.missingObjects,
-          failed: collectResult.failedDeletes,
-          size: formatSize(collectResult.freedStoredSize),
-        }),
-      });
-    } catch (error) {
-      const message = isAxiosError<ApiErrorResponse>(error)
-        ? error.response?.data?.message || t("backups.garbageCollectFailed")
-        : t("backups.garbageCollectFailed");
-      setSnackbar({ severity: "error", message });
-    } finally {
-      setState((s) => ({ ...s, garbageCollectingStorageId: null }));
-    }
-  };
-
   const filteredBackups = useMemo(() => {
     return selectedStorageId
       ? backups.filter((b) => b.storageId === selectedStorageId)
@@ -387,20 +333,6 @@ export default function BackupsPage() {
               ))}
             </Select>
           </FormControl>
-          <Button
-            variant="outlined"
-            startIcon={
-              state.garbageCollectingStorageId ? (
-                <CircularProgress size={16} />
-              ) : (
-                <CleaningServices />
-              )
-            }
-            disabled={!selectedStorage || !!state.garbageCollectingStorageId}
-            onClick={handleGarbageCollect}
-          >
-            {t("backups.garbageCollect")}
-          </Button>
           <Button
             variant="contained"
             startIcon={<AddCircleOutline />}

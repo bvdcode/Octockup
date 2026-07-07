@@ -140,11 +140,6 @@
     "deleteSuccess": "Backup deleted. Removed {{schedules}} schedules and {{snapshots}} snapshots.",
     "deleteFailed": "Failed to delete backup.",
     "deleteTooltip": "Delete backup",
-    "garbageCollect": "Clean storage",
-    "garbageCollectTitle": "Clean unused chunks",
-    "garbageCollectText": "Delete chunks in '{{storage}}' that are not referenced by any snapshot?",
-    "garbageCollectSuccess": "Cleaned {{deleted}} chunks, skipped {{missing}} missing chunks, failed {{failed}} chunks. Freed {{size}}.",
-    "garbageCollectFailed": "Failed to clean storage.",
     "runOnce": "Run once",
     "stop": "Stop backup",
     "ignoredPaths": "Ignored paths",
@@ -267,6 +262,42 @@
       "description": "Import backup configuration and metadata from a previously exported file.",
       "button": "Import user data",
       "importing": "Importing..."
+    }
+  },
+  "storageMaintenance": {
+    "title": "Storage Maintenance",
+    "subtitle": "Scan storage objects and remove chunks that are no longer referenced by snapshots.",
+    "noStorages": "No storages configured yet.",
+    "loadFailed": "Failed to load storage maintenance data.",
+    "confirmTitle": "Start storage cleanup",
+    "confirmText": "Scan '{{storage}}' and delete unreferenced chunk objects?",
+    "start": "Start cleanup",
+    "cancel": "Cancel",
+    "started": "Cleanup started.",
+    "startFailed": "Failed to start cleanup.",
+    "status": {
+      "notStarted": "Not started",
+      "pending": "Pending",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed",
+      "canceled": "Canceled"
+    },
+    "metrics": {
+      "indexedObjects": "Indexed objects",
+      "indexedSize": "Indexed size",
+      "referencedChunks": "Referenced chunks",
+      "backups": "Backups",
+      "available": "Available",
+      "capacity": "Capacity",
+      "scannedObjects": "Scanned objects",
+      "scannedSize": "Scanned size",
+      "orphans": "Orphans",
+      "freed": "Freed",
+      "deleted": "Deleted",
+      "failed": "Failed",
+      "missing": "Missing",
+      "indexRows": "Index rows"
     }
   }
 }

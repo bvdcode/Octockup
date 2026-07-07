@@ -60,17 +60,6 @@ export interface BackupDeletionResult {
   deletedSnapshotFiles: number;
 }
 
-export interface StorageGarbageCollectionResult {
-  storageId: string;
-  uploadedHashesScanned: number;
-  referencedChunks: number;
-  orphanChunks: number;
-  deletedObjects: number;
-  missingObjects: number;
-  failedDeletes: number;
-  freedStoredSize: number;
-}
-
 export interface ScheduleBackupItem {
   id: string;
   tag: string;
@@ -150,4 +139,53 @@ export interface SnapshotFileDto {
   name: string;
   path: string;
   hashsum: string;
+}
+
+export enum StorageCleanupStatus {
+  Pending = 0,
+  Running = 1,
+  Completed = 2,
+  Failed = 3,
+  Canceled = 4,
+}
+
+export interface StorageCleanupJob {
+  jobId: string;
+  userId: string;
+  storageId: string;
+  storageTag: string;
+  status: StorageCleanupStatus;
+  startedAt: string;
+  finishedAt?: string | null;
+  errorMessage?: string | null;
+  referenceCount: number;
+  referencedChunks: number;
+  storageObjectsScanned: number;
+  storageBytesScanned: number;
+  chunkObjectsScanned: number;
+  referencedObjects: number;
+  referencedBytes: number;
+  orphanObjects: number;
+  orphanBytes: number;
+  deletedObjects: number;
+  freedBytes: number;
+  missingObjects: number;
+  failedDeletes: number;
+  skippedObjects: number;
+  uploadedHashRowsDeleted: number;
+  currentPath?: string | null;
+}
+
+export interface StorageMaintenanceSummary extends Module {
+  totalBackups: number;
+  indexedObjects: number;
+  indexedStoredSize: number;
+  indexedOriginalSize: number;
+  referenceCount: number;
+  referencedChunks: number;
+  deduplicatedChunks: number;
+  totalCapacityBytes?: number | null;
+  availableBytes?: number | null;
+  activeJob?: StorageCleanupJob | null;
+  lastJob?: StorageCleanupJob | null;
 }

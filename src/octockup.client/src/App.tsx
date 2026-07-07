@@ -4,6 +4,7 @@ import {
   Schedule,
   CloudDone,
   CloudDownload,
+  CleaningServices,
   GitHub,
   Settings,
 } from "@mui/icons-material";
@@ -21,6 +22,7 @@ import ScheduleWizard from "./pages/ScheduleWizard";
 import SnapshotsPage from "./pages/Snapshots";
 import SnapshotFilesPage from "./pages/SnapshotFiles";
 import SettingsPage from "./pages/Settings";
+import StorageMaintenancePage from "./pages/StorageMaintenance";
 import { Fab } from "@mui/material";
 
 function App() {
@@ -92,6 +94,12 @@ function App() {
             component: <StoragesPage />,
           },
           {
+            icon: <CleaningServices />,
+            name: "Maintenance",
+            route: "/storage-maintenance",
+            component: <StorageMaintenancePage />,
+          },
+          {
             route: "/backups/new",
             component: <BackupWizard />,
           },
@@ -124,7 +132,12 @@ function App() {
       <Fab
         color="primary"
         aria-label="add"
-        sx={{ position: "fixed", bottom: 16, right: 16 }}
+        sx={{
+          position: "fixed",
+          bottom: 16,
+          right: 16,
+          display: { xs: "none", sm: "inline-flex" },
+        }}
         href="https://github.com/bvdcode/octockup"
         target="_blank"
         rel="noopener noreferrer"
