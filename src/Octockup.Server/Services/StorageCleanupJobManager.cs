@@ -163,6 +163,7 @@ namespace Octockup.Server.Services
                 state.Update(x =>
                 {
                     x.Status = StorageCleanupStatus.Completed;
+                    x.Phase = StorageCleanupPhase.Completed;
                     x.FinishedAt = DateTime.UtcNow;
                     x.CurrentPath = null;
                 });
@@ -172,6 +173,7 @@ namespace Octockup.Server.Services
                 state.Update(x =>
                 {
                     x.Status = StorageCleanupStatus.Canceled;
+                    x.Phase = StorageCleanupPhase.Completed;
                     x.FinishedAt = DateTime.UtcNow;
                     x.CurrentPath = null;
                 });
@@ -186,6 +188,7 @@ namespace Octockup.Server.Services
                 state.Update(x =>
                 {
                     x.Status = StorageCleanupStatus.Failed;
+                    x.Phase = StorageCleanupPhase.Completed;
                     x.FinishedAt = DateTime.UtcNow;
                     x.ErrorMessage = ex.Message;
                     x.CurrentPath = null;

@@ -33,20 +33,37 @@ namespace Octockup.Server.Services
 
             Module storageModule = await GetStorageModuleAsync(state, cancellationToken).ConfigureAwait(false);
             (IBackupStorage storage, IBackupStorageInventory inventory) = CreateStorageInventory(storageModule);
+            Stopwatch publishStopwatch = Stopwatch.StartNew();
 
             (HashSet<string> referencedChunks, long referenceCount) = await _chunkReferenceCollector
-                .CollectWithReferenceCountForStorageAsync(storageModule.Id, cancellationToken)
+                .CollectWithReferenceCountForStorageAsync(
+                    storageModule.Id,
+                    cancellationToken,
+                    async (snapshotFilesScanned, currentReferenceCount, referencedChunkCount, ct) =>
+                    {
+                        state.Update(x =>
+                        {
+                            x.Phase = StorageCleanupPhase.CollectingReferences;
+                            x.SnapshotFilesScanned = snapshotFilesScanned;
+                            x.ReferenceCount = currentReferenceCount;
+                            x.ReferencedChunks = referencedChunkCount;
+                        });
+
+                        await PublishIfDueAsync(state, publishAsync, publishStopwatch, ct)
+                            .ConfigureAwait(false);
+                    })
                 .ConfigureAwait(false);
 
             state.Update(x =>
             {
+                x.Phase = StorageCleanupPhase.ScanningStorage;
                 x.ReferenceCount = referenceCount;
                 x.ReferencedChunks = referencedChunks.Count;
             });
             await publishAsync(state.Snapshot(), cancellationToken).ConfigureAwait(false);
 
             List<string> uploadedHashDeleteBatch = [];
-            Stopwatch publishStopwatch = Stopwatch.StartNew();
+            publishStopwatch.Restart();
 
             await foreach (BackupFileInfo storageObject in inventory.GetFilesAsync(true, cancellationToken))
             {

@@ -12,9 +12,11 @@ namespace Octockup.Server.Models.Dto
         public Guid StorageId { get; set; }
         public string StorageTag { get; set; } = string.Empty;
         public StorageCleanupStatus Status { get; set; }
+        public StorageCleanupPhase Phase { get; set; }
         public DateTime StartedAt { get; set; }
         public DateTime? FinishedAt { get; set; }
         public string? ErrorMessage { get; set; }
+        public long SnapshotFilesScanned { get; set; }
         public long ReferenceCount { get; set; }
         public long ReferencedChunks { get; set; }
         public long StorageObjectsScanned { get; set; }

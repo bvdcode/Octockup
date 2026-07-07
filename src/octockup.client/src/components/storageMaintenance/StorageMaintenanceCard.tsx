@@ -14,6 +14,7 @@ import {
 import { Cancel, CleaningServices, Storage } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 import {
+  StorageCleanupPhase,
   StorageCleanupStatus,
   type StorageCleanupJob,
   type StorageMaintenanceSummary,
@@ -25,8 +26,21 @@ interface StorageMaintenanceCardProps {
   job?: StorageCleanupJob;
   starting: boolean;
   canceling: boolean;
+  statsLoading: boolean;
   onStart: () => Promise<void>;
   onCancel: (jobId: string) => Promise<void>;
+}
+
+function formatCount(value: number | null | undefined, loadingLabel: string) {
+  return value === null || value === undefined
+    ? loadingLabel
+    : value.toLocaleString();
+}
+
+function formatBytes(value: number | null | undefined, loadingLabel: string) {
+  return value === null || value === undefined
+    ? loadingLabel
+    : formatSize(value);
 }
 
 function isActiveJob(job?: StorageCleanupJob): boolean {
@@ -51,11 +65,16 @@ export function StorageMaintenanceCard({
   job,
   starting,
   canceling,
+  statsLoading,
   onStart,
   onCancel,
 }: StorageMaintenanceCardProps) {
   const { t } = useTranslation();
   const active = isActiveJob(job);
+  const loadingLabel = t("storageMaintenance.metrics.loading");
+  const referencedChunks = job && job.referencedChunks > 0
+    ? job.referencedChunks
+    : storage.referencedChunks;
 
   const statusLabel = job
     ? t(
@@ -64,6 +83,13 @@ export function StorageMaintenanceCard({
         ].toLowerCase()}`,
       )
     : t("storageMaintenance.status.notStarted");
+  const phaseLabel = job
+    ? t(
+        `storageMaintenance.phase.${StorageCleanupPhase[
+          job.phase
+        ].toLowerCase()}`,
+      )
+    : null;
 
   return (
     <Card>
@@ -98,19 +124,19 @@ export function StorageMaintenanceCard({
           >
             <Metric
               label={t("storageMaintenance.metrics.indexedObjects")}
-              value={storage.indexedObjects.toLocaleString()}
+              value={formatCount(storage.indexedObjects, loadingLabel)}
             />
             <Metric
               label={t("storageMaintenance.metrics.indexedSize")}
-              value={formatSize(storage.indexedStoredSize)}
+              value={formatBytes(storage.indexedStoredSize, loadingLabel)}
             />
             <Metric
               label={t("storageMaintenance.metrics.referencedChunks")}
-              value={storage.referencedChunks.toLocaleString()}
+              value={formatCount(referencedChunks, loadingLabel)}
             />
             <Metric
               label={t("storageMaintenance.metrics.backups")}
-              value={storage.totalBackups.toLocaleString()}
+              value={formatCount(storage.totalBackups, loadingLabel)}
             />
             {storage.availableBytes !== null &&
               storage.availableBytes !== undefined && (
@@ -127,12 +153,22 @@ export function StorageMaintenanceCard({
                 />
               )}
           </Box>
+          {statsLoading && <LinearProgress />}
 
           {job && (
             <>
               <Divider />
               <Stack spacing={1}>
                 {active && <LinearProgress />}
+                {active && phaseLabel && (
+                  <Typography variant="caption" color="text.secondary">
+                    {job.phase === StorageCleanupPhase.CollectingReferences
+                      ? t("storageMaintenance.referenceScanProgress", {
+                          count: job.snapshotFilesScanned,
+                        })
+                      : phaseLabel}
+                  </Typography>
+                )}
                 <Box
                   display="grid"
                   gridTemplateColumns={{

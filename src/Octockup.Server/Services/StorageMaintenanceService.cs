@@ -17,7 +17,6 @@ namespace Octockup.Server.Services
         AppDbContext _dbContext,
         ILogger<StorageMaintenanceService> _logger,
         IEnumerable<IBackupProvider> _providers,
-        ChunkReferenceCollector _chunkReferenceCollector,
         StorageCleanupJobManager _jobManager)
     {
         public async Task<IReadOnlyList<StorageMaintenanceSummaryDto>> GetSummariesAsync(
@@ -35,14 +34,39 @@ namespace Octockup.Server.Services
             foreach (Module storage in storages)
             {
                 StorageMaintenanceSummaryDto summary = storage.Adapt<StorageMaintenanceSummaryDto>();
-                await FillDatabaseStatsAsync(summary, storage.Id, cancellationToken).ConfigureAwait(false);
-                await FillCapacityAsync(summary, storage, cancellationToken).ConfigureAwait(false);
                 summary.ActiveJob = _jobManager.GetActiveJob(storage.Id);
                 summary.LastJob = _jobManager.GetLastJob(storage.Id);
                 summaries.Add(summary);
             }
 
             return summaries;
+        }
+
+        public async Task<StorageMaintenanceSummaryDto> GetStorageStatsAsync(
+            Guid userId,
+            Guid storageId,
+            CancellationToken cancellationToken)
+        {
+            Module? storage = await _dbContext.Modules
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    x => x.Id == storageId &&
+                        x.UserId == userId &&
+                        x.Destination == ModuleDestination.Target,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            if (storage is null)
+            {
+                throw new InvalidOperationException("Storage not found: " + storageId);
+            }
+
+            StorageMaintenanceSummaryDto summary = storage.Adapt<StorageMaintenanceSummaryDto>();
+            await FillDatabaseStatsAsync(summary, storage.Id, cancellationToken).ConfigureAwait(false);
+            await FillCapacityAsync(summary, storage, cancellationToken).ConfigureAwait(false);
+            summary.ActiveJob = _jobManager.GetActiveJob(storage.Id);
+            summary.LastJob = _jobManager.GetLastJob(storage.Id);
+            return summary;
         }
 
         public Task<IReadOnlyList<StorageCleanupJobDto>> GetJobsAsync(Guid userId)
@@ -91,13 +115,15 @@ namespace Octockup.Server.Services
             summary.IndexedOriginalSize = chunkSizes?.IndexedOriginalSize ?? 0;
             summary.IndexedStoredSize = chunkSizes?.IndexedStoredSize ?? 0;
 
-            (HashSet<string> referencedChunks, long referenceCount) = await _chunkReferenceCollector
-                .CollectWithReferenceCountForStorageAsync(storageId, cancellationToken)
-                .ConfigureAwait(false);
+            StorageCleanupJobDto? job = _jobManager.GetActiveJob(storageId) ?? _jobManager.GetLastJob(storageId);
+            if (job is null)
+            {
+                return;
+            }
 
-            summary.ReferenceCount = referenceCount;
-            summary.ReferencedChunks = referencedChunks.Count;
-            summary.DeduplicatedChunks = Math.Max(0, referenceCount - referencedChunks.Count);
+            summary.ReferenceCount = job.ReferenceCount;
+            summary.ReferencedChunks = job.ReferencedChunks;
+            summary.DeduplicatedChunks = Math.Max(0, job.ReferenceCount - job.ReferencedChunks);
         }
 
         private async Task FillCapacityAsync(

@@ -24,6 +24,7 @@ namespace Octockup.Server.Services
                 StorageId = storageId,
                 StorageTag = storageTag,
                 Status = StorageCleanupStatus.Pending,
+                Phase = StorageCleanupPhase.Preparing,
                 StartedAt = DateTime.UtcNow
             };
         }
@@ -62,9 +63,11 @@ namespace Octockup.Server.Services
                     StorageId = _value.StorageId,
                     StorageTag = _value.StorageTag,
                     Status = _value.Status,
+                    Phase = _value.Phase,
                     StartedAt = _value.StartedAt,
                     FinishedAt = _value.FinishedAt,
                     ErrorMessage = _value.ErrorMessage,
+                    SnapshotFilesScanned = _value.SnapshotFilesScanned,
                     ReferenceCount = _value.ReferenceCount,
                     ReferencedChunks = _value.ReferencedChunks,
                     StorageObjectsScanned = _value.StorageObjectsScanned,

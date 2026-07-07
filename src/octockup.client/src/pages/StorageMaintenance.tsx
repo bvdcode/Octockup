@@ -5,7 +5,7 @@ import {
   Snackbar,
   Stack,
   Typography,
-  CircularProgress,
+  LinearProgress,
 } from "@mui/material";
 import { isAxiosError } from "axios";
 import { confirm } from "material-ui-confirm";
@@ -49,6 +49,9 @@ export default function StorageMaintenancePage() {
   const [loading, setLoading] = useState(true);
   const [summaries, setSummaries] = useState<StorageMaintenanceSummary[]>([]);
   const [jobs, setJobs] = useState<Record<string, StorageCleanupJob>>({});
+  const [statsLoadingIds, setStatsLoadingIds] = useState<Record<string, boolean>>(
+    {},
+  );
   const [startingId, setStartingId] = useState<string | null>(null);
   const [cancelingJobId, setCancelingJobId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +63,29 @@ export default function StorageMaintenancePage() {
       [job.storageId]: job,
     }));
   }, []);
+
+  const loadStorageStats = useCallback(
+    async (storageIds: string[]) => {
+      for (const storageId of storageIds) {
+        setStatsLoadingIds((prev) => ({ ...prev, [storageId]: true }));
+        try {
+          const stats = await api.getStats(storageId);
+          setSummaries((prev) =>
+            prev.map((item) => (item.id === storageId ? stats : item)),
+          );
+          const job = stats.activeJob ?? stats.lastJob;
+          if (job) {
+            upsertJob(job);
+          }
+        } catch {
+          setError(t("storageMaintenance.statsLoadFailed"));
+        } finally {
+          setStatsLoadingIds((prev) => ({ ...prev, [storageId]: false }));
+        }
+      }
+    },
+    [api, t, upsertJob],
+  );
 
   const reloadSummaries = useCallback(async () => {
     const data = await api.list();
@@ -75,7 +101,8 @@ export default function StorageMaintenancePage() {
       });
       return next;
     });
-  }, [api]);
+    void loadStorageStats(data.map((storage) => storage.id));
+  }, [api, loadStorageStats]);
 
   const reloadJobs = useCallback(async () => {
     const data = await api.listJobs();
@@ -194,11 +221,7 @@ export default function StorageMaintenancePage() {
 
       {error && <Alert severity="error">{error}</Alert>}
 
-      {loading && (
-        <Box display="flex" justifyContent="center" p={4}>
-          <CircularProgress />
-        </Box>
-      )}
+      {loading && <LinearProgress />}
 
       {!loading && summaries.length === 0 && (
         <Alert severity="info">{t("storageMaintenance.noStorages")}</Alert>
@@ -214,6 +237,7 @@ export default function StorageMaintenancePage() {
               job={job}
               starting={startingId === storage.id}
               canceling={cancelingJobId === job?.jobId}
+              statsLoading={!!statsLoadingIds[storage.id]}
               onStart={() => startCleanup(storage)}
               onCancel={cancelCleanup}
             />

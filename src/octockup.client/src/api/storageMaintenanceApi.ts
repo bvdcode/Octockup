@@ -31,6 +31,13 @@ class StorageMaintenanceApiClient {
     return result.data;
   }
 
+  async getStats(storageId: string): Promise<StorageMaintenanceSummary> {
+    const result = await this.axios().get<StorageMaintenanceSummary>(
+      `/api/v1/storage-maintenance/storages/${encodeURIComponent(storageId)}/stats`,
+    );
+    return result.data;
+  }
+
   async startCleanup(storageId: string): Promise<StorageCleanupJob> {
     const result = await this.axios().post<StorageCleanupJob>(
       `/api/v1/storage-maintenance/storages/${encodeURIComponent(storageId)}/cleanup`,

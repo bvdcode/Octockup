@@ -28,6 +28,28 @@ namespace Octockup.Server.Controllers
         }
 
         [Authorize]
+        [HttpGet("/api/v1/storage-maintenance/storages/{storageId:guid}/stats")]
+        public async Task<IActionResult> GetStorageMaintenanceStats(
+            [FromRoute] Guid storageId,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                StorageMaintenanceSummaryDto summary =
+                    await _storageMaintenanceService.GetStorageStatsAsync(
+                        User.GetUserId(),
+                        storageId,
+                        cancellationToken);
+
+                return Ok(summary);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return this.ApiBadRequest(ex.Message);
+            }
+        }
+
+        [Authorize]
         [HttpGet("/api/v1/storage-maintenance/jobs")]
         public async Task<IActionResult> GetStorageCleanupJobs()
         {

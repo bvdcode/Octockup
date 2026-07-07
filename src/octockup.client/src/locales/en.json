@@ -275,6 +275,8 @@
     "cancel": "Cancel",
     "started": "Cleanup started.",
     "startFailed": "Failed to start cleanup.",
+    "statsLoadFailed": "Failed to load some storage statistics.",
+    "referenceScanProgress": "Collecting snapshot references: {{count}} files scanned.",
     "status": {
       "notStarted": "Not started",
       "pending": "Pending",
@@ -283,7 +285,14 @@
       "failed": "Failed",
       "canceled": "Canceled"
     },
+    "phase": {
+      "preparing": "Preparing",
+      "collectingreferences": "Collecting snapshot references",
+      "scanningstorage": "Scanning storage objects",
+      "completed": "Completed"
+    },
     "metrics": {
+      "loading": "Loading...",
       "indexedObjects": "Indexed objects",
       "indexedSize": "Indexed size",
       "referencedChunks": "Referenced chunks",

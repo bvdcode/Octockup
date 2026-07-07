@@ -23,10 +23,12 @@ namespace Octockup.Server.Services
 
         public async Task<(HashSet<string> References, long ReferenceCount)> CollectWithReferenceCountForStorageAsync(
             Guid storageId,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            Func<long, long, long, CancellationToken, Task>? reportProgressAsync = null)
         {
             HashSet<string> references = new(StringComparer.Ordinal);
             long referenceCount = 0;
+            long snapshotFilesScanned = 0;
             int skip = 0;
 
             while (true)
@@ -53,11 +55,21 @@ namespace Octockup.Server.Services
 
                 foreach (ICollection<string> chunkHashes in chunkHashBatches)
                 {
+                    snapshotFilesScanned++;
                     foreach (string chunkHash in chunkHashes)
                     {
                         referenceCount++;
                         references.Add(chunkHash);
                     }
+                }
+
+                if (reportProgressAsync is not null)
+                {
+                    await reportProgressAsync(
+                        snapshotFilesScanned,
+                        referenceCount,
+                        references.Count,
+                        cancellationToken);
                 }
 
                 skip += chunkHashBatches.Count;

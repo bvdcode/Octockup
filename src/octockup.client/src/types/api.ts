@@ -149,15 +149,24 @@ export enum StorageCleanupStatus {
   Canceled = 4,
 }
 
+export enum StorageCleanupPhase {
+  Preparing = 0,
+  CollectingReferences = 1,
+  ScanningStorage = 2,
+  Completed = 3,
+}
+
 export interface StorageCleanupJob {
   jobId: string;
   userId: string;
   storageId: string;
   storageTag: string;
   status: StorageCleanupStatus;
+  phase: StorageCleanupPhase;
   startedAt: string;
   finishedAt?: string | null;
   errorMessage?: string | null;
+  snapshotFilesScanned: number;
   referenceCount: number;
   referencedChunks: number;
   storageObjectsScanned: number;
@@ -177,13 +186,13 @@ export interface StorageCleanupJob {
 }
 
 export interface StorageMaintenanceSummary extends Module {
-  totalBackups: number;
-  indexedObjects: number;
-  indexedStoredSize: number;
-  indexedOriginalSize: number;
-  referenceCount: number;
-  referencedChunks: number;
-  deduplicatedChunks: number;
+  totalBackups?: number | null;
+  indexedObjects?: number | null;
+  indexedStoredSize?: number | null;
+  indexedOriginalSize?: number | null;
+  referenceCount?: number | null;
+  referencedChunks?: number | null;
+  deduplicatedChunks?: number | null;
   totalCapacityBytes?: number | null;
   availableBytes?: number | null;
   activeJob?: StorageCleanupJob | null;

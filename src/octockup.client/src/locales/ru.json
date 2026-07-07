@@ -299,6 +299,8 @@
     "cancel": "Отменить",
     "started": "Очистка запущена.",
     "startFailed": "Не удалось запустить очистку.",
+    "statsLoadFailed": "Не удалось загрузить часть статистики хранилищ.",
+    "referenceScanProgress": "Сбор ссылок из снапшотов: просканировано файлов {{count}}.",
     "status": {
       "notStarted": "Не запускалась",
       "pending": "Ожидает",
@@ -307,7 +309,14 @@
       "failed": "Ошибка",
       "canceled": "Отменена"
     },
+    "phase": {
+      "preparing": "Подготовка",
+      "collectingreferences": "Сбор ссылок из снапшотов",
+      "scanningstorage": "Сканирование объектов хранилища",
+      "completed": "Завершено"
+    },
     "metrics": {
+      "loading": "Загрузка...",
       "indexedObjects": "Объектов в индексе",
       "indexedSize": "Размер в индексе",
       "referencedChunks": "Используемых чанков",
