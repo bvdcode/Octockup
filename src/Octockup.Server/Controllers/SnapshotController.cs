@@ -15,6 +15,8 @@ using Octockup.Server.Archives;
 using Octockup.Server.Database;
 using Octockup.Server.Helpers;
 using Octockup.Server.Models.Dto;
+using Octockup.Server.Models.Results;
+using Octockup.Server.Services;
 using Octockup.Server.Streams;
 
 namespace Octockup.Server.Controllers
@@ -23,6 +25,7 @@ namespace Octockup.Server.Controllers
     public class SnapshotController(
         IStreamCipher _crypto,
         AppDbContext _dbContext,
+        SnapshotDeletionService _snapshotDeletionService,
         ILogger<SnapshotController> _logger,
         IEnumerable<IBackupProvider> _providers) : ControllerBase
     {
@@ -114,12 +117,20 @@ namespace Octockup.Server.Controllers
         [HttpGet("/api/v1/snapshots/{snapshotId:guid}/files/{fileId:guid}/download")]
         public async Task<IActionResult> DownloadSnapshotFile([FromRoute] Guid snapshotId, [FromRoute] Guid fileId)
         {
+            Guid userId = User.GetUserId();
+
             var snapshotFile = await _dbContext.SnapshotFiles
                 .AsNoTracking()
                 .Include(sf => sf.Snapshot)
                     .ThenInclude(s => s.Backup)
+                        .ThenInclude(b => b.Source)
+                .Include(sf => sf.Snapshot)
+                    .ThenInclude(s => s.Backup)
                         .ThenInclude(b => b.Storage)
-                .FirstOrDefaultAsync(sf => sf.SnapshotId == snapshotId && sf.Id == fileId);
+                .FirstOrDefaultAsync(
+                    sf => sf.SnapshotId == snapshotId &&
+                        sf.Id == fileId &&
+                        sf.Snapshot.Backup.Source.UserId == userId);
 
             if (snapshotFile == null)
             {
@@ -191,15 +202,29 @@ namespace Octockup.Server.Controllers
 
         [Authorize]
         [HttpGet("/api/v1/snapshots/{snapshotId:guid}/files")]
-        public IActionResult GetSnapshot([FromRoute] Guid snapshotId)
+        public async Task<IActionResult> GetSnapshot([FromRoute] Guid snapshotId, CancellationToken cancellationToken)
         {
-            var snapshotFiles = _dbContext.SnapshotFiles
+            Guid userId = User.GetUserId();
+
+            bool snapshotExists = await _dbContext.Snapshots
+                .AsNoTracking()
+                .AnyAsync(
+                    s => s.Id == snapshotId && s.Backup.Source.UserId == userId,
+                    cancellationToken);
+
+            if (!snapshotExists)
+            {
+                return NotFound();
+            }
+
+            List<SnapshotFileDto> snapshotFiles = (await _dbContext.SnapshotFiles
                 .AsNoTracking()
                 .Where(sf => sf.SnapshotId == snapshotId)
                 .OrderBy(sf => sf.Path)
                 .ThenBy(sf => sf.Name)
-                .ToList()
+                .ToListAsync(cancellationToken))
                 .Adapt<List<SnapshotFileDto>>();
+
             return Ok(snapshotFiles);
         }
 
@@ -207,40 +232,52 @@ namespace Octockup.Server.Controllers
         [HttpDelete("/api/v1/snapshots/{snapshotId:guid}")]
         public async Task<IActionResult> DeleteSnapshot([FromRoute] Guid snapshotId)
         {
-            var snapshot = _dbContext.Snapshots
-                .FirstOrDefault(s => s.Id == snapshotId);
-            if (snapshot == null)
+            SnapshotDeletionResult result = await _snapshotDeletionService.DeleteAsync(
+                User.GetUserId(),
+                snapshotId,
+                HttpContext.RequestAborted);
+
+            if (result.Deleted)
             {
-                return NotFound();
+                return Ok(result);
             }
-            await _dbContext.SnapshotFiles
-                .Where(sf => sf.SnapshotId == snapshotId)
-                .ExecuteDeleteAsync();
-            _dbContext.Snapshots.Remove(snapshot);
-            _dbContext.SaveChanges();
-            return NoContent();
+
+            return this.ApiBadRequest(result.ErrorMessage ?? "Snapshot could not be deleted.");
         }
 
         [Authorize]
         [HttpGet("/api/v1/snapshots")]
-        public IActionResult GetSnapshots([FromQuery] Guid backupId)
+        public async Task<IActionResult> GetSnapshots([FromQuery] Guid backupId, CancellationToken cancellationToken)
         {
-            var snapshots = _dbContext.Snapshots
-                .Where(s => s.BackupId == backupId)
-                .OrderBy(s => s.CreatedAt)
-                .ToList();
+            Guid userId = User.GetUserId();
 
-            List<SnapshotDto> result = [];
-            foreach (var snapshot in snapshots)
+            bool backupExists = await _dbContext.Backups
+                .AsNoTracking()
+                .AnyAsync(
+                    b => b.Id == backupId && b.Source.UserId == userId,
+                    cancellationToken);
+
+            if (!backupExists)
             {
-                var dto = snapshot.Adapt<SnapshotDto>();
-                dto.FilesCount = _dbContext.SnapshotFiles
-                    .Count(sf => sf.SnapshotId == snapshot.Id);
-                dto.TotalSize = _dbContext.SnapshotFiles
-                    .Where(sf => sf.SnapshotId == snapshot.Id)
-                    .Sum(sf => (long?)sf.Size) ?? 0;
-                result.Add(dto);
+                return NotFound();
             }
+
+            List<SnapshotDto> result = await _dbContext.Snapshots
+                .AsNoTracking()
+                .Where(s => s.BackupId == backupId && s.Backup.Source.UserId == userId)
+                .OrderBy(s => s.CreatedAt)
+                .Select(s => new SnapshotDto
+                {
+                    Id = s.Id,
+                    BackupId = s.BackupId,
+                    CompletedAt = s.CompletedAt,
+                    FilesCount = _dbContext.SnapshotFiles.Count(sf => sf.SnapshotId == s.Id),
+                    TotalSize = _dbContext.SnapshotFiles
+                        .Where(sf => sf.SnapshotId == s.Id)
+                        .Sum(sf => (long?)sf.Size) ?? 0
+                })
+                .ToListAsync(cancellationToken);
+
             return Ok(result);
         }
 

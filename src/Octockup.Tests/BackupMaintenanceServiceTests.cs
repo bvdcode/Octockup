@@ -28,7 +28,7 @@ namespace Octockup.Tests
             await connection.OpenAsync();
             await using SqliteDbContext dbContext = await CreateDbContextAsync(connection);
 
-            (Guid userId, Guid backupId, _, _) = await SeedBackupAsync(dbContext);
+            (Guid userId, Guid backupId, _, _, _) = await SeedBackupAsync(dbContext);
             BackupDeletionService service = new(dbContext);
 
             var result = await service.DeleteAsync(userId, backupId, CancellationToken.None);
@@ -56,7 +56,7 @@ namespace Octockup.Tests
             await connection.OpenAsync();
             await using SqliteDbContext dbContext = await CreateDbContextAsync(connection);
 
-            (Guid userId, Guid backupId, Guid scheduleId, _) = await SeedBackupAsync(dbContext);
+            (Guid userId, Guid backupId, Guid scheduleId, _, _) = await SeedBackupAsync(dbContext);
             Schedule schedule = await dbContext.Schedules.SingleAsync(x => x.Id == scheduleId);
             schedule.Status = ScheduleStatus.Running;
             await dbContext.SaveChangesAsync();
@@ -77,13 +77,86 @@ namespace Octockup.Tests
         }
 
         [Test]
+        public async Task DeleteSnapshotAsync_WhenSnapshotHasFiles_RemovesSnapshotMetadataOnly()
+        {
+            await using SqliteConnection connection = new("Data Source=:memory:");
+            await connection.OpenAsync();
+            await using SqliteDbContext dbContext = await CreateDbContextAsync(connection);
+
+            (Guid userId, Guid backupId, _, _, Guid snapshotId) = await SeedBackupAsync(dbContext);
+            SnapshotDeletionService service = new(dbContext);
+
+            var result = await service.DeleteAsync(userId, snapshotId, CancellationToken.None);
+
+            dbContext.ChangeTracker.Clear();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Deleted, Is.True);
+                Assert.That(result.BackupId, Is.EqualTo(backupId));
+                Assert.That(result.DeletedSnapshotFiles, Is.EqualTo(1));
+                Assert.That(result.DeletedSnapshotFileBytes, Is.EqualTo(20));
+                Assert.That(dbContext.Backups.Count(), Is.EqualTo(1));
+                Assert.That(dbContext.Schedules.Count(), Is.EqualTo(1));
+                Assert.That(dbContext.Snapshots.Count(), Is.Zero);
+                Assert.That(dbContext.SnapshotFiles.Count(), Is.Zero);
+                Assert.That(dbContext.UploadedHashes.Count(), Is.EqualTo(1));
+            });
+        }
+
+        [Test]
+        public async Task DeleteSnapshotAsync_WhenUserDoesNotOwnSnapshot_KeepsSnapshotRows()
+        {
+            await using SqliteConnection connection = new("Data Source=:memory:");
+            await connection.OpenAsync();
+            await using SqliteDbContext dbContext = await CreateDbContextAsync(connection);
+
+            (_, _, _, _, Guid snapshotId) = await SeedBackupAsync(dbContext);
+            SnapshotDeletionService service = new(dbContext);
+
+            var result = await service.DeleteAsync(Guid.NewGuid(), snapshotId, CancellationToken.None);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Deleted, Is.False);
+                Assert.That(result.ErrorMessage, Is.Not.Null);
+                Assert.That(dbContext.Snapshots.Count(), Is.EqualTo(1));
+                Assert.That(dbContext.SnapshotFiles.Count(), Is.EqualTo(1));
+            });
+        }
+
+        [Test]
+        public async Task DeleteSnapshotAsync_WhenBackupIsRunning_KeepsSnapshotRows()
+        {
+            await using SqliteConnection connection = new("Data Source=:memory:");
+            await connection.OpenAsync();
+            await using SqliteDbContext dbContext = await CreateDbContextAsync(connection);
+
+            (Guid userId, _, Guid scheduleId, _, Guid snapshotId) = await SeedBackupAsync(dbContext);
+            Schedule schedule = await dbContext.Schedules.SingleAsync(x => x.Id == scheduleId);
+            schedule.Status = ScheduleStatus.Running;
+            await dbContext.SaveChangesAsync();
+            SnapshotDeletionService service = new(dbContext);
+
+            var result = await service.DeleteAsync(userId, snapshotId, CancellationToken.None);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Deleted, Is.False);
+                Assert.That(result.ErrorMessage, Is.Not.Null);
+                Assert.That(dbContext.Snapshots.Count(), Is.EqualTo(1));
+                Assert.That(dbContext.SnapshotFiles.Count(), Is.EqualTo(1));
+            });
+        }
+
+        [Test]
         public async Task RunAsync_WhenStorageContainsOrphanChunk_DeletesOnlyUnreferencedChunk()
         {
             await using SqliteConnection connection = new("Data Source=:memory:");
             await connection.OpenAsync();
             await using SqliteDbContext dbContext = await CreateDbContextAsync(connection);
 
-            (Guid userId, _, _, Guid storageId) = await SeedBackupAsync(dbContext);
+            (Guid userId, _, _, Guid storageId, _) = await SeedBackupAsync(dbContext);
             await dbContext.UploadedHashes.AddAsync(new UploadedHash
             {
                 ModuleId = storageId,
@@ -152,7 +225,7 @@ namespace Octockup.Tests
             await connection.OpenAsync();
             await using SqliteDbContext dbContext = await CreateDbContextAsync(connection);
 
-            (Guid userId, Guid backupId, Guid scheduleId, Guid storageId) seed =
+            (Guid userId, Guid backupId, Guid scheduleId, Guid storageId, Guid snapshotId) seed =
                 await SeedBackupAsync(dbContext);
             Snapshot snapshot = await dbContext.Snapshots.SingleAsync(x => x.BackupId == seed.backupId);
             SnapshotFile extraSnapshotFile = new()
@@ -208,7 +281,7 @@ namespace Octockup.Tests
             return dbContext;
         }
 
-        private static async Task<(Guid UserId, Guid BackupId, Guid ScheduleId, Guid StorageId)> SeedBackupAsync(
+        private static async Task<(Guid UserId, Guid BackupId, Guid ScheduleId, Guid StorageId, Guid SnapshotId)> SeedBackupAsync(
             AppDbContext dbContext)
         {
             User user = new()
@@ -284,7 +357,7 @@ namespace Octockup.Tests
             await dbContext.UploadedHashes.AddAsync(uploadedHash);
             await dbContext.SaveChangesAsync();
 
-            return (user.Id, backup.Id, schedule.Id, storage.Id);
+            return (user.Id, backup.Id, schedule.Id, storage.Id, snapshot.Id);
         }
 
         private class TestSource
