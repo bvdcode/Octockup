@@ -2,11 +2,13 @@ import {
   Box,
   Card,
   Chip,
+  Alert,
   Stack,
   Button,
   Tooltip,
   Divider,
   Typography,
+  AlertTitle,
   CardContent,
   LinearProgress,
   CircularProgress,
@@ -178,6 +180,24 @@ export function StorageMaintenanceCard({
             <>
               <Divider />
               <Stack spacing={1}>
+                {job.status === StorageCleanupStatus.Failed && (
+                  <Alert severity="error">
+                    <AlertTitle>
+                      {t("storageMaintenance.failureTitle")}
+                    </AlertTitle>
+                    {phaseLabel && (
+                      <Typography variant="caption" component="div">
+                        {t("storageMaintenance.failurePhase", {
+                          phase: phaseLabel,
+                        })}
+                      </Typography>
+                    )}
+                    <Typography variant="body2">
+                      {job.errorMessage ||
+                        t("storageMaintenance.unknownError")}
+                    </Typography>
+                  </Alert>
+                )}
                 {active && <LinearProgress />}
                 {active && phaseLabel && (
                   <Typography variant="caption" color="text.secondary">

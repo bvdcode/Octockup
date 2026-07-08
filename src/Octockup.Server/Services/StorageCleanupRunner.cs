@@ -35,6 +35,9 @@ namespace Octockup.Server.Services
             (IBackupStorage storage, IBackupStorageInventory inventory) = CreateStorageInventory(storageModule);
             Stopwatch publishStopwatch = Stopwatch.StartNew();
 
+            state.Update(x => x.Phase = StorageCleanupPhase.CollectingReferences);
+            await publishAsync(state.Snapshot(), cancellationToken).ConfigureAwait(false);
+
             (HashSet<string> referencedChunks, long referenceCount) = await _chunkReferenceCollector
                 .CollectWithReferenceCountForStorageAsync(
                     storageModule.Id,

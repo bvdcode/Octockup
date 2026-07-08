@@ -188,9 +188,8 @@ namespace Octockup.Server.Services
                 state.Update(x =>
                 {
                     x.Status = StorageCleanupStatus.Failed;
-                    x.Phase = StorageCleanupPhase.Completed;
                     x.FinishedAt = DateTime.UtcNow;
-                    x.ErrorMessage = ex.Message;
+                    x.ErrorMessage = GetCleanupErrorMessage(ex);
                     x.CurrentPath = null;
                 });
             }
@@ -223,6 +222,18 @@ namespace Octockup.Server.Services
                     "Failed to publish storage cleanup progress for job {JobId}.",
                     progress.JobId);
             }
+        }
+
+        private static string GetCleanupErrorMessage(Exception exception)
+        {
+            Exception rootCause = exception.GetBaseException();
+            if (!ReferenceEquals(rootCause, exception) &&
+                !string.IsNullOrWhiteSpace(rootCause.Message))
+            {
+                return rootCause.Message;
+            }
+
+            return exception.Message;
         }
     }
 }

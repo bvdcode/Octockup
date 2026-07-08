@@ -8,7 +8,7 @@ namespace Octockup.Server.Services
 {
     public class ChunkReferenceCollector(AppDbContext _dbContext)
     {
-        private const int SnapshotFileBatchSize = 1000;
+        private const int SnapshotFileProgressInterval = 1000;
 
         public async Task<HashSet<string>> CollectForStorageAsync(
             Guid storageId,
@@ -29,50 +29,47 @@ namespace Octockup.Server.Services
             HashSet<string> references = new(StringComparer.Ordinal);
             long referenceCount = 0;
             long snapshotFilesScanned = 0;
-            int skip = 0;
 
-            while (true)
+            IQueryable<ICollection<string>> chunkHashQuery =
+                from snapshotFile in _dbContext.SnapshotFiles.AsNoTracking()
+                join snapshot in _dbContext.Snapshots.AsNoTracking()
+                    on snapshotFile.SnapshotId equals snapshot.Id
+                join backup in _dbContext.Backups.AsNoTracking()
+                    on snapshot.BackupId equals backup.Id
+                where backup.StorageId == storageId
+                select snapshotFile.ChunkHashes;
+
+            await foreach (ICollection<string> chunkHashes in chunkHashQuery
+                .AsAsyncEnumerable()
+                .WithCancellation(cancellationToken)
+                .ConfigureAwait(false))
             {
-                List<ICollection<string>> chunkHashBatches = await _dbContext.SnapshotFiles
-                    .AsNoTracking()
-                    .Where(x => _dbContext.Snapshots
-                        .Where(snapshot => _dbContext.Backups
-                            .Where(backup => backup.StorageId == storageId)
-                            .Select(backup => backup.Id)
-                            .Contains(snapshot.BackupId))
-                        .Select(snapshot => snapshot.Id)
-                        .Contains(x.SnapshotId))
-                    .OrderBy(x => x.Id)
-                    .Skip(skip)
-                    .Take(SnapshotFileBatchSize)
-                    .Select(x => x.ChunkHashes)
-                    .ToListAsync(cancellationToken);
-
-                if (chunkHashBatches.Count == 0)
+                snapshotFilesScanned++;
+                foreach (string chunkHash in chunkHashes)
                 {
-                    break;
+                    referenceCount++;
+                    references.Add(chunkHash);
                 }
 
-                foreach (ICollection<string> chunkHashes in chunkHashBatches)
-                {
-                    snapshotFilesScanned++;
-                    foreach (string chunkHash in chunkHashes)
-                    {
-                        referenceCount++;
-                        references.Add(chunkHash);
-                    }
-                }
-
-                if (reportProgressAsync is not null)
+                if (reportProgressAsync is not null &&
+                    snapshotFilesScanned % SnapshotFileProgressInterval == 0)
                 {
                     await reportProgressAsync(
                         snapshotFilesScanned,
                         referenceCount,
                         references.Count,
-                        cancellationToken);
+                        cancellationToken).ConfigureAwait(false);
                 }
+            }
 
-                skip += chunkHashBatches.Count;
+            if (reportProgressAsync is not null &&
+                snapshotFilesScanned % SnapshotFileProgressInterval != 0)
+            {
+                await reportProgressAsync(
+                    snapshotFilesScanned,
+                    referenceCount,
+                    references.Count,
+                    cancellationToken).ConfigureAwait(false);
             }
 
             return (references, referenceCount);

@@ -145,6 +145,59 @@ namespace Octockup.Tests
             });
         }
 
+        [Test]
+        public async Task CollectWithReferenceCountForStorageAsync_WhenChunkHashesRepeat_ReturnsReferencesAndTotalCount()
+        {
+            await using SqliteConnection connection = new("Data Source=:memory:");
+            await connection.OpenAsync();
+            await using SqliteDbContext dbContext = await CreateDbContextAsync(connection);
+
+            (Guid userId, Guid backupId, Guid scheduleId, Guid storageId) seed =
+                await SeedBackupAsync(dbContext);
+            Snapshot snapshot = await dbContext.Snapshots.SingleAsync(x => x.BackupId == seed.backupId);
+            SnapshotFile extraSnapshotFile = new()
+            {
+                SnapshotId = snapshot.Id,
+                Path = "file2.txt",
+                Name = "file2.txt",
+                Size = 40,
+                Hashsum = OrphanHash,
+                ChunkHashes = [ReferencedHash, OrphanHash]
+            };
+            await dbContext.SnapshotFiles.AddAsync(extraSnapshotFile);
+            await dbContext.SaveChangesAsync();
+
+            List<(long SnapshotFilesScanned, long ReferenceCount, long ReferencedChunks)> progress = [];
+            ChunkReferenceCollector collector = new(dbContext);
+
+            (HashSet<string> references, long referenceCount) = await collector
+                .CollectWithReferenceCountForStorageAsync(
+                    seed.storageId,
+                    CancellationToken.None,
+                    (snapshotFilesScanned, currentReferenceCount, referencedChunkCount, _) =>
+                    {
+                        progress.Add((
+                            snapshotFilesScanned,
+                            currentReferenceCount,
+                            referencedChunkCount));
+                        return Task.CompletedTask;
+                    });
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(referenceCount, Is.EqualTo(3));
+                Assert.That(references, Is.EquivalentTo(new[]
+                {
+                    ReferencedHash,
+                    OrphanHash
+                }));
+                Assert.That(progress, Has.Count.EqualTo(1));
+                Assert.That(progress[0].SnapshotFilesScanned, Is.EqualTo(2));
+                Assert.That(progress[0].ReferenceCount, Is.EqualTo(3));
+                Assert.That(progress[0].ReferencedChunks, Is.EqualTo(2));
+            });
+        }
+
         private static async Task<SqliteDbContext> CreateDbContextAsync(SqliteConnection connection)
         {
             DbContextOptions<SqliteDbContext> options = new DbContextOptionsBuilder<SqliteDbContext>()
