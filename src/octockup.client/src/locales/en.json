@@ -168,7 +168,12 @@
     "actions": "Actions",
     "download": "Download",
     "copyLink": "Copy link",
-    "linkCopied": "Snapshot download link copied."
+    "linkCopied": "Snapshot download link copied.",
+    "delete": "Delete snapshot",
+    "deleteTitle": "Delete snapshot",
+    "deleteText": "Delete this snapshot? File metadata: {{count}}, size: {{size}}. Stored chunks are not deleted and can be removed later with storage cleanup.",
+    "deleteSuccess": "Snapshot deleted. Removed {{count}} file metadata rows ({{size}}).",
+    "deleteFailed": "Failed to delete snapshot."
   },
   "snapshotFiles": {
     "title": "Snapshot Files",

@@ -17,16 +17,27 @@ import {
 } from "@mui/x-data-grid";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowBack, ContentCopy, Download } from "@mui/icons-material";
+import {
+  ArrowBack,
+  ContentCopy,
+  DeleteOutline,
+  Download,
+} from "@mui/icons-material";
 import { formatSize } from "../utils/formatUtils";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSnapshotsApi } from "../api/snapshotsApi";
 import type { SnapshotDto } from "../types/api";
 import { useAuthStore } from "@bvdcode/react-kit";
+import { confirm } from "material-ui-confirm";
+import { isAxiosError } from "axios";
 
 interface State {
   loading: boolean;
   error: string | null;
+}
+
+interface ApiErrorResponse {
+  message?: string;
 }
 
 export default function SnapshotsPage() {
@@ -40,7 +51,8 @@ export default function SnapshotsPage() {
     error: backupId ? null : "Backup ID is missing",
   });
   const [snapshots, setSnapshots] = useState<SnapshotDto[]>([]);
-  const [copyMessage, setCopyMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!backupId) return;
@@ -76,7 +88,46 @@ export default function SnapshotsPage() {
 
   const handleCopyDownloadLink = async (snapshotId: string) => {
     await navigator.clipboard.writeText(createSnapshotDownloadUrl(snapshotId));
-    setCopyMessage(t("snapshots.linkCopied"));
+    setSuccessMessage(t("snapshots.linkCopied"));
+  };
+
+  const handleDelete = async (snapshot: SnapshotDto) => {
+    const result = await confirm({
+      title: t("snapshots.deleteTitle"),
+      description: t("snapshots.deleteText", {
+        count: snapshot.filesCount,
+        size: formatSize(snapshot.totalSize),
+      }),
+      confirmationText: t("common.delete"),
+      cancellationText: t("common.cancel"),
+      confirmationButtonProps: { color: "error" },
+    });
+
+    if (!result.confirmed) {
+      return;
+    }
+
+    setDeletingId(snapshot.id);
+    setState((current) => ({ ...current, error: null }));
+    try {
+      const deleteResult = await snapshotsApi.delete(snapshot.id);
+      setSnapshots((current) =>
+        current.filter((item) => item.id !== snapshot.id),
+      );
+      setSuccessMessage(
+        t("snapshots.deleteSuccess", {
+          count: deleteResult.deletedSnapshotFiles,
+          size: formatSize(deleteResult.deletedSnapshotFileBytes),
+        }),
+      );
+    } catch (error) {
+      const message = isAxiosError<ApiErrorResponse>(error)
+        ? error.response?.data?.message || t("snapshots.deleteFailed")
+        : t("snapshots.deleteFailed");
+      setState((current) => ({ ...current, error: message }));
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const columns: GridColDef<SnapshotDto>[] = [
@@ -113,7 +164,7 @@ export default function SnapshotsPage() {
     {
       field: "actions",
       headerName: t("snapshots.actions"),
-      width: 120,
+      width: 156,
       sortable: false,
       filterable: false,
       align: "center",
@@ -150,6 +201,25 @@ export default function SnapshotsPage() {
               </IconButton>
             </span>
           </Tooltip>
+          <Tooltip title={t("snapshots.delete")}>
+            <span>
+              <IconButton
+                size="small"
+                color="error"
+                disabled={deletingId === params.row.id}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void handleDelete(params.row);
+                }}
+              >
+                {deletingId === params.row.id ? (
+                  <CircularProgress size={20} />
+                ) : (
+                  <DeleteOutline />
+                )}
+              </IconButton>
+            </span>
+          </Tooltip>
         </Box>
       ),
     },
@@ -170,9 +240,9 @@ export default function SnapshotsPage() {
   return (
     <Stack spacing={3} display="flex" flexDirection="column" flex={1}>
       {state.error && <Alert severity="error">{state.error}</Alert>}
-      {copyMessage && (
-        <Alert severity="success" onClose={() => setCopyMessage(null)}>
-          {copyMessage}
+      {successMessage && (
+        <Alert severity="success" onClose={() => setSuccessMessage(null)}>
+          {successMessage}
         </Alert>
       )}
       <Box display="flex" alignItems="center" gap={2}>

@@ -83,6 +83,14 @@ export interface SnapshotDto {
   totalSize: number;
 }
 
+export interface SnapshotDeletionResult {
+  deleted: boolean;
+  errorMessage?: string | null;
+  backupId: string;
+  deletedSnapshotFiles: number;
+  deletedSnapshotFileBytes: number;
+}
+
 export interface CreateBackupRequest {
   sourceId: string;
   storageId: string;

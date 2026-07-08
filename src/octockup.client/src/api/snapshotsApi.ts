@@ -1,7 +1,11 @@
 import { useMemo } from "react";
 import type { AxiosInstance } from "axios";
 import { useAxios } from "@bvdcode/react-kit";
-import type { SnapshotFileDto, SnapshotDto } from "../types/api";
+import type {
+  SnapshotDto,
+  SnapshotFileDto,
+  SnapshotDeletionResult,
+} from "../types/api";
 
 class SnapshotsApiClient {
   private axiosFactory: () => AxiosInstance;
@@ -25,6 +29,13 @@ class SnapshotsApiClient {
   async getFiles(snapshotId: string): Promise<SnapshotFileDto[]> {
     const result = await this.axios().get<Array<SnapshotFileDto>>(
       `/api/v1/snapshots/${snapshotId}/files`,
+    );
+    return result.data;
+  }
+
+  async delete(snapshotId: string): Promise<SnapshotDeletionResult> {
+    const result = await this.axios().delete<SnapshotDeletionResult>(
+      `/api/v1/snapshots/${snapshotId}`,
     );
     return result.data;
   }
