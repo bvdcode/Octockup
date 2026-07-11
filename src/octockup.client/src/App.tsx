@@ -8,22 +8,40 @@ import {
   GitHub,
   Settings,
 } from "@mui/icons-material";
+import { Box, CircularProgress, Fab } from "@mui/material";
+import { lazy, Suspense, type ReactNode } from "react";
 import * as locales from "./locales";
-import HomePage from "./pages/Home";
-import SourcesPage from "./pages/Sources";
-import StoragesPage from "./pages/Storages";
-import BackupsPage from "./pages/Backups";
-import BackupWizard from "./pages/BackupWizard";
-import SourceWizard from "./pages/SourceWizard";
-import StorageWizard from "./pages/StorageWizard";
 import { AppShell, type TokenPair, type UserInfo } from "@bvdcode/react-kit";
-import SchedulesPage from "./pages/Schedules";
-import ScheduleWizard from "./pages/ScheduleWizard";
-import SnapshotsPage from "./pages/Snapshots";
-import SnapshotFilesPage from "./pages/SnapshotFiles";
-import SettingsPage from "./pages/Settings";
-import StorageMaintenancePage from "./pages/StorageMaintenance";
-import { Fab } from "@mui/material";
+
+const HomePage = lazy(() => import("./pages/Home"));
+const SourcesPage = lazy(() => import("./pages/Sources"));
+const StoragesPage = lazy(() => import("./pages/Storages"));
+const BackupsPage = lazy(() => import("./pages/Backups"));
+const BackupWizard = lazy(() => import("./pages/BackupWizard"));
+const SourceWizard = lazy(() => import("./pages/SourceWizard"));
+const StorageWizard = lazy(() => import("./pages/StorageWizard"));
+const SchedulesPage = lazy(() => import("./pages/Schedules"));
+const ScheduleWizard = lazy(() => import("./pages/ScheduleWizard"));
+const SnapshotsPage = lazy(() => import("./pages/Snapshots"));
+const SnapshotFilesPage = lazy(() => import("./pages/SnapshotFiles"));
+const SettingsPage = lazy(() => import("./pages/Settings"));
+const StorageMaintenancePage = lazy(
+  () => import("./pages/StorageMaintenance"),
+);
+
+function renderPage(page: ReactNode) {
+  return (
+    <Suspense
+      fallback={
+        <Box display="flex" justifyContent="center" padding={4}>
+          <CircularProgress />
+        </Box>
+      }
+    >
+      {page}
+    </Suspense>
+  );
+}
 
 function App() {
   return (
@@ -65,67 +83,67 @@ function App() {
             icon: <Home />,
             name: "Home",
             route: "/",
-            component: <HomePage />,
+            component: renderPage(<HomePage />),
           },
           {
             icon: <Backup />,
             name: "Sources",
             route: "/sources",
-            component: <SourcesPage />,
+            component: renderPage(<SourcesPage />),
           },
           {
             route: "/sources/new",
-            component: <SourceWizard />,
+            component: renderPage(<SourceWizard />),
           },
           {
             route: "/storages/new",
-            component: <StorageWizard />,
+            component: renderPage(<StorageWizard />),
           },
           {
             icon: <CloudDone />,
             name: "Backups",
             route: "/backups",
-            component: <BackupsPage />,
+            component: renderPage(<BackupsPage />),
           },
           {
             icon: <CloudDownload />,
             name: "Storages",
             route: "/storages",
-            component: <StoragesPage />,
+            component: renderPage(<StoragesPage />),
           },
           {
             icon: <CleaningServices />,
             name: "Maintenance",
             route: "/storage-maintenance",
-            component: <StorageMaintenancePage />,
+            component: renderPage(<StorageMaintenancePage />),
           },
           {
             route: "/backups/new",
-            component: <BackupWizard />,
+            component: renderPage(<BackupWizard />),
           },
           {
             route: "/backups/:backupId/snapshots",
-            component: <SnapshotsPage />,
+            component: renderPage(<SnapshotsPage />),
           },
           {
             route: "/backups/:backupId/snapshots/:snapshotId/files",
-            component: <SnapshotFilesPage />,
+            component: renderPage(<SnapshotFilesPage />),
           },
           {
             icon: <Schedule />,
             name: "Schedules",
             route: "/schedules",
-            component: <SchedulesPage />,
+            component: renderPage(<SchedulesPage />),
           },
           {
             route: "/schedules/new",
-            component: <ScheduleWizard />,
+            component: renderPage(<ScheduleWizard />),
           },
           {
             icon: <Settings />,
             name: "Settings",
             route: "/settings",
-            component: <SettingsPage />,
+            component: renderPage(<SettingsPage />),
           },
         ]}
       />
