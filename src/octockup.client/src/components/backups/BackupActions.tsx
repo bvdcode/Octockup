@@ -46,10 +46,7 @@ export function BackupActions({
   const isRunningFromReport = reportForBackup?.status === BackupStatus.Running;
 
   // Find the running or just-created schedule so we can cancel immediately
-  const activeSchedule = (backup.schedules || []).find(
-    (s) =>
-      s.status === BackupStatus.Running || s.status === BackupStatus.Created,
-  );
+  const activeSchedule = backup.activeSchedule;
   const runningScheduleId = activeSchedule?.id;
 
   const isRunning = isRunningFromReport || !!activeSchedule;
@@ -123,8 +120,8 @@ export function BackupActions({
             title: t("backups.deleteTitle"),
             description: t("backups.deleteText", {
               tag: backup.tag,
-              schedules: backup.schedules?.length ?? 0,
-              snapshots: backup.snapshots?.length ?? 0,
+              schedules: backup.scheduleCount,
+              snapshots: backup.snapshotCount,
             }),
             confirmationText: t("common.delete"),
             cancellationText: t("common.cancel"),

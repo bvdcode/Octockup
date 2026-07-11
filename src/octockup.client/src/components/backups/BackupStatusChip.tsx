@@ -34,10 +34,10 @@ export function BackupStatusChip({
 
   let errorMessage = "";
   if (status === "failed") {
-    const failedSchedule = (backup.schedules || []).find(
-      (schedule) =>
-        schedule.status === BackupStatus.Failed && schedule.errorMessage,
-    );
+    const failedSchedule =
+      backup.latestFinishedSchedule?.status === BackupStatus.Failed
+        ? backup.latestFinishedSchedule
+        : null;
     errorMessage = failedSchedule?.errorMessage || t("backups.unknownError");
   }
 

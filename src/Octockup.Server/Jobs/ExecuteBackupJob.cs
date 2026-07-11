@@ -26,9 +26,9 @@ namespace Octockup.Server.Jobs
         private static readonly ConcurrentDictionary<Guid, CancellationTokenSource> _runningSchedules = new();
         private static readonly TimeSpan StorageBusyRetryDelay = TimeSpan.FromMinutes(1);
 
-        public static bool IsScheduleRunning(Guid scheduleId)
+        public static Guid[] GetRunningScheduleIds()
         {
-            return _runningSchedules.ContainsKey(scheduleId);
+            return _runningSchedules.Keys.ToArray();
         }
 
         public static void StopRunningBackup(Guid scheduleId)

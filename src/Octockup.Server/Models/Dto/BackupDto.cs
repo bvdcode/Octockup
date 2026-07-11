@@ -15,7 +15,11 @@ namespace Octockup.Server.Models.Dto
         public bool DisableEncryption { get; set; }
         public ModuleDto Source { get; set; } = null!;
         public ModuleDto Storage { get; set; } = null!;
-        public ICollection<SnapshotDto> Snapshots { get; set; } = [];
-        public ICollection<ScheduleDto> Schedules { get; set; } = [];
+        public int SnapshotCount { get; set; }
+        public int CompletedSnapshotCount { get; set; }
+        public int ScheduleCount { get; set; }
+        public SnapshotDto? LatestSnapshot { get; set; }
+        public BackupScheduleDto? ActiveSchedule { get; set; }
+        public BackupScheduleDto? LatestFinishedSchedule { get; set; }
     }
 }

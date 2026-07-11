@@ -11,15 +11,7 @@ interface BackupMetadataProps {
 export function BackupMetadata({ backup }: BackupMetadataProps) {
   const { t } = useTranslation();
 
-  const lastSnapshot = backup.snapshots
-    ?.filter((s) => s.completedAt)
-    .sort(
-      (a, b) =>
-        new Date(b.completedAt!).getTime() -
-        new Date(a.completedAt!).getTime(),
-    )[0];
-
-  const completedSnapshots = backup.snapshots?.filter((s) => s.completedAt);
+  const lastSnapshot = backup.latestSnapshot;
 
   return (
     <Box display="flex" alignItems="center" gap={1} flexWrap="wrap" mt={0.5}>
@@ -33,7 +25,7 @@ export function BackupMetadata({ backup }: BackupMetadataProps) {
         })}
       </Typography>
 
-      {backup.snapshots && backup.snapshots.length > 0 && (
+      {backup.snapshotCount > 0 && (
         <>
           {lastSnapshot && (
             <>
@@ -52,7 +44,7 @@ export function BackupMetadata({ backup }: BackupMetadataProps) {
           <Divider orientation="vertical" flexItem />
           <Typography variant="caption" sx={{ color: "text.secondary" }}>
             {t("backups.snapshots", {
-              count: completedSnapshots?.length || 0,
+              count: backup.completedSnapshotCount,
             })}
           </Typography>
           {lastSnapshot && (

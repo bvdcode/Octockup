@@ -46,8 +46,12 @@ export interface BackupItem {
   disableEncryption: boolean;
   source: Module;
   storage: Module;
-  schedules: ScheduleItem[];
-  snapshots: SnapshotDto[];
+  snapshotCount: number;
+  completedSnapshotCount: number;
+  scheduleCount: number;
+  latestSnapshot?: SnapshotDto | null;
+  activeSchedule?: BackupScheduleItem | null;
+  latestFinishedSchedule?: BackupScheduleItem | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -70,7 +74,6 @@ export interface ScheduleBackupItem {
   disableEncryption: boolean;
   source: Module;
   storage: Module;
-  snapshots: SnapshotDto[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -168,6 +171,16 @@ export interface ScheduleItem {
   finishedAt?: string | null;
   errorMessage?: string | null;
   backup: ScheduleBackupItem;
+}
+
+export interface BackupScheduleItem {
+  id: string;
+  backupId: string;
+  startAt: string;
+  interval?: string | null;
+  status: BackupStatus;
+  finishedAt?: string | null;
+  errorMessage?: string | null;
 }
 
 export interface CreateScheduleRequest {

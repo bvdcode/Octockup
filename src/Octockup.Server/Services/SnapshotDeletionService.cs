@@ -32,13 +32,22 @@ namespace Octockup.Server.Services
                 };
             }
 
-            List<Schedule> schedules = await _dbContext.Schedules
-                .Where(x => x.BackupId == snapshot.BackupId)
-                .ToListAsync(cancellationToken);
-
-            bool hasRunningSchedule = schedules.Any(x =>
-                x.Status == ScheduleStatus.Running ||
-                ExecuteBackupJob.IsScheduleRunning(x.Id));
+            bool hasRunningSchedule = await _dbContext.Schedules
+                .AsNoTracking()
+                .AnyAsync(
+                    x => x.BackupId == snapshot.BackupId &&
+                        x.Status == ScheduleStatus.Running,
+                    cancellationToken);
+            Guid[] runningScheduleIds = ExecuteBackupJob.GetRunningScheduleIds();
+            if (!hasRunningSchedule && runningScheduleIds.Length > 0)
+            {
+                hasRunningSchedule = await _dbContext.Schedules
+                    .AsNoTracking()
+                    .AnyAsync(
+                        x => x.BackupId == snapshot.BackupId &&
+                            runningScheduleIds.Contains(x.Id),
+                        cancellationToken);
+            }
 
             if (hasRunningSchedule)
             {

@@ -77,9 +77,9 @@ export default function BackupsPage() {
 
       const mapping: Record<string, string> = {};
       backupList.forEach((backup) => {
-        backup.schedules?.forEach((schedule) => {
-          mapping[schedule.id] = schedule.backupId;
-        });
+        if (backup.activeSchedule) {
+          mapping[backup.activeSchedule.id] = backup.id;
+        }
       });
       setScheduleToBackupMap(mapping);
     } catch {
@@ -90,19 +90,18 @@ export default function BackupsPage() {
   useEffect(() => {
     let active = true;
 
-    // Load backups - schedules already included in backup.schedules
+    // Load bounded backup summaries.
     backupsApi
       .list()
       .then((backupList) => {
         if (!active) return;
         setBackups(backupList);
 
-        // Create mapping scheduleId -> backupId from embedded schedules
         const mapping: Record<string, string> = {};
         backupList.forEach((backup) => {
-          backup.schedules?.forEach((schedule) => {
-            mapping[schedule.id] = schedule.backupId;
-          });
+          if (backup.activeSchedule) {
+            mapping[backup.activeSchedule.id] = backup.id;
+          }
         });
         setScheduleToBackupMap(mapping);
 
@@ -211,7 +210,7 @@ export default function BackupsPage() {
   const handleCancel = async (scheduleId: string) => {
     const backupIdFromMap = scheduleToBackupMap[scheduleId];
     const backupEntry =
-      backups.find((b) => b.schedules?.some((s) => s.id === scheduleId)) ||
+      backups.find((b) => b.activeSchedule?.id === scheduleId) ||
       null;
     const backupId = backupIdFromMap || backupEntry?.id || null;
 
@@ -259,13 +258,7 @@ export default function BackupsPage() {
       : backups;
 
     filteredBackups.forEach((backup) => {
-      const lastSnapshot = backup.snapshots
-        ?.filter((s) => s.completedAt)
-        .sort(
-          (a, b) =>
-            new Date(b.completedAt!).getTime() -
-            new Date(a.completedAt!).getTime(),
-        )[0];
+      const lastSnapshot = backup.latestSnapshot;
 
       if (lastSnapshot) {
         totalFiles += lastSnapshot.filesCount;

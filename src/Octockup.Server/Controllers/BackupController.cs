@@ -4,7 +4,6 @@
 using EasyExtensions;
 using EasyExtensions.AspNetCore.Extensions;
 using EasyExtensions.Quartz.Extensions;
-using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -28,6 +27,7 @@ namespace Octockup.Server.Controllers
         DownloadTicketService _downloadTickets,
         ServerBackupExportService _serverBackupExport,
         ServerBackupUploadService _serverBackupUpload,
+        BackupListService _backupList,
         ILogger<BackupController> _logger) : ControllerBase
     {
         [AllowAnonymous]
@@ -136,18 +136,12 @@ namespace Octockup.Server.Controllers
 
         [Authorize]
         [HttpGet("/api/v1/backups")]
-        public async Task<IEnumerable<BackupDto>> GetUserBackups()
+        public Task<IReadOnlyList<BackupDto>> GetUserBackups(
+            CancellationToken cancellationToken)
         {
-            var userId = User.GetUserId();
-            return await _dbContext.Backups
-                .AsNoTracking()
-                .Include(x => x.Source)
-                .Include(x => x.Storage)
-                .Include(x => x.Snapshots)
-                .Include(x => x.Schedules)
-                .Where(x => x.UserId == userId)
-                .ProjectToType<BackupDto>()
-                .ToListAsync();
+            return _backupList.GetAsync(
+                User.GetUserId(),
+                cancellationToken);
         }
 
         [Authorize]
