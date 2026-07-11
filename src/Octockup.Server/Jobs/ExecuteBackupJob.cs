@@ -3,18 +3,17 @@
 
 using EasyExtensions.Abstractions;
 using EasyExtensions.Quartz.Attributes;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Octockup.Server.Abstractions;
 using Octockup.Server.Database;
 using Octockup.Server.Helpers;
-using Octockup.Server.Hubs;
+using Octockup.Server.Models;
 using Octockup.Server.Models.Enums;
 using Octockup.Server.Models.Options;
 using Octockup.Server.Services;
 using Quartz;
 using System.Collections.Concurrent;
-using Microsoft.Extensions.Options;
 
 namespace Octockup.Server.Jobs
 {
@@ -174,7 +173,10 @@ namespace Octockup.Server.Jobs
                         dbContext,
                         scope.ServiceProvider,
                         runnerLogger,
-                        scope.ServiceProvider.GetRequiredService<IHubContext<EventHub>>(),
+                        scope.ServiceProvider.GetRequiredService<IScheduleProgressPublisher>(),
+                        scope.ServiceProvider.GetRequiredService<IOptions<BackupProgressOptions>>(),
+                        scope.ServiceProvider.GetRequiredService<TimeProvider>(),
+                        scope.ServiceProvider.GetRequiredService<ILogger<ScheduleReport>>(),
                         scope.ServiceProvider.GetRequiredService<IEnumerable<IBackupProvider>>(),
                         scope.ServiceProvider.GetRequiredService<UploadedChunkLookup>(),
                         scope.ServiceProvider.GetRequiredService<PreviousSnapshotFileLookup>(),

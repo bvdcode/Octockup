@@ -57,6 +57,17 @@ namespace Octockup.Server
                     options => options.MaxChunkLookupMemoryBytes >= 64 * 1024,
                     "Chunk lookup memory must be at least 64 KiB.")
                 .ValidateOnStart();
+            builder.Services
+                .AddOptions<BackupProgressOptions>()
+                .BindConfiguration("BackupProgress")
+                .Validate(
+                    options => options.PublishInterval >= TimeSpan.FromMilliseconds(100) &&
+                        options.PublishInterval <= TimeSpan.FromSeconds(10),
+                    "Backup progress publish interval must be between 100 milliseconds and 10 seconds.")
+                .Validate(
+                    options => options.AggregateLogInterval >= options.PublishInterval,
+                    "Backup aggregate log interval must not be shorter than the publish interval.")
+                .ValidateOnStart();
 
             // Configure form options for large file uploads
             builder.Services.Configure<FormOptions>(options =>
@@ -91,6 +102,7 @@ namespace Octockup.Server
                 .AddSingleton<IStorageCleanupJobScheduler, QuartzStorageCleanupJobScheduler>()
                 .AddSingleton<StorageCleanupJobManager>()
                 .AddSingleton<IStorageCleanupProgressPublisher, SignalRStorageCleanupProgressPublisher>()
+                .AddSingleton<IScheduleProgressPublisher, SignalRScheduleProgressPublisher>()
                 .AddSingleton<StorageCleanupJobExecutor>()
                 .AddPbkdf2PasswordHashService()
                 .AddCpuUsageService()

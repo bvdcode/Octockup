@@ -4,15 +4,15 @@
 using EasyExtensions.Abstractions;
 using EasyExtensions.Models.Enums;
 using EasyExtensions.Streams;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Octockup.Server.Abstractions;
 using Octockup.Server.Collections;
 using Octockup.Server.Database;
 using Octockup.Server.Helpers;
-using Octockup.Server.Hubs;
 using Octockup.Server.Models;
 using Octockup.Server.Models.Enums;
+using Octockup.Server.Models.Options;
 using Octockup.Server.Services;
 using System.Buffers;
 using System.Diagnostics;
@@ -25,7 +25,10 @@ namespace Octockup.Server.Jobs
         AppDbContext dbContext,
         IServiceProvider serviceProvider,
         ILogger<BackupRunner> logger,
-        IHubContext<EventHub> hubContext,
+        IScheduleProgressPublisher scheduleProgressPublisher,
+        IOptions<BackupProgressOptions> backupProgressOptions,
+        TimeProvider timeProvider,
+        ILogger<ScheduleReport> scheduleReportLogger,
         IEnumerable<IBackupProvider> providers,
         UploadedChunkLookup uploadedChunkLookup,
         PreviousSnapshotFileLookup previousSnapshotFileLookup,
@@ -43,42 +46,52 @@ namespace Octockup.Server.Jobs
         public async Task RunAsync(Schedule schedule, CancellationToken cancellationToken)
         {
             Guid userId = schedule.Backup.Source.UserId;
-            ScheduleReport report = new(userId, schedule.Id, schedule.BackupId, hubContext);
+            ScheduleReport report = new(
+                userId,
+                schedule.Id,
+                schedule.BackupId,
+                scheduleProgressPublisher,
+                backupProgressOptions,
+                timeProvider,
+                scheduleReportLogger);
             IBackupSource? sourceProvider = null;
             IBackupStorage? storageProvider = null;
+            report.Update(
+                0,
+                "Preparing backup...",
+                stage: BackupProgressStage.Preparing);
             report.StartBackgroundReporting(cancellationToken);
 
             try
             {
-                sourceProvider = CreateSourceProvider(schedule);
+                sourceProvider = await CreateSourceProviderAsync(schedule, cancellationToken);
                 if (sourceProvider is null)
                 {
-                    await report.SendAsync(
+                    await report.PublishFinalAsync(
                         0,
                         schedule.ErrorMessage ?? "Source provider not found.",
-                        status: ScheduleStatus.Failed,
-                        stage: BackupProgressStage.Failed,
-                        cancellationToken: cancellationToken);
+                        ScheduleStatus.Failed,
+                        BackupProgressStage.Failed,
+                        cancellationToken);
                     return;
                 }
 
-                storageProvider = CreateStorageProvider(schedule);
+                storageProvider = await CreateStorageProviderAsync(schedule, cancellationToken);
                 if (storageProvider is null)
                 {
-                    await report.SendAsync(
+                    await report.PublishFinalAsync(
                         0,
                         schedule.ErrorMessage ?? "Storage provider not found.",
-                        status: ScheduleStatus.Failed,
-                        stage: BackupProgressStage.Failed,
-                        cancellationToken: cancellationToken);
+                        ScheduleStatus.Failed,
+                        BackupProgressStage.Failed,
+                        cancellationToken);
                     return;
                 }
 
-                await report.SendAsync(
+                report.Update(
                     0,
                     "Listing files to backup...",
-                    stage: BackupProgressStage.Listing,
-                    cancellationToken: cancellationToken);
+                    stage: BackupProgressStage.Listing);
                 schedule.Status = ScheduleStatus.Running;
                 await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -98,12 +111,12 @@ namespace Octockup.Server.Jobs
                 await dbContext.SaveChangesAsync(cancellationToken);
 
                 logger.LogInformation("Schedule {ScheduleId} backup completed successfully", schedule.Id);
-                await report.SendAsync(
+                await report.PublishFinalAsync(
                     report.Processed,
                     "Backup completed successfully.",
-                    status: ScheduleStatus.Completed,
-                    stage: BackupProgressStage.Completed,
-                    cancellationToken: cancellationToken);
+                    ScheduleStatus.Completed,
+                    BackupProgressStage.Completed,
+                    cancellationToken);
             }
             catch (OperationCanceledException ex)
             {
@@ -128,12 +141,12 @@ namespace Octockup.Server.Jobs
                     await dbContext.SaveChangesAsync(CancellationToken.None);
 
                     logger.LogError(ex, "Schedule {ScheduleId} backup interrupted unexpectedly", schedule.Id);
-                    await report.SendAsync(
+                    await report.PublishFinalAsync(
                         report.Processed,
                         schedule.ErrorMessage,
-                        status: ScheduleStatus.Failed,
-                        stage: BackupProgressStage.Failed,
-                        cancellationToken: CancellationToken.None);
+                        ScheduleStatus.Failed,
+                        BackupProgressStage.Failed,
+                        CancellationToken.None);
                 }
                 return;
             }
@@ -148,12 +161,12 @@ namespace Octockup.Server.Jobs
                 await dbContext.SaveChangesAsync(CancellationToken.None);
 
                 logger.LogError(ex, "Schedule {ScheduleId} backup failed", schedule.Id);
-                await report.SendAsync(
+                await report.PublishFinalAsync(
                     report.Processed,
                     schedule.ErrorMessage,
-                    status: ScheduleStatus.Failed,
-                    stage: BackupProgressStage.Failed,
-                    cancellationToken: CancellationToken.None);
+                    ScheduleStatus.Failed,
+                    BackupProgressStage.Failed,
+                    CancellationToken.None);
             }
             finally
             {
@@ -194,7 +207,9 @@ namespace Octockup.Server.Jobs
             }
         }
 
-        private IBackupSource? CreateSourceProvider(Schedule schedule)
+        private async Task<IBackupSource?> CreateSourceProviderAsync(
+            Schedule schedule,
+            CancellationToken cancellationToken)
         {
             if (providers.FirstOrDefault(x => x.Id == schedule.Backup.Source.BackupModuleId) is not IBackupSource foundSourceTypeProvider)
             {
@@ -204,7 +219,7 @@ namespace Octockup.Server.Jobs
                 schedule.NextRunAt = ScheduleHelpers.CalculateNextRun(
                     schedule,
                     schedule.FinishedAt.Value);
-                dbContext.SaveChanges();
+                await dbContext.SaveChangesAsync(cancellationToken);
                 logger.LogWarning("{msg}", schedule.ErrorMessage);
 
                 return null;
@@ -215,7 +230,9 @@ namespace Octockup.Server.Jobs
             return foundSourceProvider;
         }
 
-        private IBackupStorage? CreateStorageProvider(Schedule schedule)
+        private async Task<IBackupStorage?> CreateStorageProviderAsync(
+            Schedule schedule,
+            CancellationToken cancellationToken)
         {
             if (providers.FirstOrDefault(x => x.Id == schedule.Backup.Storage.BackupModuleId) is not IBackupStorage foundStorageTypeProvider)
             {
@@ -225,7 +242,7 @@ namespace Octockup.Server.Jobs
                 schedule.NextRunAt = ScheduleHelpers.CalculateNextRun(
                     schedule,
                     schedule.FinishedAt.Value);
-                dbContext.SaveChanges();
+                await dbContext.SaveChangesAsync(cancellationToken);
                 logger.LogWarning("{msg}", schedule.ErrorMessage);
 
                 return null;
@@ -325,8 +342,7 @@ namespace Octockup.Server.Jobs
                     cancellationToken);
             }
 
-            report.Total = loader.Total;
-            report.IsEnumerationCompleted = true;
+            report.SetEnumeration(loader.Total, true);
             await FinalizeSnapshotAsync(
                 schedule,
                 snapshot,
@@ -390,19 +406,19 @@ namespace Octockup.Server.Jobs
             CancellationToken cancellationToken)
         {
             counter++;
-            report.Total = loader.Total;
-            report.IsEnumerationCompleted = loader.IsEnumerationCompleted;
-            report.CurrentFile = file.Name ?? Path.GetFileName(file.Path);
-            report.CurrentPath = file.Path;
-            await report.SendAsync(
+            report.SetCurrentFile(
+                file.Name ?? Path.GetFileName(file.Path),
+                file.Path,
+                loader.Total,
+                loader.IsEnumerationCompleted);
+            report.Update(
                 counter,
                 $"Processing: {file.Name}",
-                stage: BackupProgressStage.Preparing,
-                cancellationToken: cancellationToken);
+                stage: BackupProgressStage.Preparing);
 
             if (ShouldIgnoreFile(schedule, file))
             {
-                logger.LogInformation("Schedule {ScheduleId}: File {FileName} is ignored by path rules, skipping",
+                logger.LogDebug("Schedule {ScheduleId}: File {FileName} is ignored by path rules, skipping",
                     schedule.Id, file.Name);
                 return counter;
             }
@@ -426,13 +442,12 @@ namespace Octockup.Server.Jobs
                 return counter;
             }
 
-            // Diagnostic: why file was not skipped
-            if (previousFile != null)
+            if (logger.IsEnabled(LogLevel.Debug) && previousFile != null)
             {
                 bool diagnosticDatesMatch = previousFile.LastModified == null || file.LastModified == null ||
                     Math.Abs((previousFile.LastModified.Value - file.LastModified.Value).TotalSeconds) < 2;
 
-                logger.LogWarning("File {FileName} NOT skipped - foundFile!=null: true, hasHashsum: {HasHashsum}, sizeMatch: " +
+                logger.LogDebug("File {FileName} NOT skipped - foundFile!=null: true, hasHashsum: {HasHashsum}, sizeMatch: " +
                     "{SizeMatch} ({OldSize} vs {NewSize}), datesMatch: {DatesMatch}, oldDate: {OldDate}, newDate: {NewDate}, diffSec: {DiffSec}",
                     file.Name,
                     previousFile.Hashsum != null,
@@ -444,14 +459,14 @@ namespace Octockup.Server.Jobs
                         ? Math.Abs((previousFile.LastModified.Value - file.LastModified.Value).TotalSeconds).ToString("F3")
                         : "N/A");
             }
-            else
+            else if (logger.IsEnabled(LogLevel.Debug))
             {
-                logger.LogInformation("File {FileName} NOT found in previous snapshot", file.Path);
+                logger.LogDebug("File {FileName} NOT found in previous snapshot", file.Path);
             }
 
-            if (previousFile != null)
+            if (logger.IsEnabled(LogLevel.Debug) && previousFile != null)
             {
-                logger.LogInformation("File {FileName} changed - HasHashsum: {HasHashsum}, Size: {OldSize} vs {NewSize}, LastModified: {OldModified} vs {NewModified} (diff: {DiffSeconds}s)",
+                logger.LogDebug("File {FileName} changed - HasHashsum: {HasHashsum}, Size: {OldSize} vs {NewSize}, LastModified: {OldModified} vs {NewModified} (diff: {DiffSeconds}s)",
                     file.Name, previousFile.Hashsum != null, previousFile.Size, file.Size,
                     previousFile.LastModified?.ToString("yyyy-MM-dd HH:mm:ss"), file.LastModified?.ToString("yyyy-MM-dd HH:mm:ss"),
                     previousFile.LastModified != null && file.LastModified != null
@@ -501,9 +516,6 @@ namespace Octockup.Server.Jobs
                 file.Name ?? file.Path,
                 cancellationToken);
 
-            logger.LogInformation("Schedule {ScheduleId}: {Message} ({Processed}/{Total})",
-                schedule.Id, report.Message, report.Processed, report.Total);
-
             return counter;
         }
 
@@ -545,31 +557,37 @@ namespace Octockup.Server.Jobs
                         : CompressionHelpers.Algorithm;
                     bool encryptChunk = !schedule.Backup.DisableEncryption;
                     string chunkKey = ChunkStorageHelpers.CreateKey(contentHash, algorithm, encryptChunk);
-                    string shortHash = contentHash[^8..];
-
                     bool alreadyUploaded = await uploadedChunkLookup
                         .ContainsAsync(chunkKey, cancellationToken)
                         .ConfigureAwait(false);
                     if (alreadyUploaded)
                     {
-                        logger.LogInformation("Chunk {shortHash} for file {FileName} already uploaded in previous snapshot, skipping upload", shortHash, file.Name);
+                        logger.LogDebug(
+                            "Chunk {ChunkHash} for file {FileName} already uploaded, skipping upload",
+                            contentHash,
+                            file.Name);
                         chunkHashes.Add(chunkKey);
-                        await report.SendAsync(
+                        report.Update(
                             counter,
                             $"Processing: {file.Name}",
                             processedBytes: chunkLength,
-                            stage: BackupProgressStage.Preparing,
-                            cancellationToken: cancellationToken);
+                            stage: BackupProgressStage.Preparing);
                         await chunk.DisposeAsync();
                         continue;
                     }
 
-                    logger.LogInformation("Processing chunk {shortHash} for file {FileName}", shortHash, file.Path);
+                    logger.LogDebug(
+                        "Processing chunk {ChunkHash} for file {FileName}",
+                        contentHash,
+                        file.Path);
 
                     long storedSize = 0;
                     string path = ChunkStorageHelpers.GetStoragePath(chunkKey, storage.PathSeparator);
-                    string size = $"{(chunkLength / (1024.0 * 1024.0)):F2} MB";
-                    logger.LogInformation("Uploading chunk {shortHash} for file {FileName}, size: {size}", shortHash, file.Name, size);
+                    logger.LogDebug(
+                        "Uploading chunk {ChunkHash} for file {FileName}, size {ChunkBytes} bytes",
+                        contentHash,
+                        file.Name,
+                        chunkLength);
 
                     chunk.Seek(0, SeekOrigin.Begin);
 
@@ -589,14 +607,21 @@ namespace Octockup.Server.Jobs
                         }
                         compressedStream.Seek(0, SeekOrigin.Begin);
                         src = compressedStream;
-                        logger.LogInformation("Chunk {shortHash} for file {FileName} compressed from {originalSize} to {compressedSize} using {algorithm}",
-                            shortHash, file.Name, size,
-                            $"{(src.Length / (1024.0 * 1024.0)):F2} MB",
+                        logger.LogDebug(
+                            "Chunk {ChunkHash} for file {FileName} compressed from {OriginalBytes} " +
+                            "to {CompressedBytes} bytes using {Algorithm}",
+                            contentHash,
+                            file.Name,
+                            chunkLength,
+                            src.Length,
                             algorithm);
                     }
                     else
                     {
-                        logger.LogInformation("Chunk {shortHash} for file {FileName} stored without compression", shortHash, file.Name);
+                        logger.LogDebug(
+                            "Chunk {ChunkHash} for file {FileName} stored without compression",
+                            contentHash,
+                            file.Name);
                     }
 
                     try
@@ -631,12 +656,11 @@ namespace Octockup.Server.Jobs
                             chunkLength,
                             algorithm);
 
-                        await report.SendAsync(
+                        report.Update(
                             counter,
                             $"Processing: {file.Name}",
                             processedBytes: chunkLength,
-                            stage: BackupProgressStage.Preparing,
-                            cancellationToken: cancellationToken);
+                            stage: BackupProgressStage.Preparing);
 
                         chunkHashes.Add(chunkKey);
                         cancellationToken.ThrowIfCancellationRequested();
@@ -726,12 +750,12 @@ namespace Octockup.Server.Jobs
                 schedule.FinishedAt.Value);
             await dbContext.SaveChangesAsync(CancellationToken.None);
 
-            await report.SendAsync(
+            await report.PublishFinalAsync(
                 report.Processed,
                 "Backup canceled.",
-                status: ScheduleStatus.Failed,
-                stage: BackupProgressStage.Failed,
-                cancellationToken: CancellationToken.None);
+                ScheduleStatus.Failed,
+                BackupProgressStage.Failed,
+                CancellationToken.None);
         }
 
         private async Task ReusePreviousFileAsync(
@@ -746,7 +770,7 @@ namespace Octockup.Server.Jobs
             int counter,
             CancellationToken cancellationToken)
         {
-            logger.LogInformation("File {FileName} unchanged since last snapshot (size: {Size}, date match: {DateMatch}), reusing metadata",
+            logger.LogDebug("File {FileName} unchanged since last snapshot (size: {Size}, date match: {DateMatch}), reusing metadata",
                 currentFile.Name, currentFile.Size, datesMatch);
 
             SnapshotFile snapshotFile = new()
@@ -773,12 +797,11 @@ namespace Octockup.Server.Jobs
                 currentFile.Name ?? currentFile.Path,
                 cancellationToken);
 
-            await report.SendAsync(
+            report.Update(
                 counter,
                 $"Processing: {currentFile.Name}",
                 processedBytes: snapshotFile.Size,
-                stage: BackupProgressStage.Preparing,
-                cancellationToken: cancellationToken);
+                stage: BackupProgressStage.Preparing);
         }
 
         private async Task FinalizeSnapshotAsync(
@@ -791,13 +814,11 @@ namespace Octockup.Server.Jobs
         {
             report.SetStage(BackupProgressStage.Finalizing, "Finalizing snapshot...");
             await FlushUploadedHashesAsync(cancellationToken);
-            report.Total = loader.Total;
-            report.IsEnumerationCompleted = true;
-            await report.SendAsync(
+            report.SetEnumeration(loader.Total, true);
+            report.Update(
                 report.Processed,
                 "Finalizing snapshot...",
-                stage: BackupProgressStage.Finalizing,
-                cancellationToken: cancellationToken);
+                stage: BackupProgressStage.Finalizing);
             await snapshotWriter.CompleteAsync(snapshot, schedule, cancellationToken);
         }
 
