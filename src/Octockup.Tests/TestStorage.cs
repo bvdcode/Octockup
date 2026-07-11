@@ -1,0 +1,69 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2025 Vadim Belov <https://belov.us>
+
+using Octockup.Server.Abstractions;
+using Octockup.Server.Models;
+using System.Runtime.CompilerServices;
+
+namespace Octockup.Tests
+{
+    internal class TestStorage : IBackupStorage, IBackupStorageInventory
+    {
+        public string Id => GetType().FullName!;
+        public string Name => nameof(TestStorage);
+        public char PathSeparator => '/';
+        public IEnumerable<string> RequiredParameters => [];
+        public Dictionary<string, BackupFileInfo> Files { get; } = new(StringComparer.Ordinal);
+
+        public void SetParameters(IReadOnlyDictionary<string, string> parameters)
+        {
+        }
+
+        public void SetIgnoredPaths(ICollection<string>? ignoredPaths)
+        {
+        }
+
+        public Task<BackupFileInfo?> GetFileInfoAsync(
+            string path,
+            CancellationToken cancellationToken) => Task.FromResult(Files.GetValueOrDefault(path));
+
+        public Task<Stream> GetFileStreamAsync(
+            BackupFileInfo file,
+            CancellationToken cancellationToken = default) => Task.FromResult<Stream>(Stream.Null);
+
+        public IEnumerable<string> GetDirectories(
+            bool recursive = false,
+            CancellationToken cancellationToken = default) => [];
+
+        public IEnumerable<BackupFileInfo> GetFiles(
+            bool recursive = false,
+            CancellationToken cancellationToken = default) => Files.Values.ToList();
+
+        public async IAsyncEnumerable<BackupFileInfo> GetFilesAsync(
+            bool recursive = false,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            foreach (BackupFileInfo file in Files.Values.ToList())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return file;
+                await Task.Yield();
+            }
+        }
+
+        public Task<bool?> ExistsAsync(
+            string path,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<bool?>(Files.ContainsKey(path));
+
+        public Task<bool?> DeleteAsync(
+            string path,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<bool?>(Files.Remove(path));
+
+        public Task UploadAsync(
+            string path,
+            Stream data,
+            CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+}

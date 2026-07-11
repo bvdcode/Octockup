@@ -1,239 +1,169 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2025 Vadim Belov <https://belov.us>
 
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Octockup.Server.Abstractions;
 using Octockup.Server.Database;
-using Octockup.Server.Hubs;
 using Octockup.Server.Models.Dto;
 using Octockup.Server.Models.Enums;
-using System.Collections.Concurrent;
 
 namespace Octockup.Server.Services
 {
     public class StorageCleanupJobManager(
         IServiceScopeFactory _scopeFactory,
-        IHubContext<EventHub> _hubContext,
+        IStorageCleanupJobScheduler _scheduler,
+        StorageCleanupCancellationRegistry _cancellationRegistry,
         ILogger<StorageCleanupJobManager> _logger)
     {
-        private readonly ConcurrentDictionary<Guid, StorageCleanupJobState> _jobs = [];
-        private readonly ConcurrentDictionary<Guid, Guid> _activeJobIdsByStorage = [];
-        private readonly ConcurrentDictionary<Guid, StorageCleanupJobState> _lastJobsByStorage = [];
-        private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _cancellationsByJob = [];
-
         public async Task<StorageCleanupJobDto> StartAsync(
             Guid userId,
             Guid storageId,
             CancellationToken cancellationToken)
         {
-            if (_activeJobIdsByStorage.TryGetValue(storageId, out Guid existingJobId) &&
-                _jobs.TryGetValue(existingJobId, out StorageCleanupJobState? existingJob) &&
-                existingJob.UserId == userId)
-            {
-                return existingJob.Snapshot();
-            }
-
-            string storageTag = await GetStorageTagAsync(
-                userId,
-                storageId,
-                cancellationToken).ConfigureAwait(false);
-
-            Guid jobId = Guid.NewGuid();
-            StorageCleanupJobState state = new(jobId, userId, storageId, storageTag);
-
-            if (!_activeJobIdsByStorage.TryAdd(storageId, jobId))
-            {
-                if (_activeJobIdsByStorage.TryGetValue(storageId, out Guid activeJobId) &&
-                    _jobs.TryGetValue(activeJobId, out StorageCleanupJobState? activeJob) &&
-                    activeJob.UserId == userId)
-                {
-                    return activeJob.Snapshot();
-                }
-
-                throw new InvalidOperationException("Cleanup is already running for storage: " + storageId);
-            }
-
-            CancellationTokenSource cancellationTokenSource = new();
-            _jobs[jobId] = state;
-            _cancellationsByJob[jobId] = cancellationTokenSource;
-
-            _ = Task.Run(
-                () => RunJobAsync(state, cancellationTokenSource),
-                CancellationToken.None);
-
-            return state.Snapshot();
-        }
-
-        public IReadOnlyList<StorageCleanupJobDto> GetJobs(Guid userId)
-        {
-            List<StorageCleanupJobDto> jobs = _jobs.Values
-                .Where(x => x.UserId == userId)
-                .Select(x => x.Snapshot())
-                .ToList();
-
-            HashSet<Guid> activeStorageIds = jobs
-                .Select(x => x.StorageId)
-                .ToHashSet();
-
-            jobs.AddRange(_lastJobsByStorage.Values
-                .Where(x => x.UserId == userId && !activeStorageIds.Contains(x.StorageId))
-                .Select(x => x.Snapshot()));
-
-            return jobs
-                .OrderByDescending(x => x.StartedAt)
-                .ToList();
-        }
-
-        public StorageCleanupJobDto? GetActiveJob(Guid storageId)
-        {
-            if (!_activeJobIdsByStorage.TryGetValue(storageId, out Guid jobId))
-            {
-                return null;
-            }
-
-            return _jobs.TryGetValue(jobId, out StorageCleanupJobState? state)
-                ? state.Snapshot()
-                : null;
-        }
-
-        public StorageCleanupJobDto? GetLastJob(Guid storageId)
-        {
-            return _lastJobsByStorage.TryGetValue(storageId, out StorageCleanupJobState? state)
-                ? state.Snapshot()
-                : null;
-        }
-
-        public bool Cancel(Guid userId, Guid jobId)
-        {
-            if (!_jobs.TryGetValue(jobId, out StorageCleanupJobState? state) ||
-                state.UserId != userId ||
-                !state.IsActive)
-            {
-                return false;
-            }
-
-            if (!_cancellationsByJob.TryGetValue(jobId, out CancellationTokenSource? cancellationTokenSource))
-            {
-                return false;
-            }
-
-            cancellationTokenSource.Cancel();
-            return true;
-        }
-
-        private async Task<string> GetStorageTagAsync(
-            Guid userId,
-            Guid storageId,
-            CancellationToken cancellationToken)
-        {
-            using IServiceScope scope = _scopeFactory.CreateScope();
+            await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
             AppDbContext dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-            string? storageTag = await dbContext.Modules
+            Module? storage = await dbContext.Modules
                 .AsNoTracking()
-                .Where(x => x.Id == storageId &&
-                    x.UserId == userId &&
-                    x.Destination == ModuleDestination.Target)
-                .Select(x => x.Tag)
-                .FirstOrDefaultAsync(cancellationToken)
+                .FirstOrDefaultAsync(
+                    x => x.Id == storageId &&
+                        x.UserId == userId &&
+                        x.Destination == ModuleDestination.Target,
+                    cancellationToken)
                 .ConfigureAwait(false);
 
-            if (storageTag is null)
+            if (storage is null)
             {
                 throw new InvalidOperationException("Storage not found: " + storageId);
             }
 
-            return storageTag;
-        }
+            StorageCleanupJob? existingJob = await FindActiveJobAsync(
+                    dbContext,
+                    userId,
+                    storageId,
+                    cancellationToken)
+                .ConfigureAwait(false);
 
-        private async Task RunJobAsync(
-            StorageCleanupJobState state,
-            CancellationTokenSource cancellationTokenSource)
-        {
+            if (existingJob is not null)
+            {
+                await _scheduler.TriggerAsync();
+                return existingJob.ToDto();
+            }
+
+            DateTime startedAt = DateTime.UtcNow;
+            StorageCleanupJob job = new()
+            {
+                UserId = userId,
+                StorageId = storageId,
+                ActiveStorageId = storageId,
+                StorageTag = storage.Tag,
+                Status = StorageCleanupStatus.Pending,
+                Phase = StorageCleanupPhase.Preparing,
+                StartedAt = startedAt
+            };
+
+            await dbContext.StorageCleanupJobs
+                .AddAsync(job, cancellationToken)
+                .ConfigureAwait(false);
+
             try
             {
-                await PublishAsync(state.Snapshot(), CancellationToken.None).ConfigureAwait(false);
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogInformation(
+                    ex,
+                    "A concurrent cleanup request already created an active job for storage {StorageId}.",
+                    storageId);
+                dbContext.Entry(job).State = EntityState.Detached;
 
-                using IServiceScope scope = _scopeFactory.CreateScope();
-                StorageCleanupRunner runner = scope.ServiceProvider.GetRequiredService<StorageCleanupRunner>();
-                await runner
-                    .RunAsync(state, PublishAsync, cancellationTokenSource.Token)
+                existingJob = await FindActiveJobAsync(
+                        dbContext,
+                        userId,
+                        storageId,
+                        cancellationToken)
                     .ConfigureAwait(false);
 
-                state.Update(x =>
+                if (existingJob is null)
                 {
-                    x.Status = StorageCleanupStatus.Completed;
-                    x.Phase = StorageCleanupPhase.Completed;
-                    x.FinishedAt = DateTime.UtcNow;
-                    x.CurrentPath = null;
-                });
+                    _logger.LogError(
+                        ex,
+                        "Failed to create cleanup job for storage {StorageId} and no active job exists.",
+                        storageId);
+                    throw;
+                }
+
+                job = existingJob;
             }
-            catch (OperationCanceledException) when (cancellationTokenSource.IsCancellationRequested)
-            {
-                state.Update(x =>
-                {
-                    x.Status = StorageCleanupStatus.Canceled;
-                    x.Phase = StorageCleanupPhase.Completed;
-                    x.FinishedAt = DateTime.UtcNow;
-                    x.CurrentPath = null;
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(
-                    ex,
-                    "Storage cleanup job {JobId} failed for storage {StorageId}.",
-                    state.JobId,
-                    state.StorageId);
-                state.Update(x =>
-                {
-                    x.Status = StorageCleanupStatus.Failed;
-                    x.FinishedAt = DateTime.UtcNow;
-                    x.ErrorMessage = GetCleanupErrorMessage(ex);
-                    x.CurrentPath = null;
-                });
-            }
-            finally
-            {
-                _activeJobIdsByStorage.TryRemove(state.StorageId, out _);
-                _jobs.TryRemove(state.JobId, out _);
-                _cancellationsByJob.TryRemove(state.JobId, out _);
-                _lastJobsByStorage[state.StorageId] = state;
-                cancellationTokenSource.Dispose();
-                await PublishAsync(state.Snapshot(), CancellationToken.None).ConfigureAwait(false);
-            }
+
+            await _scheduler.TriggerAsync();
+            return job.ToDto();
         }
 
-        private async Task PublishAsync(
-            StorageCleanupJobDto progress,
+        public async Task<IReadOnlyList<StorageCleanupJobDto>> GetJobsAsync(
+            Guid userId,
             CancellationToken cancellationToken)
         {
-            try
-            {
-                await _hubContext.Clients
-                    .User(progress.UserId.ToString())
-                    .SendAsync("StorageCleanupProgress", progress, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(
-                    ex,
-                    "Failed to publish storage cleanup progress for job {JobId}.",
-                    progress.JobId);
-            }
+            await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
+            AppDbContext dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            List<StorageCleanupJob> jobs = await dbContext.StorageCleanupJobs
+                .AsNoTracking()
+                .Where(x => x.UserId == userId)
+                .GroupBy(x => x.StorageId)
+                .Select(group => group
+                    .OrderByDescending(x => x.ActiveStorageId != null)
+                    .ThenByDescending(x => x.StartedAt)
+                    .First())
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            return jobs
+                .OrderByDescending(x => x.StartedAt)
+                .Select(x => x.ToDto())
+                .ToList();
         }
 
-        private static string GetCleanupErrorMessage(Exception exception)
+        public async Task<bool> CancelAsync(
+            Guid userId,
+            Guid jobId,
+            CancellationToken cancellationToken)
         {
-            Exception rootCause = exception.GetBaseException();
-            if (!ReferenceEquals(rootCause, exception) &&
-                !string.IsNullOrWhiteSpace(rootCause.Message))
+            await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
+            AppDbContext dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            int updated = await dbContext.StorageCleanupJobs
+                .Where(x =>
+                    x.Id == jobId &&
+                    x.UserId == userId &&
+                    x.ActiveStorageId != null &&
+                    (x.Status == StorageCleanupStatus.Pending ||
+                        x.Status == StorageCleanupStatus.Running))
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(x => x.CancellationRequested, true),
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            if (updated != 1)
             {
-                return rootCause.Message;
+                return false;
             }
 
-            return exception.Message;
+            _cancellationRegistry.Cancel(jobId);
+            await _scheduler.TriggerAsync();
+            return true;
+        }
+
+        private static Task<StorageCleanupJob?> FindActiveJobAsync(
+            AppDbContext dbContext,
+            Guid userId,
+            Guid storageId,
+            CancellationToken cancellationToken)
+        {
+            return dbContext.StorageCleanupJobs
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    x => x.UserId == userId && x.ActiveStorageId == storageId,
+                    cancellationToken);
         }
     }
 }

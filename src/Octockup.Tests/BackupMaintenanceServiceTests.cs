@@ -187,17 +187,19 @@ namespace Octockup.Tests
                 dbContext,
                 NullLogger<StorageCleanupRunner>.Instance,
                 [storage],
-                new ChunkReferenceCollector(dbContext),
-                new ImmediateStorageOperationCoordinator());
+                new ChunkReferenceCollector(dbContext));
             StorageCleanupJobState state = new(
                 Guid.NewGuid(),
                 userId,
                 storageId,
-                "storage");
+                "storage",
+                DateTime.UtcNow);
+            ImmediateStorageOperationLease storageLease = new(storageId);
 
             await runner.RunAsync(
                 state,
                 (_, _) => Task.CompletedTask,
+                storageLease,
                 CancellationToken.None);
 
             dbContext.ChangeTracker.Clear();
@@ -258,18 +260,20 @@ namespace Octockup.Tests
                 dbContext,
                 NullLogger<StorageCleanupRunner>.Instance,
                 [storage],
-                new ChunkReferenceCollector(dbContext),
-                new ImmediateStorageOperationCoordinator());
+                new ChunkReferenceCollector(dbContext));
             StorageCleanupJobState state = new(
                 Guid.NewGuid(),
                 userId,
                 storageId,
-                "storage");
+                "storage",
+                DateTime.UtcNow);
+            ImmediateStorageOperationLease storageLease = new(storageId);
 
             Assert.CatchAsync<OperationCanceledException>(async () =>
                 await runner.RunAsync(
                     state,
                     (_, _) => Task.CompletedTask,
+                    storageLease,
                     cancellationTokenSource.Token));
 
             dbContext.ChangeTracker.Clear();
@@ -522,20 +526,15 @@ namespace Octockup.Tests
                 Task.FromResult(input);
         }
 
-        private class ImmediateStorageOperationCoordinator : IStorageOperationCoordinator
-        {
-            public Task<IStorageOperationLease?> TryAcquireAsync(
-                Guid storageId,
-                StorageOperationKind kind,
-                CancellationToken cancellationToken)
-            {
-                IStorageOperationLease lease = new ImmediateStorageOperationLease();
-                return Task.FromResult<IStorageOperationLease?>(lease);
-            }
-        }
-
         private class ImmediateStorageOperationLease : IStorageOperationLease
         {
+            public ImmediateStorageOperationLease(Guid storageId)
+            {
+                StorageId = storageId;
+            }
+
+            public Guid OperationId { get; } = Guid.NewGuid();
+            public Guid StorageId { get; }
             public CancellationToken LeaseLostToken => CancellationToken.None;
 
             public Task EnsureOwnedAsync(CancellationToken cancellationToken)

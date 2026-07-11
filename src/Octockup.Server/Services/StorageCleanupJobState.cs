@@ -15,7 +15,8 @@ namespace Octockup.Server.Services
             Guid jobId,
             Guid userId,
             Guid storageId,
-            string storageTag)
+            string storageTag,
+            DateTime startedAt)
         {
             _value = new StorageCleanupJobDto
             {
@@ -25,7 +26,7 @@ namespace Octockup.Server.Services
                 StorageTag = storageTag,
                 Status = StorageCleanupStatus.Pending,
                 Phase = StorageCleanupPhase.Preparing,
-                StartedAt = DateTime.UtcNow
+                StartedAt = startedAt
             };
         }
 

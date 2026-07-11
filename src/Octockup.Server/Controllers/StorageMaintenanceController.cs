@@ -54,7 +54,9 @@ namespace Octockup.Server.Controllers
         public async Task<IActionResult> GetStorageCleanupJobs()
         {
             IReadOnlyList<StorageCleanupJobDto> jobs =
-                await _storageMaintenanceService.GetJobsAsync(User.GetUserId());
+                await _storageMaintenanceService.GetJobsAsync(
+                    User.GetUserId(),
+                    HttpContext.RequestAborted);
 
             return Ok(jobs);
         }
@@ -79,11 +81,12 @@ namespace Octockup.Server.Controllers
 
         [Authorize]
         [HttpPost("/api/v1/storage-maintenance/jobs/{jobId:guid}/cancel")]
-        public IActionResult CancelStorageCleanup([FromRoute] Guid jobId)
+        public async Task<IActionResult> CancelStorageCleanup([FromRoute] Guid jobId)
         {
-            bool canceled = _storageMaintenanceService.CancelCleanup(
+            bool canceled = await _storageMaintenanceService.CancelCleanupAsync(
                 User.GetUserId(),
-                jobId);
+                jobId,
+                HttpContext.RequestAborted);
 
             if (!canceled)
             {

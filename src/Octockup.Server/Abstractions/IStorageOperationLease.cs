@@ -5,6 +5,8 @@ namespace Octockup.Server.Abstractions
 {
     public interface IStorageOperationLease : IAsyncDisposable
     {
+        Guid OperationId { get; }
+        Guid StorageId { get; }
         CancellationToken LeaseLostToken { get; }
         Task EnsureOwnedAsync(CancellationToken cancellationToken);
     }

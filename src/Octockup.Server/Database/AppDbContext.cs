@@ -17,5 +17,6 @@ namespace Octockup.Server.Database
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<SnapshotFile> SnapshotFiles => Set<SnapshotFile>();
         public DbSet<UploadedHash> UploadedHashes => Set<UploadedHash>();
+        public DbSet<StorageCleanupJob> StorageCleanupJobs => Set<StorageCleanupJob>();
     }
 }

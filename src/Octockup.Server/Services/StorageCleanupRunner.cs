@@ -18,8 +18,7 @@ namespace Octockup.Server.Services
         AppDbContext _dbContext,
         ILogger<StorageCleanupRunner> _logger,
         IEnumerable<IBackupProvider> _providers,
-        ChunkReferenceCollector _chunkReferenceCollector,
-        IStorageOperationCoordinator _operationCoordinator)
+        ChunkReferenceCollector _chunkReferenceCollector)
     {
         private const int UploadedHashDeleteBatchSize = 500;
         private static readonly TimeSpan ProgressPublishInterval = TimeSpan.FromSeconds(1);
@@ -27,22 +26,9 @@ namespace Octockup.Server.Services
         public async Task RunAsync(
             StorageCleanupJobState state,
             Func<StorageCleanupJobDto, CancellationToken, Task> publishAsync,
+            IStorageOperationLease storageLease,
             CancellationToken cancellationToken)
         {
-            IStorageOperationLease? storageLease = await _operationCoordinator
-                .TryAcquireAsync(
-                    state.StorageId,
-                    StorageOperationKind.Cleanup,
-                    cancellationToken)
-                .ConfigureAwait(false);
-
-            if (storageLease is null)
-            {
-                throw new InvalidOperationException(
-                    "Storage is busy with another backup or cleanup operation: " + state.StorageId);
-            }
-
-            await using (storageLease)
             using (CancellationTokenSource operationCts = CancellationTokenSource
                 .CreateLinkedTokenSource(cancellationToken, storageLease.LeaseLostToken))
             {

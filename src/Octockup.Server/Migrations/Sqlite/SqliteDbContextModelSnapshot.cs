@@ -377,6 +377,147 @@ namespace Octockup.Server.Migrations.Sqlite
                     b.ToTable("snapshot_files");
                 });
 
+            modelBuilder.Entity("Octockup.Server.Database.StorageCleanupJob", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ActiveStorageId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("active_storage_id");
+
+                    b.Property<bool>("CancellationRequested")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("cancellation_requested");
+
+                    b.Property<long>("ChunkObjectsScanned")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("chunk_objects_scanned");
+
+                    b.Property<string>("CreatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CurrentPath")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("current_path");
+
+                    b.Property<long>("DeletedObjects")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("deleted_objects");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("error_message");
+
+                    b.Property<long>("FailedDeletes")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("failed_deletes");
+
+                    b.Property<string>("FinishedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("finished_at");
+
+                    b.Property<long>("FreedBytes")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("freed_bytes");
+
+                    b.Property<long>("MissingObjects")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("missing_objects");
+
+                    b.Property<long>("OrphanBytes")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("orphan_bytes");
+
+                    b.Property<long>("OrphanObjects")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("orphan_objects");
+
+                    b.Property<int>("Phase")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("phase");
+
+                    b.Property<long>("ReferenceCount")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("reference_count");
+
+                    b.Property<long>("ReferencedBytes")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("referenced_bytes");
+
+                    b.Property<long>("ReferencedChunks")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("referenced_chunks");
+
+                    b.Property<long>("ReferencedObjects")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("referenced_objects");
+
+                    b.Property<Guid?>("RunId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("run_id");
+
+                    b.Property<long>("SkippedObjects")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("skipped_objects");
+
+                    b.Property<long>("SnapshotFilesScanned")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("snapshot_files_scanned");
+
+                    b.Property<string>("StartedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("started_at");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("status");
+
+                    b.Property<long>("StorageBytesScanned")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("storage_bytes_scanned");
+
+                    b.Property<Guid>("StorageId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("storage_id");
+
+                    b.Property<long>("StorageObjectsScanned")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("storage_objects_scanned");
+
+                    b.Property<string>("StorageTag")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("storage_tag");
+
+                    b.Property<string>("UpdatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<long>("UploadedHashRowsDeleted")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("uploaded_hash_rows_deleted");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActiveStorageId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "StartedAt");
+
+                    b.ToTable("storage_cleanup_jobs");
+                });
+
             modelBuilder.Entity("Octockup.Server.Database.UploadedHash", b =>
                 {
                     b.Property<Guid>("Id")

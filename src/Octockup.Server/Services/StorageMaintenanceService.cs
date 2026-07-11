@@ -29,13 +29,20 @@ namespace Octockup.Server.Services
                 .OrderBy(x => x.Tag)
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
+            IReadOnlyList<StorageCleanupJobDto> jobs = await _jobManager
+                .GetJobsAsync(userId, cancellationToken)
+                .ConfigureAwait(false);
+            Dictionary<Guid, StorageCleanupJobDto> jobsByStorage = jobs
+                .ToDictionary(x => x.StorageId);
 
             List<StorageMaintenanceSummaryDto> summaries = [];
             foreach (Module storage in storages)
             {
                 StorageMaintenanceSummaryDto summary = storage.Adapt<StorageMaintenanceSummaryDto>();
-                summary.ActiveJob = _jobManager.GetActiveJob(storage.Id);
-                summary.LastJob = _jobManager.GetLastJob(storage.Id);
+                if (jobsByStorage.TryGetValue(storage.Id, out StorageCleanupJobDto? job))
+                {
+                    AssignJob(summary, job);
+                }
                 summaries.Add(summary);
             }
 
@@ -62,17 +69,24 @@ namespace Octockup.Server.Services
             }
 
             StorageMaintenanceSummaryDto summary = storage.Adapt<StorageMaintenanceSummaryDto>();
-            await FillDatabaseStatsAsync(summary, storage.Id, cancellationToken).ConfigureAwait(false);
+            IReadOnlyList<StorageCleanupJobDto> jobs = await _jobManager
+                .GetJobsAsync(userId, cancellationToken)
+                .ConfigureAwait(false);
+            StorageCleanupJobDto? job = jobs.FirstOrDefault(x => x.StorageId == storage.Id);
+            await FillDatabaseStatsAsync(summary, storage.Id, job, cancellationToken).ConfigureAwait(false);
             await FillCapacityAsync(summary, storage, cancellationToken).ConfigureAwait(false);
-            summary.ActiveJob = _jobManager.GetActiveJob(storage.Id);
-            summary.LastJob = _jobManager.GetLastJob(storage.Id);
+            if (job is not null)
+            {
+                AssignJob(summary, job);
+            }
             return summary;
         }
 
-        public Task<IReadOnlyList<StorageCleanupJobDto>> GetJobsAsync(Guid userId)
+        public Task<IReadOnlyList<StorageCleanupJobDto>> GetJobsAsync(
+            Guid userId,
+            CancellationToken cancellationToken)
         {
-            IReadOnlyList<StorageCleanupJobDto> jobs = _jobManager.GetJobs(userId);
-            return Task.FromResult(jobs);
+            return _jobManager.GetJobsAsync(userId, cancellationToken);
         }
 
         public Task<StorageCleanupJobDto> StartCleanupAsync(
@@ -83,14 +97,18 @@ namespace Octockup.Server.Services
             return _jobManager.StartAsync(userId, storageId, cancellationToken);
         }
 
-        public bool CancelCleanup(Guid userId, Guid jobId)
+        public Task<bool> CancelCleanupAsync(
+            Guid userId,
+            Guid jobId,
+            CancellationToken cancellationToken)
         {
-            return _jobManager.Cancel(userId, jobId);
+            return _jobManager.CancelAsync(userId, jobId, cancellationToken);
         }
 
         private async Task FillDatabaseStatsAsync(
             StorageMaintenanceSummaryDto summary,
             Guid storageId,
+            StorageCleanupJobDto? job,
             CancellationToken cancellationToken)
         {
             summary.TotalBackups = await _dbContext.Backups
@@ -115,7 +133,6 @@ namespace Octockup.Server.Services
             summary.IndexedOriginalSize = chunkSizes?.IndexedOriginalSize ?? 0;
             summary.IndexedStoredSize = chunkSizes?.IndexedStoredSize ?? 0;
 
-            StorageCleanupJobDto? job = _jobManager.GetActiveJob(storageId) ?? _jobManager.GetLastJob(storageId);
             if (job is null)
             {
                 return;
@@ -124,6 +141,19 @@ namespace Octockup.Server.Services
             summary.ReferenceCount = job.ReferenceCount;
             summary.ReferencedChunks = job.ReferencedChunks;
             summary.DeduplicatedChunks = Math.Max(0, job.ReferenceCount - job.ReferencedChunks);
+        }
+
+        private static void AssignJob(
+            StorageMaintenanceSummaryDto summary,
+            StorageCleanupJobDto job)
+        {
+            if (job.Status is StorageCleanupStatus.Pending or StorageCleanupStatus.Running)
+            {
+                summary.ActiveJob = job;
+                return;
+            }
+
+            summary.LastJob = job;
         }
 
         private async Task FillCapacityAsync(

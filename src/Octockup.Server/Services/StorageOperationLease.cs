@@ -36,6 +36,8 @@ namespace Octockup.Server.Services
             _heartbeatTask = RunHeartbeatAsync(_lifetimeCancellation.Token);
         }
 
+        public Guid OperationId => _operationId;
+        public Guid StorageId => _storageId;
         public CancellationToken LeaseLostToken => _leaseLostCancellation.Token;
 
         public async Task EnsureOwnedAsync(CancellationToken cancellationToken)
