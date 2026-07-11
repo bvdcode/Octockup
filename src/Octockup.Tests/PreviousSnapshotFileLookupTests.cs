@@ -103,6 +103,61 @@ namespace Octockup.Tests
                 Throws.InstanceOf<ArgumentOutOfRangeException>());
         }
 
+        [Test]
+        [NonParallelizable]
+        public async Task LoadBatchAsync_ProcessesMoreThanOneMillionPathsWithBoundedMemory()
+        {
+            const int pathCount = 1_000_001;
+            const long maximumRetainedGrowth = 64L * 1024 * 1024;
+            PreviousSnapshotFileLookup lookup = new(_dbContext);
+            await lookup.InitializeAsync(_backupId, CancellationToken.None);
+            using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(45));
+            await lookup.LoadBatchAsync(
+                ["generated/warmup"],
+                timeout.Token);
+            long baselineMemory = GC.GetTotalMemory(true);
+            long maximumMemory = baselineMemory;
+            int processed = 0;
+            int batchCount = 0;
+
+            while (processed < pathCount)
+            {
+                int currentBatchSize = Math.Min(
+                    PreviousSnapshotFileLookup.MaxBatchSize,
+                    pathCount - processed);
+                string[] paths = new string[currentBatchSize];
+                for (int index = 0; index < currentBatchSize; index++)
+                {
+                    paths[index] = "generated/" + (processed + index).ToString("D7");
+                }
+
+                IReadOnlyDictionary<string, SnapshotFile> files = await lookup.LoadBatchAsync(
+                    paths,
+                    timeout.Token);
+                Assert.That(files, Is.Empty);
+                processed += currentBatchSize;
+                batchCount++;
+                if (batchCount % 200 == 0)
+                {
+                    maximumMemory = Math.Max(maximumMemory, GC.GetTotalMemory(false));
+                }
+            }
+
+            long retainedMemory = GC.GetTotalMemory(true);
+            maximumMemory = Math.Max(maximumMemory, retainedMemory);
+            Assert.Multiple(() =>
+            {
+                Assert.That(processed, Is.EqualTo(pathCount));
+                Assert.That(batchCount, Is.EqualTo(2_001));
+                Assert.That(
+                    maximumMemory - baselineMemory,
+                    Is.LessThan(maximumRetainedGrowth));
+                Assert.That(
+                    retainedMemory - baselineMemory,
+                    Is.LessThan(maximumRetainedGrowth));
+            });
+        }
+
         private static Module CreateModule(
             User user,
             string tag,

@@ -452,6 +452,69 @@ namespace Octockup.Tests
             });
         }
 
+        [Test]
+        [NonParallelizable]
+        public async Task RunAsync_WhenInventoryExceedsOneMillionObjects_KeepsMemoryBounded()
+        {
+            const int objectCount = 1_000_001;
+            const long maximumRetainedGrowth = 64L * 1024 * 1024;
+            await using SqliteConnection connection = new("Data Source=:memory:");
+            await connection.OpenAsync();
+            await using SqliteDbContext dbContext = await CreateDbContextAsync(connection);
+            (Guid userId, _, _, Guid storageId, _) = await SeedBackupAsync(dbContext);
+            GeneratedInventoryStorage storage = new(objectCount);
+            StorageCleanupRunner runner = new(
+                new TestCipher(),
+                dbContext,
+                NullLogger<StorageCleanupRunner>.Instance,
+                [storage],
+                CreateReferenceIndexer(dbContext));
+            StorageCleanupJobState state = new(
+                Guid.NewGuid(),
+                userId,
+                storageId,
+                "storage",
+                DateTime.UtcNow);
+            using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(45));
+            int checkpointCount = 0;
+            long baselineMemory = GC.GetTotalMemory(true);
+            long maximumMemory = baselineMemory;
+
+            await runner.RunAsync(
+                state,
+                (_, _) => Task.CompletedTask,
+                (_, _) =>
+                {
+                    checkpointCount++;
+                    if (checkpointCount % 200 == 0)
+                    {
+                        maximumMemory = Math.Max(maximumMemory, GC.GetTotalMemory(false));
+                    }
+                    return Task.CompletedTask;
+                },
+                new ImmediateStorageOperationLease(storageId),
+                timeout.Token);
+
+            StorageCleanupJobDto result = state.Snapshot();
+            long retainedMemory = GC.GetTotalMemory(true);
+            maximumMemory = Math.Max(maximumMemory, retainedMemory);
+            Assert.Multiple(() =>
+            {
+                Assert.That(storage.EnumeratedCount, Is.EqualTo(objectCount));
+                Assert.That(result.StorageObjectsScanned, Is.EqualTo(objectCount));
+                Assert.That(result.SkippedObjects, Is.EqualTo(objectCount));
+                Assert.That(result.ChunkObjectsScanned, Is.Zero);
+                Assert.That(result.CurrentPath, Is.Null);
+                Assert.That(checkpointCount, Is.EqualTo(2_003));
+                Assert.That(
+                    maximumMemory - baselineMemory,
+                    Is.LessThan(maximumRetainedGrowth));
+                Assert.That(
+                    retainedMemory - baselineMemory,
+                    Is.LessThan(maximumRetainedGrowth));
+            });
+        }
+
         private static SnapshotChunkReferenceIndexer CreateReferenceIndexer(AppDbContext dbContext)
         {
             SnapshotChunkReferenceWriter writer = new(
@@ -667,6 +730,105 @@ namespace Octockup.Tests
 
             public Task UploadAsync(string path, Stream data, CancellationToken cancellationToken = default) =>
                 Task.CompletedTask;
+        }
+
+        private class GeneratedInventoryStorage(int objectCount) :
+            IBackupStorage,
+            IBackupStorageInventory
+        {
+            private const string MetadataPrefix = "metadata/";
+
+            public string Id => nameof(TestStorage);
+            public string Name => nameof(GeneratedInventoryStorage);
+            public char PathSeparator => '/';
+            public IEnumerable<string> RequiredParameters => [];
+            public int EnumeratedCount { get; private set; }
+
+            public void SetParameters(IReadOnlyDictionary<string, string> parameters)
+            {
+            }
+
+            public void SetIgnoredPaths(ICollection<string>? ignoredPaths)
+            {
+            }
+
+            public Task<BackupFileInfo?> GetFileInfoAsync(
+                string path,
+                CancellationToken cancellationToken) =>
+                Task.FromResult<BackupFileInfo?>(null);
+
+            public Task<Stream> GetFileStreamAsync(
+                BackupFileInfo file,
+                CancellationToken cancellationToken = default) =>
+                Task.FromResult<Stream>(Stream.Null);
+
+            public IEnumerable<string> GetDirectories(
+                bool recursive = false,
+                CancellationToken cancellationToken = default) => [];
+
+            public IEnumerable<BackupFileInfo> GetFiles(
+                bool recursive = false,
+                CancellationToken cancellationToken = default)
+            {
+                for (int index = 0; index < objectCount; index++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    yield return CreateFile(index);
+                }
+            }
+
+            public IAsyncEnumerable<BackupFileInfo> GetFilesAsync(
+                bool recursive = false,
+                CancellationToken cancellationToken = default) =>
+                GetFilesAfterAsync(null, recursive, cancellationToken);
+
+            public async IAsyncEnumerable<BackupFileInfo> GetFilesAfterAsync(
+                string? afterPath,
+                bool recursive = false,
+                [EnumeratorCancellation] CancellationToken cancellationToken = default)
+            {
+                int startIndex = afterPath is null
+                    ? 0
+                    : int.Parse(afterPath.AsSpan(MetadataPrefix.Length)) + 1;
+                for (int index = startIndex; index < objectCount; index++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (index > startIndex && index % 10_000 == 0)
+                    {
+                        await Task.Yield();
+                    }
+
+                    EnumeratedCount++;
+                    yield return CreateFile(index);
+                }
+            }
+
+            public Task<bool?> ExistsAsync(
+                string path,
+                CancellationToken cancellationToken = default) =>
+                Task.FromResult<bool?>(false);
+
+            public Task<bool?> DeleteAsync(
+                string path,
+                CancellationToken cancellationToken = default) =>
+                Task.FromResult<bool?>(false);
+
+            public Task UploadAsync(
+                string path,
+                Stream data,
+                CancellationToken cancellationToken = default) =>
+                Task.CompletedTask;
+
+            private static BackupFileInfo CreateFile(int index)
+            {
+                string path = MetadataPrefix + index.ToString("D7");
+                return new BackupFileInfo
+                {
+                    Path = path,
+                    Name = Path.GetFileName(path),
+                    Size = 1
+                };
+            }
         }
 
         private class TestCipher : IStreamCipher
