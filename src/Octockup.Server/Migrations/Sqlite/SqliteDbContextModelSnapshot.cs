@@ -403,9 +403,9 @@ namespace Octockup.Server.Migrations.Sqlite
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BackupId");
-
                     b.HasIndex("ScheduleId");
+
+                    b.HasIndex("BackupId", "CompletedAt", "Id");
 
                     b.ToTable("snapshots");
                 });
@@ -498,6 +498,8 @@ namespace Octockup.Server.Migrations.Sqlite
                         .IsUnique();
 
                     b.HasIndex("UserId", "StartedAt");
+
+                    b.HasIndex("UserId", "SnapshotId", "StartedAt");
 
                     b.ToTable("snapshot_archive_jobs");
                 });

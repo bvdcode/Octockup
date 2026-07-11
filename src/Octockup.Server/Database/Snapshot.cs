@@ -8,6 +8,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace Octockup.Server.Database
 {
     [Table("snapshots")]
+    [Index(nameof(BackupId), nameof(CompletedAt), nameof(Id))]
     public class Snapshot : BaseEntity<Guid>
     {
         [Column("backup_id")]

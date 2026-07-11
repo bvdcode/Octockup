@@ -11,6 +11,7 @@ namespace Octockup.Server.Database
     [Table("snapshot_archive_jobs")]
     [Index(nameof(ActiveSnapshotId), IsUnique = true)]
     [Index(nameof(UserId), nameof(StartedAt))]
+    [Index(nameof(UserId), nameof(SnapshotId), nameof(StartedAt))]
     public class SnapshotArchiveJob : BaseEntity<Guid>
     {
         [Column("user_id")]
