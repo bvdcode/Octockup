@@ -121,6 +121,12 @@ export default function BackupsPage() {
     };
   }, [backupsApi]);
 
+  useEffect(() => {
+    if (isConnected) {
+      void reloadBackups();
+    }
+  }, [isConnected, reloadBackups]);
+
   // WebSocket listener for schedule reports
   useEffect(() => {
     if (!connection || !isConnected) return;

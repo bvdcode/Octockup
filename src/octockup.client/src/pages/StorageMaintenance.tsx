@@ -119,6 +119,14 @@ export default function StorageMaintenancePage() {
   }, [api]);
 
   useEffect(() => {
+    if (!isConnected) return;
+
+    void Promise.all([reloadSummaries(), reloadJobs()]).catch(() => {
+      setError(t("storageMaintenance.loadFailed"));
+    });
+  }, [isConnected, reloadJobs, reloadSummaries, t]);
+
+  useEffect(() => {
     let active = true;
     reloadSummaries()
       .catch((e) => {
@@ -142,7 +150,9 @@ export default function StorageMaintenancePage() {
       upsertJob(job);
       if (!isActiveJob(job)) {
         setTimeout(() => {
-          void reloadSummaries();
+          void reloadSummaries().catch(() => {
+            setError(t("storageMaintenance.loadFailed"));
+          });
         }, 750);
       }
     };
@@ -160,7 +170,7 @@ export default function StorageMaintenancePage() {
       connection.off("StorageCleanupProgress", handler);
       throttler.dispose();
     };
-  }, [connection, isConnected, reloadSummaries, upsertJob]);
+  }, [connection, isConnected, reloadSummaries, t, upsertJob]);
 
   const hasActiveJobs = useMemo(
     () => Object.values(jobs).some((job) => isActiveJob(job)),
@@ -170,7 +180,7 @@ export default function StorageMaintenancePage() {
   useEffect(() => {
     const interval = window.setInterval(
       () => {
-        void reloadJobs();
+        void reloadJobs().catch(() => undefined);
       },
       hasActiveJobs ? 2000 : 10000,
     );
