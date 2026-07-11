@@ -9,6 +9,7 @@ using Octockup.Server.Database;
 using Octockup.Server.Helpers;
 using Octockup.Server.Models;
 using Octockup.Server.Streams;
+using System.Runtime.CompilerServices;
 
 namespace Octockup.Tests
 {
@@ -149,6 +150,14 @@ namespace Octockup.Tests
             public IEnumerable<string> GetDirectories(bool recursive = false, CancellationToken cancellationToken = default) => [];
 
             public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false, CancellationToken cancellationToken = default) => [];
+
+            public async IAsyncEnumerable<BackupFileInfo> GetFilesAsync(
+                bool recursive = false,
+                [EnumeratorCancellation] CancellationToken cancellationToken = default)
+            {
+                await Task.Yield();
+                yield break;
+            }
 
             public Task<bool?> ExistsAsync(string path, CancellationToken cancellationToken = default) =>
                 Task.FromResult<bool?>(path == ChunkStorageHelpers.GetStoragePath(Hash, PathSeparator));

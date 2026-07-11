@@ -6,6 +6,7 @@ using MailKit.Net.Imap;
 using Octockup.Server.Abstractions;
 using Octockup.Server.Helpers;
 using Octockup.Server.Models;
+using System.Runtime.CompilerServices;
 
 namespace Octockup.Server.Modules
 {
@@ -245,6 +246,18 @@ namespace Octockup.Server.Modules
                 {
                     yield return file;
                 }
+            }
+        }
+
+        public async IAsyncEnumerable<BackupFileInfo> GetFilesAsync(
+            bool recursive = false,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            foreach (BackupFileInfo file in GetFiles(recursive, cancellationToken))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return file;
+                await Task.Yield();
             }
         }
 

@@ -1,147 +1,75 @@
 ﻿// SPDX-License-Identifier: MIT
 // Copyright (c) 2025 Vadim Belov <https://belov.us>
 
-using System.Collections;
-using System.Runtime.ExceptionServices;
+using System.Threading.Channels;
 
 namespace Octockup.Server.Collections
 {
-    public class LazyLoader<T>(IEnumerable<T> lazyCollection) : IEnumerable<T>, IDisposable
+    public class LazyLoader<T> : IAsyncDisposable
     {
-        private readonly IEnumerable<T> _lazyCollection = lazyCollection ?? throw new ArgumentNullException(nameof(lazyCollection));
-
-        private readonly object _sync = new();
-        private readonly Queue<T> _buffer = new();
-
-        private bool _loadingStarted;
-        private bool _isCompleted;
+        private readonly Channel<T> _channel;
+        private readonly CancellationTokenSource _loadingCancellationTokenSource;
+        private readonly Task _loadingTask;
         private int _totalLoaded;
-        private Exception? _loadingException;
-        private readonly ManualResetEventSlim _itemOrCompleted = new(initialState: false);
+        private int _isCompleted;
 
-        public bool IsEnumerationCompleted
+        public LazyLoader(
+            IAsyncEnumerable<T> lazyCollection,
+            int capacity,
+            CancellationToken cancellationToken)
         {
-            get
+            ArgumentNullException.ThrowIfNull(lazyCollection);
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(capacity);
+
+            _channel = Channel.CreateBounded<T>(new BoundedChannelOptions(capacity)
             {
-                lock (_sync)
+                SingleReader = true,
+                SingleWriter = true,
+                FullMode = BoundedChannelFullMode.Wait
+            });
+            _loadingCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            _loadingTask = LoadAsync(lazyCollection, _loadingCancellationTokenSource.Token);
+        }
+
+        public bool IsEnumerationCompleted => Volatile.Read(ref _isCompleted) == 1;
+
+        public int Total => Volatile.Read(ref _totalLoaded);
+
+        public IAsyncEnumerable<T> ReadAllAsync(CancellationToken cancellationToken = default) =>
+            _channel.Reader.ReadAllAsync(cancellationToken);
+
+        private async Task LoadAsync(IAsyncEnumerable<T> lazyCollection, CancellationToken cancellationToken)
+        {
+            Exception? loadingException = null;
+            try
+            {
+                await foreach (T item in lazyCollection
+                    .WithCancellation(cancellationToken)
+                    .ConfigureAwait(false))
                 {
-                    return _isCompleted;
+                    await _channel.Writer.WriteAsync(item, cancellationToken).ConfigureAwait(false);
+                    Interlocked.Increment(ref _totalLoaded);
                 }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+            }
+            catch (Exception ex)
+            {
+                loadingException = ex;
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _isCompleted, 1);
+                _channel.Writer.TryComplete(loadingException);
             }
         }
 
-        public int Total
+        public async ValueTask DisposeAsync()
         {
-            get
-            {
-                lock (_sync)
-                {
-                    return _totalLoaded;
-                }
-            }
-        }
-
-        public IEnumerator<T> GetEnumerator()
-        {
-            StartBackgroundLoadingIfNeeded();
-
-            while (true)
-            {
-                T item;
-                bool shouldWait;
-                bool hasItem;
-
-                lock (_sync)
-                {
-                    if (_buffer.Count > 0)
-                    {
-                        item = _buffer.Dequeue();
-                        hasItem = true;
-                        shouldWait = false;
-                    }
-                    else if (_isCompleted)
-                    {
-                        if (_loadingException is not null)
-                        {
-                            ExceptionDispatchInfo.Capture(_loadingException).Throw();
-                        }
-
-                        yield break;
-                    }
-                    else
-                    {
-                        shouldWait = true;
-                        hasItem = false;
-                        item = default!;
-                    }
-                }
-
-                if (shouldWait)
-                {
-                    _itemOrCompleted.Wait();
-                    _itemOrCompleted.Reset();
-                    continue;
-                }
-
-                if (hasItem)
-                {
-                    yield return item;
-                }
-            }
-        }
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerator();
-        }
-
-        private void StartBackgroundLoadingIfNeeded()
-        {
-            lock (_sync)
-            {
-                if (_loadingStarted)
-                {
-                    return;
-                }
-
-                _loadingStarted = true;
-
-                _ = Task.Run(() =>
-                {
-                    try
-                    {
-                        foreach (var item in _lazyCollection)
-                        {
-                            lock (_sync)
-                            {
-                                _buffer.Enqueue(item);
-                                _totalLoaded++;
-                                _itemOrCompleted.Set();
-                            }
-                        }
-
-                        lock (_sync)
-                        {
-                            _isCompleted = true;
-                            _itemOrCompleted.Set();
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        lock (_sync)
-                        {
-                            _loadingException = ex;
-                            _isCompleted = true;
-                            _itemOrCompleted.Set();
-                        }
-                    }
-                });
-            }
-        }
-
-        public void Dispose()
-        {
-            _itemOrCompleted.Dispose();
+            await _loadingCancellationTokenSource.CancelAsync().ConfigureAwait(false);
+            await _loadingTask.ConfigureAwait(false);
+            _loadingCancellationTokenSource.Dispose();
             GC.SuppressFinalize(this);
         }
     }

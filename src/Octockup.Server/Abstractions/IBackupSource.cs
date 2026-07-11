@@ -17,5 +17,8 @@ namespace Octockup.Server.Abstractions
         Task<Stream> GetFileStreamAsync(BackupFileInfo file, CancellationToken cancellationToken = default);
         IEnumerable<string> GetDirectories(bool recursive = false, CancellationToken cancellationToken = default);
         IEnumerable<BackupFileInfo> GetFiles(bool recursive = false, CancellationToken cancellationToken = default);
+        IAsyncEnumerable<BackupFileInfo> GetFilesAsync(
+            bool recursive = false,
+            CancellationToken cancellationToken = default);
     }
 }

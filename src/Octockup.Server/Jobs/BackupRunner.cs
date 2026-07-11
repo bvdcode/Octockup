@@ -28,6 +28,7 @@ namespace Octockup.Server.Jobs
         IEnumerable<IBackupProvider> providers)
     {
         private const int ChunkSize = 8 * 1024 * 1024;
+        private const int FileEnumerationBufferCapacity = 1_000;
         private readonly List<UploadedHash> _pendingUploadedHashes = [];
         private readonly Stopwatch _uploadedHashesStopwatch = Stopwatch.StartNew();
         private const int UploadedHashesFlushCount = 500; // flush every 500 new hashes
@@ -62,7 +63,9 @@ namespace Octockup.Server.Jobs
                 // Set ignored paths before enumerating files
                 sourceProvider.SetIgnoredPaths(schedule.Backup.IgnoredPaths);
 
-                var filesToBackup = sourceProvider.GetFiles(recursive: true, cancellationToken: cancellationToken);
+                IAsyncEnumerable<BackupFileInfo> filesToBackup = sourceProvider.GetFilesAsync(
+                    recursive: true,
+                    cancellationToken: cancellationToken);
                 await BackupAsync(schedule, sourceProvider, storageProvider, report, filesToBackup, cancellationToken);
 
                 schedule.Status = ScheduleStatus.Completed;
@@ -162,11 +165,14 @@ namespace Octockup.Server.Jobs
             IBackupSource source,
             IBackupStorage storage,
             ScheduleReport report,
-            IEnumerable<BackupFileInfo> lazyFiles,
+            IAsyncEnumerable<BackupFileInfo> lazyFiles,
             CancellationToken cancellationToken)
         {
             Snapshot snapshot = await CreateNewSnapshotWithTracking(schedule.BackupId, cancellationToken);
-            using LazyLoader<BackupFileInfo> loader = new(lazyFiles);
+            await using LazyLoader<BackupFileInfo> loader = new(
+                lazyFiles,
+                FileEnumerationBufferCapacity,
+                cancellationToken);
             HashSet<string> uploadedChunks = await LoadChunkHashesAsync(schedule.Backup.StorageId, cancellationToken);
             var previousFiles = await GetFilesFromLastSnapshotAsync(schedule.BackupId, cancellationToken);
             logger.LogInformation("Previous snapshot had {Count} files", previousFiles.Count);
@@ -175,7 +181,7 @@ namespace Octockup.Server.Jobs
             Stopwatch stopwatch = Stopwatch.StartNew();
 
             cancellationToken.ThrowIfCancellationRequested();
-            foreach (var file in loader)
+            await foreach (BackupFileInfo file in loader.ReadAllAsync(cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 counter = await ProcessFileAsync(
@@ -193,6 +199,8 @@ namespace Octockup.Server.Jobs
                     cancellationToken);
             }
 
+            report.Total = loader.Total;
+            report.IsEnumerationCompleted = true;
             await FinalizeSnapshotAsync(snapshot, loader, report, cancellationToken);
         }
 
