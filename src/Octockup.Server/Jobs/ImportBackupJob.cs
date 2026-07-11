@@ -1,132 +1,99 @@
-﻿// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 // Copyright (c) 2025 Vadim Belov <https://belov.us>
 
-using EasyExtensions.Abstractions;
 using EasyExtensions.Quartz.Attributes;
-using Microsoft.EntityFrameworkCore;
-using Octockup.Server.Database;
 using Octockup.Server.Helpers;
+using Octockup.Server.Services;
 using Quartz;
-using System.Collections.Concurrent;
-using System.IO.Compression;
-using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
 
 namespace Octockup.Server.Jobs
 {
     [JobTrigger(days: 365, startNow: false)]
     public class ImportBackupJob(
-        IStreamCipher _crypto,
-        AppDbContext _dbContext,
+        ServerBackupImportService _importService,
         ILogger<ImportBackupJob> _logger) : IJob
     {
-        private const int BATCH_SIZE = 500;
-        private static readonly ConcurrentDictionary<Type, Action<object, Guid>?> _idSetterCache = new();
-        private static readonly Lazy<JsonSerializerOptions> _jsonOptions = new(CreateOptions);
-
-        public static JsonSerializerOptions CreateOptions()
-        {
-            var resolver = new DefaultJsonTypeInfoResolver();
-            resolver.Modifiers.Add(static ti =>
-            {
-                if (ti.Kind != JsonTypeInfoKind.Object)
-                {
-                    return;
-                }
-
-                var jsonProp = ti.Properties.FirstOrDefault(p =>
-                    string.Equals(p.Name, "Id", StringComparison.Ordinal) &&
-                    p.PropertyType == typeof(Guid));
-
-                if (jsonProp is null)
-                {
-                    return;
-                }
-
-                if (jsonProp.Set is not null)
-                {
-                    return;
-                }
-
-                var idPropInfo = ti.Type.GetProperty("Id",
-                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-
-                var setMethod = idPropInfo?.GetSetMethod(nonPublic: true);
-                if (setMethod is null)
-                {
-                    return;
-                }
-
-                var setter = _idSetterCache.GetOrAdd(ti.Type, _ =>
-                {
-                    return (obj, value) => setMethod.Invoke(obj, [value]);
-                });
-
-                jsonProp.Set = (obj, value) =>
-                {
-                    setter?.Invoke(obj!, (Guid)value!);
-                };
-            });
-
-            return new JsonSerializerOptions
-            {
-                IncludeFields = true,
-                TypeInfoResolver = resolver,
-                PropertyNameCaseInsensitive = true
-            };
-        }
-
         public async Task Execute(IJobExecutionContext context)
         {
             CancellationToken cancellationToken = context.CancellationToken;
-
-            string importBaseDir = Path.Combine(Path.GetTempPath(), "octockup-imports");
-            if (!Directory.Exists(importBaseDir))
+            string importBaseDirectory = Path.Combine(
+                Path.GetTempPath(),
+                "octockup-imports");
+            if (!Directory.Exists(importBaseDirectory))
             {
                 return;
             }
 
-            foreach (var userDir in Directory.GetDirectories(importBaseDir))
+            foreach (string userDirectory in Directory.GetDirectories(importBaseDirectory))
             {
-                if (!Guid.TryParse(Path.GetFileName(userDir), out Guid userId))
+                if (!Guid.TryParse(
+                    Path.GetFileName(userDirectory),
+                    out Guid userId))
                 {
-                    _logger.LogWarning("Invalid user directory name: {UserDir}", userDir);
+                    _logger.LogWarning(
+                        "Skipping import directory with invalid user ID {DirectoryName}.",
+                        Path.GetFileName(userDirectory));
                     continue;
                 }
 
-                await ProcessUserDirectoryAsync(userId, userDir, cancellationToken);
+                await ProcessUserDirectoryAsync(
+                    userId,
+                    userDirectory,
+                    cancellationToken).ConfigureAwait(false);
             }
         }
 
-        private async Task ProcessUserDirectoryAsync(Guid userId, string userDir, CancellationToken cancellationToken)
+        private async Task ProcessUserDirectoryAsync(
+            Guid userId,
+            string userDirectory,
+            CancellationToken cancellationToken)
         {
-            foreach (var importFile in Directory.GetFiles(userDir, "*." + CompressionHelpers.Extension))
+            string searchPattern = "*." + CompressionHelpers.Extension;
+            foreach (string importFile in Directory.GetFiles(
+                userDirectory,
+                searchPattern))
             {
-                await ProcessSingleFileWithFailureHandlingAsync(userId, importFile, cancellationToken);
+                await ProcessFileAsync(
+                    userId,
+                    importFile,
+                    cancellationToken).ConfigureAwait(false);
             }
 
-            // Delete directory only when empty
-            if (!Directory.EnumerateFileSystemEntries(userDir).Any())
+            if (!Directory.EnumerateFileSystemEntries(userDirectory).Any())
             {
-                Directory.Delete(userDir);
-                _logger.LogInformation("Deleted empty user import directory: {UserDir}", userDir);
+                Directory.Delete(userDirectory);
             }
         }
 
-        private async Task ProcessSingleFileWithFailureHandlingAsync(Guid userId, string importFile, CancellationToken cancellationToken)
+        private async Task ProcessFileAsync(
+            Guid userId,
+            string importFile,
+            CancellationToken cancellationToken)
         {
             try
             {
-                _logger.LogInformation("Processing import file: {ImportFile}", importFile);
-                await ProcessImportFileAsync(userId, importFile, cancellationToken);
-
+                _logger.LogInformation(
+                    "Processing server backup import for user {UserId}.",
+                    userId);
+                await _importService.ImportAsync(
+                    userId,
+                    importFile,
+                    cancellationToken).ConfigureAwait(false);
                 File.Delete(importFile);
-                _logger.LogInformation("Successfully processed and deleted import file: {ImportFile}", importFile);
+                _logger.LogInformation(
+                    "Server backup import completed for user {UserId}.",
+                    userId);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to process import file: {ImportFile}", importFile);
-
+                _logger.LogError(
+                    ex,
+                    "Server backup import failed for user {UserId}.",
+                    userId);
                 string failedPath = importFile + ".failed";
                 if (File.Exists(failedPath))
                 {
@@ -134,171 +101,7 @@ namespace Octockup.Server.Jobs
                 }
 
                 File.Move(importFile, failedPath);
-                _logger.LogInformation("Renamed failed import file to: {FailedPath}", failedPath);
             }
-        }
-
-        private async Task ProcessImportFileAsync(Guid userId, string filePath, CancellationToken cancellationToken)
-        {
-            _logger.LogInformation("Starting import for user {UserId} from file {FilePath}", userId, filePath);
-
-            var user = await ResolveTargetUserAsync(userId, cancellationToken);
-            if (user is null)
-            {
-                _logger.LogWarning("User {UserId} not found, skipping import", userId);
-                return;
-            }
-
-            await using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-            await using var decompressedStream = CompressionHelpers.CreateDecompressionStream(fileStream);
-            using var decryptedStream = new MemoryStream();
-
-            await _crypto.DecryptAsync(decompressedStream, decryptedStream, ct: cancellationToken);
-            decryptedStream.Seek(0, SeekOrigin.Begin);
-
-            var importData = await JsonSerializer.DeserializeAsync<ImportData>(
-                decryptedStream,
-                options: _jsonOptions.Value,
-                cancellationToken: cancellationToken);
-
-            if (importData == null)
-            {
-                _logger.LogWarning("Failed to deserialize import data from file {FilePath}", filePath);
-                return;
-            }
-
-            _logger.LogInformation(
-                "Import data contains: {ModuleCount} modules, {BackupCount} backups, {ScheduleCount} schedules, {SnapshotCount} snapshots, {SnapshotFileCount} snapshot files",
-                importData.Modules.Count,
-                importData.Backups.Count,
-                importData.Schedules.Count,
-                importData.Snapshots.Count,
-                importData.SnapshotFiles.Count);
-
-            // Simply update UserId WITHOUT restoring navigations
-            foreach (var item in importData.Modules)
-            {
-                item.UserId = user.Id;
-            }
-            foreach (var item in importData.Backups)
-            {
-                item.UserId = user.Id;
-            }
-            foreach (var item in importData.SnapshotFiles)
-            {
-                item.ChunkReferencesIndexed = false;
-            }
-
-            _logger.LogInformation("Saving imported data to the database for user {UserId} in batches...", userId);
-
-            await using var tx = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
-
-            try
-            {
-                RestoreModuleParameters(importData);
-
-                // Modules - small, can be saved all at once, but DETACH after
-                _dbContext.Modules.AddRange(importData.Modules);
-                await _dbContext.SaveChangesAsync(cancellationToken);
-                _dbContext.ChangeTracker.Clear();
-                _logger.LogInformation("Imported {Count} modules", importData.Modules.Count);
-
-                // Backups - small, but DETACH after
-                _dbContext.Backups.AddRange(importData.Backups);
-                await _dbContext.SaveChangesAsync(cancellationToken);
-                _dbContext.ChangeTracker.Clear();
-                _logger.LogInformation("Imported {Count} backups", importData.Backups.Count);
-
-                // Schedules - small, but DETACH after
-                _dbContext.Schedules.AddRange(importData.Schedules);
-                await _dbContext.SaveChangesAsync(cancellationToken);
-                _dbContext.ChangeTracker.Clear();
-                _logger.LogInformation("Imported {Count} schedules", importData.Schedules.Count);
-
-                // Snapshots - in batches with DETACH
-                await SaveInBatchesWithDetachAsync(importData.Snapshots, _dbContext.Snapshots, "snapshots", cancellationToken);
-
-                // SnapshotFiles - LARGE, must be in batches + clear ChangeTracker
-                await SaveInBatchesWithDetachAsync(importData.SnapshotFiles, _dbContext.SnapshotFiles, "snapshot files", cancellationToken);
-
-                await tx.CommitAsync(cancellationToken);
-                _logger.LogInformation("Successfully committed import transaction for user {UserId}", userId);
-            }
-            catch
-            {
-                await tx.RollbackAsync(cancellationToken);
-                throw;
-            }
-
-            _logger.LogInformation("Successfully completed import for user {UserId} from file {FilePath}", userId, filePath);
-        }
-
-        private async Task<User?> ResolveTargetUserAsync(Guid userId, CancellationToken cancellationToken)
-        {
-            var user = await _dbContext.Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
-
-            int usersCount = await _dbContext.Users.CountAsync(cancellationToken);
-            if (usersCount == 1)
-            {
-                user = await _dbContext.Users
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(cancellationToken);
-                _logger.LogInformation("Only one user in the system, using user {UserId} for import", user?.Id);
-            }
-
-            return user;
-        }
-
-        private void RestoreModuleParameters(ImportData importData)
-        {
-            foreach (var module in importData.Modules)
-            {
-#pragma warning disable CS0618 // Type or member is obsolete
-                foreach (var item in module.Parameters)
-                {
-                    module.Params(_crypto)[item.Key] = item.Value;
-                    _logger.LogInformation("Restored parameter '{ParamKey}' for Module {ModuleId}.", item.Key, module.Id);
-                }
-#pragma warning restore CS0618 // Type or member is obsolete
-            }
-        }
-
-        private async Task SaveInBatchesWithDetachAsync<T>(List<T> items, DbSet<T> dbSet, string entityName, CancellationToken ct) where T : class
-        {
-            if (items.Count == 0)
-            {
-                return;
-            }
-
-            int totalBatches = (items.Count + BATCH_SIZE - 1) / BATCH_SIZE;
-            for (int i = 0; i < items.Count; i += BATCH_SIZE)
-            {
-                var batch = items.Skip(i).Take(BATCH_SIZE).ToList();
-                dbSet.AddRange(batch);
-                await _dbContext.SaveChangesAsync(ct);
-
-                // Clear ChangeTracker to free memory
-                _dbContext.ChangeTracker.Clear();
-
-                int currentBatch = (i / BATCH_SIZE) + 1;
-                _logger.LogInformation(
-                    "Imported batch {CurrentBatch}/{TotalBatches} of {EntityName} ({Count} items), memory freed",
-                    currentBatch,
-                    totalBatches,
-                    entityName,
-                    batch.Count);
-            }
-        }
-
-        private class ImportData
-        {
-            public List<Module> Modules { get; set; } = [];
-            public List<Backup> Backups { get; set; } = [];
-            public List<Schedule> Schedules { get; set; } = [];
-            public List<Snapshot> Snapshots { get; set; } = [];
-            public List<SnapshotFile> SnapshotFiles { get; set; } = [];
         }
     }
 }

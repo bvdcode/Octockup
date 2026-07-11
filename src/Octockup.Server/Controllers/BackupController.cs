@@ -222,25 +222,36 @@ namespace Octockup.Server.Controllers
                 return this.ApiNotFound("User not found: " + userId);
             }
 
-            _logger.LogInformation("User {UserId} is importing server backup data, file size: {FileSize} bytes", userId, file.Length);
+            _logger.LogInformation(
+                "User {UserId} uploaded a server backup import with {FileSize} bytes.",
+                userId,
+                file.Length);
 
-            // Create import directory if not exists
             string importDir = Path.Combine(Path.GetTempPath(), "octockup-imports", userId.ToString());
             Directory.CreateDirectory(importDir);
-
-            // Save uploaded file
-            string fileName = $"import-{DateTime.UtcNow:yyyyMMddHHmmss}.{CompressionHelpers.Extension}";
+            string transferId = Guid.NewGuid().ToString("N");
+            string fileName = $"import-{transferId}.{CompressionHelpers.Extension}";
             string filePath = Path.Combine(importDir, fileName);
-
-            _logger.LogInformation("Saving import file for user {UserId} to {FilePath}", userId, filePath);
-            await using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
+            string uploadingPath = filePath + ".uploading";
+            try
             {
-                await file.CopyToAsync(fileStream, ct);
+                await using FileStream fileStream = new(
+                    uploadingPath,
+                    FileMode.CreateNew,
+                    FileAccess.Write,
+                    FileShare.None,
+                    128 * 1024,
+                    FileOptions.Asynchronous | FileOptions.SequentialScan);
+                await file.CopyToAsync(fileStream, ct).ConfigureAwait(false);
+                await fileStream.FlushAsync(ct).ConfigureAwait(false);
+                System.IO.File.Move(uploadingPath, filePath);
+            }
+            catch
+            {
+                System.IO.File.Delete(uploadingPath);
+                throw;
             }
 
-            _logger.LogInformation("Saved import file for user {UserId} to {FilePath}, triggering import job", userId, filePath);
-
-            // Trigger the import job
             await _schedulerFactory.TriggerJobAsync<ImportBackupJob>();
 
             return Ok(new { message = "Import file uploaded successfully. Processing will begin shortly." });
