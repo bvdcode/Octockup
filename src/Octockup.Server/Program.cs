@@ -89,6 +89,7 @@ namespace Octockup.Server
                 .AddScoped<SnapshotArchiveRunner>()
                 .AddScoped<SnapshotArchiveExecutionService>()
                 .AddScoped<DownloadTicketService>()
+                .AddScoped<ServerBackupExportService>()
                 .AddScoped<RefreshSessionService>()
                 .AddScoped<BackupOwnershipInitializer>()
                 .AddScoped<ScheduleNextRunInitializer>()

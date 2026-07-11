@@ -2,7 +2,6 @@
 // Copyright (c) 2025 Vadim Belov <https://belov.us>
 
 using EasyExtensions;
-using EasyExtensions.Abstractions;
 using EasyExtensions.AspNetCore.Extensions;
 using EasyExtensions.Quartz.Extensions;
 using Mapster;
@@ -18,19 +17,16 @@ using Octockup.Server.Models.Requests;
 using Octockup.Server.Models.Results;
 using Octockup.Server.Services;
 using Quartz;
-using System.IO.Compression;
-using System.IO.Pipelines;
-using System.Text.Json;
 
 namespace Octockup.Server.Controllers
 {
     [ApiController]
     public class BackupController(
         AppDbContext _dbContext,
-        IStreamCipher _streamCipher,
         ISchedulerFactory _schedulerFactory,
         BackupDeletionService _backupDeletionService,
         DownloadTicketService _downloadTickets,
+        ServerBackupExportService _serverBackupExport,
         ILogger<BackupController> _logger) : ControllerBase
     {
         [AllowAnonymous]
@@ -58,94 +54,17 @@ namespace Octockup.Server.Controllers
                 return this.ApiNotFound("User not found: " + userId);
             }
 
-            _logger.LogInformation("User {UserId} requested server backup data.", userId);
-
-            var modules = await _dbContext.Modules
-                .AsNoTracking()
-                .Where(m => m.UserId == userId)
-                .ToListAsync(ct);
-            foreach (var item in modules)
-            {
-                var paramsDict = item.Params(_streamCipher).Snapshot();
-                foreach (var param in paramsDict)
-                {
-#pragma warning disable CS0618 // Type or member is obsolete
-                    item.Parameters[param.Key] = param.Value;
-#pragma warning restore CS0618 // Type or member is obsolete
-                }
-            }
-
-            _logger.LogInformation("Exported {ModuleCount} modules for user {UserId}.", modules.Count, userId);
-
-            var moduleIds = modules.Select(m => m.Id).ToList();
-
-            var backups = await _dbContext.Backups
-                .AsNoTracking()
-                .Where(b => moduleIds.Contains(b.SourceId))
-                .ToListAsync(ct);
-
-            _logger.LogInformation("Exported {BackupCount} backups for user {UserId}.", backups.Count, userId);
-
-            var backupIds = backups.Select(b => b.Id).ToList();
-
-            var schedules = await _dbContext.Schedules
-                .AsNoTracking()
-                .Where(s => backupIds.Contains(s.BackupId))
-                .ToListAsync(ct);
-
-            _logger.LogInformation("Exported {ScheduleCount} schedules for user {UserId}.", schedules.Count, userId);
-
-            var snapshots = await _dbContext.Snapshots
-                .AsNoTracking()
-                .Where(s => backupIds.Contains(s.BackupId))
-                .ToListAsync(ct);
-
-            _logger.LogInformation("Exported {SnapshotCount} snapshots for user {UserId}.", snapshots.Count, userId);
-
-            var snapshotIds = includeFiles ? snapshots.Select(s => s.Id).ToList() : [];
-            List<SnapshotFile> snapshotFiles = includeFiles ? await _dbContext.SnapshotFiles
-                .AsNoTracking()
-                .Where(sf => snapshotIds.Contains(sf.SnapshotId))
-                .ToListAsync(ct) : [];
-
-            _logger.LogInformation("Exported {SnapshotFileCount} snapshot files for user {UserId}.", snapshotFiles.Count, userId);
-
             Response.ContentType = "application/octet-stream";
             Response.Headers.ContentDisposition =
                 $"attachment; filename=\"server-backup-{userId}.{CompressionHelpers.Extension}\"";
 
-            await using var compressedStream = CompressionHelpers.CreateCompressionStream(Response.Body);
-
-            // Stream JSON through a Pipe to the encryptor to avoid buffering everything in memory.
-            var pipe = new Pipe();
-            var writer = pipe.Writer;
-            var reader = pipe.Reader;
-
-            var encryptTask = Task.Run(async () =>
-            {
-                await using var inputStream = reader.AsStream(leaveOpen: false);
-                await _streamCipher.EncryptAsync(inputStream, compressedStream, ct: ct);
-            }, ct);
-
-            var serializeTask = Task.Run(async () =>
-            {
-                await using var outputStream = writer.AsStream(leaveOpen: false);
-                await JsonSerializer.SerializeAsync(
-                    outputStream,
-                    new
-                    {
-                        Modules = modules,
-                        Backups = backups,
-                        Schedules = schedules,
-                        Snapshots = snapshots,
-                        SnapshotFiles = snapshotFiles
-                    }, cancellationToken: ct);
-                await writer.CompleteAsync();
-            }, ct);
-
-            await Task.WhenAll(encryptTask, serializeTask);
-
-            await compressedStream.FlushAsync(ct);
+            Response.Headers.CacheControl = "no-store";
+            Response.Headers.XContentTypeOptions = "nosniff";
+            await _serverBackupExport.WriteAsync(
+                userId,
+                includeFiles,
+                Response.Body,
+                ct).ConfigureAwait(false);
             return new EmptyResult();
         }
 
