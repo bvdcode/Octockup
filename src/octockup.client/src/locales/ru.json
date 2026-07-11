@@ -177,7 +177,31 @@
     "lastBackup": "Последний бэкап: {{relativeTime}}",
     "status": "Статус",
     "unknownError": "Неизвестная ошибка",
-    "enumerating": "Подсчёт файлов...",
+    "enumerating": "Поиск файлов...",
+    "progress": {
+      "currentFile": "{{stage}}: {{file}}",
+      "completedCount": "{{processed}} / {{total}} • {{progress}}%",
+      "discoveredCount": "Обработано {{processed}} • найдено {{total}}",
+      "remaining": "Осталось {{remaining}}",
+      "noProgress": "Нет движения {{duration}}",
+      "durationSeconds": "{{seconds}} с",
+      "durationMinutesSeconds": "{{minutes}} мин {{seconds}} с",
+      "durationHoursMinutes": "{{hours}} ч {{minutes}} мин"
+    },
+    "progressStages": {
+      "listing": "Получение списка объектов",
+      "preparing": "Подготовка файла",
+      "reading": "Чтение источника",
+      "hashing": "Хеширование чанка",
+      "compressing": "Сжатие чанка",
+      "encrypting": "Шифрование чанка",
+      "uploading": "Загрузка в хранилище",
+      "recording": "Запись метаданных чанка",
+      "persisting": "Сохранение метаданных",
+      "finalizing": "Завершение снапшота",
+      "completed": "Бэкап завершён",
+      "failed": "Бэкап остановлен"
+    },
     "filterByStorage": "Фильтр по хранилищу",
     "allStorages": "Все хранилища"
   },

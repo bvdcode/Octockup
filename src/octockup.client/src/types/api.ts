@@ -107,6 +107,21 @@ export enum BackupStatus {
   Completed = 3,
 }
 
+export enum BackupProgressStage {
+  Listing = 0,
+  Preparing = 1,
+  Reading = 2,
+  Hashing = 3,
+  Compressing = 4,
+  Encrypting = 5,
+  Uploading = 6,
+  Recording = 7,
+  Persisting = 8,
+  Finalizing = 9,
+  Completed = 10,
+  Failed = 11,
+}
+
 export interface ScheduleItem {
   id: string;
   backupId: string;
@@ -128,7 +143,10 @@ export interface ScheduleReport {
   scheduleId: string;
   backupId: string;
   timestamp: string;
+  lastProgressAt: string;
+  noProgressFor: string;
   status: BackupStatus;
+  stage: BackupProgressStage;
   message: string;
   total: number;
   processed: number;

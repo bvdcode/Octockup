@@ -153,7 +153,31 @@
     "lastBackup": "Last backup: {{relativeTime}}",
     "status": "Status",
     "unknownError": "Unknown error",
-    "enumerating": "Enumerating...",
+    "enumerating": "Discovering files...",
+    "progress": {
+      "currentFile": "{{stage}}: {{file}}",
+      "completedCount": "{{processed}} / {{total}} • {{progress}}%",
+      "discoveredCount": "{{processed}} processed • {{total}} discovered",
+      "remaining": "{{remaining}} left",
+      "noProgress": "No progress for {{duration}}",
+      "durationSeconds": "{{seconds}}s",
+      "durationMinutesSeconds": "{{minutes}}m {{seconds}}s",
+      "durationHoursMinutes": "{{hours}}h {{minutes}}m"
+    },
+    "progressStages": {
+      "listing": "Listing source objects",
+      "preparing": "Preparing file",
+      "reading": "Reading source",
+      "hashing": "Hashing chunk",
+      "compressing": "Compressing chunk",
+      "encrypting": "Encrypting chunk",
+      "uploading": "Uploading to storage",
+      "recording": "Recording chunk metadata",
+      "persisting": "Saving metadata",
+      "finalizing": "Finalizing snapshot",
+      "completed": "Backup completed",
+      "failed": "Backup stopped"
+    },
     "filterByStorage": "Filter by storage",
     "allStorages": "All storages"
   },
