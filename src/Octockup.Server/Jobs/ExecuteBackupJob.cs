@@ -10,18 +10,20 @@ using Octockup.Server.Database;
 using Octockup.Server.Helpers;
 using Octockup.Server.Hubs;
 using Octockup.Server.Models.Enums;
+using Octockup.Server.Models.Options;
+using Octockup.Server.Services;
 using Quartz;
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Options;
 
 namespace Octockup.Server.Jobs
 {
     [JobTrigger(minutes: 1, disallowConcurrentExecution: false)]
     public class ExecuteBackupJob(
         IServiceProvider _serviceProvider,
-        IConfiguration _configuration,
+        IOptions<BackupExecutionOptions> _options,
         ILogger<ExecuteBackupJob> _logger) : IJob
     {
-        private const int DefaultMaxConcurrentBackups = 4;
         private static readonly ConcurrentDictionary<Guid, CancellationTokenSource> _runningSchedules = new();
 
         public static bool IsScheduleRunning(Guid scheduleId)
@@ -86,11 +88,7 @@ namespace Octockup.Server.Jobs
 
         private int GetAvailableCapacity()
         {
-            int maxConcurrentBackups = _configuration.GetValue(
-                "BackupExecution:MaxConcurrentBackups",
-                DefaultMaxConcurrentBackups);
-
-            return Math.Max(1, maxConcurrentBackups) - _runningSchedules.Count;
+            return _options.Value.MaxConcurrentBackups - _runningSchedules.Count;
         }
 
         private async Task<IReadOnlyList<Guid>> GetReadyScheduleIdsAsync(
@@ -172,7 +170,9 @@ namespace Octockup.Server.Jobs
                         scope.ServiceProvider,
                         runnerLogger,
                         scope.ServiceProvider.GetRequiredService<IHubContext<EventHub>>(),
-                        scope.ServiceProvider.GetRequiredService<IEnumerable<IBackupProvider>>());
+                        scope.ServiceProvider.GetRequiredService<IEnumerable<IBackupProvider>>(),
+                        scope.ServiceProvider.GetRequiredService<UploadedChunkLookup>(),
+                        scope.ServiceProvider.GetRequiredService<PreviousSnapshotFileLookup>());
 
                     await runner.RunAsync(schedule, operationCts.Token);
                     _logger.LogInformation("Backup job for schedule {ScheduleId} completed", schedule.Id);

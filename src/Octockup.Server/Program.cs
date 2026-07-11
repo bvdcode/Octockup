@@ -47,6 +47,16 @@ namespace Octockup.Server
                         options.Lifetime <= TimeSpan.FromDays(90),
                     "Refresh session lifetime must be between zero and 90 days.")
                 .ValidateOnStart();
+            builder.Services
+                .AddOptions<BackupExecutionOptions>()
+                .BindConfiguration("BackupExecution")
+                .Validate(
+                    options => options.MaxConcurrentBackups > 0,
+                    "Maximum concurrent backups must be positive.")
+                .Validate(
+                    options => options.MaxChunkLookupMemoryBytes >= 64 * 1024,
+                    "Chunk lookup memory must be at least 64 KiB.")
+                .ValidateOnStart();
 
             // Configure form options for large file uploads
             builder.Services.Configure<FormOptions>(options =>
@@ -66,6 +76,8 @@ namespace Octockup.Server
                 .AddScoped<DownloadTicketService>()
                 .AddScoped<RefreshSessionService>()
                 .AddScoped<BackupOwnershipInitializer>()
+                .AddScoped<UploadedChunkLookup>()
+                .AddScoped<PreviousSnapshotFileLookup>()
                 .AddScoped<ChunkReferenceCollector>()
                 .AddScoped<StorageCleanupRunner>()
                 .AddScoped<StorageMaintenanceService>()

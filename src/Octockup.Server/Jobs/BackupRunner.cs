@@ -13,6 +13,7 @@ using Octockup.Server.Helpers;
 using Octockup.Server.Hubs;
 using Octockup.Server.Models;
 using Octockup.Server.Models.Enums;
+using Octockup.Server.Services;
 using System.Buffers;
 using System.Diagnostics;
 using System.Security.Cryptography;
@@ -25,7 +26,9 @@ namespace Octockup.Server.Jobs
         IServiceProvider serviceProvider,
         ILogger<BackupRunner> logger,
         IHubContext<EventHub> hubContext,
-        IEnumerable<IBackupProvider> providers)
+        IEnumerable<IBackupProvider> providers,
+        UploadedChunkLookup uploadedChunkLookup,
+        PreviousSnapshotFileLookup previousSnapshotFileLookup)
     {
         private const int ChunkSize = 8 * 1024 * 1024;
         private const int FileEnumerationBufferCapacity = 1_000;
@@ -224,6 +227,30 @@ namespace Octockup.Server.Jobs
             IAsyncEnumerable<BackupFileInfo> lazyFiles,
             CancellationToken cancellationToken)
         {
+            report.SetStage(BackupProgressStage.Preparing, "Loading previous snapshot metadata...");
+            await previousSnapshotFileLookup
+                .InitializeAsync(schedule.BackupId, cancellationToken)
+                .ConfigureAwait(false);
+            logger.LogInformation(
+                "Using completed snapshot {SnapshotId} with {FileCount} files as the incremental baseline.",
+                previousSnapshotFileLookup.SnapshotId,
+                previousSnapshotFileLookup.PreviousFileCount);
+
+            report.SetStage(BackupProgressStage.Preparing, "Indexing stored chunks...");
+            await uploadedChunkLookup
+                .InitializeAsync(
+                    schedule.Backup.StorageId,
+                    indexed => report.SetStage(
+                        BackupProgressStage.Preparing,
+                        $"Indexing stored chunks: {indexed:N0}"),
+                    cancellationToken)
+                .ConfigureAwait(false);
+            logger.LogInformation(
+                "Indexed {ChunkCount} stored chunks using {FilterBytes} bytes of bounded lookup memory.",
+                uploadedChunkLookup.IndexedCount,
+                uploadedChunkLookup.FilterByteCount);
+            report.SetStage(BackupProgressStage.Listing, "Listing files to backup...");
+
             SnapshotBatchWriter snapshotWriter = new(dbContext);
             Snapshot snapshot = await snapshotWriter.CreateAsync(
                 schedule.BackupId,
@@ -233,18 +260,22 @@ namespace Octockup.Server.Jobs
                 lazyFiles,
                 FileEnumerationBufferCapacity,
                 cancellationToken);
-            HashSet<string> uploadedChunks = await LoadChunkHashesAsync(schedule.Backup.StorageId, cancellationToken);
-            var previousFiles = await GetFilesFromLastSnapshotAsync(schedule.BackupId, cancellationToken);
-            logger.LogInformation("Previous snapshot had {Count} files", previousFiles.Count);
 
             int counter = 0;
             Stopwatch stopwatch = Stopwatch.StartNew();
+            List<BackupFileInfo> fileBatch = new(PreviousSnapshotFileLookup.MaxBatchSize);
 
             cancellationToken.ThrowIfCancellationRequested();
             await foreach (BackupFileInfo file in loader.ReadAllAsync(cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                counter = await ProcessFileAsync(
+                fileBatch.Add(file);
+                if (fileBatch.Count < PreviousSnapshotFileLookup.MaxBatchSize)
+                {
+                    continue;
+                }
+
+                counter = await ProcessFileBatchAsync(
                     schedule,
                     snapshot,
                     snapshotWriter,
@@ -252,11 +283,26 @@ namespace Octockup.Server.Jobs
                     storage,
                     report,
                     loader,
-                    uploadedChunks,
-                    previousFiles,
                     stopwatch,
                     counter,
-                    file,
+                    fileBatch,
+                    cancellationToken);
+                fileBatch.Clear();
+            }
+
+            if (fileBatch.Count > 0)
+            {
+                counter = await ProcessFileBatchAsync(
+                    schedule,
+                    snapshot,
+                    snapshotWriter,
+                    source,
+                    storage,
+                    report,
+                    loader,
+                    stopwatch,
+                    counter,
+                    fileBatch,
                     cancellationToken);
             }
 
@@ -271,6 +317,45 @@ namespace Octockup.Server.Jobs
                 cancellationToken);
         }
 
+        private async Task<int> ProcessFileBatchAsync(
+            Schedule schedule,
+            Snapshot snapshot,
+            SnapshotBatchWriter snapshotWriter,
+            IBackupSource source,
+            IBackupStorage storage,
+            ScheduleReport report,
+            LazyLoader<BackupFileInfo> loader,
+            Stopwatch stopwatch,
+            int counter,
+            IReadOnlyList<BackupFileInfo> files,
+            CancellationToken cancellationToken)
+        {
+            string[] paths = files.Select(x => x.Path).ToArray();
+            IReadOnlyDictionary<string, SnapshotFile> previousFiles =
+                await previousSnapshotFileLookup
+                    .LoadBatchAsync(paths, cancellationToken)
+                    .ConfigureAwait(false);
+
+            foreach (BackupFileInfo file in files)
+            {
+                counter = await ProcessFileAsync(
+                    schedule,
+                    snapshot,
+                    snapshotWriter,
+                    source,
+                    storage,
+                    report,
+                    loader,
+                    previousFiles,
+                    stopwatch,
+                    counter,
+                    file,
+                    cancellationToken);
+            }
+
+            return counter;
+        }
+
         private async Task<int> ProcessFileAsync(
             Schedule schedule,
             Snapshot snapshot,
@@ -279,8 +364,7 @@ namespace Octockup.Server.Jobs
             IBackupStorage storage,
             ScheduleReport report,
             LazyLoader<BackupFileInfo> loader,
-            HashSet<string> uploadedChunks,
-            IDictionary<string, SnapshotFile> previousFiles,
+            IReadOnlyDictionary<string, SnapshotFile> previousFiles,
             Stopwatch stopwatch,
             int counter,
             BackupFileInfo file,
@@ -369,7 +453,6 @@ namespace Octockup.Server.Jobs
                 file,
                 storage,
                 report,
-                uploadedChunks,
                 stream,
                 counter,
                 cancellationToken);
@@ -405,7 +488,6 @@ namespace Octockup.Server.Jobs
             BackupFileInfo file,
             IBackupStorage storage,
             ScheduleReport report,
-            HashSet<string> uploadedChunks,
             Stream stream,
             int counter,
             CancellationToken cancellationToken)
@@ -441,7 +523,9 @@ namespace Octockup.Server.Jobs
                     string chunkKey = ChunkStorageHelpers.CreateKey(contentHash, algorithm, encryptChunk);
                     string shortHash = contentHash[^8..];
 
-                    var alreadyUploaded = uploadedChunks.Contains(chunkKey);
+                    bool alreadyUploaded = await uploadedChunkLookup
+                        .ContainsAsync(chunkKey, cancellationToken)
+                        .ConfigureAwait(false);
                     if (alreadyUploaded)
                     {
                         logger.LogInformation("Chunk {shortHash} for file {FileName} already uploaded in previous snapshot, skipping upload", shortHash, file.Name);
@@ -515,8 +599,6 @@ namespace Octockup.Server.Jobs
                             await storage.UploadAsync(path, src, cancellationToken);
                         }
 
-                        uploadedChunks.Add(chunkKey);
-
                         report.SetStage(BackupProgressStage.Recording, $"Recording: {file.Name}");
                         RecordUploadedHash(
                             schedule.Backup.StorageId,
@@ -570,6 +652,11 @@ namespace Octockup.Server.Jobs
             long originalSize,
             CompressionAlgorithm algorithm)
         {
+            if (!uploadedChunkLookup.MarkPending(chunkKey))
+            {
+                return;
+            }
+
             UploadedHash uploadedHash = new()
             {
                 Hash = chunkKey,
@@ -591,7 +678,12 @@ namespace Octockup.Server.Jobs
 
             await dbContext.UploadedHashes.AddRangeAsync(_pendingUploadedHashes, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
+            foreach (UploadedHash uploadedHash in _pendingUploadedHashes)
+            {
+                dbContext.Entry(uploadedHash).State = EntityState.Detached;
+            }
             _pendingUploadedHashes.Clear();
+            uploadedChunkLookup.CommitPending();
             _uploadedHashesStopwatch.Restart();
         }
 
@@ -699,30 +791,6 @@ namespace Octockup.Server.Jobs
             report.SetStage(BackupProgressStage.Persisting, $"Saving: {fileName}");
             await snapshotWriter.FlushAsync(snapshot, schedule, cancellationToken);
             stopwatch.Restart();
-        }
-
-        private async Task<IDictionary<string, SnapshotFile>> GetFilesFromLastSnapshotAsync(Guid backupId, CancellationToken cancellationToken)
-        {
-            const int maxFilesToFetch = 1_000_000;
-
-            var files = await dbContext.Snapshots
-                .AsNoTracking()
-                .Where(x => x.BackupId == backupId)
-                .OrderByDescending(x => x.CreatedAt)
-                .SelectMany(x => x.Files)
-                .Take(maxFilesToFetch)
-                .ToListAsync(cancellationToken: cancellationToken);
-
-            return files.DistinctBy(x => x.Path).ToDictionary(x => x.Path, x => x);
-        }
-
-        private Task<HashSet<string>> LoadChunkHashesAsync(Guid storageId, CancellationToken cancellationToken)
-        {
-            return dbContext.UploadedHashes
-                .AsNoTracking()
-                .Where(x => x.ModuleId == storageId)
-                .Select(x => x.Hash)
-                .ToHashSetAsync(cancellationToken: cancellationToken);
         }
 
         private static bool ShouldIgnoreFile(Schedule schedule, BackupFileInfo file)
