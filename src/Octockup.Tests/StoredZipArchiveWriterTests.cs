@@ -40,6 +40,52 @@ namespace Octockup.Tests
         }
 
         [Test]
+        public async Task WriteAsync_AsyncEntries_SpoolsCentralDirectoryAndReportsProgress()
+        {
+            StoredZipArchiveEntry[] entries =
+            [
+                CreateEntry("first.txt", Encoding.UTF8.GetBytes("first")),
+                CreateEntry("second.txt", Encoding.UTF8.GetBytes("second")),
+                CreateEntry("third.txt", Encoding.UTF8.GetBytes("third"))
+            ];
+            List<(long Files, long Bytes)> progress = [];
+            using MemoryStream archive = new();
+            using MemoryStream centralDirectorySpool = new();
+
+            long written = await StoredZipArchiveWriter.WriteAsync(
+                archive,
+                EnumerateAsync(entries),
+                centralDirectorySpool,
+                (files, bytes, _) =>
+                {
+                    progress.Add((files, bytes));
+                    return Task.CompletedTask;
+                },
+                CancellationToken.None);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(written, Is.EqualTo(archive.Length));
+                Assert.That(centralDirectorySpool.Length, Is.GreaterThan(0));
+                Assert.That(progress, Is.EqualTo(new[]
+                {
+                    (1L, 5L),
+                    (2L, 11L),
+                    (3L, 16L)
+                }));
+            });
+
+            archive.Position = 0;
+            using ZipArchive zip = new(archive, ZipArchiveMode.Read, leaveOpen: true);
+            Assert.That(zip.Entries.Select(x => x.FullName), Is.EqualTo(new[]
+            {
+                "first.txt",
+                "second.txt",
+                "third.txt"
+            }));
+        }
+
+        [Test]
         public void CalculateContentLength_LargeEntry_UsesZip64SizedHeaders()
         {
             const long largeSize = (long)uint.MaxValue + 1;
@@ -69,6 +115,16 @@ namespace Octockup.Tests
                 data.Length,
                 new DateTime(2026, 6, 16, 12, 30, 0, DateTimeKind.Utc),
                 _ => Task.FromResult<Stream>(new MemoryStream(data, writable: false)));
+        }
+
+        private static async IAsyncEnumerable<StoredZipArchiveEntry> EnumerateAsync(
+            IEnumerable<StoredZipArchiveEntry> entries)
+        {
+            foreach (StoredZipArchiveEntry entry in entries)
+            {
+                await Task.Yield();
+                yield return entry;
+            }
         }
 
         private static async Task<string> ReadEntryAsync(ZipArchive zip, string name)

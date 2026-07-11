@@ -2,6 +2,7 @@
 // Copyright (c) 2025 Vadim Belov <https://belov.us>
 
 using System.Buffers.Binary;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace Octockup.Server.Archives
@@ -76,22 +77,66 @@ namespace Octockup.Server.Archives
             ArgumentNullException.ThrowIfNull(output);
             ArgumentNullException.ThrowIfNull(entries);
 
-            var records = entries
-                .Select(CreateRecord)
-                .ToList();
+            await using MemoryStream centralDirectorySpool = new();
+            long written = await WriteAsync(
+                output,
+                EnumerateAsync(entries, cancellationToken),
+                centralDirectorySpool,
+                null,
+                cancellationToken).ConfigureAwait(false);
+            long expected = CalculateContentLength(entries);
+            if (written != expected)
+            {
+                throw new InvalidDataException(
+                    $"ZIP archive size mismatch. Expected {expected} bytes, wrote {written} bytes.");
+            }
+        }
+
+        public static async Task<long> WriteAsync(
+            Stream output,
+            IAsyncEnumerable<StoredZipArchiveEntry> entries,
+            Stream centralDirectorySpool,
+            Func<long, long, CancellationToken, Task>? reportProgressAsync,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(output);
+            ArgumentNullException.ThrowIfNull(entries);
+            ArgumentNullException.ThrowIfNull(centralDirectorySpool);
+            if (!centralDirectorySpool.CanRead ||
+                !centralDirectorySpool.CanWrite ||
+                !centralDirectorySpool.CanSeek)
+            {
+                throw new ArgumentException(
+                    "Central directory spool must be readable, writable, and seekable.",
+                    nameof(centralDirectorySpool));
+            }
 
             long written = 0;
+            long sourceBytesWritten = 0;
+            long entryCount = 0;
+            long centralDirectorySize = 0;
+            byte[] copyBuffer = new byte[128 * 1024];
+            centralDirectorySpool.SetLength(0);
+            centralDirectorySpool.Position = 0;
 
-            foreach (var record in records)
+            await foreach (StoredZipArchiveEntry entry in entries
+                .WithCancellation(cancellationToken)
+                .ConfigureAwait(false))
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                ArchiveRecord record = CreateRecord(entry);
 
                 record.LocalHeaderOffset = written;
                 await WriteLocalHeaderAsync(output, record, cancellationToken).ConfigureAwait(false);
                 written += LocalHeaderSize + record.NameBytes.Length + LocalZip64ExtraSize;
 
-                var crc = new Crc32();
-                long copied = await CopyEntryAsync(output, record, crc, cancellationToken).ConfigureAwait(false);
+                Crc32 crc = new();
+                long copied = await CopyEntryAsync(
+                    output,
+                    record,
+                    crc,
+                    copyBuffer,
+                    cancellationToken).ConfigureAwait(false);
                 if (copied != record.Entry.Size)
                 {
                     throw new InvalidDataException(
@@ -103,21 +148,44 @@ namespace Octockup.Server.Archives
 
                 await WriteDataDescriptorAsync(output, record, cancellationToken).ConfigureAwait(false);
                 written += DataDescriptorZip64Size;
+                await WriteCentralDirectoryHeaderAsync(
+                    centralDirectorySpool,
+                    record,
+                    cancellationToken).ConfigureAwait(false);
+                centralDirectorySize +=
+                    CentralDirectoryHeaderSize +
+                    record.NameBytes.Length +
+                    CentralDirectoryZip64ExtraSize;
+                sourceBytesWritten += copied;
+                entryCount++;
+
+                if (reportProgressAsync is not null)
+                {
+                    await reportProgressAsync(
+                        entryCount,
+                        sourceBytesWritten,
+                        cancellationToken).ConfigureAwait(false);
+                }
             }
 
             long centralDirectoryOffset = written;
-            foreach (var record in records)
+            await centralDirectorySpool.FlushAsync(cancellationToken).ConfigureAwait(false);
+            if (centralDirectorySpool.Length != centralDirectorySize)
             {
-                await WriteCentralDirectoryHeaderAsync(output, record, cancellationToken).ConfigureAwait(false);
-                written += CentralDirectoryHeaderSize + record.NameBytes.Length + CentralDirectoryZip64ExtraSize;
+                throw new InvalidDataException(
+                    "ZIP central directory spool length does not match the generated records.");
             }
 
-            long centralDirectorySize = written - centralDirectoryOffset;
+            centralDirectorySpool.Position = 0;
+            await centralDirectorySpool
+                .CopyToAsync(output, copyBuffer.Length, cancellationToken)
+                .ConfigureAwait(false);
+            written += centralDirectorySize;
             long zip64EndOfCentralDirectoryOffset = written;
 
             await WriteZip64EndOfCentralDirectoryAsync(
                 output,
-                records.Count,
+                entryCount,
                 centralDirectorySize,
                 centralDirectoryOffset,
                 cancellationToken).ConfigureAwait(false);
@@ -131,11 +199,18 @@ namespace Octockup.Server.Archives
 
             await WriteEndOfCentralDirectoryAsync(output, cancellationToken).ConfigureAwait(false);
             written += EndOfCentralDirectorySize;
+            return written;
+        }
 
-            long expected = CalculateContentLength(entries);
-            if (written != expected)
+        private static async IAsyncEnumerable<StoredZipArchiveEntry> EnumerateAsync(
+            IReadOnlyCollection<StoredZipArchiveEntry> entries,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            await Task.CompletedTask;
+            foreach (StoredZipArchiveEntry entry in entries)
             {
-                throw new InvalidDataException($"ZIP archive size mismatch. Expected {expected} bytes, wrote {written} bytes.");
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return entry;
             }
         }
 
@@ -151,13 +226,13 @@ namespace Octockup.Server.Archives
             Stream output,
             ArchiveRecord record,
             Crc32 crc,
+            byte[] buffer,
             CancellationToken cancellationToken)
         {
             await using var input = await record.Entry
                 .OpenStreamAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            byte[] buffer = new byte[128 * 1024];
             long copied = 0;
 
             while (true)
@@ -245,7 +320,7 @@ namespace Octockup.Server.Archives
 
         private static async Task WriteZip64EndOfCentralDirectoryAsync(
             Stream output,
-            int entryCount,
+            long entryCount,
             long centralDirectorySize,
             long centralDirectoryOffset,
             CancellationToken cancellationToken)
@@ -372,7 +447,7 @@ namespace Octockup.Server.Archives
             return (time, date);
         }
 
-        private sealed class ArchiveRecord(
+        private class ArchiveRecord(
             StoredZipArchiveEntry entry,
             byte[] nameBytes,
             ushort dosTime,
@@ -386,7 +461,7 @@ namespace Octockup.Server.Archives
             public uint Crc32 { get; set; }
         }
 
-        private sealed class Crc32
+        private class Crc32
         {
             private static readonly uint[] Table = CreateTable();
             private uint _value = uint.MaxValue;
