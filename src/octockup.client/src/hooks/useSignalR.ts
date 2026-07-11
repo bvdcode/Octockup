@@ -74,9 +74,9 @@ export function useSignalR(hubUrl: string) {
           if (retryTimerRef.current) {
             clearTimeout(retryTimerRef.current);
           }
-          retryTimerRef.current = setTimeout(() => {
+          retryTimerRef.current = window.setTimeout(() => {
             startWithRetry();
-          }, delay) as unknown as number;
+          }, delay);
         });
     };
 

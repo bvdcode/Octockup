@@ -4,6 +4,7 @@ import { useSchedulesApi } from "../api/schedulesApi";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ScheduleItem, ScheduleReport } from "../types/api";
 import { LatestValueByKeyThrottler } from "../utils/LatestValueByKeyThrottler";
+import { isAxiosError } from "axios";
 
 const progressRenderIntervalMs = 250;
 
@@ -26,9 +27,8 @@ interface UseSchedulesReturn {
   cleanupCompletedSchedules: () => Promise<void>;
 }
 
-function getHttpStatus(e: unknown): number | null {
-  const anyErr = e as { response?: { status?: number } };
-  return anyErr?.response?.status ?? null;
+function getHttpStatus(error: object): number | null {
+  return isAxiosError(error) ? error.response?.status ?? null : null;
 }
 
 export function useSchedules(): UseSchedulesReturn {
@@ -60,9 +60,9 @@ export function useSchedules(): UseSchedulesReturn {
     if (retryTimerRef.current) {
       clearTimeout(retryTimerRef.current);
     }
-    retryTimerRef.current = setTimeout(() => {
+    retryTimerRef.current = window.setTimeout(() => {
       refetchRef.current?.(true);
-    }, delay) as unknown as number;
+    }, delay);
   }, []);
 
   // Load schedules
@@ -218,31 +218,10 @@ export function useSchedules(): UseSchedulesReturn {
 
   // Reload schedules on connection errors/reconnect attempts
   useEffect(() => {
-    if (!connection) return;
-
-    const onReconnecting = () => {
-      // Try to reload silently; if it hits 401, global auth flow will handle it
+    if (isConnected) {
       refetchSchedules(true);
-    };
-
-    const onClose = () => {
-      refetchSchedules(true);
-    };
-
-    connection.onreconnecting(onReconnecting);
-    connection.onclose(onClose);
-
-    return () => {
-      connection.off(
-        "reconnecting",
-        onReconnecting as unknown as (...args: unknown[]) => void,
-      );
-      connection.off(
-        "close",
-        onClose as unknown as (...args: unknown[]) => void,
-      );
-    };
-  }, [connection, refetchSchedules]);
+    }
+  }, [isConnected, refetchSchedules]);
 
   const deleteSchedule = async (id: string): Promise<void> => {
     setState((s) => ({ ...s, deletingId: id }));
