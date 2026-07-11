@@ -112,6 +112,34 @@ namespace Octockup.Tests
         }
 
         [Test]
+        public async Task ExecutePendingAsync_WhenIndexedObjectIsMissing_RemovesDanglingIndexRow()
+        {
+            string referencedPath = ChunkStorageHelpers.GetStoragePath(ReferencedHash, '/');
+            _storage.Files[referencedPath] = CreateStorageFile(referencedPath, 12);
+
+            StorageCleanupJobExecutor executor = _serviceProvider
+                .GetRequiredService<StorageCleanupJobExecutor>();
+            await executor.ExecutePendingAsync(CancellationToken.None);
+
+            StorageCleanupJob job = await LoadJobAsync();
+            await using AsyncServiceScope scope = _serviceProvider.CreateAsyncScope();
+            AppDbContext dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            List<string> remainingHashes = await dbContext.UploadedHashes
+                .AsNoTracking()
+                .Select(x => x.Hash)
+                .ToListAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(job.Status, Is.EqualTo(StorageCleanupStatus.Completed));
+                Assert.That(job.MissingIndexedObjects, Is.EqualTo(1));
+                Assert.That(job.UploadedHashRowsDeleted, Is.EqualTo(1));
+                Assert.That(remainingHashes, Is.EqualTo(new[] { ReferencedHash }));
+                Assert.That(_storage.Files.Keys, Is.EqualTo(new[] { referencedPath }));
+            });
+        }
+
+        [Test]
         public async Task ExecutePendingAsync_WhenPreviousRunWasInterrupted_RestartsAndCompletesJob()
         {
             const int checkpointCount = 500;

@@ -569,6 +569,10 @@ namespace Octockup.Server.Migrations.Sqlite
                         .HasColumnType("INTEGER")
                         .HasColumnName("freed_bytes");
 
+                    b.Property<long>("MissingIndexedObjects")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("missing_indexed_objects");
+
                     b.Property<long>("MissingObjects")
                         .HasColumnType("INTEGER")
                         .HasColumnName("missing_objects");
@@ -683,6 +687,10 @@ namespace Octockup.Server.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("hash");
 
+                    b.Property<Guid?>("LastSeenCleanupJobId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_seen_cleanup_job_id");
+
                     b.Property<Guid>("ModuleId")
                         .HasColumnType("TEXT")
                         .HasColumnName("module_id");
@@ -706,6 +714,8 @@ namespace Octockup.Server.Migrations.Sqlite
 
                     b.HasIndex("ModuleId", "Hash")
                         .IsUnique();
+
+                    b.HasIndex("ModuleId", "LastSeenCleanupJobId");
 
                     b.ToTable("uploaded_hashes");
                 });

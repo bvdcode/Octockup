@@ -92,6 +92,7 @@ namespace Octockup.Server.Services
                 DeletedObjects = value.DeletedObjects,
                 FreedBytes = value.FreedBytes,
                 MissingObjects = value.MissingObjects,
+                MissingIndexedObjects = value.MissingIndexedObjects,
                 FailedDeletes = value.FailedDeletes,
                 SkippedObjects = value.SkippedObjects,
                 UploadedHashRowsDeleted = value.UploadedHashRowsDeleted,

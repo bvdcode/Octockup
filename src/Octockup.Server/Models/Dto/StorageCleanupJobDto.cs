@@ -29,6 +29,7 @@ namespace Octockup.Server.Models.Dto
         public long DeletedObjects { get; set; }
         public long FreedBytes { get; set; }
         public long MissingObjects { get; set; }
+        public long MissingIndexedObjects { get; set; }
         public long FailedDeletes { get; set; }
         public long SkippedObjects { get; set; }
         public long UploadedHashRowsDeleted { get; set; }

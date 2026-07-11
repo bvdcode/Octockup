@@ -145,6 +145,12 @@ namespace Octockup.Server.Services
                 publishStopwatch,
                 cancellationToken).ConfigureAwait(false);
 
+            await ReconcileMissingIndexedObjectsAsync(
+                state,
+                storageLease,
+                cancellationToken).ConfigureAwait(false);
+            await checkpointAsync(state.Snapshot(), cancellationToken).ConfigureAwait(false);
+
             state.Update(x => x.CurrentPath = null);
             await publishAsync(state.Snapshot(), cancellationToken).ConfigureAwait(false);
         }
@@ -224,6 +230,16 @@ namespace Octockup.Server.Services
                 .Select(x => x.ChunkKey)
                 .Distinct(StringComparer.Ordinal)
                 .ToArray();
+            await _dbContext.UploadedHashes
+                .Where(x =>
+                    x.ModuleId == state.StorageId &&
+                    chunkKeys.Contains(x.Hash))
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(
+                        x => x.LastSeenCleanupJobId,
+                        state.JobId),
+                    cancellationToken)
+                .ConfigureAwait(false);
             HashSet<string> referencedChunkKeys = (await _dbContext.SnapshotChunkReferences
                 .AsNoTracking()
                 .Where(x =>
@@ -265,6 +281,27 @@ namespace Octockup.Server.Services
                 publishAsync,
                 publishStopwatch,
                 cancellationToken).ConfigureAwait(false);
+        }
+
+        private async Task ReconcileMissingIndexedObjectsAsync(
+            StorageCleanupJobState state,
+            IStorageOperationLease storageLease,
+            CancellationToken cancellationToken)
+        {
+            await storageLease.EnsureOwnedAsync(cancellationToken).ConfigureAwait(false);
+            int deletedRows = await _dbContext.UploadedHashes
+                .Where(x =>
+                    x.ModuleId == state.StorageId &&
+                    (x.LastSeenCleanupJobId == null ||
+                        x.LastSeenCleanupJobId != state.JobId))
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            state.Update(x =>
+            {
+                x.MissingIndexedObjects += deletedRows;
+                x.UploadedHashRowsDeleted += deletedRows;
+            });
         }
 
         private async Task<Module> GetStorageModuleAsync(

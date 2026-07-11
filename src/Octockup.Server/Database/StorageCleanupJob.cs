@@ -85,6 +85,9 @@ namespace Octockup.Server.Database
         [Column("missing_objects")]
         public long MissingObjects { get; set; }
 
+        [Column("missing_indexed_objects")]
+        public long MissingIndexedObjects { get; set; }
+
         [Column("failed_deletes")]
         public long FailedDeletes { get; set; }
 

@@ -245,6 +245,10 @@ export function StorageMaintenanceCard({
                     value={job.missingObjects.toLocaleString()}
                   />
                   <Metric
+                    label={t("storageMaintenance.metrics.missingIndexed")}
+                    value={job.missingIndexedObjects.toLocaleString()}
+                  />
+                  <Metric
                     label={t("storageMaintenance.metrics.indexRows")}
                     value={job.uploadedHashRowsDeleted.toLocaleString()}
                   />

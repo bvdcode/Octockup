@@ -11,6 +11,7 @@ namespace Octockup.Server.Database
     [Table("uploaded_hashes")]
     [Index(nameof(Hash))]
     [Index(nameof(ModuleId), nameof(Hash), IsUnique = true)]
+    [Index(nameof(ModuleId), nameof(LastSeenCleanupJobId))]
     public class UploadedHash : BaseEntity<Guid>
     {
         [Column("module_id")]
@@ -27,6 +28,9 @@ namespace Octockup.Server.Database
 
         [Column("compression_algorithm")]
         public CompressionAlgorithm CompressionAlgorithm { get; set; }
+
+        [Column("last_seen_cleanup_job_id")]
+        public Guid? LastSeenCleanupJobId { get; set; }
 
         [DeleteBehavior(DeleteBehavior.Restrict)]
         public virtual Module Module { get; set; } = null!;

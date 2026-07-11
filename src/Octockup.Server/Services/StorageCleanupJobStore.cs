@@ -184,6 +184,7 @@ namespace Octockup.Server.Services
             job.DeletedObjects = progress.DeletedObjects;
             job.FreedBytes = progress.FreedBytes;
             job.MissingObjects = progress.MissingObjects;
+            job.MissingIndexedObjects = progress.MissingIndexedObjects;
             job.FailedDeletes = progress.FailedDeletes;
             job.SkippedObjects = progress.SkippedObjects;
             job.UploadedHashRowsDeleted = progress.UploadedHashRowsDeleted;

@@ -210,6 +210,7 @@ export interface StorageCleanupJob {
   deletedObjects: number;
   freedBytes: number;
   missingObjects: number;
+  missingIndexedObjects: number;
   failedDeletes: number;
   skippedObjects: number;
   uploadedHashRowsDeleted: number;

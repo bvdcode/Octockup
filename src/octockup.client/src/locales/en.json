@@ -348,6 +348,7 @@
       "deleted": "Deleted",
       "failed": "Failed",
       "missing": "Missing",
+      "missingIndexed": "Missing indexed",
       "indexRows": "Index rows"
     }
   }

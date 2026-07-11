@@ -34,6 +34,7 @@ namespace Octockup.Server.Services
                 DeletedObjects = job.DeletedObjects,
                 FreedBytes = job.FreedBytes,
                 MissingObjects = job.MissingObjects,
+                MissingIndexedObjects = job.MissingIndexedObjects,
                 FailedDeletes = job.FailedDeletes,
                 SkippedObjects = job.SkippedObjects,
                 UploadedHashRowsDeleted = job.UploadedHashRowsDeleted,
