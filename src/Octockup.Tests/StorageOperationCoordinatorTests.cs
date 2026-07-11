@@ -98,6 +98,31 @@ namespace Octockup.Tests
         }
 
         [Test]
+        public async Task TryAcquireAsync_WhenTwoBackupsTargetSameStorage_AllowsOnlyOneOwner()
+        {
+            IStorageOperationCoordinator coordinator = _serviceProvider
+                .GetRequiredService<IStorageOperationCoordinator>();
+
+            Task<IStorageOperationLease?> firstAttempt = coordinator.TryAcquireAsync(
+                _storageId,
+                StorageOperationKind.Backup,
+                CancellationToken.None);
+            Task<IStorageOperationLease?> secondAttempt = coordinator.TryAcquireAsync(
+                _storageId,
+                StorageOperationKind.Backup,
+                CancellationToken.None);
+            IStorageOperationLease?[] leases = await Task.WhenAll(
+                firstAttempt,
+                secondAttempt);
+
+            Assert.That(leases.Count(x => x is not null), Is.EqualTo(1));
+            foreach (IStorageOperationLease lease in leases.OfType<IStorageOperationLease>())
+            {
+                await lease.DisposeAsync();
+            }
+        }
+
+        [Test]
         public async Task TryAcquireAsync_WhenLeaseExpired_FencesPreviousOwner()
         {
             IStorageOperationCoordinator coordinator = _serviceProvider

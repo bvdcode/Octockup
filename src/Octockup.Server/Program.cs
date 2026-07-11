@@ -78,6 +78,7 @@ namespace Octockup.Server
                 .AddScoped<BackupOwnershipInitializer>()
                 .AddScoped<UploadedChunkLookup>()
                 .AddScoped<PreviousSnapshotFileLookup>()
+                .AddScoped<UploadedHashWriter>()
                 .AddScoped<ChunkReferenceCollector>()
                 .AddScoped<StorageCleanupRunner>()
                 .AddScoped<StorageMaintenanceService>()

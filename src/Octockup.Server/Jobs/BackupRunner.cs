@@ -28,7 +28,8 @@ namespace Octockup.Server.Jobs
         IHubContext<EventHub> hubContext,
         IEnumerable<IBackupProvider> providers,
         UploadedChunkLookup uploadedChunkLookup,
-        PreviousSnapshotFileLookup previousSnapshotFileLookup)
+        PreviousSnapshotFileLookup previousSnapshotFileLookup,
+        UploadedHashWriter uploadedHashWriter)
     {
         private const int ChunkSize = 8 * 1024 * 1024;
         private const int FileEnumerationBufferCapacity = 1_000;
@@ -676,12 +677,7 @@ namespace Octockup.Server.Jobs
                 return;
             }
 
-            await dbContext.UploadedHashes.AddRangeAsync(_pendingUploadedHashes, cancellationToken);
-            await dbContext.SaveChangesAsync(cancellationToken);
-            foreach (UploadedHash uploadedHash in _pendingUploadedHashes)
-            {
-                dbContext.Entry(uploadedHash).State = EntityState.Detached;
-            }
+            await uploadedHashWriter.FlushAsync(_pendingUploadedHashes, cancellationToken);
             _pendingUploadedHashes.Clear();
             uploadedChunkLookup.CommitPending();
             _uploadedHashesStopwatch.Restart();

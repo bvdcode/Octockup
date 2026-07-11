@@ -172,7 +172,8 @@ namespace Octockup.Server.Jobs
                         scope.ServiceProvider.GetRequiredService<IHubContext<EventHub>>(),
                         scope.ServiceProvider.GetRequiredService<IEnumerable<IBackupProvider>>(),
                         scope.ServiceProvider.GetRequiredService<UploadedChunkLookup>(),
-                        scope.ServiceProvider.GetRequiredService<PreviousSnapshotFileLookup>());
+                        scope.ServiceProvider.GetRequiredService<PreviousSnapshotFileLookup>(),
+                        scope.ServiceProvider.GetRequiredService<UploadedHashWriter>());
 
                     await runner.RunAsync(schedule, operationCts.Token);
                     _logger.LogInformation("Backup job for schedule {ScheduleId} completed", schedule.Id);
