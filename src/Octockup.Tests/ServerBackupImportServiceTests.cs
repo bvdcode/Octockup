@@ -161,6 +161,92 @@ namespace Octockup.Tests
             }
         }
 
+        [Test]
+        [NonParallelizable]
+        public async Task ExportAndImport_WithTwentyFiveThousandFiles_KeepsMemoryBounded()
+        {
+            const int fileCount = 25_000;
+            const long maximumMemoryGrowth = 96L * 1024 * 1024;
+            string transferPath = Path.Combine(
+                Path.GetTempPath(),
+                "octockup-scale-transfer-" + Guid.NewGuid().ToString("N") + ".ctn");
+            TestCipher cipher = new();
+
+            try
+            {
+                await using SqliteConnection sourceConnection = new("Data Source=:memory:");
+                await sourceConnection.OpenAsync();
+                await using SqliteDbContext source = await CreateDbContextAsync(sourceConnection);
+                (Guid userId, _, _, _) = await SeedSourceAsync(
+                    source,
+                    cipher,
+                    fileCount);
+                source.ChangeTracker.Clear();
+                ServerBackupExportService exportService = new(
+                    source,
+                    cipher,
+                    NullLogger<ServerBackupExportService>.Instance);
+                using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(60));
+                await using ManagedMemorySampler exportMemory = new();
+
+                await using (FileStream transfer = new(
+                    transferPath,
+                    FileMode.CreateNew,
+                    FileAccess.Write,
+                    FileShare.None,
+                    64 * 1024,
+                    FileOptions.Asynchronous | FileOptions.SequentialScan))
+                {
+                    await exportService.WriteAsync(
+                        userId,
+                        true,
+                        transfer,
+                        timeout.Token);
+                }
+
+                await exportMemory.StopAsync();
+                await using SqliteConnection targetConnection = new("Data Source=:memory:");
+                await targetConnection.OpenAsync();
+                await using SqliteDbContext target = await CreateDbContextAsync(targetConnection);
+                await AddTargetUserAsync(target, userId);
+                ServerBackupImportService importService = new(
+                    target,
+                    cipher,
+                    new ServerBackupJsonStreamReader(),
+                    NullLogger<ServerBackupImportService>.Instance);
+                await using ManagedMemorySampler importMemory = new();
+
+                await importService.ImportAsync(
+                    userId,
+                    transferPath,
+                    timeout.Token);
+                await importMemory.StopAsync();
+
+                Assert.Multiple(() =>
+                {
+                    Assert.That(new FileInfo(transferPath).Length, Is.GreaterThan(0));
+                    Assert.That(target.SnapshotFiles.Count(), Is.EqualTo(fileCount));
+                    Assert.That(target.ChangeTracker.Entries(), Is.Empty);
+                    Assert.That(
+                        exportMemory.MaximumGrowthBytes,
+                        Is.LessThan(maximumMemoryGrowth));
+                    Assert.That(
+                        exportMemory.RetainedGrowthBytes,
+                        Is.LessThan(maximumMemoryGrowth));
+                    Assert.That(
+                        importMemory.MaximumGrowthBytes,
+                        Is.LessThan(maximumMemoryGrowth));
+                    Assert.That(
+                        importMemory.RetainedGrowthBytes,
+                        Is.LessThan(maximumMemoryGrowth));
+                });
+            }
+            finally
+            {
+                File.Delete(transferPath);
+            }
+        }
+
         private static async Task<SqliteDbContext> CreateDbContextAsync(
             SqliteConnection connection)
         {
