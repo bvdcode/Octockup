@@ -24,42 +24,6 @@ namespace Octockup.Server.Migrations.Postgres
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "hstore");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("EasyExtensions.EntityFrameworkCore.Database.RefreshToken", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTime?>("RevokedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("revoked_at");
-
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("token");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Token")
-                        .IsUnique();
-
-                    b.ToTable("refresh_tokens");
-                });
-
             modelBuilder.Entity("Octockup.Server.Database.Backup", b =>
                 {
                     b.Property<Guid>("Id")
@@ -282,6 +246,61 @@ namespace Octockup.Server.Migrations.Postgres
                     b.HasIndex("UserId");
 
                     b.ToTable("notifications");
+                });
+
+            modelBuilder.Entity("Octockup.Server.Database.RefreshSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<Guid>("FamilyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("family_id");
+
+                    b.Property<int?>("RevocationReason")
+                        .HasColumnType("integer")
+                        .HasColumnName("revocation_reason");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("FamilyId", "RevokedAt");
+
+                    b.HasIndex("UserId", "RevokedAt");
+
+                    b.ToTable("refresh_sessions");
                 });
 
             modelBuilder.Entity("Octockup.Server.Database.Schedule", b =>
@@ -686,6 +705,17 @@ namespace Octockup.Server.Migrations.Postgres
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Octockup.Server.Database.RefreshSession", b =>
+                {
+                    b.HasOne("Octockup.Server.Database.User", "User")
+                        .WithMany("RefreshSessions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Octockup.Server.Database.Schedule", b =>
                 {
                     b.HasOne("Octockup.Server.Database.Backup", "Backup")
@@ -754,6 +784,8 @@ namespace Octockup.Server.Migrations.Postgres
             modelBuilder.Entity("Octockup.Server.Database.User", b =>
                 {
                     b.Navigation("Modules");
+
+                    b.Navigation("RefreshSessions");
                 });
 #pragma warning restore 612, 618
         }

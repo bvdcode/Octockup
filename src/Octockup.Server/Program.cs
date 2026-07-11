@@ -39,6 +39,14 @@ namespace Octockup.Server
                         options.Lifetime <= TimeSpan.FromMinutes(15),
                     "Download ticket lifetime must be between zero and 15 minutes.")
                 .ValidateOnStart();
+            builder.Services
+                .AddOptions<RefreshSessionOptions>()
+                .BindConfiguration("RefreshSessions")
+                .Validate(
+                    options => options.Lifetime > TimeSpan.Zero &&
+                        options.Lifetime <= TimeSpan.FromDays(90),
+                    "Refresh session lifetime must be between zero and 90 days.")
+                .ValidateOnStart();
 
             // Configure form options for large file uploads
             builder.Services.Configure<FormOptions>(options =>
@@ -56,6 +64,7 @@ namespace Octockup.Server
                 .AddScoped<BackupDeletionService>()
                 .AddScoped<SnapshotDeletionService>()
                 .AddScoped<DownloadTicketService>()
+                .AddScoped<RefreshSessionService>()
                 .AddScoped<ChunkReferenceCollector>()
                 .AddScoped<StorageCleanupRunner>()
                 .AddScoped<StorageMaintenanceService>()

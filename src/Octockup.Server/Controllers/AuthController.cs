@@ -6,13 +6,14 @@ using EasyExtensions.Abstractions;
 using EasyExtensions.AspNetCore.Authorization.Abstractions;
 using EasyExtensions.AspNetCore.Authorization.Models.Dto;
 using EasyExtensions.AspNetCore.Extensions;
-using EasyExtensions.EntityFrameworkCore.Database;
-using EasyExtensions.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Octockup.Server.Database;
+using Octockup.Server.Models.Results;
 using Octockup.Server.Models.Requests;
+using Octockup.Server.Services;
 using System.IdentityModel.Tokens.Jwt;
 
 namespace Octockup.Server.Controllers
@@ -23,7 +24,8 @@ namespace Octockup.Server.Controllers
         ITokenProvider _tokens,
         AppDbContext _dbContext,
         ILogger<ActionContext> _logger,
-        IPasswordHashService _passwords) : ControllerBase
+        IPasswordHashService _passwords,
+        RefreshSessionService _refreshSessions) : ControllerBase
     {
         [Authorize]
         [HttpGet("me")]
@@ -59,13 +61,13 @@ namespace Octockup.Server.Controllers
                 return BadRequest("Old password is incorrect.");
             }
             user.PasswordPhc = _passwords.Hash(request.NewPassword);
-            _dbContext.Users.Update(user);
-            var result = await _dbContext.SaveChangesAsync();
-            bool success = result > 0;
-            if (!success)
-            {
-                return BadRequest("Password change failed.");
-            }
+            await using IDbContextTransaction transaction = await _dbContext.Database
+                .BeginTransactionAsync(HttpContext.RequestAborted);
+            await _dbContext.SaveChangesAsync(HttpContext.RequestAborted);
+            await _refreshSessions.RevokeAllForPasswordChangeAsync(
+                userId,
+                HttpContext.RequestAborted);
+            await transaction.CommitAsync(HttpContext.RequestAborted);
             return Ok("Password changed successfully.");
         }
 
@@ -79,33 +81,23 @@ namespace Octockup.Server.Controllers
                     request.RefreshToken = cookieToken;
                 }
             }
-            var foundToken = _dbContext.RefreshTokens.FirstOrDefault(x => x.Token == request.RefreshToken && x.RevokedAt == null);
-            if (foundToken == null)
+            RefreshTokenIssue? issue = await _refreshSessions.RotateAsync(
+                request.RefreshToken,
+                HttpContext.RequestAborted);
+            if (issue is null)
             {
+                DeleteRefreshCookie();
                 return this.ApiUnauthorized("Invalid refresh token.");
             }
-            string accessToken = _tokens.CreateToken(x => x.Add(JwtRegisteredClaimNames.Sub, foundToken.UserId.ToString()));
-            string refreshToken = StringHelpers.CreateRandomString(64);
-            var newSession = new RefreshToken()
-            {
-                UserId = foundToken.UserId,
-                Token = refreshToken,
-            };
-            _logger.LogInformation("Refresh token rotated for user {UserId}", foundToken.UserId);
-            _dbContext.RefreshTokens.Add(newSession);
-            foundToken.RevokedAt = DateTime.UtcNow;
-            await _dbContext.SaveChangesAsync();
-            Response.Cookies.Append("refresh_token", refreshToken, new CookieOptions()
-            {
-                Secure = true,
-                HttpOnly = true,
-                SameSite = SameSiteMode.Strict,
-                Expires = DateTimeOffset.UtcNow.AddDays(30),
-            });
+
+            string accessToken = _tokens.CreateToken(
+                x => x.Add(JwtRegisteredClaimNames.Sub, issue.UserId.ToString()));
+            _logger.LogInformation("Refresh token rotated for user {UserId}", issue.UserId);
+            AppendRefreshCookie(issue);
             return Ok(new TokenPairResponseDto()
             {
                 AccessToken = accessToken,
-                RefreshToken = refreshToken,
+                RefreshToken = issue.RefreshToken,
             });
         }
 
@@ -136,32 +128,22 @@ namespace Octockup.Server.Controllers
                 return this.ApiUnauthorized("Invalid username or password.");
             }
 
-            string refreshToken = StringHelpers.CreateRandomString(64);
-            var session = new RefreshToken()
-            {
-                UserId = user.Id,
-                Token = refreshToken,
-            };
-            _dbContext.RefreshTokens.Add(session);
             if (needsRehash)
             {
                 user.PasswordPhc = _passwords.Hash(request.Password);
                 _dbContext.Users.Update(user);
             }
             await _dbContext.SaveChangesAsync();
+            RefreshTokenIssue issue = await _refreshSessions.CreateAsync(
+                user.Id,
+                HttpContext.RequestAborted);
             string accessToken = _tokens.CreateToken(x => x.Add(JwtRegisteredClaimNames.Sub, user.Id.ToString()));
             _logger.LogInformation("User '{user}' logged in", request.Username);
-            Response.Cookies.Append("refresh_token", refreshToken, new CookieOptions()
-            {
-                Secure = true,
-                HttpOnly = true,
-                SameSite = SameSiteMode.Strict,
-                Expires = DateTimeOffset.UtcNow.AddDays(30),
-            });
+            AppendRefreshCookie(issue);
             return Ok(new TokenPairResponseDto()
             {
                 AccessToken = accessToken,
-                RefreshToken = refreshToken,
+                RefreshToken = issue.RefreshToken,
             });
         }
 
@@ -169,15 +151,32 @@ namespace Octockup.Server.Controllers
         public async Task<IActionResult> LogoutAsync()
         {
             string refreshToken = Request.Cookies["refresh_token"] ?? string.Empty;
-            var foundToken = await _dbContext.RefreshTokens.FirstOrDefaultAsync(x => x.Token == refreshToken && x.RevokedAt == null);
-            if (foundToken != null)
-            {
-                foundToken.RevokedAt = DateTime.UtcNow;
-                _dbContext.RefreshTokens.Update(foundToken);
-                await _dbContext.SaveChangesAsync();
-            }
-            Response.Cookies.Delete("refresh_token");
+            await _refreshSessions.RevokeAsync(refreshToken, HttpContext.RequestAborted);
+            DeleteRefreshCookie();
             return Ok("Logged out successfully.");
+        }
+
+        private void AppendRefreshCookie(RefreshTokenIssue issue)
+        {
+            Response.Cookies.Append("refresh_token", issue.RefreshToken, new CookieOptions
+            {
+                Secure = true,
+                HttpOnly = true,
+                SameSite = SameSiteMode.Strict,
+                Path = "/api/v1/auth",
+                Expires = new DateTimeOffset(issue.ExpiresAt)
+            });
+        }
+
+        private void DeleteRefreshCookie()
+        {
+            Response.Cookies.Delete("refresh_token", new CookieOptions
+            {
+                Secure = true,
+                HttpOnly = true,
+                SameSite = SameSiteMode.Strict,
+                Path = "/api/v1/auth"
+            });
         }
     }
 }

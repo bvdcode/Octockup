@@ -18,5 +18,6 @@ namespace Octockup.Server.Database
         public string PasswordPhc { get; set; } = string.Empty;
 
         public virtual ICollection<Module> Modules { get; set; } = [];
+        public virtual ICollection<RefreshSession> RefreshSessions { get; set; } = [];
     }
 }
