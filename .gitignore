@@ -38,4 +38,6 @@ msbuild.wrn
 *.key
 data
 notes/
+.temp/
+.playwright-cli/
 AGENTS.md

@@ -32,7 +32,7 @@ export function useModuleMetadata(
           setModuleMeta(meta);
         }
         setLoading(false);
-      } catch (e: unknown) {
+      } catch (e) {
         if (!active) return;
         setError(e instanceof Error ? e.message : t("wizard.loadError"));
         setLoading(false);

@@ -61,7 +61,7 @@ export function useModuleTest(
       setTestLoading(true);
       await apiClient.test(providerId, params, destination);
       setTestMessage(t("wizard.testSuccess"));
-    } catch (err: unknown) {
+    } catch (err) {
       let msg = t("wizard.testFailed");
       if (err && typeof err === "object") {
         const response = (err as { response?: { data?: { detail?: string } } })

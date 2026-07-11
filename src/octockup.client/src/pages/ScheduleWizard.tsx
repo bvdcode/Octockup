@@ -133,7 +133,7 @@ export default function ScheduleWizard() {
               };
               await schedulesApi.create(payload);
               navigate("/schedules");
-            } catch (e: unknown) {
+            } catch (e) {
               const message = e instanceof Error ? e.message : String(e);
               setState(s => ({ ...s, creating: false, createError: message || t("scheduleWizard.createError") }));
             }

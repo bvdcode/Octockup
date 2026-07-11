@@ -3,17 +3,11 @@ import {
   Card,
   Alert,
   Stack,
-  Button,
   Snackbar,
   Typography,
   CardContent,
   CircularProgress,
-  Divider,
-  Select,
-  MenuItem,
-  FormControl,
 } from "@mui/material";
-import { AddCircleOutline } from "@mui/icons-material";
 import { isAxiosError } from "axios";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -26,7 +20,7 @@ import { BackupStatus } from "../types/api";
 import { getBackupOverallStatus } from "../utils/backupUtils";
 import { EditIgnoredPathsDialog } from "../components/EditIgnoredPathsDialog";
 import { BackupCard } from "../components/backups/BackupCard";
-import { formatSize } from "../utils/formatUtils";
+import { BackupsHeader } from "../components/backups/BackupsHeader";
 import { LatestValueByKeyThrottler } from "../utils/LatestValueByKeyThrottler";
 
 const progressRenderIntervalMs = 250;
@@ -313,50 +307,14 @@ export default function BackupsPage() {
 
   return (
     <Stack spacing={3}>
-      <Box display="flex" alignItems="center" justifyContent="space-between">
-        <Box display="flex" alignItems="center" gap={2}>
-          <Typography variant="h5">{t("backups.title")}</Typography>
-          <Divider orientation="vertical" flexItem />
-          <Typography variant="body2" color="text.secondary">
-            {t("backups.totalFiles", {
-              count: totalStats.totalFiles,
-            })}
-          </Typography>
-          <Divider orientation="vertical" flexItem />
-          <Typography variant="body2" color="text.secondary">
-            {t("backups.totalSize", {
-              size: formatSize(totalStats.totalSize),
-            })}
-          </Typography>
-        </Box>
-        <Box display="flex" alignItems="center" gap={2}>
-          <FormControl size="small" sx={{ minWidth: 150 }}>
-            <Select
-              value={selectedStorageId || "all"}
-              onChange={(e) =>
-                setSelectedStorageId(
-                  e.target.value === "all" ? null : e.target.value,
-                )
-              }
-              displayEmpty
-            >
-              <MenuItem value="all">{t("backups.allStorages")}</MenuItem>
-              {uniqueStorages.map((storage) => (
-                <MenuItem key={storage.id} value={storage.id}>
-                  {storage.tag}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <Button
-            variant="contained"
-            startIcon={<AddCircleOutline />}
-            onClick={() => navigate("/backups/new")}
-          >
-            {t("backups.newBackup")}
-          </Button>
-        </Box>
-      </Box>
+      <BackupsHeader
+        totalFiles={totalStats.totalFiles}
+        totalSize={totalStats.totalSize}
+        storages={uniqueStorages}
+        selectedStorageId={selectedStorageId}
+        onStorageChange={setSelectedStorageId}
+        onNewBackup={() => navigate("/backups/new")}
+      />
       {backups.length === 0 ? (
         <Card>
           <CardContent>

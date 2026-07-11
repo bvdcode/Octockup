@@ -6,25 +6,25 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
+    "lint": "eslint . && node scripts/check-source-policy.mjs",
     "test": "vitest run",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@bvdcode/react-kit": "^0.0.31",
+    "@bvdcode/react-kit": "^0.0.33",
     "@mui/icons-material": "^7.3.5",
     "@mui/material": "^7.3.4",
     "@mui/styled-engine": "^7.3.4",
     "@mui/x-data-grid": "^8.21.0",
     "material-ui-confirm": "^4.0.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@types/node": "^24.10.1",
-    "@types/react": "^19.2.5",
-    "@types/react-dom": "^19.2.3",
+    "@types/react": "^18.3.28",
+    "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^5.1.1",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",

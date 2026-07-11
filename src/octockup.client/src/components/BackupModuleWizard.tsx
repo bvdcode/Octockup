@@ -249,7 +249,7 @@ export default function BackupModuleWizard({
       setTimeout(() => {
         navigate(backRoute);
       }, 1000);
-    } catch (err: unknown) {
+    } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setSubmitError(msg || t("wizard.createError"));
     } finally {

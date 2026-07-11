@@ -1,5 +1,6 @@
 import { BackupStatus } from "../types/api";
 import type { ScheduleItem } from "../types/api";
+import type { TFunction } from "i18next";
 import { parseUtcDate, formatRelativeTime } from "./dateUtils";
 
 export function statusColor(
@@ -39,7 +40,7 @@ export function parseInterval(interval: string | null): number {
 
 export function formatInterval(
   interval: string | null,
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TFunction,
 ): string {
   if (!interval) return "";
   const minutes = parseInterval(interval);
@@ -109,7 +110,7 @@ export function calculateNextRunTime(
 
 export function formatNextRun(
   item: ScheduleItem,
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TFunction,
 ): string {
   const nextRun = calculateNextRunTime(item);
 

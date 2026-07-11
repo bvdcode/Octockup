@@ -322,7 +322,7 @@ export default function BackupWizard() {
               };
               await backupsApi.create(payload);
               navigate("/backups");
-            } catch (e: unknown) {
+            } catch (e) {
               const message = e instanceof Error ? e.message : String(e);
               setState((s) => ({
                 ...s,
