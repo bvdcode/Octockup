@@ -17,8 +17,26 @@ namespace Octockup.Server.Services
             Func<long, long, CancellationToken, Task>? reportProgressAsync,
             CancellationToken cancellationToken)
         {
-            long filesIndexed = 0;
-            long referencesProcessed = 0;
+            long filesIndexed = await _dbContext.SnapshotFiles
+                .AsNoTracking()
+                .LongCountAsync(
+                    x => x.ChunkReferencesIndexed &&
+                        x.Snapshot.CompletedAt != null &&
+                        x.Snapshot.Backup.StorageId == storageId,
+                    cancellationToken);
+            long referencesProcessed = await _dbContext.SnapshotChunkReferences
+                .AsNoTracking()
+                .LongCountAsync(
+                    x => x.StorageId == storageId && x.Snapshot.CompletedAt != null,
+                    cancellationToken);
+            if (reportProgressAsync is not null)
+            {
+                await reportProgressAsync(
+                    filesIndexed,
+                    referencesProcessed,
+                    cancellationToken);
+            }
+
             while (true)
             {
                 List<SnapshotFile> files = await _dbContext.SnapshotFiles
@@ -50,11 +68,10 @@ namespace Octockup.Server.Services
                             ChunkHash = chunkHash
                         });
                         ordinal++;
-                        referencesProcessed++;
-
                         if (pendingReferences.Count == SnapshotChunkReferenceWriter.MaxBatchSize)
                         {
-                            await _writer.FlushAsync(pendingReferences, cancellationToken);
+                            referencesProcessed += await _writer
+                                .FlushAsync(pendingReferences, cancellationToken);
                             pendingReferences.Clear();
                         }
                     }
@@ -63,7 +80,8 @@ namespace Octockup.Server.Services
                     filesIndexed++;
                 }
 
-                await _writer.FlushAsync(pendingReferences, cancellationToken);
+                referencesProcessed += await _writer
+                    .FlushAsync(pendingReferences, cancellationToken);
                 _dbContext.ChangeTracker.Clear();
                 if (reportProgressAsync is not null)
                 {

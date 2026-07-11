@@ -129,8 +129,16 @@ namespace Octockup.Tests
             await _dbContext.SaveChangesAsync();
             _dbContext.ChangeTracker.Clear();
             SnapshotChunkReferenceIndexer indexer = CreateIndexer();
+            List<(long Files, long References)> progress = [];
 
-            await indexer.IndexStorageAsync(_storageId, null, CancellationToken.None);
+            await indexer.IndexStorageAsync(
+                _storageId,
+                (files, references, _) =>
+                {
+                    progress.Add((files, references));
+                    return Task.CompletedTask;
+                },
+                CancellationToken.None);
             List<SnapshotChunkReference> references = await _dbContext.SnapshotChunkReferences
                 .AsNoTracking()
                 .OrderBy(x => x.Ordinal)
@@ -143,6 +151,8 @@ namespace Octockup.Tests
                     Is.EqualTo(new[] { 0, 1, 2 }));
                 Assert.That(references.Select(x => x.ChunkHash),
                     Is.EqualTo(new[] { "a", "a", "b" }));
+                Assert.That(progress.First(), Is.EqualTo((0L, 1L)));
+                Assert.That(progress.Last(), Is.EqualTo((1L, 3L)));
             });
         }
 

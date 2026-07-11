@@ -80,12 +80,7 @@ namespace Octockup.Server.Services
                     return;
                 }
 
-                StorageCleanupJobState state = new(
-                    job.Id,
-                    job.UserId,
-                    job.StorageId,
-                    job.StorageTag,
-                    job.StartedAt);
+                StorageCleanupJobState state = new(job.ToDto());
 
                 try
                 {
@@ -100,7 +95,12 @@ namespace Octockup.Server.Services
                         .GetRequiredService<StorageCleanupRunner>();
                     await runner.RunAsync(
                             state,
-                            (progress, ct) => PersistAndPublishAsync(
+                            (progress, ct) => ValidateAndPublishAsync(
+                                progress,
+                                storageLease.OperationId,
+                                runCancellation,
+                                ct),
+                            (progress, ct) => PersistCheckpointAndPublishAsync(
                                 progress,
                                 storageLease.OperationId,
                                 runCancellation,
@@ -147,7 +147,27 @@ namespace Octockup.Server.Services
             }
         }
 
-        private async Task PersistAndPublishAsync(
+        private async Task ValidateAndPublishAsync(
+            StorageCleanupJobDto progress,
+            Guid runId,
+            CancellationTokenSource runCancellation,
+            CancellationToken cancellationToken)
+        {
+            bool canContinue = await _jobStore
+                .CanContinueRunAsync(progress.JobId, runId, cancellationToken)
+                .ConfigureAwait(false);
+            if (!canContinue)
+            {
+                runCancellation.Cancel();
+                runCancellation.Token.ThrowIfCancellationRequested();
+            }
+
+            await _progressPublisher
+                .PublishAsync(progress, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        private async Task PersistCheckpointAndPublishAsync(
             StorageCleanupJobDto progress,
             Guid runId,
             CancellationTokenSource runCancellation,
@@ -162,10 +182,10 @@ namespace Octockup.Server.Services
                 runCancellation.Token.ThrowIfCancellationRequested();
             }
 
-            bool cancellationRequested = await _jobStore
-                .IsCancellationRequestedAsync(progress.JobId)
+            bool canContinue = await _jobStore
+                .CanContinueRunAsync(progress.JobId, runId, cancellationToken)
                 .ConfigureAwait(false);
-            if (cancellationRequested)
+            if (!canContinue)
             {
                 runCancellation.Cancel();
                 runCancellation.Token.ThrowIfCancellationRequested();

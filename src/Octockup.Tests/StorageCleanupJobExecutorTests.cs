@@ -114,28 +114,47 @@ namespace Octockup.Tests
         [Test]
         public async Task ExecutePendingAsync_WhenPreviousRunWasInterrupted_RestartsAndCompletesJob()
         {
-            await using (AsyncServiceScope scope = _serviceProvider.CreateAsyncScope())
+            const int checkpointCount = 500;
+            for (int index = 0; index <= checkpointCount; index++)
             {
-                AppDbContext dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                StorageCleanupJob job = await dbContext.StorageCleanupJobs.SingleAsync(x => x.Id == _jobId);
-                job.Status = StorageCleanupStatus.Running;
-                job.RunId = Guid.NewGuid();
-                job.StorageObjectsScanned = 500;
-                await dbContext.SaveChangesAsync();
+                string path = $"metadata/{index:D6}";
+                _storage.Files[path] = CreateStorageFile(path, 1);
             }
+            string checkpointPath = $"metadata/{checkpointCount - 1:D6}";
+            string interruptionPath = $"metadata/{checkpointCount:D6}";
+            using CancellationTokenSource cancellationTokenSource = new();
+            _storage.BeforeInventoryFileYielded = file =>
+            {
+                if (file.Path == interruptionPath)
+                {
+                    cancellationTokenSource.Cancel();
+                }
+            };
 
-            string referencedPath = ChunkStorageHelpers.GetStoragePath(ReferencedHash, '/');
-            _storage.Files[referencedPath] = CreateStorageFile(referencedPath, 12);
             StorageCleanupJobExecutor executor = _serviceProvider
                 .GetRequiredService<StorageCleanupJobExecutor>();
+            await executor.ExecutePendingAsync(cancellationTokenSource.Token);
+            StorageCleanupJob interrupted = await LoadJobAsync();
 
+            _storage.BeforeInventoryFileYielded = null;
             await executor.ExecutePendingAsync(CancellationToken.None);
 
             StorageCleanupJob recovered = await LoadJobAsync();
             Assert.Multiple(() =>
             {
+                Assert.That(interrupted.Status, Is.EqualTo(StorageCleanupStatus.Running));
+                Assert.That(interrupted.StorageObjectsScanned, Is.EqualTo(checkpointCount));
+                Assert.That(interrupted.CurrentPath, Is.EqualTo(checkpointPath));
+                Assert.That(interrupted.ActiveStorageId, Is.EqualTo(_storageId));
                 Assert.That(recovered.Status, Is.EqualTo(StorageCleanupStatus.Completed));
-                Assert.That(recovered.StorageObjectsScanned, Is.EqualTo(1));
+                Assert.That(recovered.StorageObjectsScanned, Is.EqualTo(checkpointCount + 1));
+                Assert.That(recovered.StorageBytesScanned, Is.EqualTo(checkpointCount + 1));
+                Assert.That(recovered.SkippedObjects, Is.EqualTo(checkpointCount + 1));
+                Assert.That(_storage.InventoryCursors, Is.EqualTo(new string?[]
+                {
+                    null,
+                    checkpointPath
+                }));
                 Assert.That(recovered.RunId, Is.Null);
                 Assert.That(recovered.ActiveStorageId, Is.Null);
             });

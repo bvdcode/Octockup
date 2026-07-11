@@ -52,7 +52,6 @@ namespace Octockup.Server.Services
             job.Phase = StorageCleanupPhase.Preparing;
             job.FinishedAt = null;
             job.ErrorMessage = null;
-            ResetProgress(job);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return job;
         }
@@ -89,6 +88,23 @@ namespace Octockup.Server.Services
                 .Where(x => x.Id == jobId)
                 .Select(x => x.CancellationRequested)
                 .SingleOrDefaultAsync(CancellationToken.None)
+                .ConfigureAwait(false);
+        }
+
+        public async Task<bool> CanContinueRunAsync(
+            Guid jobId,
+            Guid runId,
+            CancellationToken cancellationToken)
+        {
+            await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
+            AppDbContext dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            return await dbContext.StorageCleanupJobs
+                .AsNoTracking()
+                .AnyAsync(
+                    x => x.Id == jobId &&
+                        x.RunId == runId &&
+                        !x.CancellationRequested,
+                    cancellationToken)
                 .ConfigureAwait(false);
         }
 
@@ -150,27 +166,6 @@ namespace Octockup.Server.Services
             job.CurrentPath = null;
             await dbContext.SaveChangesAsync(CancellationToken.None).ConfigureAwait(false);
             return job.ToDto();
-        }
-
-        private static void ResetProgress(StorageCleanupJob job)
-        {
-            job.SnapshotFilesScanned = 0;
-            job.ReferenceCount = 0;
-            job.ReferencedChunks = 0;
-            job.StorageObjectsScanned = 0;
-            job.StorageBytesScanned = 0;
-            job.ChunkObjectsScanned = 0;
-            job.ReferencedObjects = 0;
-            job.ReferencedBytes = 0;
-            job.OrphanObjects = 0;
-            job.OrphanBytes = 0;
-            job.DeletedObjects = 0;
-            job.FreedBytes = 0;
-            job.MissingObjects = 0;
-            job.FailedDeletes = 0;
-            job.SkippedObjects = 0;
-            job.UploadedHashRowsDeleted = 0;
-            job.CurrentPath = null;
         }
 
         private static void ApplyProgress(StorageCleanupJob job, StorageCleanupJobDto progress)

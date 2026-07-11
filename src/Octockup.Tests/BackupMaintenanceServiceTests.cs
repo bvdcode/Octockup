@@ -202,6 +202,7 @@ namespace Octockup.Tests
             await runner.RunAsync(
                 state,
                 (_, _) => Task.CompletedTask,
+                (_, _) => Task.CompletedTask,
                 storageLease,
                 CancellationToken.None);
 
@@ -282,6 +283,7 @@ namespace Octockup.Tests
             await runner.RunAsync(
                 state,
                 (_, _) => Task.CompletedTask,
+                (_, _) => Task.CompletedTask,
                 new ImmediateStorageOperationLease(storageId),
                 CancellationToken.None);
 
@@ -353,6 +355,7 @@ namespace Octockup.Tests
             Assert.CatchAsync<OperationCanceledException>(async () =>
                 await runner.RunAsync(
                     state,
+                    (_, _) => Task.CompletedTask,
                     (_, _) => Task.CompletedTask,
                     storageLease,
                     cancellationTokenSource.Token));

@@ -161,6 +161,45 @@ namespace Octockup.Tests
             await secondLease.DisposeAsync();
         }
 
+        [Test]
+        public async Task TryAcquireAsync_WhenCleanupJobAwaitsRecovery_BlocksBackupButAllowsCleanup()
+        {
+            await using (AsyncServiceScope scope = _serviceProvider.CreateAsyncScope())
+            {
+                AppDbContext dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                Module storage = await dbContext.Modules.SingleAsync(x => x.Id == _storageId);
+                await dbContext.StorageCleanupJobs.AddAsync(new StorageCleanupJob
+                {
+                    UserId = storage.UserId,
+                    StorageId = storage.Id,
+                    ActiveStorageId = storage.Id,
+                    StorageTag = storage.Tag,
+                    Status = StorageCleanupStatus.Running,
+                    Phase = StorageCleanupPhase.ScanningStorage,
+                    StartedAt = DateTime.UtcNow
+                });
+                await dbContext.SaveChangesAsync();
+            }
+
+            IStorageOperationCoordinator coordinator = _serviceProvider
+                .GetRequiredService<IStorageOperationCoordinator>();
+            IStorageOperationLease? backupLease = await coordinator.TryAcquireAsync(
+                _storageId,
+                StorageOperationKind.Backup,
+                CancellationToken.None);
+            IStorageOperationLease? cleanupLease = await coordinator.TryAcquireAsync(
+                _storageId,
+                StorageOperationKind.Cleanup,
+                CancellationToken.None);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(backupLease, Is.Null);
+                Assert.That(cleanupLease, Is.Not.Null);
+            });
+            await cleanupLease!.DisposeAsync();
+        }
+
         private async Task<Module> LoadStorageAsync()
         {
             await using AsyncServiceScope scope = _serviceProvider.CreateAsyncScope();

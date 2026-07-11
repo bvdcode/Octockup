@@ -32,6 +32,9 @@ namespace Octockup.Server.Services
                 .Where(x =>
                     x.Id == storageId &&
                     x.Destination == ModuleDestination.Target &&
+                    (kind != StorageOperationKind.Backup ||
+                        !dbContext.StorageCleanupJobs.Any(job =>
+                            job.ActiveStorageId == x.Id)) &&
                     (x.ActiveStorageOperationId == null ||
                         x.StorageOperationLeaseExpiresAt == null ||
                         x.StorageOperationLeaseExpiresAt <= now))

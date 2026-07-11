@@ -14,6 +14,8 @@ namespace Octockup.Tests
         public char PathSeparator => '/';
         public IEnumerable<string> RequiredParameters => [];
         public Dictionary<string, BackupFileInfo> Files { get; } = new(StringComparer.Ordinal);
+        public List<string?> InventoryCursors { get; } = [];
+        public Action<BackupFileInfo>? BeforeInventoryFileYielded { get; set; }
 
         public void SetParameters(IReadOnlyDictionary<string, string> parameters)
         {
@@ -57,12 +59,15 @@ namespace Octockup.Tests
             bool recursive = false,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
+            InventoryCursors.Add(afterPath);
             foreach (BackupFileInfo file in Files.Values
                 .Where(x => string.IsNullOrEmpty(afterPath) ||
                     string.CompareOrdinal(x.Path, afterPath) > 0)
                 .OrderBy(x => x.Path, StringComparer.Ordinal)
                 .ToList())
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                BeforeInventoryFileYielded?.Invoke(file);
                 cancellationToken.ThrowIfCancellationRequested();
                 yield return file;
                 await Task.Yield();

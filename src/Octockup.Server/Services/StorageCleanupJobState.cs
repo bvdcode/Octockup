@@ -17,8 +17,7 @@ namespace Octockup.Server.Services
             Guid storageId,
             string storageTag,
             DateTime startedAt)
-        {
-            _value = new StorageCleanupJobDto
+            : this(new StorageCleanupJobDto
             {
                 JobId = jobId,
                 UserId = userId,
@@ -27,7 +26,13 @@ namespace Octockup.Server.Services
                 Status = StorageCleanupStatus.Pending,
                 Phase = StorageCleanupPhase.Preparing,
                 StartedAt = startedAt
-            };
+            })
+        {
+        }
+
+        public StorageCleanupJobState(StorageCleanupJobDto initialValue)
+        {
+            _value = Clone(initialValue);
         }
 
         public Guid JobId => _value.JobId;
@@ -57,36 +62,41 @@ namespace Octockup.Server.Services
         {
             lock (_sync)
             {
-                return new StorageCleanupJobDto
-                {
-                    JobId = _value.JobId,
-                    UserId = _value.UserId,
-                    StorageId = _value.StorageId,
-                    StorageTag = _value.StorageTag,
-                    Status = _value.Status,
-                    Phase = _value.Phase,
-                    StartedAt = _value.StartedAt,
-                    FinishedAt = _value.FinishedAt,
-                    ErrorMessage = _value.ErrorMessage,
-                    SnapshotFilesScanned = _value.SnapshotFilesScanned,
-                    ReferenceCount = _value.ReferenceCount,
-                    ReferencedChunks = _value.ReferencedChunks,
-                    StorageObjectsScanned = _value.StorageObjectsScanned,
-                    StorageBytesScanned = _value.StorageBytesScanned,
-                    ChunkObjectsScanned = _value.ChunkObjectsScanned,
-                    ReferencedObjects = _value.ReferencedObjects,
-                    ReferencedBytes = _value.ReferencedBytes,
-                    OrphanObjects = _value.OrphanObjects,
-                    OrphanBytes = _value.OrphanBytes,
-                    DeletedObjects = _value.DeletedObjects,
-                    FreedBytes = _value.FreedBytes,
-                    MissingObjects = _value.MissingObjects,
-                    FailedDeletes = _value.FailedDeletes,
-                    SkippedObjects = _value.SkippedObjects,
-                    UploadedHashRowsDeleted = _value.UploadedHashRowsDeleted,
-                    CurrentPath = _value.CurrentPath
-                };
+                return Clone(_value);
             }
+        }
+
+        private static StorageCleanupJobDto Clone(StorageCleanupJobDto value)
+        {
+            return new StorageCleanupJobDto
+            {
+                JobId = value.JobId,
+                UserId = value.UserId,
+                StorageId = value.StorageId,
+                StorageTag = value.StorageTag,
+                Status = value.Status,
+                Phase = value.Phase,
+                StartedAt = value.StartedAt,
+                FinishedAt = value.FinishedAt,
+                ErrorMessage = value.ErrorMessage,
+                SnapshotFilesScanned = value.SnapshotFilesScanned,
+                ReferenceCount = value.ReferenceCount,
+                ReferencedChunks = value.ReferencedChunks,
+                StorageObjectsScanned = value.StorageObjectsScanned,
+                StorageBytesScanned = value.StorageBytesScanned,
+                ChunkObjectsScanned = value.ChunkObjectsScanned,
+                ReferencedObjects = value.ReferencedObjects,
+                ReferencedBytes = value.ReferencedBytes,
+                OrphanObjects = value.OrphanObjects,
+                OrphanBytes = value.OrphanBytes,
+                DeletedObjects = value.DeletedObjects,
+                FreedBytes = value.FreedBytes,
+                MissingObjects = value.MissingObjects,
+                FailedDeletes = value.FailedDeletes,
+                SkippedObjects = value.SkippedObjects,
+                UploadedHashRowsDeleted = value.UploadedHashRowsDeleted,
+                CurrentPath = value.CurrentPath
+            };
         }
     }
 }
