@@ -211,111 +211,136 @@ namespace Octockup.Server.Modules
             EnsureConnected();
             ArgumentNullException.ThrowIfNull(_sftp);
 
-            var queue = new Queue<string>();
-            queue.Enqueue(string.Empty);
-
-            var seenDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            while (queue.Count > 0)
+            HashSet<string> seenDirectories = new(StringComparer.OrdinalIgnoreCase);
+            foreach (BackupFileInfo file in EnumerateFilesOrdered(
+                string.Empty,
+                recursive,
+                seenDirectories,
+                cancellationToken))
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                var currentRelative = queue.Dequeue();
-                var full = NormalizeRemotePath(GetRemotePath(currentRelative));
-
-                // Check if current directory is ignored before listing
-                // Use FULL path for ignore check, not relative to _path
-                if (!string.IsNullOrEmpty(full) && _ignoredPaths != null &&
-                    ScheduleHelpers.IsPathIgnored(full, null, _ignoredPaths))
-                {
-                    _logger.LogDebug("Skipping ignored directory during file enumeration: {Path}", full);
-                    continue;
-                }
-
-                IEnumerable<ISftpFile> entries;
-                try
-                {
-                    entries = _sftp.ListDirectory(full);
-                }
-                catch (SftpPermissionDeniedException) when (_skipPermissionDenied)
-                {
-                    _logger.LogWarning("Permission denied when accessing SFTP directory: {Path}", full);
-                    continue;
-                }
-
-                foreach (var entry in entries)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (entry.Name == "." || entry.Name == "..")
-                    {
-                        continue;
-                    }
-
-                    if (entry.IsSymbolicLink)
-                    {
-                        continue;
-                    }
-
-                    var rel = string.IsNullOrEmpty(currentRelative)
-                        ? entry.Name
-                        : currentRelative + PathSeparator + entry.Name;
-
-                    var fullEntryPath = full.TrimEnd(PathSeparator) + PathSeparator + entry.Name;
-
-                    if (entry.IsDirectory)
-                    {
-                        // Check if subdirectory is ignored before recursing (use full path)
-                        if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(fullEntryPath, null, _ignoredPaths))
-                        {
-                            _logger.LogDebug("Skipping ignored subdirectory during file enumeration: {Name}", fullEntryPath);
-                            continue;
-                        }
-
-                        if (recursive && seenDirs.Add(rel))
-                        {
-                            queue.Enqueue(rel);
-                        }
-
-                        continue;
-                    }
-
-                    if (_skipPermissionDenied && IsClearlyInaccessible(entry))
-                    {
-                        _logger.LogDebug("Skipping likely inaccessible file: {Name}", entry.FullName);
-                        continue;
-                    }
-
-                    if (!recursive && rel.Contains(PathSeparator))
-                    {
-                        continue;
-                    }
-
-                    // Check if file itself is ignored (use full path)
-                    if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(fullEntryPath, entry.Name, _ignoredPaths))
-                    {
-                        _logger.LogDebug("Skipping ignored file: {Name}", fullEntryPath);
-                        continue;
-                    }
-
-                    yield return new BackupFileInfo
-                    {
-                        Path = rel,
-                        Name = entry.Name,
-                        Size = entry.Attributes.Size,
-                        LastModified = entry.LastWriteTime.ToUniversalTime()
-                    };
-                }
+                yield return file;
             }
         }
 
-        public async IAsyncEnumerable<BackupFileInfo> GetFilesAsync(
+        public IAsyncEnumerable<BackupFileInfo> GetFilesAsync(
+            bool recursive = false,
+            CancellationToken cancellationToken = default)
+        {
+            return GetFilesAfterAsync(null, recursive, cancellationToken);
+        }
+
+        public async IAsyncEnumerable<BackupFileInfo> GetFilesAfterAsync(
+            string? afterPath,
             bool recursive = false,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             foreach (BackupFileInfo file in GetFiles(recursive, cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                if (!string.IsNullOrEmpty(afterPath) &&
+                    string.CompareOrdinal(file.Path, afterPath) <= 0)
+                {
+                    continue;
+                }
+
                 yield return file;
-                await Task.Yield();
+            }
+        }
+
+        private IEnumerable<BackupFileInfo> EnumerateFilesOrdered(
+            string currentRelative,
+            bool recursive,
+            HashSet<string> seenDirectories,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            string fullPath = NormalizeRemotePath(GetRemotePath(currentRelative));
+            if (!string.IsNullOrEmpty(fullPath) &&
+                _ignoredPaths is not null &&
+                ScheduleHelpers.IsPathIgnored(fullPath, null, _ignoredPaths))
+            {
+                _logger.LogDebug(
+                    "Skipping ignored directory during file enumeration: {Path}",
+                    fullPath);
+                yield break;
+            }
+
+            List<ISftpFile> entries;
+            try
+            {
+                ArgumentNullException.ThrowIfNull(_sftp);
+                entries = _sftp
+                    .ListDirectory(fullPath)
+                    .Where(x => x.Name != "." && x.Name != ".." && !x.IsSymbolicLink)
+                    .OrderBy(
+                        x => x.Name + (x.IsDirectory ? PathSeparator : string.Empty),
+                        StringComparer.Ordinal)
+                    .ToList();
+            }
+            catch (SftpPermissionDeniedException) when (_skipPermissionDenied)
+            {
+                _logger.LogWarning(
+                    "Permission denied when accessing SFTP directory: {Path}",
+                    fullPath);
+                yield break;
+            }
+
+            foreach (ISftpFile entry in entries)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                string relativePath = string.IsNullOrEmpty(currentRelative)
+                    ? entry.Name
+                    : currentRelative + PathSeparator + entry.Name;
+                string fullEntryPath =
+                    fullPath.TrimEnd(PathSeparator) + PathSeparator + entry.Name;
+
+                if (entry.IsDirectory)
+                {
+                    if (_ignoredPaths is not null &&
+                        ScheduleHelpers.IsPathIgnored(fullEntryPath, null, _ignoredPaths))
+                    {
+                        _logger.LogDebug(
+                            "Skipping ignored subdirectory during file enumeration: {Name}",
+                            fullEntryPath);
+                        continue;
+                    }
+
+                    if (!recursive || !seenDirectories.Add(relativePath))
+                    {
+                        continue;
+                    }
+
+                    foreach (BackupFileInfo child in EnumerateFilesOrdered(
+                        relativePath,
+                        true,
+                        seenDirectories,
+                        cancellationToken))
+                    {
+                        yield return child;
+                    }
+                    continue;
+                }
+
+                if (_skipPermissionDenied && IsClearlyInaccessible(entry))
+                {
+                    _logger.LogDebug("Skipping likely inaccessible file: {Name}", entry.FullName);
+                    continue;
+                }
+
+                if (_ignoredPaths is not null &&
+                    ScheduleHelpers.IsPathIgnored(fullEntryPath, entry.Name, _ignoredPaths))
+                {
+                    _logger.LogDebug("Skipping ignored file: {Name}", fullEntryPath);
+                    continue;
+                }
+
+                yield return new BackupFileInfo
+                {
+                    Path = relativePath,
+                    Name = entry.Name,
+                    Size = entry.Attributes.Size,
+                    LastModified = entry.LastWriteTime.ToUniversalTime()
+                };
             }
         }
 

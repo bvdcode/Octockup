@@ -431,7 +431,15 @@ namespace Octockup.Server.Modules
             return files;
         }
 
-        public async IAsyncEnumerable<BackupFileInfo> GetFilesAsync(
+        public IAsyncEnumerable<BackupFileInfo> GetFilesAsync(
+            bool recursive = false,
+            CancellationToken cancellationToken = default)
+        {
+            return GetFilesAfterAsync(null, recursive, cancellationToken);
+        }
+
+        public async IAsyncEnumerable<BackupFileInfo> GetFilesAfterAsync(
+            string? afterPath,
             bool recursive = false,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
@@ -448,7 +456,10 @@ namespace Octockup.Server.Modules
                 {
                     BucketName = _bucket,
                     Prefix = basePrefix,
-                    ContinuationToken = continuationToken
+                    ContinuationToken = continuationToken,
+                    StartAfter = continuationToken is null && !string.IsNullOrEmpty(afterPath)
+                        ? GetFullKey(afterPath)
+                        : null
                 };
 
                 ListObjectsV2Response response = await _s3

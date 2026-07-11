@@ -90,11 +90,13 @@ namespace Octockup.Server.Modules
             else
             {
                 // Non-recursive: just enumerate files in base directory
-                foreach (var file in Directory.EnumerateFiles(_baseDirectory, "*", SearchOption.TopDirectoryOnly))
+                foreach (string file in Directory
+                    .EnumerateFiles(_baseDirectory, "*", SearchOption.TopDirectoryOnly)
+                    .OrderBy(Path.GetFileName, StringComparer.Ordinal))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    var fileInfo = new FileInfo(file);
-                    var relativePath = Path.GetRelativePath(_baseDirectory, file);
+                    FileInfo fileInfo = new(file);
+                    string relativePath = Path.GetRelativePath(_baseDirectory, file);
 
                     // Check if file is ignored
                     if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + relativePath, fileInfo.Name, _ignoredPaths))
@@ -114,25 +116,43 @@ namespace Octockup.Server.Modules
             }
         }
 
-        public async IAsyncEnumerable<BackupFileInfo> GetFilesAsync(
+        public IAsyncEnumerable<BackupFileInfo> GetFilesAsync(
+            bool recursive = false,
+            CancellationToken cancellationToken = default)
+        {
+            return GetFilesAfterAsync(null, recursive, cancellationToken);
+        }
+
+        public async IAsyncEnumerable<BackupFileInfo> GetFilesAfterAsync(
+            string? afterPath,
             bool recursive = false,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             foreach (BackupFileInfo file in GetFiles(recursive, cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                if (!string.IsNullOrEmpty(afterPath) &&
+                    string.CompareOrdinal(file.Path, afterPath) <= 0)
+                {
+                    continue;
+                }
+
                 yield return file;
-                await Task.Yield();
             }
         }
 
         private IEnumerable<BackupFileInfo> EnumerateFilesRecursive(string directory, CancellationToken cancellationToken)
         {
-            // First, enumerate files in current directory
-            IEnumerable<string> files;
+            List<string> entries;
             try
             {
-                files = Directory.EnumerateFiles(directory, "*", SearchOption.TopDirectoryOnly);
+                entries = Directory
+                    .EnumerateFileSystemEntries(directory, "*", SearchOption.TopDirectoryOnly)
+                    .OrderBy(
+                        path => Path.GetFileName(path) +
+                            (Directory.Exists(path) ? PathSeparator.ToString() : string.Empty),
+                        StringComparer.Ordinal)
+                    .ToList();
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -144,14 +164,37 @@ namespace Octockup.Server.Modules
                 yield break;
             }
 
-            foreach (var file in files)
+            foreach (string entry in entries)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var fileInfo = new FileInfo(file);
-                var relativePath = Path.GetRelativePath(_baseDirectory, file);
+                string relativePath = Path.GetRelativePath(_baseDirectory, entry);
 
-                // Check if file is ignored
-                if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + relativePath, fileInfo.Name, _ignoredPaths))
+                if (Directory.Exists(entry))
+                {
+                    if (_ignoredPaths is not null &&
+                        ScheduleHelpers.IsDirectoryIgnored(
+                            relativePath,
+                            _ignoredPaths,
+                            PathSeparator))
+                    {
+                        _logger.LogDebug("Skipping ignored directory: {Name}", relativePath);
+                        continue;
+                    }
+
+                    foreach (BackupFileInfo child in EnumerateFilesRecursive(entry, cancellationToken))
+                    {
+                        yield return child;
+                    }
+                    continue;
+                }
+
+                FileInfo fileInfo = new(entry);
+
+                if (_ignoredPaths is not null &&
+                    ScheduleHelpers.IsPathIgnored(
+                        PathSeparator + relativePath,
+                        fileInfo.Name,
+                        _ignoredPaths))
                 {
                     _logger.LogDebug("Skipping ignored file: {Name}", relativePath);
                     continue;
@@ -164,41 +207,6 @@ namespace Octockup.Server.Modules
                     Size = fileInfo.Length,
                     LastModified = fileInfo.LastWriteTimeUtc,
                 };
-            }
-
-            // Then, recursively enumerate subdirectories (skipping ignored ones)
-            IEnumerable<string> subdirs;
-            try
-            {
-                subdirs = Directory.EnumerateDirectories(directory, "*", SearchOption.TopDirectoryOnly);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                _logger.LogWarning(ex, "Access denied to enumerate subdirectories of: {Directory}", directory);
-                yield break;
-            }
-            catch (DirectoryNotFoundException)
-            {
-                yield break;
-            }
-
-            foreach (var subdir in subdirs)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var relativePath = Path.GetRelativePath(_baseDirectory, subdir);
-
-                // Check if directory is ignored - skip entire subtree if so
-                if (_ignoredPaths != null && ScheduleHelpers.IsDirectoryIgnored(relativePath, _ignoredPaths, PathSeparator))
-                {
-                    _logger.LogDebug("Skipping ignored directory: {Name}", relativePath);
-                    continue;
-                }
-
-                // Recurse into non-ignored directories
-                foreach (var file in EnumerateFilesRecursive(subdir, cancellationToken))
-                {
-                    yield return file;
-                }
             }
         }
 

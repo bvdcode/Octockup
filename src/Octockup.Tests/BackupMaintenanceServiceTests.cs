@@ -572,7 +572,24 @@ namespace Octockup.Tests
                 bool recursive = false,
                 [EnumeratorCancellation] CancellationToken cancellationToken = default)
             {
-                foreach (BackupFileInfo file in Files.Values)
+                await foreach (BackupFileInfo file in GetFilesAfterAsync(
+                    null,
+                    recursive,
+                    cancellationToken))
+                {
+                    yield return file;
+                }
+            }
+
+            public async IAsyncEnumerable<BackupFileInfo> GetFilesAfterAsync(
+                string? afterPath,
+                bool recursive = false,
+                [EnumeratorCancellation] CancellationToken cancellationToken = default)
+            {
+                foreach (BackupFileInfo file in Files.Values
+                    .Where(x => string.IsNullOrEmpty(afterPath) ||
+                        string.CompareOrdinal(x.Path, afterPath) > 0)
+                    .OrderBy(x => x.Path, StringComparer.Ordinal))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     yield return file;

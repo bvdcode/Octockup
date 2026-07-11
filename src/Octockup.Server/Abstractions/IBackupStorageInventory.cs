@@ -10,5 +10,13 @@ namespace Octockup.Server.Abstractions
         IAsyncEnumerable<BackupFileInfo> GetFilesAsync(
             bool recursive = false,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Enumerates files in stable ordinal path order, excluding the cursor path and all prior paths.
+        /// </summary>
+        IAsyncEnumerable<BackupFileInfo> GetFilesAfterAsync(
+            string? afterPath,
+            bool recursive = false,
+            CancellationToken cancellationToken = default);
     }
 }
