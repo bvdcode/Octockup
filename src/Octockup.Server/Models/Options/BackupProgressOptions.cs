@@ -7,5 +7,6 @@ namespace Octockup.Server.Models.Options
     {
         public TimeSpan PublishInterval { get; set; } = TimeSpan.FromSeconds(1);
         public TimeSpan AggregateLogInterval { get; set; } = TimeSpan.FromSeconds(30);
+        public TimeSpan TransportTimeout { get; set; } = TimeSpan.FromSeconds(10);
     }
 }

@@ -72,12 +72,70 @@ namespace Octockup.Tests
             Assert.That(publisher.SendCount, Is.GreaterThanOrEqualTo(2));
         }
 
-        private static ScheduleReport CreateReport(IScheduleProgressPublisher publisher)
+        [Test]
+        public async Task DisposeAsync_WhenPublisherIsBlocked_CancelsBackgroundSend()
+        {
+            CancelablePublisher publisher = new();
+            ScheduleReport report = CreateReport(publisher);
+            report.StartBackgroundReporting(CancellationToken.None);
+
+            await publisher.SendStarted.Task.WaitAsync(TimeSpan.FromSeconds(1));
+            await report.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(1));
+
+            await publisher.CancellationObserved.Task.WaitAsync(TimeSpan.FromSeconds(1));
+            int sendsAfterDispose = publisher.SendCount;
+            report.Update(10, "Ignored", stage: BackupProgressStage.Uploading);
+            await Task.Delay(30);
+            Assert.That(publisher.SendCount, Is.EqualTo(sendsAfterDispose));
+            await report.DisposeAsync();
+        }
+
+        [Test]
+        public async Task BackgroundReporting_WhenHostIsCanceled_StopsPublishing()
+        {
+            CountingPublisher publisher = new();
+            await using ScheduleReport report = CreateReport(publisher);
+            using CancellationTokenSource cancellationTokenSource = new();
+            report.StartBackgroundReporting(cancellationTokenSource.Token);
+            await publisher.SecondSend.Task.WaitAsync(TimeSpan.FromSeconds(1));
+
+            await cancellationTokenSource.CancelAsync();
+            await Task.Delay(30);
+            int sendsAfterCancellation = publisher.SendCount;
+            await Task.Delay(30);
+
+            Assert.That(publisher.SendCount, Is.EqualTo(sendsAfterCancellation));
+        }
+
+        [Test]
+        public async Task PublishFinalAsync_WhenTransportTimesOut_DoesNotHoldJobCompletion()
+        {
+            CancelablePublisher publisher = new();
+            await using ScheduleReport report = CreateReport(
+                publisher,
+                TimeSpan.FromMilliseconds(25));
+
+            await report.PublishFinalAsync(
+                    1,
+                    "Completed",
+                    ScheduleStatus.Completed,
+                    BackupProgressStage.Completed,
+                    CancellationToken.None)
+                .WaitAsync(TimeSpan.FromSeconds(1));
+
+            await publisher.CancellationObserved.Task.WaitAsync(TimeSpan.FromSeconds(1));
+            Assert.That(publisher.SendCount, Is.EqualTo(1));
+        }
+
+        private static ScheduleReport CreateReport(
+            IScheduleProgressPublisher publisher,
+            TimeSpan? transportTimeout = null)
         {
             BackupProgressOptions options = new()
             {
                 PublishInterval = TimeSpan.FromMilliseconds(10),
-                AggregateLogInterval = TimeSpan.FromMinutes(1)
+                AggregateLogInterval = TimeSpan.FromMinutes(1),
+                TransportTimeout = transportTimeout ?? TimeSpan.FromSeconds(1)
             };
             return new ScheduleReport(
                 Guid.NewGuid(),
@@ -153,6 +211,54 @@ namespace Octockup.Tests
             {
                 Interlocked.Increment(ref _sendCount);
                 throw new InvalidOperationException("Transport unavailable.");
+            }
+        }
+
+        private class CancelablePublisher : IScheduleProgressPublisher
+        {
+            private int _sendCount;
+            public TaskCompletionSource<bool> SendStarted { get; } =
+                new(TaskCreationOptions.RunContinuationsAsynchronously);
+            public TaskCompletionSource<bool> CancellationObserved { get; } =
+                new(TaskCreationOptions.RunContinuationsAsynchronously);
+            public int SendCount => Volatile.Read(ref _sendCount);
+
+            public async Task PublishAsync(
+                ScheduleReportDto report,
+                CancellationToken cancellationToken)
+            {
+                Interlocked.Increment(ref _sendCount);
+                SendStarted.TrySetResult(true);
+                try
+                {
+                    await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    CancellationObserved.TrySetResult(true);
+                    throw;
+                }
+            }
+        }
+
+        private class CountingPublisher : IScheduleProgressPublisher
+        {
+            private int _sendCount;
+            public TaskCompletionSource<bool> SecondSend { get; } =
+                new(TaskCreationOptions.RunContinuationsAsynchronously);
+            public int SendCount => Volatile.Read(ref _sendCount);
+
+            public Task PublishAsync(
+                ScheduleReportDto report,
+                CancellationToken cancellationToken)
+            {
+                int sends = Interlocked.Increment(ref _sendCount);
+                if (sends >= 2)
+                {
+                    SecondSend.TrySetResult(true);
+                }
+
+                return Task.CompletedTask;
             }
         }
     }

@@ -59,6 +59,10 @@ namespace Octockup.Server
                 .Validate(
                     options => options.AggregateLogInterval >= options.PublishInterval,
                     "Backup aggregate log interval must not be shorter than the publish interval.")
+                .Validate(
+                    options => options.TransportTimeout >= TimeSpan.FromSeconds(1) &&
+                        options.TransportTimeout <= TimeSpan.FromMinutes(2),
+                    "Progress transport timeout must be between one second and two minutes.")
                 .ValidateOnStart();
             builder.Services
                 .AddOptions<ServerBackupTransferOptions>()
@@ -109,7 +113,8 @@ namespace Octockup.Server
                 .AddSingleton<IStorageCleanupProgressTransport, SignalRStorageCleanupProgressTransport>()
                 .AddSingleton<IStorageCleanupProgressPublisher, CoalescingStorageCleanupProgressPublisher>()
                 .AddSingleton<IScheduleProgressPublisher, SignalRScheduleProgressPublisher>()
-                .AddSingleton<ISnapshotArchiveProgressPublisher, SignalRSnapshotArchiveProgressPublisher>()
+                .AddSingleton<ISnapshotArchiveProgressTransport, SignalRSnapshotArchiveProgressTransport>()
+                .AddSingleton<ISnapshotArchiveProgressPublisher, CoalescingSnapshotArchiveProgressPublisher>()
                 .AddSingleton<StorageCleanupJobExecutor>()
                 .AddPbkdf2PasswordHashService()
                 .AddCpuUsageService()

@@ -27,6 +27,7 @@ namespace Octockup.Server.Models
         private readonly Stopwatch _aggregateLogStopwatch = Stopwatch.StartNew();
         private readonly TimeSpan _publishInterval = options.Value.PublishInterval;
         private readonly TimeSpan _aggregateLogInterval = options.Value.AggregateLogInterval;
+        private readonly TimeSpan _transportTimeout = options.Value.TransportTimeout;
         private CancellationTokenSource? _backgroundTaskCts;
         private Task? _backgroundTask;
         private long _processedBytes;
@@ -186,7 +187,12 @@ namespace Octockup.Server.Models
         {
             try
             {
-                await _publisher.PublishAsync(report, cancellationToken).ConfigureAwait(false);
+                using CancellationTokenSource sendCancellation =
+                    CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                sendCancellation.CancelAfter(_transportTimeout);
+                await _publisher
+                    .PublishAsync(report, sendCancellation.Token)
+                    .ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {

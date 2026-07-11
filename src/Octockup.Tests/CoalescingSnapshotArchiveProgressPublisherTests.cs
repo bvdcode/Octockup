@@ -12,16 +12,16 @@ using System.Collections.Concurrent;
 
 namespace Octockup.Tests
 {
-    public class CoalescingStorageCleanupProgressPublisherTests
+    public class CoalescingSnapshotArchiveProgressPublisherTests
     {
         [Test]
-        public async Task PublishAsync_WhenTransportIsSlow_KeepsOnlyLatestUpdatePerJob()
+        public async Task PublishAsync_WhenTransportIsSlow_DoesNotBlockArchiveProgress()
         {
             BlockingTransport transport = new();
-            await using CoalescingStorageCleanupProgressPublisher publisher = new(
+            await using CoalescingSnapshotArchiveProgressPublisher publisher = new(
                 transport,
                 CreateOptions(),
-                NullLogger<CoalescingStorageCleanupProgressPublisher>.Instance);
+                NullLogger<CoalescingSnapshotArchiveProgressPublisher>.Instance);
             Guid jobId = Guid.NewGuid();
 
             await publisher.PublishAsync(CreateProgress(jobId, 0), CancellationToken.None);
@@ -34,32 +34,32 @@ namespace Octockup.Tests
             }
 
             Assert.That(transport.SendCount, Is.EqualTo(1));
-            StorageCleanupJobDto terminal = CreateProgress(jobId, 1_000);
-            terminal.Status = StorageCleanupStatus.Completed;
+            SnapshotArchiveJobDto terminal = CreateProgress(jobId, 1_000);
+            terminal.Status = SnapshotArchiveStatus.Completed;
             Task terminalPublish = publisher.PublishAsync(terminal, CancellationToken.None);
             transport.ReleaseFirstSend.TrySetResult(true);
             await terminalPublish;
 
-            StorageCleanupJobDto finalProgress = transport.Reports.Last();
+            SnapshotArchiveJobDto finalProgress = transport.Reports.Last();
             Assert.Multiple(() =>
             {
                 Assert.That(transport.MaxConcurrentSends, Is.EqualTo(1));
                 Assert.That(transport.SendCount, Is.EqualTo(2));
-                Assert.That(finalProgress.Status, Is.EqualTo(StorageCleanupStatus.Completed));
-                Assert.That(finalProgress.StorageObjectsScanned, Is.EqualTo(1_000));
+                Assert.That(finalProgress.Status, Is.EqualTo(SnapshotArchiveStatus.Completed));
+                Assert.That(finalProgress.ProcessedFiles, Is.EqualTo(1_000));
             });
         }
 
         [Test]
-        public async Task PublishAsync_WhenTransportFails_CompletesTerminalLifecycle()
+        public async Task PublishAsync_WhenClientIsDisconnected_CompletesTerminalLifecycle()
         {
             ThrowingTransport transport = new();
-            await using CoalescingStorageCleanupProgressPublisher publisher = new(
+            await using CoalescingSnapshotArchiveProgressPublisher publisher = new(
                 transport,
                 CreateOptions(),
-                NullLogger<CoalescingStorageCleanupProgressPublisher>.Instance);
-            StorageCleanupJobDto terminal = CreateProgress(Guid.NewGuid(), 1);
-            terminal.Status = StorageCleanupStatus.Failed;
+                NullLogger<CoalescingSnapshotArchiveProgressPublisher>.Instance);
+            SnapshotArchiveJobDto terminal = CreateProgress(Guid.NewGuid(), 1);
+            terminal.Status = SnapshotArchiveStatus.Failed;
 
             Assert.DoesNotThrowAsync(async () =>
                 await publisher.PublishAsync(terminal, CancellationToken.None));
@@ -67,78 +67,47 @@ namespace Octockup.Tests
         }
 
         [Test]
-        public async Task PublishAsync_WhenTerminalWaitIsCanceled_ReleasesJobPublisher()
-        {
-            BlockingTransport transport = new();
-            await using CoalescingStorageCleanupProgressPublisher publisher = new(
-                transport,
-                CreateOptions(),
-                NullLogger<CoalescingStorageCleanupProgressPublisher>.Instance);
-            Guid jobId = Guid.NewGuid();
-
-            await publisher.PublishAsync(CreateProgress(jobId, 1), CancellationToken.None);
-            await transport.FirstSendStarted.Task.WaitAsync(TimeSpan.FromSeconds(1));
-            StorageCleanupJobDto canceledTerminal = CreateProgress(jobId, 1);
-            canceledTerminal.Status = StorageCleanupStatus.Canceled;
-            using CancellationTokenSource cancellationTokenSource = new(
-                TimeSpan.FromMilliseconds(25));
-
-            Assert.CatchAsync<OperationCanceledException>(async () =>
-                await publisher.PublishAsync(
-                    canceledTerminal,
-                    cancellationTokenSource.Token));
-
-            await publisher.PublishAsync(CreateProgress(jobId, 2), CancellationToken.None);
-            StorageCleanupJobDto completed = CreateProgress(jobId, 2);
-            completed.Status = StorageCleanupStatus.Completed;
-            await publisher.PublishAsync(completed, CancellationToken.None);
-
-            Assert.That(transport.Reports.Last().Status, Is.EqualTo(StorageCleanupStatus.Completed));
-        }
-
-        [Test]
-        public async Task DisposeAsync_WhenTransportIsBlocked_CancelsPumpAndRejectsNewProgress()
+        public async Task PublishAsync_WhenTransportTimesOut_DoesNotHoldTerminalLifecycle()
         {
             CancelableTransport transport = new();
-            CoalescingStorageCleanupProgressPublisher publisher = new(
+            await using CoalescingSnapshotArchiveProgressPublisher publisher = new(
                 transport,
-                CreateOptions(),
-                NullLogger<CoalescingStorageCleanupProgressPublisher>.Instance);
-            StorageCleanupJobDto progress = CreateProgress(Guid.NewGuid(), 1);
+                CreateOptions(TimeSpan.FromMilliseconds(25)),
+                NullLogger<CoalescingSnapshotArchiveProgressPublisher>.Instance);
+            SnapshotArchiveJobDto terminal = CreateProgress(Guid.NewGuid(), 1);
+            terminal.Status = SnapshotArchiveStatus.Completed;
 
-            await publisher.PublishAsync(progress, CancellationToken.None);
-            await transport.SendStarted.Task.WaitAsync(TimeSpan.FromSeconds(1));
-            await publisher.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(1));
+            await publisher
+                .PublishAsync(terminal, CancellationToken.None)
+                .WaitAsync(TimeSpan.FromSeconds(1));
 
             await transport.CancellationObserved.Task.WaitAsync(TimeSpan.FromSeconds(1));
-            Assert.ThrowsAsync<ObjectDisposedException>(async () =>
-                await publisher.PublishAsync(progress, CancellationToken.None));
-            await publisher.DisposeAsync();
         }
 
-        private static StorageCleanupJobDto CreateProgress(Guid jobId, long scanned)
+        private static SnapshotArchiveJobDto CreateProgress(Guid jobId, long processedFiles)
         {
-            return new StorageCleanupJobDto
+            return new SnapshotArchiveJobDto
             {
                 JobId = jobId,
                 UserId = Guid.NewGuid(),
-                StorageId = Guid.NewGuid(),
-                Status = StorageCleanupStatus.Running,
-                Phase = StorageCleanupPhase.ScanningStorage,
+                SnapshotId = Guid.NewGuid(),
+                Status = SnapshotArchiveStatus.Running,
+                Phase = SnapshotArchivePhase.Streaming,
                 StartedAt = DateTime.UtcNow,
-                StorageObjectsScanned = scanned
+                ProcessedFiles = processedFiles
             };
         }
 
-        private static IOptions<BackupProgressOptions> CreateOptions()
+        private static IOptions<BackupProgressOptions> CreateOptions(
+            TimeSpan? transportTimeout = null)
         {
             return Options.Create(new BackupProgressOptions
             {
-                TransportTimeout = TimeSpan.FromSeconds(1)
+                TransportTimeout = transportTimeout ?? TimeSpan.FromSeconds(1)
             });
         }
 
-        private class BlockingTransport : IStorageCleanupProgressTransport
+        private class BlockingTransport : ISnapshotArchiveProgressTransport
         {
             private int _activeSends;
             private int _maxConcurrentSends;
@@ -148,12 +117,12 @@ namespace Octockup.Tests
                 new(TaskCreationOptions.RunContinuationsAsynchronously);
             public TaskCompletionSource<bool> ReleaseFirstSend { get; } =
                 new(TaskCreationOptions.RunContinuationsAsynchronously);
-            public ConcurrentQueue<StorageCleanupJobDto> Reports { get; } = new();
+            public ConcurrentQueue<SnapshotArchiveJobDto> Reports { get; } = new();
             public int SendCount => Volatile.Read(ref _sendCount);
             public int MaxConcurrentSends => Volatile.Read(ref _maxConcurrentSends);
 
             public async Task SendAsync(
-                StorageCleanupJobDto progress,
+                SnapshotArchiveJobDto progress,
                 CancellationToken cancellationToken)
             {
                 int activeSends = Interlocked.Increment(ref _activeSends);
@@ -191,32 +160,29 @@ namespace Octockup.Tests
             }
         }
 
-        private class ThrowingTransport : IStorageCleanupProgressTransport
+        private class ThrowingTransport : ISnapshotArchiveProgressTransport
         {
             private int _sendCount;
             public int SendCount => Volatile.Read(ref _sendCount);
 
             public Task SendAsync(
-                StorageCleanupJobDto progress,
+                SnapshotArchiveJobDto progress,
                 CancellationToken cancellationToken)
             {
                 Interlocked.Increment(ref _sendCount);
-                throw new InvalidOperationException("Transport unavailable.");
+                throw new InvalidOperationException("Client disconnected.");
             }
         }
 
-        private class CancelableTransport : IStorageCleanupProgressTransport
+        private class CancelableTransport : ISnapshotArchiveProgressTransport
         {
-            public TaskCompletionSource<bool> SendStarted { get; } =
-                new(TaskCreationOptions.RunContinuationsAsynchronously);
             public TaskCompletionSource<bool> CancellationObserved { get; } =
                 new(TaskCreationOptions.RunContinuationsAsynchronously);
 
             public async Task SendAsync(
-                StorageCleanupJobDto progress,
+                SnapshotArchiveJobDto progress,
                 CancellationToken cancellationToken)
             {
-                SendStarted.TrySetResult(true);
                 try
                 {
                     await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);

@@ -9,27 +9,27 @@ using Octockup.Server.Models.Options;
 
 namespace Octockup.Server.Services
 {
-    public class CoalescingStorageCleanupProgressPublisher(
-        IStorageCleanupProgressTransport _transport,
+    public class CoalescingSnapshotArchiveProgressPublisher(
+        ISnapshotArchiveProgressTransport _transport,
         IOptions<BackupProgressOptions> options,
-        ILogger<CoalescingStorageCleanupProgressPublisher> _logger) :
-        IStorageCleanupProgressPublisher,
+        ILogger<CoalescingSnapshotArchiveProgressPublisher> _logger) :
+        ISnapshotArchiveProgressPublisher,
         IAsyncDisposable
     {
-        private readonly CoalescingProgressDispatcher<Guid, StorageCleanupJobDto>
+        private readonly CoalescingProgressDispatcher<Guid, SnapshotArchiveJobDto>
             _dispatcher = new(
                 progress => progress.JobId,
                 progress => progress.Status is not (
-                    StorageCleanupStatus.Pending or StorageCleanupStatus.Running),
+                    SnapshotArchiveStatus.Pending or SnapshotArchiveStatus.Running),
                 _transport.SendAsync,
                 (exception, jobId) => _logger.LogDebug(
                     exception,
-                    "Failed to publish storage cleanup progress for job {JobId}.",
+                    "Failed to publish snapshot archive progress for job {JobId}.",
                     jobId),
                 options.Value.TransportTimeout);
 
         public Task PublishAsync(
-            StorageCleanupJobDto progress,
+            SnapshotArchiveJobDto progress,
             CancellationToken cancellationToken)
         {
             return _dispatcher.PublishAsync(progress, cancellationToken);
