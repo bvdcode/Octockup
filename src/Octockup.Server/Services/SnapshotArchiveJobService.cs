@@ -87,29 +87,26 @@ namespace Octockup.Server.Services
             return job.ToDto();
         }
 
-        public async Task<IReadOnlyList<SnapshotArchiveJobDto>?> GetForBackupAsync(
+        public async Task<IReadOnlyList<SnapshotArchiveJobDto>> GetForSnapshotsAsync(
             Guid userId,
-            Guid backupId,
+            IReadOnlyCollection<Guid> snapshotIds,
             CancellationToken cancellationToken)
         {
-            bool backupExists = await _dbContext.Backups
-                .AsNoTracking()
-                .AnyAsync(
-                    x => x.Id == backupId && x.Source.UserId == userId,
-                    cancellationToken)
-                .ConfigureAwait(false);
-            if (!backupExists)
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(snapshotIds.Count, 200);
+            if (snapshotIds.Count == 0)
             {
-                return null;
+                return [];
             }
 
+            Guid[] distinctSnapshotIds = snapshotIds.Distinct().ToArray();
             List<SnapshotArchiveJob> jobs = await _dbContext.SnapshotArchiveJobs
                 .AsNoTracking()
                 .Where(x =>
                     x.UserId == userId &&
+                    distinctSnapshotIds.Contains(x.SnapshotId) &&
                     _dbContext.Snapshots.Any(snapshot =>
                         snapshot.Id == x.SnapshotId &&
-                        snapshot.BackupId == backupId))
+                        snapshot.Backup.Source.UserId == userId))
                 .GroupBy(x => x.SnapshotId)
                 .Select(group => group
                     .OrderByDescending(x => x.ActiveSnapshotId != null)

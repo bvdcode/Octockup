@@ -86,6 +86,13 @@ export interface SnapshotDto {
   totalSize: number;
 }
 
+export interface SnapshotPage {
+  items: SnapshotDto[];
+  nextCursor?: string | null;
+  hasNextPage: boolean;
+  totalCount: number;
+}
+
 export enum SnapshotArchiveStatus {
   Pending = 0,
   Running = 1,

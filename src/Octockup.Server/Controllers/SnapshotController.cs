@@ -25,6 +25,7 @@ namespace Octockup.Server.Controllers
         IStreamCipher _crypto,
         AppDbContext _dbContext,
         SnapshotDeletionService _snapshotDeletionService,
+        SnapshotPageService _snapshotPages,
         SnapshotFilePageService _snapshotFilePages,
         DownloadTicketService _downloadTickets,
         ILogger<SnapshotController> _logger,
@@ -177,38 +178,24 @@ namespace Octockup.Server.Controllers
 
         [Authorize]
         [HttpGet("/api/v1/snapshots")]
-        public async Task<IActionResult> GetSnapshots([FromQuery] Guid backupId, CancellationToken cancellationToken)
+        public async Task<IActionResult> GetSnapshots(
+            [FromQuery] Guid backupId,
+            [FromQuery] SnapshotPageRequest request,
+            CancellationToken cancellationToken)
         {
-            Guid userId = User.GetUserId();
-
-            bool backupExists = await _dbContext.Backups
-                .AsNoTracking()
-                .AnyAsync(
-                    b => b.Id == backupId && b.Source.UserId == userId,
-                    cancellationToken);
-
-            if (!backupExists)
+            try
             {
-                return NotFound();
+                SnapshotPageDto? page = await _snapshotPages.GetPageAsync(
+                    User.GetUserId(),
+                    backupId,
+                    request,
+                    cancellationToken);
+                return page is null ? NotFound() : Ok(page);
             }
-
-            List<SnapshotDto> result = await _dbContext.Snapshots
-                .AsNoTracking()
-                .Where(s => s.BackupId == backupId && s.Backup.Source.UserId == userId)
-                .OrderBy(s => s.CreatedAt)
-                .Select(s => new SnapshotDto
-                {
-                    Id = s.Id,
-                    BackupId = s.BackupId,
-                    CompletedAt = s.CompletedAt,
-                    FilesCount = _dbContext.SnapshotFiles.Count(sf => sf.SnapshotId == s.Id),
-                    TotalSize = _dbContext.SnapshotFiles
-                        .Where(sf => sf.SnapshotId == s.Id)
-                        .Sum(sf => (long?)sf.Size) ?? 0
-                })
-                .ToListAsync(cancellationToken);
-
-            return Ok(result);
+            catch (FormatException)
+            {
+                return this.ApiBadRequest("Snapshot cursor is invalid.");
+            }
         }
 
         private static long GetRestoredFileSize(

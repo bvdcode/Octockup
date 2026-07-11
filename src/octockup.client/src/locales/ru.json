@@ -237,7 +237,13 @@
         "preparingProgress": "{{processed}} / {{total}} файлов • {{references}} ссылок на чанки",
         "streamingProgress": "{{processed}} / {{total}} файлов • {{processedSize}} / {{totalSize}}"
       },
-      "loadFailed": "Не удалось загрузить снапшоты.",
+    "loadFailed": "Не удалось загрузить снапшоты.",
+    "pagination": {
+      "rowsPerPage": "Снапшотов на странице:",
+      "displayedRows": "{{from}}–{{to}} из {{count}}",
+      "next": "Перейти на следующую страницу",
+      "previous": "Перейти на предыдущую страницу"
+    },
     "missingBackupId": "Не указан идентификатор бэкапа.",
     "delete": "Удалить снапшот",
     "deleteTitle": "Удалить снапшот",

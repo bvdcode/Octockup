@@ -13,9 +13,10 @@ import {
 import {
   DataGrid,
   type GridColDef,
+  type GridPaginationModel,
   type GridRowParams,
 } from "@mui/x-data-grid";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowBack } from "@mui/icons-material";
 import { formatSize } from "../utils/formatUtils";
@@ -29,6 +30,9 @@ import SnapshotArchiveProgress from "../components/SnapshotArchiveProgress";
 import { useSnapshotArchiveJobs } from "../hooks/useSnapshotArchiveJobs";
 import { useSnapshotArchiveActions } from "../hooks/useSnapshotArchiveActions";
 import SnapshotMobileList from "../components/SnapshotMobileList";
+import SnapshotMobilePagination from "../components/SnapshotMobilePagination";
+
+const defaultPageSize = 25;
 
 interface State {
   loading: boolean;
@@ -46,28 +50,65 @@ export default function SnapshotsPage() {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { backupId } = useParams<{ backupId: string }>();
   const snapshotsApi = useSnapshotsApi();
-  const archiveJobs = useSnapshotArchiveJobs(backupId);
-  const archiveActions = useSnapshotArchiveActions(
-    archiveJobs.upsertJob,
-    archiveJobs.reload,
-  );
   const [state, setState] = useState<State>({
     loading: true,
     error: backupId ? null : t("snapshots.missingBackupId"),
   });
   const [snapshots, setSnapshots] = useState<SnapshotDto[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
+    page: 0,
+    pageSize: defaultPageSize,
+  });
+  const [pageCursors, setPageCursors] = useState<Map<number, string | null>>(
+    new Map([[0, null]]),
+  );
+  const [reloadVersion, setReloadVersion] = useState(0);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const pageCursor = pageCursors.get(paginationModel.page);
+  const snapshotIds = useMemo(
+    () => snapshots.map((snapshot) => snapshot.id),
+    [snapshots],
+  );
+  const archiveJobs = useSnapshotArchiveJobs(snapshotIds);
+  const archiveActions = useSnapshotArchiveActions(
+    archiveJobs.upsertJob,
+    archiveJobs.reload,
+  );
 
   useEffect(() => {
-    if (!backupId) return;
+    if (!backupId || (paginationModel.page > 0 && pageCursor === undefined)) {
+      return;
+    }
 
     let active = true;
+    setState((current) => ({ ...current, loading: true, error: null }));
     snapshotsApi
-      .listByBackup(backupId)
-      .then((snapshotList) => {
+      .listByBackup(backupId, {
+        pageSize: paginationModel.pageSize,
+        cursor: pageCursor ?? undefined,
+      })
+      .then((page) => {
         if (!active) return;
-        setSnapshots(snapshotList);
+        setSnapshots(page.items);
+        setTotalCount(page.totalCount);
+        setHasNextPage(page.hasNextPage);
+        setPageCursors((current) => {
+          const next = new Map(current);
+          for (const pageNumber of next.keys()) {
+            if (pageNumber > paginationModel.page + 1) {
+              next.delete(pageNumber);
+            }
+          }
+          if (page.nextCursor) {
+            next.set(paginationModel.page + 1, page.nextCursor);
+          } else {
+            next.delete(paginationModel.page + 1);
+          }
+          return next;
+        });
         setState({ loading: false, error: null });
       })
       .catch((error) => {
@@ -83,7 +124,27 @@ export default function SnapshotsPage() {
     return () => {
       active = false;
     };
-  }, [backupId, snapshotsApi, t]);
+  }, [
+    backupId,
+    pageCursor,
+    paginationModel.page,
+    paginationModel.pageSize,
+    reloadVersion,
+    snapshotsApi,
+    t,
+  ]);
+
+  const handlePaginationChange = (nextModel: GridPaginationModel) => {
+    if (nextModel.pageSize !== paginationModel.pageSize) {
+      setPaginationModel({ page: 0, pageSize: nextModel.pageSize });
+      setPageCursors(new Map([[0, null]]));
+      return;
+    }
+
+    if (nextModel.page === 0 || pageCursors.has(nextModel.page)) {
+      setPaginationModel(nextModel);
+    }
+  };
 
   const handleDelete = async (snapshot: SnapshotDto) => {
     const result = await confirm({
@@ -108,6 +169,15 @@ export default function SnapshotsPage() {
       setSnapshots((current) =>
         current.filter((item) => item.id !== snapshot.id),
       );
+      setTotalCount((current) => Math.max(0, current - 1));
+      if (snapshots.length === 1 && paginationModel.page > 0) {
+        setPaginationModel((current) => ({
+          ...current,
+          page: current.page - 1,
+        }));
+      } else {
+        setReloadVersion((current) => current + 1);
+      }
       setSuccessMessage(
         t("snapshots.deleteSuccess", {
           count: deleteResult.deletedSnapshotFiles,
@@ -249,36 +319,48 @@ export default function SnapshotsPage() {
           </CardContent>
         </Card>
       ) : isMobile ? (
-        <SnapshotMobileList
-          snapshots={snapshots}
-          jobsBySnapshot={archiveJobs.jobsBySnapshot}
-          deletingId={deletingId}
-          downloadingId={archiveActions.downloadingId}
-          copyingId={archiveActions.copyingId}
-          cancelingJobId={archiveActions.cancelingJobId}
-          onOpen={(snapshotId) =>
-            navigate(`/backups/${backupId}/snapshots/${snapshotId}/files`)
-          }
-          onDelete={handleDelete}
-          onDownload={archiveActions.download}
-          onCopyLink={archiveActions.copyLink}
-          onCancel={archiveActions.cancel}
-        />
+        <Stack spacing={1.5}>
+          <SnapshotMobileList
+            snapshots={snapshots}
+            jobsBySnapshot={archiveJobs.jobsBySnapshot}
+            deletingId={deletingId}
+            downloadingId={archiveActions.downloadingId}
+            copyingId={archiveActions.copyingId}
+            cancelingJobId={archiveActions.cancelingJobId}
+            onOpen={(snapshotId) =>
+              navigate(`/backups/${backupId}/snapshots/${snapshotId}/files`)
+            }
+            onDelete={handleDelete}
+            onDownload={archiveActions.download}
+            onCopyLink={archiveActions.copyLink}
+            onCancel={archiveActions.cancel}
+          />
+          <SnapshotMobilePagination
+            page={paginationModel.page}
+            pageSize={paginationModel.pageSize}
+            totalCount={totalCount}
+            hasNextPage={hasNextPage}
+            onChange={(page, pageSize) =>
+              handlePaginationChange({ page, pageSize })
+            }
+          />
+        </Stack>
       ) : (
-        <Box flex={1}>
+        <Box flex={1} minHeight={520}>
           <DataGrid
             rows={snapshots}
             columns={columns}
             rowHeight={92}
-            pageSizeOptions={[10, 25, 50, 100]}
-            autoPageSize
+            loading={state.loading}
             pagination
-            initialState={{
-              sorting: {
-                sortModel: [{ field: "completedAt", sort: "desc" }],
-              },
-            }}
+            paginationMode="server"
+            rowCount={totalCount}
+            paginationMeta={{ hasNextPage }}
+            paginationModel={paginationModel}
+            onPaginationModelChange={handlePaginationChange}
+            pageSizeOptions={[10, 25, 50, 100]}
             onRowClick={handleRowClick}
+            disableColumnSorting
             disableRowSelectionOnClick
             sx={{
               cursor: "pointer",

@@ -213,7 +213,13 @@
         "preparingProgress": "{{processed}} / {{total}} files • {{references}} chunk references",
         "streamingProgress": "{{processed}} / {{total}} files • {{processedSize}} / {{totalSize}}"
       },
-      "loadFailed": "Failed to load snapshots.",
+    "loadFailed": "Failed to load snapshots.",
+    "pagination": {
+      "rowsPerPage": "Snapshots per page:",
+      "displayedRows": "{{from}}–{{to}} of {{count}}",
+      "next": "Go to next page",
+      "previous": "Go to previous page"
+    },
     "missingBackupId": "Backup ID is missing.",
     "delete": "Delete snapshot",
     "deleteTitle": "Delete snapshot",

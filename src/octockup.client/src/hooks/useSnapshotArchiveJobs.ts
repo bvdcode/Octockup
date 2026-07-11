@@ -20,7 +20,7 @@ interface SnapshotArchiveJobsResult {
 }
 
 export function useSnapshotArchiveJobs(
-  backupId?: string,
+  snapshotIds: string[],
 ): SnapshotArchiveJobsResult {
   const api = useSnapshotsApi();
   const { connection, isConnected } = useSignalR("/api/v1/event-hub");
@@ -37,9 +37,13 @@ export function useSnapshotArchiveJobs(
   }, []);
 
   const reload = useCallback(async () => {
-    if (!backupId) return;
+    if (snapshotIds.length === 0) {
+      setJobsBySnapshot({});
+      setLoadFailed(false);
+      return;
+    }
     try {
-      const jobs = await api.listArchiveJobs(backupId);
+      const jobs = await api.listArchiveJobs(snapshotIds);
       setJobsBySnapshot(
         Object.fromEntries(jobs.map((job) => [job.snapshotId, job])),
       );
@@ -47,7 +51,7 @@ export function useSnapshotArchiveJobs(
     } catch {
       setLoadFailed(true);
     }
-  }, [api, backupId]);
+  }, [api, snapshotIds]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void reload(), 0);

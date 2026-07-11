@@ -79,6 +79,7 @@ namespace Octockup.Server
                 .AddScoped<BackupDeletionService>()
                 .AddScoped<BackupListService>()
                 .AddScoped<SnapshotDeletionService>()
+                .AddScoped<SnapshotPageService>()
                 .AddScoped<SnapshotFilePageService>()
                 .AddScoped<SnapshotArchiveJobService>()
                 .AddScoped<SnapshotArchiveRunner>()

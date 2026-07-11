@@ -18,7 +18,6 @@ namespace Octockup.Tests
         private SnapshotArchiveCancellationRegistry _cancellations = null!;
         private RecordingSnapshotArchiveProgressPublisher _publisher = null!;
         private SnapshotArchiveJobService _service = null!;
-        private Guid _backupId;
         private Guid _snapshotId;
         private Guid _userId;
 
@@ -66,7 +65,6 @@ namespace Octockup.Tests
             _dbContext.ChangeTracker.Clear();
 
             _userId = user.Id;
-            _backupId = backup.Id;
             _snapshotId = snapshot.Id;
             _cancellations = new SnapshotArchiveCancellationRegistry(
                 NullLogger<SnapshotArchiveCancellationRegistry>.Instance);
@@ -87,7 +85,7 @@ namespace Octockup.Tests
         }
 
         [Test]
-        public async Task StartAsync_IsTenantScopedIdempotentAndListedByBackup()
+        public async Task StartAsync_IsTenantScopedIdempotentAndListedBySnapshot()
         {
             SnapshotArchiveJobDto? first = await _service.StartAsync(
                 _userId,
@@ -101,13 +99,13 @@ namespace Octockup.Tests
                 Guid.NewGuid(),
                 _snapshotId,
                 CancellationToken.None);
-            IReadOnlyList<SnapshotArchiveJobDto>? jobs = await _service.GetForBackupAsync(
+            IReadOnlyList<SnapshotArchiveJobDto> jobs = await _service.GetForSnapshotsAsync(
                 _userId,
-                _backupId,
+                [_snapshotId],
                 CancellationToken.None);
-            IReadOnlyList<SnapshotArchiveJobDto>? missing = await _service.GetForBackupAsync(
+            IReadOnlyList<SnapshotArchiveJobDto> missing = await _service.GetForSnapshotsAsync(
                 Guid.NewGuid(),
-                _backupId,
+                [_snapshotId],
                 CancellationToken.None);
 
             Assert.Multiple(() =>
@@ -120,7 +118,7 @@ namespace Octockup.Tests
                 Assert.That(first?.TotalBytes, Is.EqualTo(456_789));
                 Assert.That(forbidden, Is.Null);
                 Assert.That(jobs, Has.Count.EqualTo(1));
-                Assert.That(missing, Is.Null);
+                Assert.That(missing, Is.Empty);
                 Assert.That(_dbContext.SnapshotArchiveJobs.Count(), Is.EqualTo(1));
             });
         }

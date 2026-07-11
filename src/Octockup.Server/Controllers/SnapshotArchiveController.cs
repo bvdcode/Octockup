@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Octockup.Server.Archives;
 using Octockup.Server.Models.Dto;
+using Octockup.Server.Models.Requests;
 using Octockup.Server.Models.Results;
 using Octockup.Server.Services;
 
@@ -32,16 +33,16 @@ namespace Octockup.Server.Controllers
         }
 
         [Authorize]
-        [HttpGet("/api/v1/snapshot-archive-jobs")]
-        public async Task<IActionResult> GetForBackup(
-            [FromQuery] Guid backupId,
+        [HttpPost("/api/v1/snapshot-archive-jobs/query")]
+        public async Task<IActionResult> GetForSnapshots(
+            [FromBody] SnapshotArchiveJobQueryRequest request,
             CancellationToken cancellationToken)
         {
-            IReadOnlyList<SnapshotArchiveJobDto>? jobs = await _jobs.GetForBackupAsync(
+            IReadOnlyList<SnapshotArchiveJobDto> jobs = await _jobs.GetForSnapshotsAsync(
                 User.GetUserId(),
-                backupId,
+                request.SnapshotIds,
                 cancellationToken).ConfigureAwait(false);
-            return jobs is null ? NotFound() : Ok(jobs);
+            return Ok(jobs);
         }
 
         [Authorize]
