@@ -82,6 +82,25 @@ namespace Octockup.Server.Controllers
             {
                 return this.ApiNotFound("Backup provider not found: " + backupProviderId);
             }
+            if (!string.Equals(
+                    foundProvider.Id,
+                    request.BackupModuleId,
+                    StringComparison.Ordinal))
+            {
+                return this.ApiBadRequest("Backup provider does not match the requested module provider.");
+            }
+
+            bool supportsDestination = request.Destination switch
+            {
+                ModuleDestination.Source =>
+                    foundProvider is IBackupSource && foundProvider is not IBackupStorage,
+                ModuleDestination.Target => foundProvider is IBackupStorage,
+                _ => false
+            };
+            if (!supportsDestination)
+            {
+                return this.ApiBadRequest("Backup provider does not support the requested destination.");
+            }
 
             var user = await _dbContext.Users.FindAsync(User.GetUserId()) ?? throw new InvalidOperationException("User not found");
             bool tagExists = await _dbContext.Modules.AnyAsync(
@@ -97,7 +116,7 @@ namespace Octockup.Server.Controllers
                 UserId = user.Id,
                 Tag = request.Tag,
                 Destination = request.Destination,
-                BackupModuleId = request.BackupModuleId,
+                BackupModuleId = foundProvider.Id,
             };
             foreach (var item in request.Parameters)
             {
@@ -117,9 +136,16 @@ namespace Octockup.Server.Controllers
             {
                 return this.ApiNotFound("Backup provider not found: " + backupProviderId);
             }
+            if (!string.Equals(
+                    foundProvider.Id,
+                    request.BackupModuleId,
+                    StringComparison.Ordinal))
+            {
+                return this.ApiBadRequest("Backup provider does not match the requested module provider.");
+            }
 
             foundProvider.SetParameters(request.Parameters);
-            if (foundProvider is not IBackupSource source)
+            if (foundProvider is not IBackupSource source || foundProvider is IBackupStorage)
             {
                 return this.ApiBadRequest("Provider cannot provide directories");
             }
@@ -145,13 +171,22 @@ namespace Octockup.Server.Controllers
             {
                 return this.ApiNotFound("Backup provider not found: " + backupProviderId);
             }
+            if (!string.Equals(
+                    foundProvider.Id,
+                    request.BackupModuleId,
+                    StringComparison.Ordinal))
+            {
+                return this.ApiBadRequest("Backup provider does not match the requested module provider.");
+            }
 
             foundProvider.SetParameters(request.Parameters);
             if (foundProvider is IBackupStorage storage && request.Destination == ModuleDestination.Target)
             {
                 return await TestHelpers.TestStorageAsync(this, storage, _logger);
             }
-            if (foundProvider is IBackupSource source)
+            if (foundProvider is IBackupSource source &&
+                foundProvider is not IBackupStorage &&
+                request.Destination == ModuleDestination.Source)
             {
                 return await TestHelpers.TestSourceAsync(this, source, _logger);
             }
@@ -179,7 +214,7 @@ namespace Octockup.Server.Controllers
                 return type.ToLower() switch
                 {
                     "storage" => provider is IBackupStorage,
-                    "source" => provider is IBackupSource,
+                    "source" => provider is IBackupSource && provider is not IBackupStorage,
                     _ => false,
                 };
             })

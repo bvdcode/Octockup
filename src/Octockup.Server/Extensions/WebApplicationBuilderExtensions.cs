@@ -18,7 +18,10 @@ namespace Octockup.Server.Extensions
             string masterKey = builder.Configuration.GetMasterKey();
             builder.Configuration.AddInMemoryCollection(
             [
-                new KeyValuePair<string, string?>("Pepper", KeyDerivation.DeriveSubkeyBase64(masterKey, "pepper", 32))
+                new KeyValuePair<string, string?>("Pepper", KeyDerivation.DeriveSubkeyBase64(masterKey, "pepper", 32)),
+                new KeyValuePair<string, string?>(
+                    "JwtSettings:Key",
+                    Convert.ToBase64String(KeyDerivation.DeriveSubkey(masterKey, "jwt", 24)))
             ]);
             byte[] cryptoKey = KeyDerivation.DeriveSubkey(masterKey, "crypto", 32);
             builder.Services.AddScoped<IStreamCipher>(sp => new AesGcmStreamCipher(cryptoKey));

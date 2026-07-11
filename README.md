@@ -52,8 +52,8 @@ services:
 
       # Optional: Use PostgreSQL instead of default SQLite
       - OCTOCKUP_POSTGRES_HOST=postgres-server
-      - OCTOCKUP_POSTGRES_DB=octockup
-      - OCTOCKUP_POSTGRES_USER=octockup_client
+      - OCTOCKUP_POSTGRES_DATABASE=octockup
+      - OCTOCKUP_POSTGRES_USERNAME=octockup_client
       - OCTOCKUP_POSTGRES_PASSWORD=${OCTOCKUP_DB_PASS}
     volumes:
       - /data/octockup:/app/data
@@ -82,15 +82,38 @@ docker compose up -d
 
 ## Configuration
 
-### Configuration Files
-
-- **`docker-compose.yml`** - Docker Compose configuration for managing the container.
-
 ### Environment variables
 
-```yaml
-MASTER_KEY: A 32-character master key for encrypting sensitive data in the database.
+| Variable | Required | Description |
+| --- | --- | --- |
+| `OCTOCKUP_MASTER_KEY` | Yes | A secret value of at least 32 characters used to derive separate encryption, database, password-pepper, and JWT signing keys. Keep it stable and backed up. |
+| `OCTOCKUP_ALLOW_MULTIUSER` | No | Set to `true` to permit registration of more than one user. |
+| `OCTOCKUP_POSTGRES_HOST` | No | PostgreSQL host. Setting PostgreSQL credentials switches the application from SQLite to PostgreSQL. |
+| `OCTOCKUP_POSTGRES_PORT` | No | PostgreSQL port. |
+| `OCTOCKUP_POSTGRES_DATABASE` | No | PostgreSQL database name. |
+| `OCTOCKUP_POSTGRES_USERNAME` | No | PostgreSQL username. |
+| `OCTOCKUP_POSTGRES_PASSWORD` | No | PostgreSQL password. |
+
+The JWT signing key is derived from `OCTOCKUP_MASTER_KEY`; do not configure or commit a separate signing key. Changing the master key makes existing encrypted configuration and SQLite data unreadable.
+
+### Local development
+
+Store the master key in .NET user-secrets rather than `appsettings.Development.json`.
+
+PowerShell:
+
+```powershell
+$masterKey = [Convert]::ToHexString([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(16))
+dotnet user-secrets set "MasterKey" $masterKey --project src/Octockup.Server/Octockup.Server.csproj
 ```
+
+Bash:
+
+```bash
+dotnet user-secrets set "MasterKey" "$(openssl rand -hex 16)" --project src/Octockup.Server/Octockup.Server.csproj
+```
+
+Without PostgreSQL credentials, local development uses SQLite. PostgreSQL credentials can also be stored with `dotnet user-secrets` under `DatabaseSettings:Host`, `DatabaseSettings:Port`, `DatabaseSettings:Database`, `DatabaseSettings:Username`, and `DatabaseSettings:Password`.
 
 ---
 
@@ -188,7 +211,7 @@ Deduplication works **globally per storage**, not only per snapshot.
 
 All backup data is encrypted **before leaving the server**.
 
-1. A global **MASTER_KEY** (32 bytes) is provided via environment variable.
+1. A global **`OCTOCKUP_MASTER_KEY`** (at least 32 characters) is provided via environment variable or local user-secrets.
 2. Every chunk is encrypted using:
 
    - **AES-GCM**

@@ -12,7 +12,7 @@ namespace Octockup.Server.Extensions
             string? masterKey = configuration["MasterKey"];
             if (!string.IsNullOrEmpty(masterKey))
             {
-                return masterKey;
+                return ValidateMasterKey(masterKey);
             }
             if (_removedMasterKey)
             {
@@ -23,9 +23,19 @@ namespace Octockup.Server.Extensions
             {
                 Environment.SetEnvironmentVariable("OCTOCKUP_MASTER_KEY", "REMOVED");
                 _removedMasterKey = true;
-                return masterKey;
+                return ValidateMasterKey(masterKey);
             }
             throw new InvalidOperationException("Master key not found in configuration 'MasterKey' or environment variable 'OCTOCKUP_MASTER_KEY'.");
+        }
+
+        private static string ValidateMasterKey(string masterKey)
+        {
+            if (masterKey.Length < 32)
+            {
+                throw new InvalidOperationException("Master key must contain at least 32 characters.");
+            }
+
+            return masterKey;
         }
     }
 }
