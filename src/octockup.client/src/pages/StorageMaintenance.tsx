@@ -14,11 +14,14 @@ import { useSignalR } from "../hooks/useSignalR";
 import { useStorageMaintenanceApi } from "../api/storageMaintenanceApi";
 import { StorageMaintenanceCard } from "../components/storageMaintenance/StorageMaintenanceCard";
 import {
-  StorageCleanupStatus,
   type StorageCleanupJob,
   type StorageMaintenanceSummary,
 } from "../types/api";
 import { LatestValueByKeyThrottler } from "../utils/LatestValueByKeyThrottler";
+import {
+  isStorageCleanupActive,
+  selectStorageCleanupDisplayJob,
+} from "../utils/storageCleanupUtils";
 
 const progressRenderIntervalMs = 250;
 
@@ -29,20 +32,6 @@ interface SnackbarState {
 
 interface ApiErrorResponse {
   message?: string;
-}
-
-function isActiveJob(job?: StorageCleanupJob): boolean {
-  return (
-    job?.status === StorageCleanupStatus.Pending ||
-    job?.status === StorageCleanupStatus.Running
-  );
-}
-
-function selectDisplayJob(
-  storage: StorageMaintenanceSummary,
-  jobs: Record<string, StorageCleanupJob>,
-): StorageCleanupJob | undefined {
-  return jobs[storage.id] ?? storage.activeJob ?? storage.lastJob ?? undefined;
 }
 
 export default function StorageMaintenancePage() {
@@ -148,7 +137,7 @@ export default function StorageMaintenancePage() {
 
     const applyJob = (job: StorageCleanupJob) => {
       upsertJob(job);
-      if (!isActiveJob(job)) {
+      if (!isStorageCleanupActive(job)) {
         setTimeout(() => {
           void reloadSummaries().catch(() => {
             setError(t("storageMaintenance.loadFailed"));
@@ -161,7 +150,7 @@ export default function StorageMaintenancePage() {
       progressRenderIntervalMs,
     );
     const handler = (job: StorageCleanupJob) => {
-      throttler.push(job.jobId, job, !isActiveJob(job));
+      throttler.push(job.jobId, job, !isStorageCleanupActive(job));
     };
 
     connection.on("StorageCleanupProgress", handler);
@@ -173,7 +162,7 @@ export default function StorageMaintenancePage() {
   }, [connection, isConnected, reloadSummaries, t, upsertJob]);
 
   const hasActiveJobs = useMemo(
-    () => Object.values(jobs).some((job) => isActiveJob(job)),
+    () => Object.values(jobs).some((job) => isStorageCleanupActive(job)),
     [jobs],
   );
 
@@ -250,7 +239,7 @@ export default function StorageMaintenancePage() {
 
       <Stack spacing={2}>
         {summaries.map((storage) => {
-          const job = selectDisplayJob(storage, jobs);
+          const job = selectStorageCleanupDisplayJob(storage, jobs);
           return (
             <StorageMaintenanceCard
               key={storage.id}
