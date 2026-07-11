@@ -33,6 +33,7 @@ namespace Octockup.Server.Jobs
         private readonly Stopwatch _uploadedHashesStopwatch = Stopwatch.StartNew();
         private const int UploadedHashesFlushCount = 500; // flush every 500 new hashes
         private static readonly TimeSpan UploadedHashesFlushInterval = TimeSpan.FromSeconds(5);
+        private static readonly TimeSpan SnapshotFlushInterval = TimeSpan.FromSeconds(10);
 
         public async Task RunAsync(Schedule schedule, CancellationToken cancellationToken)
         {
@@ -223,7 +224,11 @@ namespace Octockup.Server.Jobs
             IAsyncEnumerable<BackupFileInfo> lazyFiles,
             CancellationToken cancellationToken)
         {
-            Snapshot snapshot = await CreateNewSnapshotWithTracking(schedule.BackupId, cancellationToken);
+            SnapshotBatchWriter snapshotWriter = new(dbContext);
+            Snapshot snapshot = await snapshotWriter.CreateAsync(
+                schedule.BackupId,
+                schedule,
+                cancellationToken);
             await using LazyLoader<BackupFileInfo> loader = new(
                 lazyFiles,
                 FileEnumerationBufferCapacity,
@@ -242,6 +247,7 @@ namespace Octockup.Server.Jobs
                 counter = await ProcessFileAsync(
                     schedule,
                     snapshot,
+                    snapshotWriter,
                     source,
                     storage,
                     report,
@@ -256,12 +262,19 @@ namespace Octockup.Server.Jobs
 
             report.Total = loader.Total;
             report.IsEnumerationCompleted = true;
-            await FinalizeSnapshotAsync(snapshot, loader, report, cancellationToken);
+            await FinalizeSnapshotAsync(
+                schedule,
+                snapshot,
+                snapshotWriter,
+                loader,
+                report,
+                cancellationToken);
         }
 
         private async Task<int> ProcessFileAsync(
             Schedule schedule,
             Snapshot snapshot,
+            SnapshotBatchWriter snapshotWriter,
             IBackupSource source,
             IBackupStorage storage,
             ScheduleReport report,
@@ -296,7 +309,17 @@ namespace Octockup.Server.Jobs
 
             if (previousFile != null && CanReusePreviousFile(previousFile, file, out bool datesMatch))
             {
-                await ReusePreviousFileAsync(schedule, snapshot, previousFile, file, datesMatch, stopwatch, report, counter, cancellationToken);
+                await ReusePreviousFileAsync(
+                    schedule,
+                    snapshot,
+                    snapshotWriter,
+                    previousFile,
+                    file,
+                    datesMatch,
+                    stopwatch,
+                    report,
+                    counter,
+                    cancellationToken);
                 return counter;
             }
 
@@ -356,28 +379,20 @@ namespace Octockup.Server.Jobs
             {
                 Path = file.Path,
                 Hashsum = fileHash,
-                Snapshot = snapshot,
                 Size = file.Size ?? 0,
-                SnapshotId = snapshot.Id,
                 ChunkHashes = chunkHashes,
                 Name = file.Name ?? file.Path,
                 LastModified = file.LastModified,
             };
-            await dbContext.SnapshotFiles.AddAsync(snapshotFile, cancellationToken);
-            snapshot.TotalSize += snapshotFile.Size;
-            snapshot.FilesCount += 1;
-
-            if (stopwatch.Elapsed.TotalSeconds > 10)
-            {
-                report.SetStage(BackupProgressStage.Persisting, $"Saving: {file.Name}");
-                await dbContext.SaveChangesAsync(cancellationToken);
-                // Clear change tracker to release memory from tracked entities
-                dbContext.ChangeTracker.Clear();
-                // Re-attach entities to continue tracking them
-                dbContext.Attach(snapshot);
-                dbContext.Attach(schedule);
-                stopwatch.Restart();
-            }
+            await snapshotWriter.AddFileAsync(snapshot, snapshotFile, cancellationToken);
+            await PersistSnapshotIfDueAsync(
+                schedule,
+                snapshot,
+                snapshotWriter,
+                stopwatch,
+                report,
+                file.Name ?? file.Path,
+                cancellationToken);
 
             logger.LogInformation("Schedule {ScheduleId}: {Message} ({Processed}/{Total})",
                 schedule.Id, report.Message, report.Processed, report.Total);
@@ -612,6 +627,7 @@ namespace Octockup.Server.Jobs
         private async Task ReusePreviousFileAsync(
             Schedule schedule,
             Snapshot snapshot,
+            SnapshotBatchWriter snapshotWriter,
             SnapshotFile previousFile,
             BackupFileInfo currentFile,
             bool datesMatch,
@@ -626,29 +642,21 @@ namespace Octockup.Server.Jobs
             SnapshotFile snapshotFile = new()
             {
                 Path = currentFile.Path,
-                Snapshot = snapshot,
                 Size = currentFile.Size ?? 0,
-                SnapshotId = snapshot.Id,
                 Hashsum = previousFile.Hashsum,
                 Name = currentFile.Name ?? currentFile.Path,
                 LastModified = currentFile.LastModified,
                 ChunkHashes = previousFile.ChunkHashes,
             };
-            await dbContext.SnapshotFiles.AddAsync(snapshotFile, cancellationToken);
-            snapshot.TotalSize += snapshotFile.Size;
-            snapshot.FilesCount += 1;
-
-            if (stopwatch.Elapsed.TotalSeconds > 10)
-            {
-                report.SetStage(BackupProgressStage.Persisting, $"Saving: {currentFile.Name}");
-                await dbContext.SaveChangesAsync(cancellationToken);
-                // Clear change tracker to release memory from tracked entities
-                dbContext.ChangeTracker.Clear();
-                // Re-attach entities to continue tracking them
-                dbContext.Attach(snapshot);
-                dbContext.Attach(schedule);
-                stopwatch.Restart();
-            }
+            await snapshotWriter.AddFileAsync(snapshot, snapshotFile, cancellationToken);
+            await PersistSnapshotIfDueAsync(
+                schedule,
+                snapshot,
+                snapshotWriter,
+                stopwatch,
+                report,
+                currentFile.Name ?? currentFile.Path,
+                cancellationToken);
 
             await report.SendAsync(
                 counter,
@@ -659,7 +667,9 @@ namespace Octockup.Server.Jobs
         }
 
         private async Task FinalizeSnapshotAsync(
+            Schedule schedule,
             Snapshot snapshot,
+            SnapshotBatchWriter snapshotWriter,
             LazyLoader<BackupFileInfo> loader,
             ScheduleReport report,
             CancellationToken cancellationToken)
@@ -673,19 +683,26 @@ namespace Octockup.Server.Jobs
                 "Finalizing snapshot...",
                 stage: BackupProgressStage.Finalizing,
                 cancellationToken: cancellationToken);
-            await dbContext.SaveChangesAsync(cancellationToken);
+            await snapshotWriter.CompleteAsync(snapshot, schedule, cancellationToken);
+        }
 
-            snapshot.CompletedAt = DateTime.UtcNow;
-            await dbContext.SaveChangesAsync(cancellationToken);
+        private async Task PersistSnapshotIfDueAsync(
+            Schedule schedule,
+            Snapshot snapshot,
+            SnapshotBatchWriter snapshotWriter,
+            Stopwatch stopwatch,
+            ScheduleReport report,
+            string fileName,
+            CancellationToken cancellationToken)
+        {
+            if (stopwatch.Elapsed < SnapshotFlushInterval)
+            {
+                return;
+            }
 
-            snapshot.TotalSize = await dbContext.SnapshotFiles
-                .Where(x => x.SnapshotId == snapshot.Id)
-                .SumAsync(x => (long?)x.Size, cancellationToken: cancellationToken) ?? 0L;
-
-            snapshot.FilesCount = await dbContext.SnapshotFiles
-                .Where(x => x.SnapshotId == snapshot.Id)
-                .CountAsync(cancellationToken: cancellationToken);
-            await dbContext.SaveChangesAsync(cancellationToken);
+            report.SetStage(BackupProgressStage.Persisting, $"Saving: {fileName}");
+            await snapshotWriter.FlushAsync(snapshot, schedule, cancellationToken);
+            stopwatch.Restart();
         }
 
         private async Task<IDictionary<string, SnapshotFile>> GetFilesFromLastSnapshotAsync(Guid backupId, CancellationToken cancellationToken)
@@ -710,17 +727,6 @@ namespace Octockup.Server.Jobs
                 .Where(x => x.ModuleId == storageId)
                 .Select(x => x.Hash)
                 .ToHashSetAsync(cancellationToken: cancellationToken);
-        }
-
-        private async Task<Snapshot> CreateNewSnapshotWithTracking(Guid backupId, CancellationToken cancellationToken)
-        {
-            Snapshot snapshot = new()
-            {
-                BackupId = backupId,
-            };
-            await dbContext.Snapshots.AddAsync(snapshot, cancellationToken);
-            await dbContext.SaveChangesAsync(cancellationToken);
-            return snapshot;
         }
 
         private static bool ShouldIgnoreFile(Schedule schedule, BackupFileInfo file)
