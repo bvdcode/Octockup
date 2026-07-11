@@ -18,6 +18,9 @@ import {
   type StorageCleanupJob,
   type StorageMaintenanceSummary,
 } from "../types/api";
+import { LatestValueByKeyThrottler } from "../utils/LatestValueByKeyThrottler";
+
+const progressRenderIntervalMs = 250;
 
 interface SnackbarState {
   message: string;
@@ -135,7 +138,7 @@ export default function StorageMaintenancePage() {
   useEffect(() => {
     if (!connection || !isConnected) return;
 
-    const handler = (job: StorageCleanupJob) => {
+    const applyJob = (job: StorageCleanupJob) => {
       upsertJob(job);
       if (!isActiveJob(job)) {
         setTimeout(() => {
@@ -143,11 +146,19 @@ export default function StorageMaintenancePage() {
         }, 750);
       }
     };
+    const throttler = new LatestValueByKeyThrottler<string, StorageCleanupJob>(
+      applyJob,
+      progressRenderIntervalMs,
+    );
+    const handler = (job: StorageCleanupJob) => {
+      throttler.push(job.jobId, job, !isActiveJob(job));
+    };
 
     connection.on("StorageCleanupProgress", handler);
 
     return () => {
       connection.off("StorageCleanupProgress", handler);
+      throttler.dispose();
     };
   }, [connection, isConnected, reloadSummaries, upsertJob]);
 

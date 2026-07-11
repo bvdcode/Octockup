@@ -3,6 +3,9 @@ import { BackupStatus } from "../types/api";
 import { useSchedulesApi } from "../api/schedulesApi";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ScheduleItem, ScheduleReport } from "../types/api";
+import { LatestValueByKeyThrottler } from "../utils/LatestValueByKeyThrottler";
+
+const progressRenderIntervalMs = 250;
 
 interface SchedulesState {
   loading: boolean;
@@ -170,7 +173,7 @@ export function useSchedules(): UseSchedulesReturn {
   useEffect(() => {
     if (!connection || !isConnected) return;
 
-    const handler = (report: ScheduleReport) => {
+    const applyReport = (report: ScheduleReport) => {
       setScheduleReports((prev) => ({
         ...prev,
         [report.scheduleId]: report,
@@ -193,11 +196,23 @@ export function useSchedules(): UseSchedulesReturn {
         return updated;
       });
     };
+    const throttler = new LatestValueByKeyThrottler<string, ScheduleReport>(
+      applyReport,
+      progressRenderIntervalMs,
+    );
+    const handler = (report: ScheduleReport) => {
+      throttler.push(
+        report.scheduleId,
+        report,
+        report.status !== BackupStatus.Running,
+      );
+    };
 
     connection.on("ScheduleReport", handler);
 
     return () => {
       connection.off("ScheduleReport", handler);
+      throttler.dispose();
     };
   }, [connection, isConnected, refetchSchedules]);
 

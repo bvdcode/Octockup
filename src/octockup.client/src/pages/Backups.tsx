@@ -27,6 +27,9 @@ import { getBackupOverallStatus } from "../utils/backupUtils";
 import { EditIgnoredPathsDialog } from "../components/EditIgnoredPathsDialog";
 import { BackupCard } from "../components/backups/BackupCard";
 import { formatSize } from "../utils/formatUtils";
+import { LatestValueByKeyThrottler } from "../utils/LatestValueByKeyThrottler";
+
+const progressRenderIntervalMs = 250;
 
 interface State {
   loading: boolean;
@@ -129,7 +132,7 @@ export default function BackupsPage() {
   useEffect(() => {
     if (!connection || !isConnected) return;
 
-    const handler = (report: ScheduleReport) => {
+    const applyReport = (report: ScheduleReport) => {
       const backupId = report.backupId;
 
       // Mutate the Map directly instead of cloning it
@@ -155,11 +158,23 @@ export default function BackupsPage() {
         [report.scheduleId]: backupId,
       }));
     };
+    const throttler = new LatestValueByKeyThrottler<string, ScheduleReport>(
+      applyReport,
+      progressRenderIntervalMs,
+    );
+    const handler = (report: ScheduleReport) => {
+      throttler.push(
+        report.backupId,
+        report,
+        report.status !== BackupStatus.Running,
+      );
+    };
 
     connection.on("ScheduleReport", handler);
 
     return () => {
       connection.off("ScheduleReport", handler);
+      throttler.dispose();
     };
   }, [connection, isConnected, reloadBackups, scheduleReports]);
 
