@@ -11,22 +11,19 @@ namespace Octockup.Server.Hubs
     [EnableCors]
     public class EventHub(ILogger<EventHub> _logger) : Hub
     {
-        public override Task OnConnectedAsync()
+        public override async Task OnConnectedAsync()
         {
-            _logger.LogInformation("Client connected: {connectionId}", Context.ConnectionId);
-            return Task.Run(() =>
-            {
-                while (true)
-                {
-                    Thread.Sleep(125);
-                    Clients.Caller.SendAsync("Time", DateTime.UtcNow);
-                    if (Context.ConnectionAborted.IsCancellationRequested)
-                    {
-                        _logger.LogInformation("Client disconnected: {connectionId}", Context.ConnectionId);
-                        break;
-                    }
-                }
-            });
+            _logger.LogInformation("Client connected: {ConnectionId}", Context.ConnectionId);
+            await base.OnConnectedAsync();
+        }
+
+        public override async Task OnDisconnectedAsync(Exception? exception)
+        {
+            _logger.LogInformation(
+                exception,
+                "Client disconnected: {ConnectionId}",
+                Context.ConnectionId);
+            await base.OnDisconnectedAsync(exception);
         }
     }
 }
