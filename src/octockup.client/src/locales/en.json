@@ -193,6 +193,10 @@
     "download": "Download",
     "copyLink": "Copy link",
     "linkCopied": "Snapshot download link copied.",
+    "linkCopyFailed": "Failed to create a snapshot download link.",
+    "downloadFailed": "Failed to start the snapshot download.",
+    "loadFailed": "Failed to load snapshots.",
+    "missingBackupId": "Backup ID is missing.",
     "delete": "Delete snapshot",
     "deleteTitle": "Delete snapshot",
     "deleteText": "Delete this snapshot? File metadata: {{count}}, size: {{size}}. Stored chunks are not deleted and can be removed later with storage cleanup.",
@@ -207,6 +211,9 @@
     "size": "Size",
     "lastModified": "Last Modified",
     "download": "Download",
+    "downloadFailed": "Failed to start the file download.",
+    "loadFailed": "Failed to load snapshot files.",
+    "missingSnapshotId": "Snapshot ID is missing.",
     "searchPlaceholder": "Search by path..."
   },
   "backupWizard": {
@@ -284,6 +291,8 @@
       "title": "Data Export",
       "description": "Export all backup configuration and metadata to a JSON file.",
       "button": "Export user data",
+      "preparing": "Preparing export...",
+      "failed": "Failed to start the data export.",
       "includeFiles": "Include files"
     },
     "dataImport": {

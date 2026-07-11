@@ -26,16 +26,25 @@ namespace Octockup.Server.Controllers
         IStreamCipher _crypto,
         AppDbContext _dbContext,
         SnapshotDeletionService _snapshotDeletionService,
+        DownloadTicketService _downloadTickets,
         ILogger<SnapshotController> _logger,
         IEnumerable<IBackupProvider> _providers) : ControllerBase
     {
-        [Authorize]
+        [AllowAnonymous]
         [HttpGet("/api/v1/snapshots/{snapshotId:guid}/download")]
         public async Task<IActionResult> DownloadSnapshotArchive(
             [FromRoute] Guid snapshotId,
+            [FromQuery] string? ticket,
             CancellationToken cancellationToken)
         {
-            Guid userId = User.GetUserId();
+            DownloadTicketGrant? grant = await _downloadTickets
+                .ConsumeSnapshotArchiveAsync(ticket, snapshotId, cancellationToken);
+            if (grant is null)
+            {
+                return Unauthorized();
+            }
+
+            Guid userId = grant.UserId;
 
             var snapshot = await _dbContext.Snapshots
                 .AsNoTracking()
@@ -113,11 +122,25 @@ namespace Octockup.Server.Controllers
             return new EmptyResult();
         }
 
-        [Authorize]
+        [AllowAnonymous]
         [HttpGet("/api/v1/snapshots/{snapshotId:guid}/files/{fileId:guid}/download")]
-        public async Task<IActionResult> DownloadSnapshotFile([FromRoute] Guid snapshotId, [FromRoute] Guid fileId)
+        public async Task<IActionResult> DownloadSnapshotFile(
+            [FromRoute] Guid snapshotId,
+            [FromRoute] Guid fileId,
+            [FromQuery] string? ticket)
         {
-            Guid userId = User.GetUserId();
+            DownloadTicketGrant? grant = await _downloadTickets
+                .ConsumeSnapshotFileAsync(
+                    ticket,
+                    snapshotId,
+                    fileId,
+                    HttpContext.RequestAborted);
+            if (grant is null)
+            {
+                return Unauthorized();
+            }
+
+            Guid userId = grant.UserId;
 
             var snapshotFile = await _dbContext.SnapshotFiles
                 .AsNoTracking()

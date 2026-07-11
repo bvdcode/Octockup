@@ -3,6 +3,7 @@ import {
   Stack,
   Alert,
   Button,
+  CircularProgress,
   TextField,
   IconButton,
   Typography,
@@ -10,12 +11,12 @@ import {
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatSize } from "../utils/formatUtils";
-import { useAuthStore } from "@bvdcode/react-kit";
 import type { SnapshotFileDto } from "../types/api";
 import { useSnapshotsApi } from "../api/snapshotsApi";
 import { ArrowBack, Download } from "@mui/icons-material";
 import { useNavigate, useParams } from "react-router-dom";
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
+import { openTicketDownload } from "../utils/downloadUtils";
 
 interface State {
   loading: boolean;
@@ -30,13 +31,13 @@ export default function SnapshotFilesPage() {
     snapshotId: string;
   }>();
   const snapshotsApi = useSnapshotsApi();
-  const accessToken = useAuthStore((s) => s.accessToken);
   const [state, setState] = useState<State>({
     loading: true,
-    error: snapshotId ? null : "Snapshot ID is missing",
+    error: snapshotId ? null : t("snapshotFiles.missingSnapshotId"),
   });
   const [files, setFiles] = useState<SnapshotFileDto[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!snapshotId) return;
@@ -49,21 +50,39 @@ export default function SnapshotFilesPage() {
         setFiles(fileList);
         setState({ loading: false, error: null });
       })
-      .catch((e) => {
+      .catch((error) => {
         if (!active) return;
         setState({
           loading: false,
-          error: e?.message || "Failed to load snapshot files",
+          error:
+            error instanceof Error
+              ? error.message
+              : t("snapshotFiles.loadFailed"),
         });
       });
     return () => {
       active = false;
     };
-  }, [snapshotId, snapshotsApi]);
+  }, [snapshotId, snapshotsApi, t]);
 
-  const handleDownload = (fileId: string) => {
-    const url = `/api/v1/snapshots/${snapshotId}/files/${fileId}/download?access_token=${accessToken}`;
-    window.open(url, "_blank");
+  const handleDownload = async (fileId: string) => {
+    if (!snapshotId) return;
+
+    setDownloadingId(fileId);
+    setState((current) => ({ ...current, error: null }));
+    try {
+      await openTicketDownload(
+        `/api/v1/snapshots/${encodeURIComponent(snapshotId)}/files/${encodeURIComponent(fileId)}/download`,
+        () => snapshotsApi.createFileDownloadTicket(snapshotId, fileId),
+      );
+    } catch {
+      setState((current) => ({
+        ...current,
+        error: t("snapshotFiles.downloadFailed"),
+      }));
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   const filteredFiles = files.filter((file) =>
@@ -110,10 +129,15 @@ export default function SnapshotFilesPage() {
         <IconButton
           size="small"
           color="primary"
-          onClick={() => handleDownload(params.row.id)}
+          disabled={downloadingId === params.row.id}
+          onClick={() => void handleDownload(params.row.id)}
           title={t("snapshotFiles.download")}
         >
-          <Download />
+          {downloadingId === params.row.id ? (
+            <CircularProgress size={20} />
+          ) : (
+            <Download />
+          )}
         </IconButton>
       ),
     },

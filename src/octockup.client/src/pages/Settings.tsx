@@ -11,13 +11,12 @@ import {
 } from "@mui/material";
 import { Download, Upload } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
-import { useAuthStore } from "@bvdcode/react-kit";
 import { useBackupsApi } from "../api/backupsApi";
 import { useState, useRef } from "react";
+import { openTicketDownload } from "../utils/downloadUtils";
 
 export default function SettingsPage() {
   const { t } = useTranslation();
-  const accessToken = useAuthStore((s) => s.accessToken);
   const backupsApi = useBackupsApi();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
@@ -26,10 +25,21 @@ export default function SettingsPage() {
     text: string;
   } | null>(null);
   const [includeFiles, setIncludeFiles] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
-  const handleExportUserData = () => {
-    const url = `/api/v1/backups/server?access_token=${accessToken}&includeFiles=${includeFiles}`;
-    window.open(url, "_blank");
+  const handleExportUserData = async () => {
+    setExporting(true);
+    setExportError(null);
+    try {
+      await openTicketDownload("/api/v1/backups/server", () =>
+        backupsApi.createServerBackupDownloadTicket(includeFiles),
+      );
+    } catch {
+      setExportError(t("settings.dataExport.failed"));
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handleImportClick = () => {
@@ -48,7 +58,7 @@ export default function SettingsPage() {
     try {
       const result = await backupsApi.importServerBackup(file);
       setImportMessage({ type: "success", text: result.message });
-    } catch (error: unknown) {
+    } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to import backup data";
       setImportMessage({ type: "error", text: errorMessage });
@@ -74,14 +84,22 @@ export default function SettingsPage() {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               {t("settings.dataExport.description")}
             </Typography>
+            {exportError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {exportError}
+              </Alert>
+            )}
             <Box display="flex" alignItems="center" gap={2} flexDirection="row">
               <Button
                 variant="contained"
                 color="primary"
                 startIcon={<Download />}
-                onClick={handleExportUserData}
+                onClick={() => void handleExportUserData()}
+                disabled={exporting}
               >
-                {t("settings.dataExport.button")}
+                {exporting
+                  ? t("settings.dataExport.preparing")
+                  : t("settings.dataExport.button")}
               </Button>
               <FormControlLabel
                 control={

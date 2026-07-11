@@ -5,6 +5,7 @@ import type {
   BackupDeletionResult,
   BackupItem,
   CreateBackupRequest,
+  DownloadTicket,
 } from "../types/api";
 
 class BackupsApiClient {
@@ -57,6 +58,17 @@ class BackupsApiClient {
     const result = await this.axios().post<{ message: string }>(
       "/api/v1/backups/server/import",
       formData,
+    );
+    return result.data;
+  }
+
+  async createServerBackupDownloadTicket(
+    includeFiles: boolean,
+  ): Promise<DownloadTicket> {
+    const result = await this.axios().post<DownloadTicket>(
+      "/api/v1/download-tickets/server-backup",
+      undefined,
+      { params: { includeFiles } },
     );
     return result.data;
   }

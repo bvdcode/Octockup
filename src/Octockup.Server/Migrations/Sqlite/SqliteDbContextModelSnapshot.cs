@@ -110,6 +110,68 @@ namespace Octockup.Server.Migrations.Sqlite
                     b.ToTable("backups");
                 });
 
+            modelBuilder.Entity("Octockup.Server.Database.DownloadTicket", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ConsumedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("consumed_at");
+
+                    b.Property<string>("CreatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("ExpiresAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("expires_at");
+
+                    b.Property<bool>("IncludeFiles")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("include_files");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid?>("ResourceId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("resource_id");
+
+                    b.Property<Guid?>("SecondaryResourceId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("secondary_resource_id");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("token_hash");
+
+                    b.Property<string>("UpdatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.ToTable("download_tickets");
+                });
+
             modelBuilder.Entity("Octockup.Server.Database.Module", b =>
                 {
                     b.Property<Guid>("Id")

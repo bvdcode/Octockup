@@ -15,6 +15,7 @@ using Octockup.Server.Jobs;
 using Octockup.Server.Models.Dto;
 using Octockup.Server.Models.Enums;
 using Octockup.Server.Models.Requests;
+using Octockup.Server.Models.Results;
 using Octockup.Server.Services;
 using Quartz;
 using System.IO.Compression;
@@ -29,13 +30,24 @@ namespace Octockup.Server.Controllers
         IStreamCipher _streamCipher,
         ISchedulerFactory _schedulerFactory,
         BackupDeletionService _backupDeletionService,
+        DownloadTicketService _downloadTickets,
         ILogger<BackupController> _logger) : ControllerBase
     {
-        [Authorize]
+        [AllowAnonymous]
         [HttpGet("/api/v1/backups/server")]
-        public async Task<IActionResult> GetServerBackup([FromQuery] bool includeFiles = false, CancellationToken ct = default)
+        public async Task<IActionResult> GetServerBackup(
+            [FromQuery] string? ticket,
+            CancellationToken ct = default)
         {
-            Guid userId = User.GetUserId();
+            DownloadTicketGrant? grant = await _downloadTickets
+                .ConsumeServerBackupAsync(ticket, ct);
+            if (grant is null)
+            {
+                return Unauthorized();
+            }
+
+            Guid userId = grant.UserId;
+            bool includeFiles = grant.IncludeFiles;
 
             var user = await _dbContext.Users
                 .AsNoTracking()

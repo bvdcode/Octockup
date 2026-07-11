@@ -18,5 +18,6 @@ namespace Octockup.Server.Database
         public DbSet<SnapshotFile> SnapshotFiles => Set<SnapshotFile>();
         public DbSet<UploadedHash> UploadedHashes => Set<UploadedHash>();
         public DbSet<StorageCleanupJob> StorageCleanupJobs => Set<StorageCleanupJob>();
+        public DbSet<DownloadTicket> DownloadTickets => Set<DownloadTicket>();
     }
 }

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import type { AxiosInstance } from "axios";
 import { useAxios } from "@bvdcode/react-kit";
 import type {
+  DownloadTicket,
   SnapshotDto,
   SnapshotFileDto,
   SnapshotDeletionResult,
@@ -36,6 +37,25 @@ class SnapshotsApiClient {
   async delete(snapshotId: string): Promise<SnapshotDeletionResult> {
     const result = await this.axios().delete<SnapshotDeletionResult>(
       `/api/v1/snapshots/${snapshotId}`,
+    );
+    return result.data;
+  }
+
+  async createArchiveDownloadTicket(
+    snapshotId: string,
+  ): Promise<DownloadTicket> {
+    const result = await this.axios().post<DownloadTicket>(
+      `/api/v1/download-tickets/snapshots/${encodeURIComponent(snapshotId)}/archive`,
+    );
+    return result.data;
+  }
+
+  async createFileDownloadTicket(
+    snapshotId: string,
+    fileId: string,
+  ): Promise<DownloadTicket> {
+    const result = await this.axios().post<DownloadTicket>(
+      `/api/v1/download-tickets/snapshots/${encodeURIComponent(snapshotId)}/files/${encodeURIComponent(fileId)}`,
     );
     return result.data;
   }

@@ -91,6 +91,11 @@ export interface SnapshotDeletionResult {
   deletedSnapshotFileBytes: number;
 }
 
+export interface DownloadTicket {
+  ticket: string;
+  expiresAt: string;
+}
+
 export interface CreateBackupRequest {
   sourceId: string;
   storageId: string;

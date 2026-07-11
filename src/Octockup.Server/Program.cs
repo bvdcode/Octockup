@@ -1,7 +1,6 @@
 ﻿// SPDX-License-Identifier: MIT
 // Copyright (c) 2025 Vadim Belov <https://belov.us>
 
-using EasyExtensions.AspNetCore.Authorization.Extensions;
 using EasyExtensions.AspNetCore.Extensions;
 using EasyExtensions.EntityFrameworkCore.Extensions;
 using EasyExtensions.Quartz.Extensions;
@@ -12,6 +11,7 @@ using Octockup.Server.Abstractions;
 using Octockup.Server.Database;
 using Octockup.Server.Extensions;
 using Octockup.Server.Hubs;
+using Octockup.Server.Models.Options;
 using Octockup.Server.Modules;
 using Octockup.Server.Services;
 
@@ -31,6 +31,14 @@ namespace Octockup.Server
             });
 
             builder.Services.AddControllers();
+            builder.Services
+                .AddOptions<DownloadTicketOptions>()
+                .BindConfiguration("DownloadTickets")
+                .Validate(
+                    options => options.Lifetime > TimeSpan.Zero &&
+                        options.Lifetime <= TimeSpan.FromMinutes(15),
+                    "Download ticket lifetime must be between zero and 15 minutes.")
+                .ValidateOnStart();
 
             // Configure form options for large file uploads
             builder.Services.Configure<FormOptions>(options =>
@@ -47,6 +55,7 @@ namespace Octockup.Server
                 .AddScoped<IBackupProvider, FileSystemBackupSource>()
                 .AddScoped<BackupDeletionService>()
                 .AddScoped<SnapshotDeletionService>()
+                .AddScoped<DownloadTicketService>()
                 .AddScoped<ChunkReferenceCollector>()
                 .AddScoped<StorageCleanupRunner>()
                 .AddScoped<StorageMaintenanceService>()
@@ -62,7 +71,7 @@ namespace Octockup.Server
                 .AddCpuUsageService()
                 .AddQuartzJobs()
                 .AddHttpContextAccessor()
-                .AddJwt()
+                .AddOctockupJwt()
                 .AddSignalR();
 
             string[] corsOrigins = builder.Configuration.GetSection("CorsOrigins").Get<string[]>() ?? [];
