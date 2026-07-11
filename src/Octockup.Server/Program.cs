@@ -19,7 +19,7 @@ namespace Octockup.Server
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
             builder.SetupDatabaseAndKeys();
@@ -65,6 +65,7 @@ namespace Octockup.Server
                 .AddScoped<SnapshotDeletionService>()
                 .AddScoped<DownloadTicketService>()
                 .AddScoped<RefreshSessionService>()
+                .AddScoped<BackupOwnershipInitializer>()
                 .AddScoped<ChunkReferenceCollector>()
                 .AddScoped<StorageCleanupRunner>()
                 .AddScoped<StorageMaintenanceService>()
@@ -95,7 +96,8 @@ namespace Octockup.Server
             app.MapFallbackToFile("/index.html");
             app.MapHub<EventHub>("/api/v1/event-hub");
             app.ApplyMigrations<AppDbContext>();
-            app.Run();
+            await app.InitializeBackupOwnershipAsync();
+            await app.RunAsync();
         }
     }
 }

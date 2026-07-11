@@ -60,13 +60,17 @@ namespace Octockup.Server.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("updated_at");
 
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("user_id");
+
                     b.HasKey("Id");
 
                     b.HasIndex("SourceId");
 
                     b.HasIndex("StorageId");
 
-                    b.HasIndex("Tag")
+                    b.HasIndex("UserId", "Tag")
                         .IsUnique();
 
                     b.ToTable("backups");
@@ -193,10 +197,8 @@ namespace Octockup.Server.Migrations.Sqlite
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Tag")
+                    b.HasIndex("UserId", "Tag")
                         .IsUnique();
-
-                    b.HasIndex("UserId");
 
                     b.ToTable("modules");
                 });

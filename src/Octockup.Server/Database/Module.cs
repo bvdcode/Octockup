@@ -13,7 +13,7 @@ using System.Text.Json.Serialization;
 namespace Octockup.Server.Database
 {
     [Table("modules")]
-    [Index(nameof(Tag), IsUnique = true)]
+    [Index(nameof(UserId), nameof(Tag), IsUnique = true)]
     public partial class Module : BaseEntity<Guid>
     {
         [Column("user_id")]

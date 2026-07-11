@@ -154,12 +154,14 @@ namespace Octockup.Server.Controllers
         [HttpPatch("/api/v1/backups/{backupId:guid}/ignored-paths")]
         public async Task<IActionResult> UpdateIgnoredPaths([FromRoute] Guid backupId, [FromBody] List<string> ignoredPaths)
         {
-            var backup = await _dbContext.Backups.FindAsync(backupId);
+            Guid userId = User.GetUserId();
+            Backup? backup = await _dbContext.Backups.FirstOrDefaultAsync(
+                x => x.Id == backupId && x.UserId == userId,
+                HttpContext.RequestAborted);
             if (backup == null)
             {
                 return this.ApiNotFound("Backup not found: " + backupId);
             }
-            var userId = User.GetUserId();
             var source = await _dbContext.Modules.FirstOrDefaultAsync(m => m.Id == backup.SourceId && m.UserId == userId && m.Destination == ModuleDestination.Source);
             if (source == null)
             {
@@ -180,12 +182,14 @@ namespace Octockup.Server.Controllers
         [HttpPatch("/api/v1/backups/{backupId:guid}/rename")]
         public async Task<IActionResult> RenameBackup([FromRoute] Guid backupId, [FromBody] RenameModuleRequest request)
         {
-            var backup = await _dbContext.Backups.FindAsync(backupId);
+            Guid userId = User.GetUserId();
+            Backup? backup = await _dbContext.Backups.FirstOrDefaultAsync(
+                x => x.Id == backupId && x.UserId == userId,
+                HttpContext.RequestAborted);
             if (backup == null)
             {
                 return this.ApiNotFound("Backup not found: " + backupId);
             }
-            var userId = User.GetUserId();
             var source = await _dbContext.Modules.FirstOrDefaultAsync(m => m.Id == backup.SourceId && m.UserId == userId && m.Destination == ModuleDestination.Source);
             if (source == null)
             {
@@ -196,7 +200,10 @@ namespace Octockup.Server.Controllers
             {
                 return this.ApiNotFound("Storage module not found for backup: " + backupId);
             }
-            var existsTag = await _dbContext.Backups.AnyAsync(b => b.Tag == request.NewTag && b.Id != backupId);
+            var existsTag = await _dbContext.Backups.AnyAsync(
+                b => b.UserId == userId &&
+                    b.Tag == request.NewTag &&
+                    b.Id != backupId);
             if (existsTag)
             {
                 return this.ApiBadRequest("Tag already exists: " + request.NewTag);
@@ -218,7 +225,7 @@ namespace Octockup.Server.Controllers
                 .Include(x => x.Storage)
                 .Include(x => x.Snapshots)
                 .Include(x => x.Schedules)
-                .Where(x => x.Source.UserId == userId)
+                .Where(x => x.UserId == userId)
                 .ProjectToType<BackupDto>()
                 .ToListAsync();
         }
@@ -238,13 +245,15 @@ namespace Octockup.Server.Controllers
             {
                 return this.ApiNotFound("Storage module not found: " + request.StorageId);
             }
-            var existsTag = await _dbContext.Backups.AnyAsync(b => b.Tag == request.Tag);
+            var existsTag = await _dbContext.Backups.AnyAsync(
+                b => b.UserId == userId && b.Tag == request.Tag);
             if (existsTag)
             {
                 return this.ApiBadRequest("Tag already exists: " + request.Tag);
             }
             Backup backup = new()
             {
+                UserId = userId,
                 Tag = request.Tag,
                 SourceId = source.Id,
                 StorageId = storage.Id,

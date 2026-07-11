@@ -423,6 +423,9 @@ namespace Octockup.Tests
 
             await dbContext.Users.AddAsync(user);
             await dbContext.Modules.AddRangeAsync(source, storage);
+            await dbContext.SaveChangesAsync();
+
+            backup.UserId = user.Id;
             await dbContext.Backups.AddAsync(backup);
             await dbContext.Schedules.AddAsync(schedule);
             await dbContext.Snapshots.AddAsync(snapshot);

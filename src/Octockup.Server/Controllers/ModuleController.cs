@@ -84,6 +84,14 @@ namespace Octockup.Server.Controllers
             }
 
             var user = await _dbContext.Users.FindAsync(User.GetUserId()) ?? throw new InvalidOperationException("User not found");
+            bool tagExists = await _dbContext.Modules.AnyAsync(
+                x => x.UserId == user.Id && x.Tag == request.Tag,
+                HttpContext.RequestAborted);
+            if (tagExists)
+            {
+                return this.ApiConflict("Module with the same tag already exists: " + request.Tag);
+            }
+
             Module newStorage = new()
             {
                 UserId = user.Id,

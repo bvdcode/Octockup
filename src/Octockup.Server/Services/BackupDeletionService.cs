@@ -19,9 +19,8 @@ namespace Octockup.Server.Services
         {
             Backup? backup = await _dbContext.Backups
                 .AsNoTracking()
-                .Include(x => x.Source)
                 .FirstOrDefaultAsync(
-                    x => x.Id == backupId && x.Source.UserId == userId,
+                    x => x.Id == backupId && x.UserId == userId,
                     cancellationToken);
 
             if (backup is null)

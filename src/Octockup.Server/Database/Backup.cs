@@ -8,9 +8,12 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace Octockup.Server.Database
 {
     [Table("backups")]
-    [Index(nameof(Tag), IsUnique = true)]
+    [Index(nameof(UserId), nameof(Tag), IsUnique = true)]
     public class Backup : BaseEntity<Guid>
     {
+        [Column("user_id")]
+        public Guid UserId { get; set; }
+
         [Column("source_id")]
         public Guid SourceId { get; set; }
 

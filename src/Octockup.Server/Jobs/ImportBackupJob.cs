@@ -180,6 +180,10 @@ namespace Octockup.Server.Jobs
             {
                 item.UserId = user.Id;
             }
+            foreach (var item in importData.Backups)
+            {
+                item.UserId = user.Id;
+            }
 
             _logger.LogInformation("Saving imported data to the database for user {UserId} in batches...", userId);
 

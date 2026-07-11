@@ -20,9 +20,8 @@ namespace Octockup.Server.Services
             Snapshot? snapshot = await _dbContext.Snapshots
                 .AsNoTracking()
                 .Include(x => x.Backup)
-                    .ThenInclude(x => x.Source)
                 .FirstOrDefaultAsync(
-                    x => x.Id == snapshotId && x.Backup.Source.UserId == userId,
+                    x => x.Id == snapshotId && x.Backup.UserId == userId,
                     cancellationToken);
 
             if (snapshot is null)
