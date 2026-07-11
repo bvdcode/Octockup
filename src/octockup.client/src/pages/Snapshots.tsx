@@ -7,6 +7,8 @@ import {
   Typography,
   CardContent,
   CircularProgress,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import {
   DataGrid,
@@ -22,11 +24,11 @@ import { useSnapshotsApi } from "../api/snapshotsApi";
 import type { SnapshotDto } from "../types/api";
 import { confirm } from "material-ui-confirm";
 import { isAxiosError } from "axios";
-import {
-  createTicketDownloadUrl,
-  openTicketDownload,
-} from "../utils/downloadUtils";
 import SnapshotActions from "../components/SnapshotActions";
+import SnapshotArchiveProgress from "../components/SnapshotArchiveProgress";
+import { useSnapshotArchiveJobs } from "../hooks/useSnapshotArchiveJobs";
+import { useSnapshotArchiveActions } from "../hooks/useSnapshotArchiveActions";
+import SnapshotMobileList from "../components/SnapshotMobileList";
 
 interface State {
   loading: boolean;
@@ -40,8 +42,15 @@ interface ApiErrorResponse {
 export default function SnapshotsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { backupId } = useParams<{ backupId: string }>();
   const snapshotsApi = useSnapshotsApi();
+  const archiveJobs = useSnapshotArchiveJobs(backupId);
+  const archiveActions = useSnapshotArchiveActions(
+    archiveJobs.upsertJob,
+    archiveJobs.reload,
+  );
   const [state, setState] = useState<State>({
     loading: true,
     error: backupId ? null : t("snapshots.missingBackupId"),
@@ -49,8 +58,6 @@ export default function SnapshotsPage() {
   const [snapshots, setSnapshots] = useState<SnapshotDto[]>([]);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
-  const [copyingId, setCopyingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!backupId) return;
@@ -77,45 +84,6 @@ export default function SnapshotsPage() {
       active = false;
     };
   }, [backupId, snapshotsApi, t]);
-
-  const handleDownload = async (snapshotId: string) => {
-    setDownloadingId(snapshotId);
-    setState((current) => ({ ...current, error: null }));
-    try {
-      await openTicketDownload(
-        `/api/v1/snapshots/${encodeURIComponent(snapshotId)}/download`,
-        () => snapshotsApi.createArchiveDownloadTicket(snapshotId),
-      );
-    } catch {
-      setState((current) => ({
-        ...current,
-        error: t("snapshots.downloadFailed"),
-      }));
-    } finally {
-      setDownloadingId(null);
-    }
-  };
-
-  const handleCopyDownloadLink = async (snapshotId: string) => {
-    setCopyingId(snapshotId);
-    setState((current) => ({ ...current, error: null }));
-    try {
-      const ticket = await snapshotsApi.createArchiveDownloadTicket(snapshotId);
-      const url = createTicketDownloadUrl(
-        `/api/v1/snapshots/${encodeURIComponent(snapshotId)}/download`,
-        ticket.ticket,
-      );
-      await navigator.clipboard.writeText(url);
-      setSuccessMessage(t("snapshots.linkCopied"));
-    } catch {
-      setState((current) => ({
-        ...current,
-        error: t("snapshots.linkCopyFailed"),
-      }));
-    } finally {
-      setCopyingId(null);
-    }
-  };
 
   const handleDelete = async (snapshot: SnapshotDto) => {
     const result = await confirm({
@@ -188,9 +156,21 @@ export default function SnapshotsPage() {
       valueFormatter: (value: number) => formatSize(value),
     },
     {
+      field: "archive",
+      headerName: t("snapshots.archive.title"),
+      width: 360,
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => (
+        <SnapshotArchiveProgress
+          job={archiveJobs.jobsBySnapshot[params.row.id]}
+        />
+      ),
+    },
+    {
       field: "actions",
       headerName: t("snapshots.actions"),
-      width: 156,
+      width: 196,
       sortable: false,
       filterable: false,
       align: "center",
@@ -198,12 +178,18 @@ export default function SnapshotsPage() {
       renderCell: (params) => (
         <SnapshotActions
           snapshot={params.row}
+          archiveJob={archiveJobs.jobsBySnapshot[params.row.id]}
           deleting={deletingId === params.row.id}
-          downloading={downloadingId === params.row.id}
-          copying={copyingId === params.row.id}
+          downloading={archiveActions.downloadingId === params.row.id}
+          copying={archiveActions.copyingId === params.row.id}
+          canceling={
+            archiveActions.cancelingJobId ===
+            archiveJobs.jobsBySnapshot[params.row.id]?.jobId
+          }
           onDelete={handleDelete}
-          onDownload={handleDownload}
-          onCopyLink={handleCopyDownloadLink}
+          onDownload={archiveActions.download}
+          onCopyLink={archiveActions.copyLink}
+          onCancel={archiveActions.cancel}
         />
       ),
     },
@@ -224,9 +210,20 @@ export default function SnapshotsPage() {
   return (
     <Stack spacing={3} display="flex" flexDirection="column" flex={1}>
       {state.error && <Alert severity="error">{state.error}</Alert>}
+      {archiveJobs.loadFailed && (
+        <Alert severity="error">{t("snapshots.archive.loadFailed")}</Alert>
+      )}
+      {archiveActions.error && (
+        <Alert severity="error">{archiveActions.error}</Alert>
+      )}
       {successMessage && (
         <Alert severity="success" onClose={() => setSuccessMessage(null)}>
           {successMessage}
+        </Alert>
+      )}
+      {archiveActions.success && (
+        <Alert severity="success" onClose={archiveActions.clearSuccess}>
+          {archiveActions.success}
         </Alert>
       )}
       <Box display="flex" alignItems="center" gap={2}>
@@ -251,11 +248,28 @@ export default function SnapshotsPage() {
             </Typography>
           </CardContent>
         </Card>
+      ) : isMobile ? (
+        <SnapshotMobileList
+          snapshots={snapshots}
+          jobsBySnapshot={archiveJobs.jobsBySnapshot}
+          deletingId={deletingId}
+          downloadingId={archiveActions.downloadingId}
+          copyingId={archiveActions.copyingId}
+          cancelingJobId={archiveActions.cancelingJobId}
+          onOpen={(snapshotId) =>
+            navigate(`/backups/${backupId}/snapshots/${snapshotId}/files`)
+          }
+          onDelete={handleDelete}
+          onDownload={archiveActions.download}
+          onCopyLink={archiveActions.copyLink}
+          onCancel={archiveActions.cancel}
+        />
       ) : (
         <Box flex={1}>
           <DataGrid
             rows={snapshots}
             columns={columns}
+            rowHeight={92}
             pageSizeOptions={[10, 25, 50, 100]}
             autoPageSize
             pagination

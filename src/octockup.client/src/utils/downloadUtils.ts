@@ -1,5 +1,10 @@
 import type { DownloadTicket } from "../types/api";
 
+interface PreparedTicketDownload {
+  path: string;
+  ticket: DownloadTicket;
+}
+
 export function createTicketDownloadUrl(
   path: string,
   ticket: string,
@@ -13,11 +18,23 @@ export async function openTicketDownload(
   path: string,
   createTicket: () => Promise<DownloadTicket>,
 ): Promise<void> {
+  await openPreparedTicketDownload(async () => ({
+    path,
+    ticket: await createTicket(),
+  }));
+}
+
+export async function openPreparedTicketDownload(
+  prepare: () => Promise<PreparedTicketDownload>,
+): Promise<void> {
   const downloadWindow = window.open("", "_blank");
 
   try {
-    const ticket = await createTicket();
-    const url = createTicketDownloadUrl(path, ticket.ticket);
+    const prepared = await prepare();
+    const url = createTicketDownloadUrl(
+      prepared.path,
+      prepared.ticket.ticket,
+    );
     if (downloadWindow) {
       downloadWindow.location.replace(url);
       return;

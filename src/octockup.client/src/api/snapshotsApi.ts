@@ -3,6 +3,7 @@ import type { AxiosInstance } from "axios";
 import { useAxios } from "@bvdcode/react-kit";
 import type {
   DownloadTicket,
+  SnapshotArchiveJob,
   SnapshotDto,
   SnapshotFilePage,
   SnapshotDeletionResult,
@@ -58,11 +59,32 @@ class SnapshotsApiClient {
     return result.data;
   }
 
-  async createArchiveDownloadTicket(
-    snapshotId: string,
+  async listArchiveJobs(backupId: string): Promise<SnapshotArchiveJob[]> {
+    const result = await this.axios().get<SnapshotArchiveJob[]>(
+      "/api/v1/snapshot-archive-jobs",
+      { params: { backupId } },
+    );
+    return result.data;
+  }
+
+  async startArchiveJob(snapshotId: string): Promise<SnapshotArchiveJob> {
+    const result = await this.axios().post<SnapshotArchiveJob>(
+      `/api/v1/snapshots/${encodeURIComponent(snapshotId)}/archive-jobs`,
+    );
+    return result.data;
+  }
+
+  async cancelArchiveJob(jobId: string): Promise<void> {
+    await this.axios().post(
+      `/api/v1/snapshot-archive-jobs/${encodeURIComponent(jobId)}/cancel`,
+    );
+  }
+
+  async createArchiveJobDownloadTicket(
+    jobId: string,
   ): Promise<DownloadTicket> {
     const result = await this.axios().post<DownloadTicket>(
-      `/api/v1/download-tickets/snapshots/${encodeURIComponent(snapshotId)}/archive`,
+      `/api/v1/download-tickets/snapshot-archive-jobs/${encodeURIComponent(jobId)}`,
     );
     return result.data;
   }

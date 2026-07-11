@@ -83,6 +83,38 @@ export interface SnapshotDto {
   totalSize: number;
 }
 
+export enum SnapshotArchiveStatus {
+  Pending = 0,
+  Running = 1,
+  Completed = 2,
+  Failed = 3,
+  Canceled = 4,
+}
+
+export enum SnapshotArchivePhase {
+  Waiting = 0,
+  Preparing = 1,
+  Streaming = 2,
+}
+
+export interface SnapshotArchiveJob {
+  jobId: string;
+  userId: string;
+  snapshotId: string;
+  status: SnapshotArchiveStatus;
+  phase: SnapshotArchivePhase;
+  cancellationRequested: boolean;
+  startedAt: string;
+  finishedAt?: string | null;
+  errorMessage?: string | null;
+  totalFiles: number;
+  processedFiles: number;
+  totalBytes: number;
+  processedBytes: number;
+  preparedChunkReferences: number;
+  currentPath?: string | null;
+}
+
 export interface SnapshotDeletionResult {
   deleted: boolean;
   errorMessage?: string | null;
