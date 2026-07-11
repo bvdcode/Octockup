@@ -4,14 +4,12 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Octockup.Server.Models;
 using Octockup.Server.Modules;
-using Renci.SshNet.Common;
-using System.Net.Sockets;
 
 namespace Octockup.Tests
 {
-    public class SFTPBackupStorageTestsTests
+    public class SFTPBackupStorageTests
     {
-        private SFTPBackupStorage _storage;
+        private SFTPBackupStorage _storage = null!;
 
         [TearDown]
         public void DisposeStorage()
@@ -41,17 +39,17 @@ namespace Octockup.Tests
         [Test]
         public void SftpStorage_GetFiles_Root_NotEmpty()
         {
-            List<BackupFileInfo> files = GetOrSkip(() => _storage.GetFiles(recursive: true).ToList());
+            List<BackupFileInfo> files = _storage.GetFiles(recursive: true).ToList();
             Assert.That(files.Any());
         }
 
         [Test]
         public async Task SftpStorage_GetFileStream_Success()
         {
-            List<BackupFileInfo> files = GetOrSkip(() => _storage.GetFiles(recursive: true).ToList());
+            List<BackupFileInfo> files = _storage.GetFiles(recursive: true).ToList();
             Assert.That(files.Any());
             BackupFileInfo firstFile = files.First();
-            using Stream stream = await GetOrSkipAsync(() => _storage.GetFileStreamAsync(firstFile));
+            using Stream stream = await _storage.GetFileStreamAsync(firstFile);
             Assert.That(stream.Length, Is.GreaterThan(0));
         }
 
@@ -64,52 +62,6 @@ namespace Octockup.Tests
             }
 
             return value;
-        }
-
-        private static T GetOrSkip<T>(Func<T> action)
-        {
-            try
-            {
-                return action();
-            }
-            catch (SshAuthenticationException ex)
-            {
-                Assert.Ignore("SFTP credentials are invalid: " + ex.Message);
-                throw;
-            }
-            catch (SshConnectionException ex)
-            {
-                Assert.Ignore("SFTP service is unavailable: " + ex.Message);
-                throw;
-            }
-            catch (SocketException ex)
-            {
-                Assert.Ignore("SFTP service is unavailable: " + ex.Message);
-                throw;
-            }
-        }
-
-        private static async Task<T> GetOrSkipAsync<T>(Func<Task<T>> action)
-        {
-            try
-            {
-                return await action();
-            }
-            catch (SshAuthenticationException ex)
-            {
-                Assert.Ignore("SFTP credentials are invalid: " + ex.Message);
-                throw;
-            }
-            catch (SshConnectionException ex)
-            {
-                Assert.Ignore("SFTP service is unavailable: " + ex.Message);
-                throw;
-            }
-            catch (SocketException ex)
-            {
-                Assert.Ignore("SFTP service is unavailable: " + ex.Message);
-                throw;
-            }
         }
     }
 }
