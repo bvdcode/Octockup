@@ -4,8 +4,6 @@
 using EasyExtensions.AspNetCore.Extensions;
 using EasyExtensions.EntityFrameworkCore.Extensions;
 using EasyExtensions.Quartz.Extensions;
-using Microsoft.AspNetCore.Http.Features;
-using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Abstractions;
 using Octockup.Server.Database;
@@ -23,12 +21,6 @@ namespace Octockup.Server
         {
             var builder = WebApplication.CreateBuilder(args);
             builder.SetupDatabaseAndKeys();
-
-            // Configure Kestrel for large requests
-            builder.Services.Configure<KestrelServerOptions>(options =>
-            {
-                options.Limits.MaxRequestBodySize = 1_073_741_824; // 1 GB
-            });
 
             builder.Services.AddControllers();
             builder.Services
@@ -68,14 +60,16 @@ namespace Octockup.Server
                     options => options.AggregateLogInterval >= options.PublishInterval,
                     "Backup aggregate log interval must not be shorter than the publish interval.")
                 .ValidateOnStart();
-
-            // Configure form options for large file uploads
-            builder.Services.Configure<FormOptions>(options =>
-            {
-                options.MultipartBodyLengthLimit = 1_073_741_824; // 1 GB
-                options.ValueLengthLimit = int.MaxValue;
-                options.MultipartHeadersLengthLimit = int.MaxValue;
-            });
+            builder.Services
+                .AddOptions<ServerBackupTransferOptions>()
+                .BindConfiguration("ServerBackupTransfer")
+                .Validate(
+                    options => options.MaximumImportBytes > 0,
+                    "Maximum server backup import size must be positive.")
+                .Validate(
+                    options => !string.IsNullOrWhiteSpace(options.ImportDirectory),
+                    "Server backup import directory must be configured.")
+                .ValidateOnStart();
 
             builder.Services
                 .AddScoped<IBackupProvider, IMAPSource>()
@@ -91,6 +85,7 @@ namespace Octockup.Server
                 .AddScoped<DownloadTicketService>()
                 .AddScoped<ServerBackupExportService>()
                 .AddScoped<ServerBackupImportService>()
+                .AddScoped<ServerBackupUploadService>()
                 .AddScoped<ServerBackupJsonStreamReader>()
                 .AddScoped<RefreshSessionService>()
                 .AddScoped<BackupOwnershipInitializer>()

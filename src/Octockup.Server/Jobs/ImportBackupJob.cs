@@ -2,7 +2,9 @@
 // Copyright (c) 2025 Vadim Belov <https://belov.us>
 
 using EasyExtensions.Quartz.Attributes;
+using Microsoft.Extensions.Options;
 using Octockup.Server.Helpers;
+using Octockup.Server.Models.Options;
 using Octockup.Server.Services;
 using Quartz;
 
@@ -11,20 +13,20 @@ namespace Octockup.Server.Jobs
     [JobTrigger(days: 365, startNow: false)]
     public class ImportBackupJob(
         ServerBackupImportService _importService,
+        IOptions<ServerBackupTransferOptions> _transferOptions,
         ILogger<ImportBackupJob> _logger) : IJob
     {
         public async Task Execute(IJobExecutionContext context)
         {
             CancellationToken cancellationToken = context.CancellationToken;
-            string importBaseDirectory = Path.Combine(
-                Path.GetTempPath(),
-                "octockup-imports");
+            string importBaseDirectory = Path.GetFullPath(
+                _transferOptions.Value.ImportDirectory);
             if (!Directory.Exists(importBaseDirectory))
             {
                 return;
             }
 
-            foreach (string userDirectory in Directory.GetDirectories(importBaseDirectory))
+            foreach (string userDirectory in Directory.EnumerateDirectories(importBaseDirectory))
             {
                 if (!Guid.TryParse(
                     Path.GetFileName(userDirectory),
@@ -49,7 +51,7 @@ namespace Octockup.Server.Jobs
             CancellationToken cancellationToken)
         {
             string searchPattern = "*." + CompressionHelpers.Extension;
-            foreach (string importFile in Directory.GetFiles(
+            foreach (string importFile in Directory.EnumerateFiles(
                 userDirectory,
                 searchPattern))
             {

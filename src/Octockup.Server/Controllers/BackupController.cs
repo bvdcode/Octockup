@@ -27,6 +27,7 @@ namespace Octockup.Server.Controllers
         BackupDeletionService _backupDeletionService,
         DownloadTicketService _downloadTickets,
         ServerBackupExportService _serverBackupExport,
+        ServerBackupUploadService _serverBackupUpload,
         ILogger<BackupController> _logger) : ControllerBase
     {
         [AllowAnonymous]
@@ -203,15 +204,11 @@ namespace Octockup.Server.Controllers
         }
 
         [Authorize]
-        [RequestSizeLimit(1_000_000_000)]
+        [DisableRequestSizeLimit]
+        [Consumes("application/octet-stream")]
         [HttpPost("/api/v1/backups/server/import")]
-        public async Task<IActionResult> ImportServerBackup([FromForm] IFormFile file, CancellationToken ct)
+        public async Task<IActionResult> ImportServerBackup(CancellationToken ct)
         {
-            if (file == null || file.Length == 0)
-            {
-                return this.ApiBadRequest("File is required");
-            }
-
             Guid userId = User.GetUserId();
             var user = await _dbContext.Users
                 .AsNoTracking()
@@ -222,35 +219,26 @@ namespace Octockup.Server.Controllers
                 return this.ApiNotFound("User not found: " + userId);
             }
 
+            ServerBackupUploadResult upload = await _serverBackupUpload
+                .SaveAsync(userId, Request.Body, Request.ContentLength, ct)
+                .ConfigureAwait(false);
+            if (upload.Status == ServerBackupUploadStatus.Empty)
+            {
+                return this.ApiBadRequest("File is required");
+            }
+
+            if (upload.Status == ServerBackupUploadStatus.TooLarge)
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status413PayloadTooLarge,
+                    title: "Server backup import is too large",
+                    detail: "The upload exceeds the configured server backup import limit.");
+            }
+
             _logger.LogInformation(
                 "User {UserId} uploaded a server backup import with {FileSize} bytes.",
                 userId,
-                file.Length);
-
-            string importDir = Path.Combine(Path.GetTempPath(), "octockup-imports", userId.ToString());
-            Directory.CreateDirectory(importDir);
-            string transferId = Guid.NewGuid().ToString("N");
-            string fileName = $"import-{transferId}.{CompressionHelpers.Extension}";
-            string filePath = Path.Combine(importDir, fileName);
-            string uploadingPath = filePath + ".uploading";
-            try
-            {
-                await using FileStream fileStream = new(
-                    uploadingPath,
-                    FileMode.CreateNew,
-                    FileAccess.Write,
-                    FileShare.None,
-                    128 * 1024,
-                    FileOptions.Asynchronous | FileOptions.SequentialScan);
-                await file.CopyToAsync(fileStream, ct).ConfigureAwait(false);
-                await fileStream.FlushAsync(ct).ConfigureAwait(false);
-                System.IO.File.Move(uploadingPath, filePath);
-            }
-            catch
-            {
-                System.IO.File.Delete(uploadingPath);
-                throw;
-            }
+                upload.BytesWritten);
 
             await _schedulerFactory.TriggerJobAsync<ImportBackupJob>();
 

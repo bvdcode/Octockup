@@ -93,6 +93,8 @@ docker compose up -d
 | `OCTOCKUP_POSTGRES_DATABASE` | No | PostgreSQL database name. |
 | `OCTOCKUP_POSTGRES_USERNAME` | No | PostgreSQL username. |
 | `OCTOCKUP_POSTGRES_PASSWORD` | No | PostgreSQL password. |
+| `ServerBackupTransfer__MaximumImportBytes` | No | Maximum accepted server-backup import size in bytes. Defaults to 16 GiB. |
+| `ServerBackupTransfer__ImportDirectory` | No | Directory used for atomic staging of server-backup imports. Defaults to the system temporary directory. |
 
 The JWT signing key is derived from `OCTOCKUP_MASTER_KEY`; do not configure or commit a separate signing key. Changing the master key makes existing encrypted configuration and SQLite data unreadable.
 
