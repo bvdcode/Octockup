@@ -187,7 +187,8 @@ namespace Octockup.Tests
                 dbContext,
                 NullLogger<StorageCleanupRunner>.Instance,
                 [storage],
-                new ChunkReferenceCollector(dbContext));
+                new ChunkReferenceCollector(dbContext),
+                new ImmediateStorageOperationCoordinator());
             StorageCleanupJobState state = new(
                 Guid.NewGuid(),
                 userId,
@@ -215,6 +216,74 @@ namespace Octockup.Tests
                 {
                     ReferencedHash
                 }));
+            });
+        }
+
+        [Test]
+        public async Task RunAsync_WhenCanceledBeforePhysicalDelete_RemovesIndexAndKeepsOrphanObject()
+        {
+            await using SqliteConnection connection = new("Data Source=:memory:");
+            await connection.OpenAsync();
+            await using SqliteDbContext dbContext = await CreateDbContextAsync(connection);
+
+            (Guid userId, _, _, Guid storageId, _) = await SeedBackupAsync(dbContext);
+            await dbContext.UploadedHashes.AddAsync(new UploadedHash
+            {
+                ModuleId = storageId,
+                Hash = OrphanHash,
+                OriginalSize = 20,
+                StoredSize = 10,
+                CompressionAlgorithm = CompressionHelpers.Algorithm
+            });
+            await dbContext.SaveChangesAsync();
+
+            string orphanPath = ChunkStorageHelpers.GetStoragePath(OrphanHash, '/');
+            TestStorage storage = new();
+            storage.Files[orphanPath] = new BackupFileInfo
+            {
+                Path = orphanPath,
+                Name = Path.GetFileName(orphanPath),
+                Size = 10
+            };
+
+            using CancellationTokenSource cancellationTokenSource = new();
+            storage.DeleteOverride = (_, _) =>
+            {
+                cancellationTokenSource.Cancel();
+                return Task.FromCanceled<bool?>(cancellationTokenSource.Token);
+            };
+
+            StorageCleanupRunner runner = new(
+                new TestCipher(),
+                dbContext,
+                NullLogger<StorageCleanupRunner>.Instance,
+                [storage],
+                new ChunkReferenceCollector(dbContext),
+                new ImmediateStorageOperationCoordinator());
+            StorageCleanupJobState state = new(
+                Guid.NewGuid(),
+                userId,
+                storageId,
+                "storage");
+
+            Assert.CatchAsync<OperationCanceledException>(async () =>
+                await runner.RunAsync(
+                    state,
+                    (_, _) => Task.CompletedTask,
+                    cancellationTokenSource.Token));
+
+            dbContext.ChangeTracker.Clear();
+            List<string> indexedHashes = await dbContext.UploadedHashes
+                .OrderBy(x => x.Hash)
+                .Select(x => x.Hash)
+                .ToListAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(indexedHashes, Is.EqualTo(new[] { ReferencedHash }));
+                Assert.That(storage.Files.ContainsKey(orphanPath), Is.True);
+                Assert.That(storage.DeletedPaths, Is.Empty);
+                Assert.That(state.Snapshot().UploadedHashRowsDeleted, Is.EqualTo(1));
             });
         }
 
@@ -372,6 +441,7 @@ namespace Octockup.Tests
             public IEnumerable<string> RequiredParameters => [];
             public List<string> DeletedPaths { get; } = [];
             public Dictionary<string, BackupFileInfo> Files { get; } = new(StringComparer.Ordinal);
+            public Func<string, CancellationToken, Task<bool?>>? DeleteOverride { get; set; }
 
             public void SetParameters(IReadOnlyDictionary<string, string> parameters)
             {
@@ -407,10 +477,15 @@ namespace Octockup.Tests
             public Task<bool?> ExistsAsync(string path, CancellationToken cancellationToken = default) =>
                 Task.FromResult<bool?>(Files.ContainsKey(path));
 
-            public Task<bool?> DeleteAsync(string path, CancellationToken cancellationToken = default)
+            public async Task<bool?> DeleteAsync(string path, CancellationToken cancellationToken = default)
             {
+                if (DeleteOverride is not null)
+                {
+                    return await DeleteOverride(path, cancellationToken);
+                }
+
                 DeletedPaths.Add(path);
-                return Task.FromResult<bool?>(Files.Remove(path));
+                return Files.Remove(path);
             }
 
             public Task UploadAsync(string path, Stream data, CancellationToken cancellationToken = default) =>
@@ -445,6 +520,34 @@ namespace Octockup.Tests
 
             public Task<Stream> DecryptAsync(Stream input, bool leaveOpen, CancellationToken ct) =>
                 Task.FromResult(input);
+        }
+
+        private class ImmediateStorageOperationCoordinator : IStorageOperationCoordinator
+        {
+            public Task<IStorageOperationLease?> TryAcquireAsync(
+                Guid storageId,
+                StorageOperationKind kind,
+                CancellationToken cancellationToken)
+            {
+                IStorageOperationLease lease = new ImmediateStorageOperationLease();
+                return Task.FromResult<IStorageOperationLease?>(lease);
+            }
+        }
+
+        private class ImmediateStorageOperationLease : IStorageOperationLease
+        {
+            public CancellationToken LeaseLostToken => CancellationToken.None;
+
+            public Task EnsureOwnedAsync(CancellationToken cancellationToken)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return Task.CompletedTask;
+            }
+
+            public ValueTask DisposeAsync()
+            {
+                return ValueTask.CompletedTask;
+            }
         }
     }
 }

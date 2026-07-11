@@ -50,6 +50,8 @@ namespace Octockup.Server
                 .AddScoped<ChunkReferenceCollector>()
                 .AddScoped<StorageCleanupRunner>()
                 .AddScoped<StorageMaintenanceService>()
+                .AddSingleton(TimeProvider.System)
+                .AddSingleton<IStorageOperationCoordinator, StorageOperationCoordinator>()
                 .AddSingleton<StorageCleanupJobManager>()
                 .AddPbkdf2PasswordHashService()
                 .AddCpuUsageService()

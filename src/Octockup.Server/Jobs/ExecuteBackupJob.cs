@@ -9,6 +9,7 @@ using Octockup.Server.Abstractions;
 using Octockup.Server.Database;
 using Octockup.Server.Helpers;
 using Octockup.Server.Hubs;
+using Octockup.Server.Models.Enums;
 using Quartz;
 using System.Collections.Concurrent;
 
@@ -67,7 +68,8 @@ namespace Octockup.Server.Jobs
             List<Task> tasks = [];
             foreach (Guid scheduleId in scheduleIds)
             {
-                CancellationTokenSource scheduleCts = new();
+                CancellationTokenSource scheduleCts = CancellationTokenSource
+                    .CreateLinkedTokenSource(context.CancellationToken);
 
                 if (!_runningSchedules.TryAdd(scheduleId, scheduleCts))
                 {
@@ -128,7 +130,7 @@ namespace Octockup.Server.Jobs
                     .ThenInclude(x => x.Source)
                     .Include(x => x.Backup)
                     .ThenInclude(x => x.Storage)
-                    .FirstOrDefaultAsync(x => x.Id == scheduleId);
+                    .FirstOrDefaultAsync(x => x.Id == scheduleId, scheduleCts.Token);
 
                 if (schedule is null)
                 {
@@ -136,18 +138,49 @@ namespace Octockup.Server.Jobs
                     return;
                 }
 
-                _logger.LogInformation("Starting backup job for schedule {ScheduleId}", schedule.Id);
-                ILogger<BackupRunner> runnerLogger = scope.ServiceProvider.GetRequiredService<ILogger<BackupRunner>>();
-                BackupRunner runner = new(
-                    scope.ServiceProvider.GetRequiredService<IStreamCipher>(),
-                    dbContext,
-                    scope.ServiceProvider,
-                    runnerLogger,
-                    scope.ServiceProvider.GetRequiredService<IHubContext<EventHub>>(),
-                    scope.ServiceProvider.GetRequiredService<IEnumerable<IBackupProvider>>());
+                IStorageOperationCoordinator operationCoordinator = scope.ServiceProvider
+                    .GetRequiredService<IStorageOperationCoordinator>();
+                IStorageOperationLease? storageLease = await operationCoordinator
+                    .TryAcquireAsync(
+                        schedule.Backup.StorageId,
+                        StorageOperationKind.Backup,
+                        scheduleCts.Token)
+                    .ConfigureAwait(false);
 
-                await runner.RunAsync(schedule, scheduleCts.Token);
-                _logger.LogInformation("Backup job for schedule {ScheduleId} completed", schedule.Id);
+                if (storageLease is null)
+                {
+                    schedule.Status = ScheduleStatus.Created;
+                    schedule.ErrorMessage = null;
+                    schedule.FinishedAt = null;
+                    await dbContext.SaveChangesAsync(scheduleCts.Token);
+                    _logger.LogInformation(
+                        "Deferred schedule {ScheduleId} because storage {StorageId} is busy.",
+                        schedule.Id,
+                        schedule.Backup.StorageId);
+                    return;
+                }
+
+                await using (storageLease)
+                using (CancellationTokenSource operationCts = CancellationTokenSource
+                    .CreateLinkedTokenSource(scheduleCts.Token, storageLease.LeaseLostToken))
+                {
+                    _logger.LogInformation("Starting backup job for schedule {ScheduleId}", schedule.Id);
+                    ILogger<BackupRunner> runnerLogger = scope.ServiceProvider.GetRequiredService<ILogger<BackupRunner>>();
+                    BackupRunner runner = new(
+                        scope.ServiceProvider.GetRequiredService<IStreamCipher>(),
+                        dbContext,
+                        scope.ServiceProvider,
+                        runnerLogger,
+                        scope.ServiceProvider.GetRequiredService<IHubContext<EventHub>>(),
+                        scope.ServiceProvider.GetRequiredService<IEnumerable<IBackupProvider>>());
+
+                    await runner.RunAsync(schedule, operationCts.Token);
+                    _logger.LogInformation("Backup job for schedule {ScheduleId} completed", schedule.Id);
+                }
+            }
+            catch (OperationCanceledException) when (scheduleCts.IsCancellationRequested)
+            {
+                _logger.LogInformation("Backup job wrapper canceled for schedule {ScheduleId}", scheduleId);
             }
             catch (Exception ex)
             {

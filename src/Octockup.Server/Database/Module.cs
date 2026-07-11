@@ -28,6 +28,15 @@ namespace Octockup.Server.Database
         [Column("backup_module_id")]
         public string BackupModuleId { get; set; } = string.Empty;
 
+        [Column("active_storage_operation_id")]
+        public Guid? ActiveStorageOperationId { get; set; }
+
+        [Column("active_storage_operation_kind")]
+        public StorageOperationKind? ActiveStorageOperationKind { get; set; }
+
+        [Column("storage_operation_lease_expires_at")]
+        public DateTime? StorageOperationLeaseExpiresAt { get; set; }
+
         [JsonInclude]
         [Column("parameters")]
         [Obsolete("Use EncryptedParameters instead.")]

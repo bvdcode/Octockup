@@ -117,6 +117,14 @@ namespace Octockup.Server.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("id");
 
+                    b.Property<Guid?>("ActiveStorageOperationId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("active_storage_operation_id");
+
+                    b.Property<int?>("ActiveStorageOperationKind")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("active_storage_operation_kind");
+
                     b.Property<string>("BackupModuleId")
                         .IsRequired()
                         .HasColumnType("TEXT")
@@ -140,6 +148,10 @@ namespace Octockup.Server.Migrations.Sqlite
                         .IsRequired()
                         .HasColumnType("TEXT")
                         .HasColumnName("parameters");
+
+                    b.Property<string>("StorageOperationLeaseExpiresAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("storage_operation_lease_expires_at");
 
                     b.Property<string>("Tag")
                         .IsRequired()
