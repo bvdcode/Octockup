@@ -518,7 +518,12 @@ namespace Octockup.Server.Jobs
                         uploadedChunks.Add(chunkKey);
 
                         report.SetStage(BackupProgressStage.Recording, $"Recording: {file.Name}");
-                        await EnsureUploadedHashRecordedAsync(schedule.Backup.StorageId, chunkKey, storedSize, chunkLength, algorithm, cancellationToken);
+                        RecordUploadedHash(
+                            schedule.Backup.StorageId,
+                            chunkKey,
+                            storedSize,
+                            chunkLength,
+                            algorithm);
 
                         await report.SendAsync(
                             counter,
@@ -558,23 +563,14 @@ namespace Octockup.Server.Jobs
             }
         }
 
-        private async Task EnsureUploadedHashRecordedAsync(
+        private void RecordUploadedHash(
             Guid storageModuleId,
             string chunkKey,
             long storedSize,
             long originalSize,
-            CompressionAlgorithm algorithm,
-            CancellationToken cancellationToken)
+            CompressionAlgorithm algorithm)
         {
-            bool chunkRecorded = await dbContext.UploadedHashes
-                .AsNoTracking()
-                .AnyAsync(x => x.Hash == chunkKey && x.ModuleId == storageModuleId, cancellationToken);
-            if (chunkRecorded)
-            {
-                return;
-            }
-
-            var uploadedHash = new UploadedHash
+            UploadedHash uploadedHash = new()
             {
                 Hash = chunkKey,
                 StoredSize = storedSize,
