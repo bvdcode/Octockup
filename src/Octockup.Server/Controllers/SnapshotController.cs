@@ -13,6 +13,7 @@ using Octockup.Server.Abstractions;
 using Octockup.Server.Database;
 using Octockup.Server.Helpers;
 using Octockup.Server.Models.Dto;
+using Octockup.Server.Models.Enums;
 using Octockup.Server.Models.Requests;
 using Octockup.Server.Models.Results;
 using Octockup.Server.Services;
@@ -28,6 +29,7 @@ namespace Octockup.Server.Controllers
         SnapshotPageService _snapshotPages,
         SnapshotFilePageService _snapshotFilePages,
         DownloadTicketService _downloadTickets,
+        IStorageOperationCoordinator _operationCoordinator,
         ILogger<SnapshotController> _logger,
         IEnumerable<IBackupProvider> _providers) : ControllerBase
     {
@@ -68,6 +70,23 @@ namespace Octockup.Server.Controllers
             {
                 return NotFound();
             }
+
+            IStorageOperationLease? storageLease = await _operationCoordinator
+                .TryAcquireAsync(
+                    snapshotFile.Snapshot.Backup.StorageId,
+                    StorageOperationKind.Restore,
+                    HttpContext.RequestAborted);
+            if (storageLease is null)
+            {
+                return Conflict("Snapshot storage is busy. Retry after the active operation finishes.");
+            }
+
+            Response.RegisterForDisposeAsync(storageLease);
+            CancellationTokenSource downloadCancellation =
+                CancellationTokenSource.CreateLinkedTokenSource(
+                    HttpContext.RequestAborted,
+                    storageLease.LeaseLostToken);
+            Response.RegisterForDispose(downloadCancellation);
 
             var provider = _providers
                 .FirstOrDefault(p => p.Id == snapshotFile.Snapshot.Backup.Storage.BackupModuleId);
@@ -117,7 +136,7 @@ namespace Octockup.Server.Controllers
                 chunks,
                 snapshotFile,
                 _crypto,
-                HttpContext.RequestAborted,
+                downloadCancellation.Token,
                 restoredSize
             );
 

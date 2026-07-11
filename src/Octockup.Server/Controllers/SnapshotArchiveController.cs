@@ -82,6 +82,8 @@ namespace Octockup.Server.Controllers
                 return Conflict();
             }
 
+            Response.RegisterForDisposeAsync(context);
+
             HttpContext.Features.Get<IHttpResponseBodyFeature>()?.DisableBuffering();
             Response.ContentType = "application/zip";
             Response.Headers.CacheControl = "no-store";

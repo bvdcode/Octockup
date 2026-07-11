@@ -3,6 +3,7 @@
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Octockup.Server.Abstractions;
 using Octockup.Server.Database;
 using Octockup.Server.Jobs;
 using Octockup.Server.Models.Enums;
@@ -10,7 +11,9 @@ using Octockup.Server.Models.Results;
 
 namespace Octockup.Server.Services
 {
-    public class BackupDeletionService(AppDbContext _dbContext)
+    public class BackupDeletionService(
+        AppDbContext _dbContext,
+        IStorageOperationCoordinator _operationCoordinator)
     {
         public async Task<BackupDeletionResult> DeleteAsync(
             Guid userId,
@@ -31,6 +34,32 @@ namespace Octockup.Server.Services
                 };
             }
 
+            IStorageOperationLease? storageLease = await _operationCoordinator
+                .TryAcquireAsync(
+                    backup.StorageId,
+                    StorageOperationKind.Maintenance,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (storageLease is null)
+            {
+                return new BackupDeletionResult
+                {
+                    ErrorMessage = "Backup storage is busy. Stop active operations before deletion."
+                };
+            }
+
+            await using (storageLease)
+            {
+                return await DeleteWithLeaseAsync(
+                    backupId,
+                    cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        private async Task<BackupDeletionResult> DeleteWithLeaseAsync(
+            Guid backupId,
+            CancellationToken cancellationToken)
+        {
             bool hasRunningSchedule = await _dbContext.Schedules
                 .AsNoTracking()
                 .AnyAsync(

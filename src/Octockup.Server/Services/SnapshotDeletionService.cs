@@ -3,6 +3,7 @@
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Octockup.Server.Abstractions;
 using Octockup.Server.Database;
 using Octockup.Server.Jobs;
 using Octockup.Server.Models.Enums;
@@ -10,7 +11,9 @@ using Octockup.Server.Models.Results;
 
 namespace Octockup.Server.Services
 {
-    public class SnapshotDeletionService(AppDbContext _dbContext)
+    public class SnapshotDeletionService(
+        AppDbContext _dbContext,
+        IStorageOperationCoordinator _operationCoordinator)
     {
         public async Task<SnapshotDeletionResult> DeleteAsync(
             Guid userId,
@@ -31,6 +34,35 @@ namespace Octockup.Server.Services
                     ErrorMessage = "Snapshot not found: " + snapshotId
                 };
             }
+
+            IStorageOperationLease? storageLease = await _operationCoordinator
+                .TryAcquireAsync(
+                    snapshot.Backup.StorageId,
+                    StorageOperationKind.Maintenance,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (storageLease is null)
+            {
+                return new SnapshotDeletionResult
+                {
+                    BackupId = snapshot.BackupId,
+                    ErrorMessage = "Snapshot storage is busy. Stop active operations before deletion."
+                };
+            }
+
+            await using (storageLease)
+            {
+                return await DeleteWithLeaseAsync(
+                    snapshot,
+                    cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        private async Task<SnapshotDeletionResult> DeleteWithLeaseAsync(
+            Snapshot snapshot,
+            CancellationToken cancellationToken)
+        {
+            Guid snapshotId = snapshot.Id;
 
             bool hasRunningSchedule = await _dbContext.Schedules
                 .AsNoTracking()

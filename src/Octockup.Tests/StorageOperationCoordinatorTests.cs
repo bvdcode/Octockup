@@ -75,9 +75,22 @@ namespace Octockup.Tests
                 _storageId,
                 StorageOperationKind.Cleanup,
                 CancellationToken.None);
+            IStorageOperationLease? blockedRestoreLease = await coordinator.TryAcquireAsync(
+                _storageId,
+                StorageOperationKind.Restore,
+                CancellationToken.None);
+            IStorageOperationLease? blockedMaintenanceLease = await coordinator.TryAcquireAsync(
+                _storageId,
+                StorageOperationKind.Maintenance,
+                CancellationToken.None);
 
-            Assert.That(backupLease, Is.Not.Null);
-            Assert.That(blockedCleanupLease, Is.Null);
+            Assert.Multiple(() =>
+            {
+                Assert.That(backupLease, Is.Not.Null);
+                Assert.That(blockedCleanupLease, Is.Null);
+                Assert.That(blockedRestoreLease, Is.Null);
+                Assert.That(blockedMaintenanceLease, Is.Null);
+            });
 
             await backupLease!.DisposeAsync();
 
@@ -187,6 +200,14 @@ namespace Octockup.Tests
                 _storageId,
                 StorageOperationKind.Backup,
                 CancellationToken.None);
+            IStorageOperationLease? restoreLease = await coordinator.TryAcquireAsync(
+                _storageId,
+                StorageOperationKind.Restore,
+                CancellationToken.None);
+            IStorageOperationLease? maintenanceLease = await coordinator.TryAcquireAsync(
+                _storageId,
+                StorageOperationKind.Maintenance,
+                CancellationToken.None);
             IStorageOperationLease? cleanupLease = await coordinator.TryAcquireAsync(
                 _storageId,
                 StorageOperationKind.Cleanup,
@@ -196,6 +217,8 @@ namespace Octockup.Tests
             {
                 Assert.That(backupLease, Is.Null);
                 Assert.That(cleanupLease, Is.Not.Null);
+                Assert.That(restoreLease, Is.Null);
+                Assert.That(maintenanceLease, Is.Null);
             });
             await cleanupLease!.DisposeAsync();
         }
@@ -248,6 +271,10 @@ namespace Octockup.Tests
                 _storageId,
                 StorageOperationKind.Cleanup,
                 CancellationToken.None);
+            IStorageOperationLease? maintenanceLease = await coordinator.TryAcquireAsync(
+                _storageId,
+                StorageOperationKind.Maintenance,
+                CancellationToken.None);
             IStorageOperationLease? backupLease = await coordinator.TryAcquireAsync(
                 _storageId,
                 StorageOperationKind.Backup,
@@ -257,6 +284,7 @@ namespace Octockup.Tests
             {
                 Assert.That(cleanupLease, Is.Null);
                 Assert.That(backupLease, Is.Not.Null);
+                Assert.That(maintenanceLease, Is.Null);
             });
             await backupLease!.DisposeAsync();
         }

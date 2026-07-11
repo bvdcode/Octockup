@@ -6,6 +6,8 @@ namespace Octockup.Server.Models.Enums
     public enum StorageOperationKind
     {
         Backup = 0,
-        Cleanup = 1
+        Cleanup = 1,
+        Restore = 2,
+        Maintenance = 3
     }
 }

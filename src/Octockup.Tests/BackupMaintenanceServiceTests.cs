@@ -12,6 +12,7 @@ using Octockup.Server.Helpers;
 using Octockup.Server.Models;
 using Octockup.Server.Models.Dto;
 using Octockup.Server.Models.Enums;
+using Octockup.Server.Models.Results;
 using Octockup.Server.Services;
 using System.Runtime.CompilerServices;
 
@@ -29,9 +30,13 @@ namespace Octockup.Tests
             await connection.OpenAsync();
             await using SqliteDbContext dbContext = await CreateDbContextAsync(connection);
 
-            (Guid userId, Guid backupId, _, _, Guid snapshotId) = await SeedBackupAsync(dbContext);
+            (Guid userId, Guid backupId, _, Guid storageId, Guid snapshotId) =
+                await SeedBackupAsync(dbContext);
             await SeedArchiveHistoryAsync(dbContext, userId, snapshotId);
-            BackupDeletionService service = new(dbContext);
+            ImmediateStorageOperationCoordinator coordinator = new();
+            BackupDeletionService service = new(
+                dbContext,
+                coordinator);
 
             var result = await service.DeleteAsync(userId, backupId, CancellationToken.None);
 
@@ -51,6 +56,37 @@ namespace Octockup.Tests
                 Assert.That(dbContext.SnapshotArchiveJobs.Count(), Is.Zero);
                 Assert.That(dbContext.DownloadTickets.Count(), Is.Zero);
                 Assert.That(dbContext.UploadedHashes.Count(), Is.EqualTo(1));
+                Assert.That(coordinator.RequestedStorageId, Is.EqualTo(storageId));
+                Assert.That(coordinator.RequestedKind, Is.EqualTo(StorageOperationKind.Maintenance));
+                Assert.That(coordinator.Lease?.Disposed, Is.True);
+            });
+        }
+
+        [Test]
+        public async Task DeleteAsync_WhenStorageIsBusy_KeepsBackupRows()
+        {
+            await using SqliteConnection connection = new("Data Source=:memory:");
+            await connection.OpenAsync();
+            await using SqliteDbContext dbContext = await CreateDbContextAsync(connection);
+            (Guid userId, Guid backupId, _, _, _) = await SeedBackupAsync(dbContext);
+            ImmediateStorageOperationCoordinator coordinator = new()
+            {
+                RejectAcquisition = true
+            };
+            BackupDeletionService service = new(dbContext, coordinator);
+
+            BackupDeletionResult result = await service.DeleteAsync(
+                userId,
+                backupId,
+                CancellationToken.None);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Deleted, Is.False);
+                Assert.That(result.ErrorMessage, Does.Contain("busy"));
+                Assert.That(coordinator.RequestedKind, Is.EqualTo(StorageOperationKind.Maintenance));
+                Assert.That(dbContext.Backups.Count(), Is.EqualTo(1));
+                Assert.That(dbContext.Snapshots.Count(), Is.EqualTo(1));
             });
         }
 
@@ -66,7 +102,9 @@ namespace Octockup.Tests
             schedule.Status = ScheduleStatus.Running;
             await dbContext.SaveChangesAsync();
 
-            BackupDeletionService service = new(dbContext);
+            BackupDeletionService service = new(
+                dbContext,
+                new ImmediateStorageOperationCoordinator());
 
             var result = await service.DeleteAsync(userId, backupId, CancellationToken.None);
 
@@ -100,9 +138,11 @@ namespace Octockup.Tests
                 StartedAt = DateTime.UtcNow
             });
             await dbContext.SaveChangesAsync();
-            BackupDeletionService service = new(dbContext);
+            BackupDeletionService service = new(
+                dbContext,
+                new ImmediateStorageOperationCoordinator());
 
-            var result = await service.DeleteAsync(
+            BackupDeletionResult result = await service.DeleteAsync(
                 userId,
                 backupId,
                 CancellationToken.None);
@@ -124,11 +164,18 @@ namespace Octockup.Tests
             await connection.OpenAsync();
             await using SqliteDbContext dbContext = await CreateDbContextAsync(connection);
 
-            (Guid userId, Guid backupId, _, _, Guid snapshotId) = await SeedBackupAsync(dbContext);
+            (Guid userId, Guid backupId, _, Guid storageId, Guid snapshotId) =
+                await SeedBackupAsync(dbContext);
             await SeedArchiveHistoryAsync(dbContext, userId, snapshotId);
-            SnapshotDeletionService service = new(dbContext);
+            ImmediateStorageOperationCoordinator coordinator = new();
+            SnapshotDeletionService service = new(
+                dbContext,
+                coordinator);
 
-            var result = await service.DeleteAsync(userId, snapshotId, CancellationToken.None);
+            SnapshotDeletionResult result = await service.DeleteAsync(
+                userId,
+                snapshotId,
+                CancellationToken.None);
 
             dbContext.ChangeTracker.Clear();
 
@@ -146,6 +193,37 @@ namespace Octockup.Tests
                 Assert.That(dbContext.SnapshotArchiveJobs.Count(), Is.Zero);
                 Assert.That(dbContext.DownloadTickets.Count(), Is.Zero);
                 Assert.That(dbContext.UploadedHashes.Count(), Is.EqualTo(1));
+                Assert.That(coordinator.RequestedStorageId, Is.EqualTo(storageId));
+                Assert.That(coordinator.RequestedKind, Is.EqualTo(StorageOperationKind.Maintenance));
+                Assert.That(coordinator.Lease?.Disposed, Is.True);
+            });
+        }
+
+        [Test]
+        public async Task DeleteSnapshotAsync_WhenStorageIsBusy_KeepsSnapshotRows()
+        {
+            await using SqliteConnection connection = new("Data Source=:memory:");
+            await connection.OpenAsync();
+            await using SqliteDbContext dbContext = await CreateDbContextAsync(connection);
+            (Guid userId, _, _, _, Guid snapshotId) = await SeedBackupAsync(dbContext);
+            ImmediateStorageOperationCoordinator coordinator = new()
+            {
+                RejectAcquisition = true
+            };
+            SnapshotDeletionService service = new(dbContext, coordinator);
+
+            SnapshotDeletionResult result = await service.DeleteAsync(
+                userId,
+                snapshotId,
+                CancellationToken.None);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Deleted, Is.False);
+                Assert.That(result.ErrorMessage, Does.Contain("busy"));
+                Assert.That(coordinator.RequestedKind, Is.EqualTo(StorageOperationKind.Maintenance));
+                Assert.That(dbContext.Snapshots.Count(), Is.EqualTo(1));
+                Assert.That(dbContext.SnapshotFiles.Count(), Is.EqualTo(1));
             });
         }
 
@@ -167,7 +245,9 @@ namespace Octockup.Tests
                 StartedAt = DateTime.UtcNow
             });
             await dbContext.SaveChangesAsync();
-            SnapshotDeletionService service = new(dbContext);
+            SnapshotDeletionService service = new(
+                dbContext,
+                new ImmediateStorageOperationCoordinator());
 
             var result = await service.DeleteAsync(
                 userId,
@@ -192,7 +272,9 @@ namespace Octockup.Tests
             await using SqliteDbContext dbContext = await CreateDbContextAsync(connection);
 
             (_, _, _, _, Guid snapshotId) = await SeedBackupAsync(dbContext);
-            SnapshotDeletionService service = new(dbContext);
+            SnapshotDeletionService service = new(
+                dbContext,
+                new ImmediateStorageOperationCoordinator());
 
             var result = await service.DeleteAsync(Guid.NewGuid(), snapshotId, CancellationToken.None);
 
@@ -216,7 +298,9 @@ namespace Octockup.Tests
             Schedule schedule = await dbContext.Schedules.SingleAsync(x => x.Id == scheduleId);
             schedule.Status = ScheduleStatus.Running;
             await dbContext.SaveChangesAsync();
-            SnapshotDeletionService service = new(dbContext);
+            SnapshotDeletionService service = new(
+                dbContext,
+                new ImmediateStorageOperationCoordinator());
 
             var result = await service.DeleteAsync(userId, snapshotId, CancellationToken.None);
 
@@ -871,6 +955,7 @@ namespace Octockup.Tests
             public Guid OperationId { get; } = Guid.NewGuid();
             public Guid StorageId { get; }
             public CancellationToken LeaseLostToken => CancellationToken.None;
+            public bool Disposed { get; private set; }
 
             public Task EnsureOwnedAsync(CancellationToken cancellationToken)
             {
@@ -880,7 +965,33 @@ namespace Octockup.Tests
 
             public ValueTask DisposeAsync()
             {
+                Disposed = true;
                 return ValueTask.CompletedTask;
+            }
+        }
+
+        private class ImmediateStorageOperationCoordinator : IStorageOperationCoordinator
+        {
+            public Guid? RequestedStorageId { get; private set; }
+            public StorageOperationKind? RequestedKind { get; private set; }
+            public ImmediateStorageOperationLease? Lease { get; private set; }
+            public bool RejectAcquisition { get; init; }
+
+            public Task<IStorageOperationLease?> TryAcquireAsync(
+                Guid storageId,
+                StorageOperationKind kind,
+                CancellationToken cancellationToken)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                RequestedStorageId = storageId;
+                RequestedKind = kind;
+                if (RejectAcquisition)
+                {
+                    return Task.FromResult<IStorageOperationLease?>(null);
+                }
+
+                Lease = new ImmediateStorageOperationLease(storageId);
+                return Task.FromResult<IStorageOperationLease?>(Lease);
             }
         }
     }

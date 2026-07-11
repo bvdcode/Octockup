@@ -2,6 +2,7 @@
 // Copyright (c) 2025 Vadim Belov <https://belov.us>
 
 using Microsoft.EntityFrameworkCore;
+using Octockup.Server.Abstractions;
 using Octockup.Server.Archives;
 using Octockup.Server.Database;
 using Octockup.Server.Models.Enums;
@@ -13,6 +14,7 @@ namespace Octockup.Server.Services
         SnapshotArchiveJobService _jobs,
         SnapshotArchiveRunner _runner,
         SnapshotArchiveCancellationRegistry _cancellations,
+        IStorageOperationCoordinator _operationCoordinator,
         TimeProvider _timeProvider,
         ILogger<SnapshotArchiveExecutionService> _logger)
     {
@@ -21,53 +23,102 @@ namespace Octockup.Server.Services
             Guid jobId,
             CancellationToken cancellationToken)
         {
-            Guid runId = Guid.NewGuid();
-            SnapshotArchiveJob? job = await _jobs.ClaimAsync(
-                userId,
-                jobId,
-                runId,
-                cancellationToken).ConfigureAwait(false);
-            if (job is null)
-            {
-                return null;
-            }
-
-            var snapshot = await _dbContext.Snapshots
-                .AsNoTracking()
-                .Where(x =>
-                    x.Id == job.SnapshotId &&
-                    x.CompletedAt != null &&
-                    x.Backup.Source.UserId == userId)
-                .Select(x => new
-                {
-                    x.Id,
-                    x.CreatedAt,
-                    CompletedAt = x.CompletedAt!.Value,
-                    x.Backup.Tag
-                })
+            var target = await (
+                    from archiveJob in _dbContext.SnapshotArchiveJobs.AsNoTracking()
+                    join targetSnapshot in _dbContext.Snapshots.AsNoTracking()
+                        on archiveJob.SnapshotId equals targetSnapshot.Id
+                    where archiveJob.Id == jobId &&
+                        archiveJob.UserId == userId &&
+                        archiveJob.Status == SnapshotArchiveStatus.Pending &&
+                        archiveJob.ActiveSnapshotId != null &&
+                        targetSnapshot.CompletedAt != null &&
+                        targetSnapshot.Backup.Source.UserId == userId
+                    select new
+                    {
+                        targetSnapshot.Backup.StorageId
+                    })
                 .SingleOrDefaultAsync(cancellationToken)
                 .ConfigureAwait(false);
-            if (snapshot is null)
+            if (target is null)
             {
-                SnapshotArchiveProgressTracker missingSnapshotProgress = new(
-                    job,
-                    runId,
-                    _jobs,
-                    _timeProvider);
-                await _jobs.FinalizeAsync(
-                    missingSnapshotProgress.Progress,
-                    runId,
-                    SnapshotArchiveStatus.Failed,
-                    "The completed snapshot no longer exists.").ConfigureAwait(false);
                 return null;
             }
 
-            string fileName = SnapshotArchiveFileName.Create(
-                snapshot.Tag,
-                snapshot.CreatedAt,
-                snapshot.CompletedAt,
-                snapshot.Id);
-            return new SnapshotArchiveRunContext(job, runId, fileName);
+            IStorageOperationLease? storageLease = await _operationCoordinator
+                .TryAcquireAsync(
+                    target.StorageId,
+                    StorageOperationKind.Restore,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (storageLease is null)
+            {
+                return null;
+            }
+
+            bool leaseTransferred = false;
+            try
+            {
+                Guid runId = Guid.NewGuid();
+                SnapshotArchiveJob? job = await _jobs.ClaimAsync(
+                    userId,
+                    jobId,
+                    runId,
+                    cancellationToken).ConfigureAwait(false);
+                if (job is null)
+                {
+                    return null;
+                }
+
+                var snapshot = await _dbContext.Snapshots
+                    .AsNoTracking()
+                    .Where(x =>
+                        x.Id == job.SnapshotId &&
+                        x.CompletedAt != null &&
+                        x.Backup.Source.UserId == userId)
+                    .Select(x => new
+                    {
+                        x.Id,
+                        x.CreatedAt,
+                        CompletedAt = x.CompletedAt!.Value,
+                        x.Backup.Tag
+                    })
+                    .SingleOrDefaultAsync(cancellationToken)
+                    .ConfigureAwait(false);
+                if (snapshot is null)
+                {
+                    SnapshotArchiveProgressTracker missingSnapshotProgress = new(
+                        job,
+                        runId,
+                        _jobs,
+                        _timeProvider);
+                    await _jobs.FinalizeAsync(
+                        missingSnapshotProgress.Progress,
+                        runId,
+                        SnapshotArchiveStatus.Failed,
+                        "The completed snapshot no longer exists.").ConfigureAwait(false);
+                    return null;
+                }
+
+                string fileName = SnapshotArchiveFileName.Create(
+                    snapshot.Tag,
+                    snapshot.CreatedAt,
+                    snapshot.CompletedAt,
+                    snapshot.Id);
+                SnapshotArchiveRunContext context = new(
+                    job,
+                    runId,
+                    fileName,
+                    storageLease);
+                leaseTransferred = true;
+                return context;
+            }
+            finally
+            {
+                if (!leaseTransferred)
+                {
+                    await storageLease.DisposeAsync().ConfigureAwait(false);
+                }
+            }
         }
 
         public async Task ExecuteAsync(
@@ -81,7 +132,9 @@ namespace Octockup.Server.Services
                 _jobs,
                 _timeProvider);
             using CancellationTokenSource executionCancellation =
-                CancellationTokenSource.CreateLinkedTokenSource(requestCancellationToken);
+                CancellationTokenSource.CreateLinkedTokenSource(
+                    requestCancellationToken,
+                    context.LeaseLostToken);
             if (!_cancellations.TryRegister(context.Job.Id, executionCancellation))
             {
                 await _jobs.FinalizeAsync(
@@ -95,6 +148,9 @@ namespace Octockup.Server.Services
 
             try
             {
+                await context
+                    .EnsureLeaseOwnedAsync(executionCancellation.Token)
+                    .ConfigureAwait(false);
                 await _runner.WriteAsync(
                     context.Job,
                     progress,

@@ -32,10 +32,11 @@ namespace Octockup.Server.Services
                 .Where(x =>
                     x.Id == storageId &&
                     x.Destination == ModuleDestination.Target &&
-                    (kind != StorageOperationKind.Backup ||
+                    (kind == StorageOperationKind.Cleanup ||
                         !dbContext.StorageCleanupJobs.Any(job =>
                             job.ActiveStorageId == x.Id)) &&
-                    (kind != StorageOperationKind.Cleanup ||
+                    ((kind != StorageOperationKind.Cleanup &&
+                        kind != StorageOperationKind.Maintenance) ||
                         !dbContext.SnapshotArchiveJobs.Any(job =>
                             job.Status == SnapshotArchiveStatus.Running &&
                             dbContext.Snapshots.Any(snapshot =>
