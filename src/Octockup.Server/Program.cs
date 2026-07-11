@@ -82,7 +82,6 @@ namespace Octockup.Server
                 .AddScoped<UploadedHashWriter>()
                 .AddScoped<SnapshotChunkReferenceWriter>()
                 .AddScoped<SnapshotChunkReferenceIndexer>()
-                .AddScoped<ChunkReferenceCollector>()
                 .AddScoped<StorageCleanupRunner>()
                 .AddScoped<StorageMaintenanceService>()
                 .AddSingleton(TimeProvider.System)
