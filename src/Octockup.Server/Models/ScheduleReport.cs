@@ -17,7 +17,10 @@ namespace Octockup.Server.Models
         public Guid BackupId { get; } = backupId;
         public Guid ScheduleId { get; } = scheduleId;
         public ScheduleStatus Status { get; private set; }
+        public BackupProgressStage Stage { get; private set; } = BackupProgressStage.Listing;
         public DateTime Timestamp { get; private set; }
+        public DateTime LastProgressAt { get; private set; } = DateTime.UtcNow;
+        public TimeSpan NoProgressFor => DateTime.UtcNow - LastProgressAt;
         public TimeSpan Elapsed => _stopwatch.Elapsed;
         public string Message { get; private set; } = string.Empty;
         public int Processed { get; private set; }
@@ -64,14 +67,23 @@ namespace Octockup.Server.Models
             string message,
             long processedBytes = 0,
             ScheduleStatus status = ScheduleStatus.Running,
+            BackupProgressStage stage = BackupProgressStage.Preparing,
             CancellationToken cancellationToken = default)
         {
             Status = status;
-            Timestamp = DateTime.UtcNow;
-            Message = message;
             Processed = processedFiles;
+            SetStage(stage, message);
             UpdateSpeed(processedBytes, forceSample: processedBytes == 0);
             await _hubContext.Clients.User(UserId.ToString()).SendAsync("ScheduleReport", this, cancellationToken: cancellationToken);
+        }
+
+        public void SetStage(BackupProgressStage stage, string message)
+        {
+            DateTime now = DateTime.UtcNow;
+            Stage = stage;
+            Message = message;
+            Timestamp = now;
+            LastProgressAt = now;
         }
 
         private void UpdateSpeed(long processedBytes, bool forceSample)
