@@ -410,6 +410,56 @@ namespace Octockup.Server.Migrations.Sqlite
                     b.ToTable("snapshots");
                 });
 
+            modelBuilder.Entity("Octockup.Server.Database.SnapshotChunkReference", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ChunkHash")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("chunk_hash");
+
+                    b.Property<string>("CreatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ordinal");
+
+                    b.Property<Guid>("SnapshotFileId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("snapshot_file_id");
+
+                    b.Property<Guid>("SnapshotId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("snapshot_id");
+
+                    b.Property<Guid>("StorageId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("storage_id");
+
+                    b.Property<string>("UpdatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SnapshotId");
+
+                    b.HasIndex("SnapshotFileId", "Ordinal")
+                        .IsUnique();
+
+                    b.HasIndex("StorageId", "ChunkHash");
+
+                    b.ToTable("snapshot_chunk_references");
+                });
+
             modelBuilder.Entity("Octockup.Server.Database.SnapshotFile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -421,6 +471,10 @@ namespace Octockup.Server.Migrations.Sqlite
                         .IsRequired()
                         .HasColumnType("TEXT")
                         .HasColumnName("chunk_hashes");
+
+                    b.Property<bool>("ChunkReferencesIndexed")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("chunk_references_indexed");
 
                     b.Property<string>("CreatedAt")
                         .IsRequired()
@@ -769,6 +823,25 @@ namespace Octockup.Server.Migrations.Sqlite
                     b.Navigation("Backup");
                 });
 
+            modelBuilder.Entity("Octockup.Server.Database.SnapshotChunkReference", b =>
+                {
+                    b.HasOne("Octockup.Server.Database.SnapshotFile", "SnapshotFile")
+                        .WithMany("ChunkReferences")
+                        .HasForeignKey("SnapshotFileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Octockup.Server.Database.Snapshot", "Snapshot")
+                        .WithMany("ChunkReferences")
+                        .HasForeignKey("SnapshotId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Snapshot");
+
+                    b.Navigation("SnapshotFile");
+                });
+
             modelBuilder.Entity("Octockup.Server.Database.SnapshotFile", b =>
                 {
                     b.HasOne("Octockup.Server.Database.Snapshot", "Snapshot")
@@ -805,7 +878,14 @@ namespace Octockup.Server.Migrations.Sqlite
 
             modelBuilder.Entity("Octockup.Server.Database.Snapshot", b =>
                 {
+                    b.Navigation("ChunkReferences");
+
                     b.Navigation("Files");
+                });
+
+            modelBuilder.Entity("Octockup.Server.Database.SnapshotFile", b =>
+                {
+                    b.Navigation("ChunkReferences");
                 });
 
             modelBuilder.Entity("Octockup.Server.Database.User", b =>

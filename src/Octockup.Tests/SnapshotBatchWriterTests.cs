@@ -3,9 +3,11 @@
 
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Octockup.Server.Database;
 using Octockup.Server.Jobs;
 using Octockup.Server.Models.Enums;
+using Octockup.Server.Services;
 
 namespace Octockup.Tests
 {
@@ -18,21 +20,21 @@ namespace Octockup.Tests
             await connection.OpenAsync();
             await using SqliteDbContext dbContext = await CreateDbContextAsync(connection);
             Schedule schedule = await SeedScheduleAsync(dbContext);
-            SnapshotBatchWriter writer = new(dbContext);
+            SnapshotBatchWriter writer = CreateWriter(dbContext);
             Snapshot snapshot = await writer.CreateAsync(
                 schedule.BackupId,
                 schedule,
                 CancellationToken.None);
 
-            await AddFilesAsync(writer, snapshot, start: 0, count: 100);
+            await AddFilesAsync(writer, snapshot, schedule, start: 0, count: 100);
             await writer.FlushAsync(snapshot, schedule, CancellationToken.None);
             await AssertBatchStateAsync(dbContext, schedule, snapshot, expectedFiles: 100);
 
-            await AddFilesAsync(writer, snapshot, start: 100, count: 100);
+            await AddFilesAsync(writer, snapshot, schedule, start: 100, count: 100);
             await writer.FlushAsync(snapshot, schedule, CancellationToken.None);
             await AssertBatchStateAsync(dbContext, schedule, snapshot, expectedFiles: 200);
 
-            await AddFilesAsync(writer, snapshot, start: 200, count: 1);
+            await AddFilesAsync(writer, snapshot, schedule, start: 200, count: 1);
             await writer.CompleteAsync(snapshot, schedule, CancellationToken.None);
 
             Snapshot completedSnapshot = await dbContext.Snapshots
@@ -48,9 +50,60 @@ namespace Octockup.Tests
             });
         }
 
+        [Test]
+        public async Task AddFileAsync_WhenFileHasManyChunks_WritesBoundedReferenceBatches()
+        {
+            await using SqliteConnection connection = new("Data Source=:memory:");
+            await connection.OpenAsync();
+            await using SqliteDbContext dbContext = await CreateDbContextAsync(connection);
+            Schedule schedule = await SeedScheduleAsync(dbContext);
+            SnapshotBatchWriter writer = CreateWriter(dbContext);
+            Snapshot snapshot = await writer.CreateAsync(
+                schedule.BackupId,
+                schedule,
+                CancellationToken.None);
+            SnapshotFile snapshotFile = new()
+            {
+                Path = "large.bin",
+                Name = "large.bin",
+                Size = 501,
+                Hashsum = "large-hash",
+                ChunkHashes = Enumerable.Range(0, 501)
+                    .Select(index => "chunk-" + index.ToString("D4"))
+                    .ToList()
+            };
+
+            await writer.AddFileAsync(
+                snapshot,
+                schedule,
+                schedule.Backup.StorageId,
+                snapshotFile,
+                CancellationToken.None);
+            await writer.CompleteAsync(snapshot, schedule, CancellationToken.None);
+            SnapshotFile persistedFile = await dbContext.SnapshotFiles
+                .AsNoTracking()
+                .SingleAsync(x => x.Id == snapshotFile.Id);
+            List<int> ordinals = await dbContext.SnapshotChunkReferences
+                .AsNoTracking()
+                .Where(x => x.SnapshotFileId == snapshotFile.Id)
+                .OrderBy(x => x.Ordinal)
+                .Select(x => x.Ordinal)
+                .ToListAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(persistedFile.ChunkReferencesIndexed, Is.True);
+                Assert.That(ordinals, Has.Count.EqualTo(501));
+                Assert.That(ordinals.First(), Is.Zero);
+                Assert.That(ordinals.Last(), Is.EqualTo(500));
+                AssertTrackedScheduleOnly(dbContext, schedule);
+            });
+        }
+
         private static async Task AddFilesAsync(
             SnapshotBatchWriter writer,
             Snapshot snapshot,
+            Schedule schedule,
             int start,
             int count)
         {
@@ -66,8 +119,21 @@ namespace Octockup.Tests
                     ChunkHashes = []
                 };
 
-                await writer.AddFileAsync(snapshot, snapshotFile, CancellationToken.None);
+                await writer.AddFileAsync(
+                    snapshot,
+                    schedule,
+                    schedule.Backup.StorageId,
+                    snapshotFile,
+                    CancellationToken.None);
             }
+        }
+
+        private static SnapshotBatchWriter CreateWriter(AppDbContext dbContext)
+        {
+            SnapshotChunkReferenceWriter referenceWriter = new(
+                dbContext,
+                NullLogger<SnapshotChunkReferenceWriter>.Instance);
+            return new SnapshotBatchWriter(dbContext, referenceWriter);
         }
 
         private static async Task AssertBatchStateAsync(

@@ -80,6 +80,8 @@ namespace Octockup.Server
                 .AddScoped<UploadedChunkLookup>()
                 .AddScoped<PreviousSnapshotFileLookup>()
                 .AddScoped<UploadedHashWriter>()
+                .AddScoped<SnapshotChunkReferenceWriter>()
+                .AddScoped<SnapshotChunkReferenceIndexer>()
                 .AddScoped<ChunkReferenceCollector>()
                 .AddScoped<StorageCleanupRunner>()
                 .AddScoped<StorageMaintenanceService>()

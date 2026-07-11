@@ -26,5 +26,6 @@ namespace Octockup.Server.Database
         public virtual Backup Backup { get; set; } = null!;
 
         public virtual ICollection<SnapshotFile> Files { get; set; } = [];
+        public virtual ICollection<SnapshotChunkReference> ChunkReferences { get; set; } = [];
     }
 }

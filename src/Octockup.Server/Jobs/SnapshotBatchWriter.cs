@@ -3,11 +3,16 @@
 
 using Microsoft.EntityFrameworkCore;
 using Octockup.Server.Database;
+using Octockup.Server.Services;
 
 namespace Octockup.Server.Jobs
 {
-    public class SnapshotBatchWriter(AppDbContext dbContext)
+    public class SnapshotBatchWriter(
+        AppDbContext dbContext,
+        SnapshotChunkReferenceWriter chunkReferenceWriter)
     {
+        private const int MaxInlineChunkReferences = 500;
+
         public async Task<Snapshot> CreateAsync(
             Guid backupId,
             Schedule schedule,
@@ -26,6 +31,8 @@ namespace Octockup.Server.Jobs
 
         public async ValueTask AddFileAsync(
             Snapshot snapshot,
+            Schedule schedule,
+            Guid storageId,
             SnapshotFile snapshotFile,
             CancellationToken cancellationToken)
         {
@@ -36,10 +43,71 @@ namespace Octockup.Server.Jobs
                     nameof(snapshotFile));
             }
 
-            snapshotFile.SnapshotId = snapshot.Id;
-            await dbContext.SnapshotFiles.AddAsync(snapshotFile, cancellationToken);
             snapshot.TotalSize += snapshotFile.Size;
             snapshot.FilesCount++;
+            snapshotFile.SnapshotId = snapshot.Id;
+            snapshotFile.ChunkReferencesIndexed =
+                snapshotFile.ChunkHashes.Count <= MaxInlineChunkReferences;
+            await dbContext.SnapshotFiles.AddAsync(snapshotFile, cancellationToken);
+
+            if (snapshotFile.ChunkReferencesIndexed)
+            {
+                List<SnapshotChunkReference> references = CreateReferences(
+                    snapshot,
+                    snapshotFile,
+                    storageId,
+                    0,
+                    snapshotFile.ChunkHashes);
+                await dbContext.SnapshotChunkReferences
+                    .AddRangeAsync(references, cancellationToken);
+                return;
+            }
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+            ResetTracking(schedule);
+            int ordinal = 0;
+            foreach (string[] chunkBatch in snapshotFile.ChunkHashes
+                .Chunk(SnapshotChunkReferenceWriter.MaxBatchSize))
+            {
+                List<SnapshotChunkReference> references = CreateReferences(
+                    snapshot,
+                    snapshotFile,
+                    storageId,
+                    ordinal,
+                    chunkBatch);
+                await chunkReferenceWriter.FlushAsync(references, cancellationToken);
+                ordinal += chunkBatch.Length;
+            }
+
+            int updatedFiles = await dbContext.SnapshotFiles
+                .Where(x => x.Id == snapshotFile.Id)
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(x => x.ChunkReferencesIndexed, true),
+                    cancellationToken);
+            if (updatedFiles != 1)
+            {
+                throw new InvalidOperationException(
+                    $"Expected to mark snapshot file {snapshotFile.Id} indexed, but updated {updatedFiles} rows.");
+            }
+        }
+
+        private static List<SnapshotChunkReference> CreateReferences(
+            Snapshot snapshot,
+            SnapshotFile snapshotFile,
+            Guid storageId,
+            int startingOrdinal,
+            IEnumerable<string> chunkHashes)
+        {
+            return chunkHashes
+                .Select((chunkHash, index) => new SnapshotChunkReference
+                {
+                    StorageId = storageId,
+                    SnapshotId = snapshot.Id,
+                    SnapshotFileId = snapshotFile.Id,
+                    Ordinal = startingOrdinal + index,
+                    ChunkHash = chunkHash
+                })
+                .ToList();
         }
 
         public async Task FlushAsync(

@@ -32,7 +32,11 @@ namespace Octockup.Server.Database
         [Column("chunk_hashes")]
         public ICollection<string> ChunkHashes { get; set; } = [];
 
+        [Column("chunk_references_indexed")]
+        public bool ChunkReferencesIndexed { get; set; }
+
         [DeleteBehavior(DeleteBehavior.Restrict)]
         public virtual Snapshot Snapshot { get; set; } = null!;
+        public virtual ICollection<SnapshotChunkReference> ChunkReferences { get; set; } = [];
     }
 }

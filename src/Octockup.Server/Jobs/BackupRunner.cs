@@ -29,7 +29,8 @@ namespace Octockup.Server.Jobs
         IEnumerable<IBackupProvider> providers,
         UploadedChunkLookup uploadedChunkLookup,
         PreviousSnapshotFileLookup previousSnapshotFileLookup,
-        UploadedHashWriter uploadedHashWriter)
+        UploadedHashWriter uploadedHashWriter,
+        SnapshotChunkReferenceWriter snapshotChunkReferenceWriter)
     {
         private const int ChunkSize = 8 * 1024 * 1024;
         private const int FileEnumerationBufferCapacity = 1_000;
@@ -267,7 +268,9 @@ namespace Octockup.Server.Jobs
                 uploadedChunkLookup.FilterByteCount);
             report.SetStage(BackupProgressStage.Listing, "Listing files to backup...");
 
-            SnapshotBatchWriter snapshotWriter = new(dbContext);
+            SnapshotBatchWriter snapshotWriter = new(
+                dbContext,
+                snapshotChunkReferenceWriter);
             Snapshot snapshot = await snapshotWriter.CreateAsync(
                 schedule.BackupId,
                 schedule,
@@ -483,7 +486,12 @@ namespace Octockup.Server.Jobs
                 Name = file.Name ?? file.Path,
                 LastModified = file.LastModified,
             };
-            await snapshotWriter.AddFileAsync(snapshot, snapshotFile, cancellationToken);
+            await snapshotWriter.AddFileAsync(
+                snapshot,
+                schedule,
+                schedule.Backup.StorageId,
+                snapshotFile,
+                cancellationToken);
             await PersistSnapshotIfDueAsync(
                 schedule,
                 snapshot,
@@ -750,7 +758,12 @@ namespace Octockup.Server.Jobs
                 LastModified = currentFile.LastModified,
                 ChunkHashes = previousFile.ChunkHashes,
             };
-            await snapshotWriter.AddFileAsync(snapshot, snapshotFile, cancellationToken);
+            await snapshotWriter.AddFileAsync(
+                snapshot,
+                schedule,
+                schedule.Backup.StorageId,
+                snapshotFile,
+                cancellationToken);
             await PersistSnapshotIfDueAsync(
                 schedule,
                 snapshot,

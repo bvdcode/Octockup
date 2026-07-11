@@ -16,6 +16,8 @@ namespace Octockup.Server.Database
         public DbSet<Notification> Notifications => Set<Notification>();
         public DbSet<RefreshSession> RefreshSessions => Set<RefreshSession>();
         public DbSet<SnapshotFile> SnapshotFiles => Set<SnapshotFile>();
+        public DbSet<SnapshotChunkReference> SnapshotChunkReferences =>
+            Set<SnapshotChunkReference>();
         public DbSet<UploadedHash> UploadedHashes => Set<UploadedHash>();
         public DbSet<StorageCleanupJob> StorageCleanupJobs => Set<StorageCleanupJob>();
         public DbSet<DownloadTicket> DownloadTickets => Set<DownloadTicket>();

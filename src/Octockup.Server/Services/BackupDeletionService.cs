@@ -54,6 +54,10 @@ namespace Octockup.Server.Services
                 .Where(x => x.BackupId == backupId)
                 .Select(x => x.Id);
 
+            await _dbContext.SnapshotChunkReferences
+                .Where(x => snapshotIds.Contains(x.SnapshotId))
+                .ExecuteDeleteAsync(cancellationToken);
+
             int deletedSnapshotFiles = await _dbContext.SnapshotFiles
                 .Where(x => snapshotIds.Contains(x.SnapshotId))
                 .ExecuteDeleteAsync(cancellationToken);

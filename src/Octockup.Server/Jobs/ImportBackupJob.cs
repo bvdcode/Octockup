@@ -184,6 +184,10 @@ namespace Octockup.Server.Jobs
             {
                 item.UserId = user.Id;
             }
+            foreach (var item in importData.SnapshotFiles)
+            {
+                item.ChunkReferencesIndexed = false;
+            }
 
             _logger.LogInformation("Saving imported data to the database for user {UserId} in batches...", userId);
 

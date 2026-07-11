@@ -56,6 +56,10 @@ namespace Octockup.Server.Services
                 .Where(x => x.SnapshotId == snapshotId)
                 .SumAsync(x => (long?)x.Size, cancellationToken) ?? 0;
 
+            await _dbContext.SnapshotChunkReferences
+                .Where(x => x.SnapshotId == snapshotId)
+                .ExecuteDeleteAsync(cancellationToken);
+
             int deletedSnapshotFiles = await _dbContext.SnapshotFiles
                 .Where(x => x.SnapshotId == snapshotId)
                 .ExecuteDeleteAsync(cancellationToken);

@@ -45,6 +45,7 @@ namespace Octockup.Tests
                 Assert.That(dbContext.Schedules.Count(), Is.Zero);
                 Assert.That(dbContext.Snapshots.Count(), Is.Zero);
                 Assert.That(dbContext.SnapshotFiles.Count(), Is.Zero);
+                Assert.That(dbContext.SnapshotChunkReferences.Count(), Is.Zero);
                 Assert.That(dbContext.UploadedHashes.Count(), Is.EqualTo(1));
             });
         }
@@ -100,6 +101,7 @@ namespace Octockup.Tests
                 Assert.That(dbContext.Schedules.Count(), Is.EqualTo(1));
                 Assert.That(dbContext.Snapshots.Count(), Is.Zero);
                 Assert.That(dbContext.SnapshotFiles.Count(), Is.Zero);
+                Assert.That(dbContext.SnapshotChunkReferences.Count(), Is.Zero);
                 Assert.That(dbContext.UploadedHashes.Count(), Is.EqualTo(1));
             });
         }
@@ -431,6 +433,16 @@ namespace Octockup.Tests
             await dbContext.Snapshots.AddAsync(snapshot);
             await dbContext.SnapshotFiles.AddAsync(snapshotFile);
             await dbContext.UploadedHashes.AddAsync(uploadedHash);
+            await dbContext.SaveChangesAsync();
+            await dbContext.SnapshotChunkReferences.AddAsync(new SnapshotChunkReference
+            {
+                StorageId = storage.Id,
+                SnapshotId = snapshot.Id,
+                SnapshotFileId = snapshotFile.Id,
+                Ordinal = 0,
+                ChunkHash = ReferencedHash
+            });
+            snapshotFile.ChunkReferencesIndexed = true;
             await dbContext.SaveChangesAsync();
 
             return (user.Id, backup.Id, schedule.Id, storage.Id, snapshot.Id);
