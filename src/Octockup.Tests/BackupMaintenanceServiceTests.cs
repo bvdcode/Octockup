@@ -538,9 +538,9 @@ namespace Octockup.Tests
 
         [Test]
         [NonParallelizable]
-        public async Task RunAsync_WhenInventoryExceedsOneMillionObjects_KeepsMemoryBounded()
+        public async Task RunAsync_WhenInventoryExceedsTwoMillionObjects_KeepsMemoryBounded()
         {
-            const int objectCount = 1_000_001;
+            const int objectCount = 2_000_001;
             const long maximumRetainedGrowth = 64L * 1024 * 1024;
             await using SqliteConnection connection = new("Data Source=:memory:");
             await connection.OpenAsync();
@@ -559,7 +559,7 @@ namespace Octockup.Tests
                 storageId,
                 "storage",
                 DateTime.UtcNow);
-            using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(45));
+            using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(60));
             int checkpointCount = 0;
             long baselineMemory = GC.GetTotalMemory(true);
             long maximumMemory = baselineMemory;
@@ -589,7 +589,7 @@ namespace Octockup.Tests
                 Assert.That(result.SkippedObjects, Is.EqualTo(objectCount));
                 Assert.That(result.ChunkObjectsScanned, Is.Zero);
                 Assert.That(result.CurrentPath, Is.Null);
-                Assert.That(checkpointCount, Is.EqualTo(2_003));
+                Assert.That(checkpointCount, Is.EqualTo(4_003));
                 Assert.That(
                     maximumMemory - baselineMemory,
                     Is.LessThan(maximumRetainedGrowth));

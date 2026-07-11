@@ -88,8 +88,12 @@ namespace Octockup.Tests
 
         public Task<bool?> DeleteAsync(
             string path,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<bool?>(Files.Remove(path));
+            CancellationToken cancellationToken = default)
+        {
+            bool removed = Files.Remove(path);
+            Contents.Remove(path);
+            return Task.FromResult<bool?>(removed);
+        }
 
         public Task UploadAsync(
             string path,
