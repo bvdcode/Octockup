@@ -10,6 +10,7 @@ using Octockup.Server.Abstractions;
 using Octockup.Server.Database;
 using Octockup.Server.Helpers;
 using Octockup.Server.Models;
+using Octockup.Server.Models.Dto;
 using Octockup.Server.Models.Enums;
 using Octockup.Server.Services;
 using System.Runtime.CompilerServices;
@@ -189,7 +190,7 @@ namespace Octockup.Tests
                 dbContext,
                 NullLogger<StorageCleanupRunner>.Instance,
                 [storage],
-                new ChunkReferenceCollector(dbContext));
+                CreateReferenceIndexer(dbContext));
             StorageCleanupJobState state = new(
                 Guid.NewGuid(),
                 userId,
@@ -220,6 +221,84 @@ namespace Octockup.Tests
                 {
                     ReferencedHash
                 }));
+            });
+        }
+
+        [Test]
+        public async Task RunAsync_WhenInventoryCrossesLookupBatchBoundary_ProcessesEveryChunkExactly()
+        {
+            await using SqliteConnection connection = new("Data Source=:memory:");
+            await connection.OpenAsync();
+            await using SqliteDbContext dbContext = await CreateDbContextAsync(connection);
+
+            (Guid userId, _, _, Guid storageId, _) = await SeedBackupAsync(dbContext);
+            TestStorage storage = new();
+            string referencedPath = ChunkStorageHelpers.GetStoragePath(ReferencedHash, '/');
+            storage.Files[referencedPath] = new BackupFileInfo
+            {
+                Path = referencedPath,
+                Name = Path.GetFileName(referencedPath),
+                Size = 12
+            };
+
+            const int orphanCount = 500;
+            List<UploadedHash> uploadedHashes = new(orphanCount);
+            for (int index = 1; index <= orphanCount; index++)
+            {
+                string hash = index.ToString("x64");
+                string path = ChunkStorageHelpers.GetStoragePath(hash, '/');
+                storage.Files[path] = new BackupFileInfo
+                {
+                    Path = path,
+                    Name = Path.GetFileName(path),
+                    Size = index
+                };
+                uploadedHashes.Add(new UploadedHash
+                {
+                    ModuleId = storageId,
+                    Hash = hash,
+                    OriginalSize = index,
+                    StoredSize = index,
+                    CompressionAlgorithm = CompressionHelpers.Algorithm
+                });
+            }
+
+            await dbContext.UploadedHashes.AddRangeAsync(uploadedHashes);
+            await dbContext.SaveChangesAsync();
+
+            StorageCleanupRunner runner = new(
+                new TestCipher(),
+                dbContext,
+                NullLogger<StorageCleanupRunner>.Instance,
+                [storage],
+                CreateReferenceIndexer(dbContext));
+            StorageCleanupJobState state = new(
+                Guid.NewGuid(),
+                userId,
+                storageId,
+                "storage",
+                DateTime.UtcNow);
+
+            await runner.RunAsync(
+                state,
+                (_, _) => Task.CompletedTask,
+                new ImmediateStorageOperationLease(storageId),
+                CancellationToken.None);
+
+            dbContext.ChangeTracker.Clear();
+            StorageCleanupJobDto result = state.Snapshot();
+            List<string> remainingHashes = await dbContext.UploadedHashes
+                .Select(x => x.Hash)
+                .ToListAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.ChunkObjectsScanned, Is.EqualTo(orphanCount + 1));
+                Assert.That(result.ReferencedObjects, Is.EqualTo(1));
+                Assert.That(result.OrphanObjects, Is.EqualTo(orphanCount));
+                Assert.That(result.DeletedObjects, Is.EqualTo(orphanCount));
+                Assert.That(storage.Files.Keys, Is.EqualTo(new[] { referencedPath }));
+                Assert.That(remainingHashes, Is.EqualTo(new[] { ReferencedHash }));
             });
         }
 
@@ -262,7 +341,7 @@ namespace Octockup.Tests
                 dbContext,
                 NullLogger<StorageCleanupRunner>.Instance,
                 [storage],
-                new ChunkReferenceCollector(dbContext));
+                CreateReferenceIndexer(dbContext));
             StorageCleanupJobState state = new(
                 Guid.NewGuid(),
                 userId,
@@ -291,6 +370,14 @@ namespace Octockup.Tests
                 Assert.That(storage.DeletedPaths, Is.Empty);
                 Assert.That(state.Snapshot().UploadedHashRowsDeleted, Is.EqualTo(1));
             });
+        }
+
+        private static SnapshotChunkReferenceIndexer CreateReferenceIndexer(AppDbContext dbContext)
+        {
+            SnapshotChunkReferenceWriter writer = new(
+                dbContext,
+                NullLogger<SnapshotChunkReferenceWriter>.Instance);
+            return new SnapshotChunkReferenceIndexer(dbContext, writer);
         }
 
         [Test]

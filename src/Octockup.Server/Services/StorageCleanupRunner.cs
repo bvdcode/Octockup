@@ -18,7 +18,7 @@ namespace Octockup.Server.Services
         AppDbContext _dbContext,
         ILogger<StorageCleanupRunner> _logger,
         IEnumerable<IBackupProvider> _providers,
-        ChunkReferenceCollector _chunkReferenceCollector)
+        SnapshotChunkReferenceIndexer _referenceIndexer)
     {
         private const int UploadedHashDeleteBatchSize = 500;
         private static readonly TimeSpan ProgressPublishInterval = TimeSpan.FromSeconds(1);
@@ -57,34 +57,56 @@ namespace Octockup.Server.Services
             state.Update(x => x.Phase = StorageCleanupPhase.CollectingReferences);
             await publishAsync(state.Snapshot(), cancellationToken).ConfigureAwait(false);
 
-            (HashSet<string> referencedChunks, long referenceCount) = await _chunkReferenceCollector
-                .CollectWithReferenceCountForStorageAsync(
+            await _referenceIndexer
+                .IndexStorageAsync(
                     storageModule.Id,
-                    cancellationToken,
-                    async (snapshotFilesScanned, currentReferenceCount, referencedChunkCount, ct) =>
+                    async (snapshotFilesIndexed, referencesProcessed, ct) =>
                     {
                         state.Update(x =>
                         {
                             x.Phase = StorageCleanupPhase.CollectingReferences;
-                            x.SnapshotFilesScanned = snapshotFilesScanned;
-                            x.ReferenceCount = currentReferenceCount;
-                            x.ReferencedChunks = referencedChunkCount;
+                            x.SnapshotFilesScanned = snapshotFilesIndexed;
+                            x.ReferenceCount = referencesProcessed;
                         });
 
                         await PublishIfDueAsync(state, publishAsync, publishStopwatch, ct)
                             .ConfigureAwait(false);
-                    })
+                    },
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            long snapshotFileCount = await _dbContext.SnapshotFiles
+                .AsNoTracking()
+                .LongCountAsync(
+                    x => x.Snapshot.CompletedAt != null &&
+                        x.Snapshot.Backup.StorageId == storageModule.Id,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            IQueryable<SnapshotChunkReference> completedReferences =
+                _dbContext.SnapshotChunkReferences
+                    .AsNoTracking()
+                    .Where(x =>
+                        x.StorageId == storageModule.Id &&
+                        x.Snapshot.CompletedAt != null);
+            long referenceCount = await completedReferences
+                .LongCountAsync(cancellationToken)
+                .ConfigureAwait(false);
+            long referencedChunkCount = await completedReferences
+                .Select(x => x.ChunkHash)
+                .Distinct()
+                .LongCountAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             state.Update(x =>
             {
                 x.Phase = StorageCleanupPhase.ScanningStorage;
+                x.SnapshotFilesScanned = snapshotFileCount;
                 x.ReferenceCount = referenceCount;
-                x.ReferencedChunks = referencedChunks.Count;
+                x.ReferencedChunks = referencedChunkCount;
             });
             await publishAsync(state.Snapshot(), cancellationToken).ConfigureAwait(false);
 
-            List<StorageChunkObject> orphanDeleteBatch = [];
+            List<StorageChunkObject> chunkScanBatch = new(UploadedHashDeleteBatchSize);
             publishStopwatch.Restart();
 
             await foreach (BackupFileInfo storageObject in inventory.GetFilesAsync(true, cancellationToken))
@@ -108,32 +130,13 @@ namespace Octockup.Server.Services
                 }
 
                 state.Update(x => x.ChunkObjectsScanned++);
-
-                if (referencedChunks.Contains(chunkObject.ChunkKey))
+                chunkScanBatch.Add(chunkObject);
+                if (chunkScanBatch.Count == UploadedHashDeleteBatchSize)
                 {
-                    state.Update(x =>
-                    {
-                        x.ReferencedObjects++;
-                        x.ReferencedBytes += chunkObject.Size;
-                    });
-                    await PublishIfDueAsync(state, publishAsync, publishStopwatch, cancellationToken)
-                        .ConfigureAwait(false);
-                    continue;
-                }
-
-                state.Update(x =>
-                {
-                    x.OrphanObjects++;
-                    x.OrphanBytes += chunkObject.Size;
-                });
-                orphanDeleteBatch.Add(chunkObject);
-
-                if (orphanDeleteBatch.Count >= UploadedHashDeleteBatchSize)
-                {
-                    await DeleteOrphanBatchAsync(
+                    await ProcessStorageChunkBatchAsync(
                         state,
                         storage,
-                        orphanDeleteBatch,
+                        chunkScanBatch,
                         storageLease,
                         publishAsync,
                         publishStopwatch,
@@ -144,6 +147,71 @@ namespace Octockup.Server.Services
                     .ConfigureAwait(false);
             }
 
+            await ProcessStorageChunkBatchAsync(
+                state,
+                storage,
+                chunkScanBatch,
+                storageLease,
+                publishAsync,
+                publishStopwatch,
+                cancellationToken).ConfigureAwait(false);
+
+            state.Update(x => x.CurrentPath = null);
+            await publishAsync(state.Snapshot(), cancellationToken).ConfigureAwait(false);
+        }
+
+        private async Task ProcessStorageChunkBatchAsync(
+            StorageCleanupJobState state,
+            IBackupStorage storage,
+            List<StorageChunkObject> chunkScanBatch,
+            IStorageOperationLease storageLease,
+            Func<StorageCleanupJobDto, CancellationToken, Task> publishAsync,
+            Stopwatch publishStopwatch,
+            CancellationToken cancellationToken)
+        {
+            if (chunkScanBatch.Count == 0)
+            {
+                return;
+            }
+
+            string[] chunkKeys = chunkScanBatch
+                .Select(x => x.ChunkKey)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            HashSet<string> referencedChunkKeys = (await _dbContext.SnapshotChunkReferences
+                .AsNoTracking()
+                .Where(x =>
+                    x.StorageId == state.StorageId &&
+                    x.Snapshot.CompletedAt != null &&
+                    chunkKeys.Contains(x.ChunkHash))
+                .Select(x => x.ChunkHash)
+                .Distinct()
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false))
+                .ToHashSet(StringComparer.Ordinal);
+            List<StorageChunkObject> orphanDeleteBatch = [];
+
+            foreach (StorageChunkObject chunkObject in chunkScanBatch)
+            {
+                if (referencedChunkKeys.Contains(chunkObject.ChunkKey))
+                {
+                    state.Update(x =>
+                    {
+                        x.ReferencedObjects++;
+                        x.ReferencedBytes += chunkObject.Size;
+                    });
+                    continue;
+                }
+
+                state.Update(x =>
+                {
+                    x.OrphanObjects++;
+                    x.OrphanBytes += chunkObject.Size;
+                });
+                orphanDeleteBatch.Add(chunkObject);
+            }
+
+            chunkScanBatch.Clear();
             await DeleteOrphanBatchAsync(
                 state,
                 storage,
@@ -152,9 +220,6 @@ namespace Octockup.Server.Services
                 publishAsync,
                 publishStopwatch,
                 cancellationToken).ConfigureAwait(false);
-
-            state.Update(x => x.CurrentPath = null);
-            await publishAsync(state.Snapshot(), cancellationToken).ConfigureAwait(false);
         }
 
         private async Task<Module> GetStorageModuleAsync(

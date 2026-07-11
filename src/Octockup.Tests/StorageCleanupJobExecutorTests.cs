@@ -50,7 +50,8 @@ namespace Octockup.Tests
             services.AddSingleton(_storage);
             services.AddScoped<IBackupProvider>(provider => provider.GetRequiredService<TestStorage>());
             services.AddScoped<IStreamCipher, TestCipher>();
-            services.AddScoped<ChunkReferenceCollector>();
+            services.AddScoped<SnapshotChunkReferenceWriter>();
+            services.AddScoped<SnapshotChunkReferenceIndexer>();
             services.AddScoped<StorageCleanupRunner>();
             services.AddSingleton<StorageCleanupJobExecutor>();
             _serviceProvider = services.BuildServiceProvider();
