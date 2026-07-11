@@ -6,13 +6,14 @@ using Amazon.S3.Model;
 using Octockup.Server.Abstractions;
 using Octockup.Server.Helpers;
 using Octockup.Server.Models;
+using Octockup.Server.Streams;
 using System.Net;
 using System.Net.Mime;
 using System.Runtime.CompilerServices;
 
 namespace Octockup.Server.Modules
 {
-    public class S3BackupStorage(ILogger<S3BackupStorage> _logger) : IBackupStorage, IBackupStorageInventory
+    public class S3BackupStorage(ILogger<S3BackupStorage> _logger) : IBackupStorage, IBackupStorageInventory, IDisposable
     {
         public char PathSeparator => '/';
         public string Id => GetType().FullName!;
@@ -66,6 +67,7 @@ namespace Octockup.Server.Modules
                 _useChunkEncoding = parsed && chunkEncodingBool;
             }
 
+            _s3?.Dispose();
             _s3 = new AmazonS3Client(accessKey, secretKey, config);
         }
 
@@ -114,14 +116,14 @@ namespace Octockup.Server.Modules
 
             try
             {
-                var result = await _s3.GetObjectAsync(new GetObjectRequest
+                GetObjectResponse result = await _s3.GetObjectAsync(new GetObjectRequest
                 {
                     Key = key,
                     BucketName = _bucket,
                     ChecksumMode = new ChecksumMode("DISABLED")
                 }, cancellationToken);
 
-                return result.ResponseStream;
+                return new OwnedStream(result.ResponseStream, result);
             }
             catch (ArgumentOutOfRangeException ex)
             {
@@ -134,10 +136,26 @@ namespace Octockup.Server.Modules
                         BucketName = _bucket,
                         Expires = DateTime.UtcNow.AddHours(1)
                     });
-                    var httpClient = new HttpClient();
-                    var response = await httpClient.GetAsync(presignedUrl, cancellationToken);
-                    response.EnsureSuccessStatusCode();
-                    return await response.Content.ReadAsStreamAsync(cancellationToken);
+                    HttpClient? httpClient = new();
+                    HttpResponseMessage? response = null;
+                    try
+                    {
+                        response = await httpClient.GetAsync(
+                            presignedUrl,
+                            HttpCompletionOption.ResponseHeadersRead,
+                            cancellationToken);
+                        response.EnsureSuccessStatusCode();
+                        Stream responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                        OwnedStream ownedStream = new(responseStream, response, httpClient);
+                        response = null;
+                        httpClient = null;
+                        return ownedStream;
+                    }
+                    finally
+                    {
+                        response?.Dispose();
+                        httpClient?.Dispose();
+                    }
                 }
                 throw;
             }
@@ -555,6 +573,13 @@ namespace Octockup.Server.Modules
                 _logger.LogError(ex, "Failed to get file info for '{Path}' from S3", path);
                 return null;
             }
+        }
+
+        public void Dispose()
+        {
+            _s3?.Dispose();
+            _s3 = null;
+            GC.SuppressFinalize(this);
         }
     }
 }

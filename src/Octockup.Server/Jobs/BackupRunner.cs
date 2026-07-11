@@ -38,18 +38,20 @@ namespace Octockup.Server.Jobs
         {
             Guid userId = schedule.Backup.Source.UserId;
             ScheduleReport report = new(userId, schedule.Id, schedule.BackupId, hubContext);
+            IBackupSource? sourceProvider = null;
+            IBackupStorage? storageProvider = null;
             report.StartBackgroundReporting(cancellationToken);
 
             try
             {
-                var sourceProvider = CreateSourceProvider(schedule);
+                sourceProvider = CreateSourceProvider(schedule);
                 if (sourceProvider is null)
                 {
                     await report.SendAsync(0, schedule.ErrorMessage ?? "Source provider not found.", cancellationToken: cancellationToken);
                     return;
                 }
 
-                var storageProvider = CreateStorageProvider(schedule);
+                storageProvider = CreateStorageProvider(schedule);
                 if (storageProvider is null)
                 {
                     await report.SendAsync(0, schedule.ErrorMessage ?? "Storage provider not found.", cancellationToken: cancellationToken);
@@ -120,7 +122,31 @@ namespace Octockup.Server.Jobs
                     logger.LogError(flushEx, "Failed to flush pending uploaded hashes after backup execution");
                 }
 
+                await DisposeProviderAsync(storageProvider);
+                if (!ReferenceEquals(sourceProvider, storageProvider))
+                {
+                    await DisposeProviderAsync(sourceProvider);
+                }
                 await report.DisposeAsync();
+            }
+        }
+
+        private async ValueTask DisposeProviderAsync(IBackupProvider? provider)
+        {
+            try
+            {
+                if (provider is IAsyncDisposable asyncDisposable)
+                {
+                    await asyncDisposable.DisposeAsync();
+                }
+                else if (provider is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to dispose backup provider {Provider}", provider?.Id);
             }
         }
 
