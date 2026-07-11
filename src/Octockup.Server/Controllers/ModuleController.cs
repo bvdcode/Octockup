@@ -28,19 +28,29 @@ namespace Octockup.Server.Controllers
         [HttpPatch("/api/v1/modules/{moduleId:guid}/rename")]
         public async Task<IActionResult> RenameModule([FromRoute] Guid moduleId, [FromBody] RenameModuleRequest request)
         {
-            var found = await _dbContext.Modules.FindAsync(moduleId);
-            if (found == null)
+            Guid userId = User.GetUserId();
+            Module? found = await _dbContext.Modules
+                .FirstOrDefaultAsync(
+                    x => x.Id == moduleId && x.UserId == userId,
+                    HttpContext.RequestAborted);
+            if (found is null)
             {
                 return this.ApiNotFound("Module not found: " + moduleId);
             }
+
             bool tagExists = await _dbContext.Modules
-                .AnyAsync(x => x.UserId == found.UserId && x.Tag == request.NewTag && x.Id != moduleId);
+                .AnyAsync(
+                    x => x.UserId == userId &&
+                        x.Tag == request.NewTag &&
+                        x.Id != moduleId,
+                    HttpContext.RequestAborted);
             if (tagExists)
             {
                 return this.ApiConflict("Module with the same tag already exists: " + request.NewTag);
             }
+
             found.Tag = request.NewTag;
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(HttpContext.RequestAborted);
             return Ok(new { message = "Module renamed successfully." });
         }
 
@@ -48,13 +58,18 @@ namespace Octockup.Server.Controllers
         [HttpDelete("/api/v1/modules/{moduleId:guid}")]
         public async Task<IActionResult> DeleteUserBackupStorage([FromRoute] Guid moduleId)
         {
-            var found = await _dbContext.Modules.FindAsync(moduleId);
-            if (found == null)
+            Guid userId = User.GetUserId();
+            Module? found = await _dbContext.Modules
+                .FirstOrDefaultAsync(
+                    x => x.Id == moduleId && x.UserId == userId,
+                    HttpContext.RequestAborted);
+            if (found is null)
             {
                 return this.ApiNotFound("Module not found: " + moduleId);
             }
+
             _dbContext.Modules.Remove(found);
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(HttpContext.RequestAborted);
             return Ok(new { message = "Module deleted successfully." });
         }
 
