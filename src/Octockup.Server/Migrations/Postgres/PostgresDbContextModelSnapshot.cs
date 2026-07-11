@@ -400,6 +400,95 @@ namespace Octockup.Server.Migrations.Postgres
                     b.ToTable("snapshots");
                 });
 
+            modelBuilder.Entity("Octockup.Server.Database.SnapshotArchiveJob", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ActiveSnapshotId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("active_snapshot_id");
+
+                    b.Property<bool>("CancellationRequested")
+                        .HasColumnType("boolean")
+                        .HasColumnName("cancellation_requested");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CurrentPath")
+                        .HasColumnType("text")
+                        .HasColumnName("current_path");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("text")
+                        .HasColumnName("error_message");
+
+                    b.Property<DateTime?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("finished_at");
+
+                    b.Property<int>("Phase")
+                        .HasColumnType("integer")
+                        .HasColumnName("phase");
+
+                    b.Property<long>("PreparedChunkReferences")
+                        .HasColumnType("bigint")
+                        .HasColumnName("prepared_chunk_references");
+
+                    b.Property<long>("ProcessedBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("processed_bytes");
+
+                    b.Property<long>("ProcessedFiles")
+                        .HasColumnType("bigint")
+                        .HasColumnName("processed_files");
+
+                    b.Property<Guid?>("RunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("run_id");
+
+                    b.Property<Guid>("SnapshotId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("snapshot_id");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<long>("TotalBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("total_bytes");
+
+                    b.Property<long>("TotalFiles")
+                        .HasColumnType("bigint")
+                        .HasColumnName("total_files");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActiveSnapshotId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "StartedAt");
+
+                    b.ToTable("snapshot_archive_jobs");
+                });
+
             modelBuilder.Entity("Octockup.Server.Database.SnapshotChunkReference", b =>
                 {
                     b.Property<Guid>("Id")

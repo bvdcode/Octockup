@@ -200,6 +200,67 @@ namespace Octockup.Tests
             await cleanupLease!.DisposeAsync();
         }
 
+        [Test]
+        public async Task TryAcquireAsync_WhenArchiveIsStreaming_BlocksCleanupButAllowsBackup()
+        {
+            await using (AsyncServiceScope scope = _serviceProvider.CreateAsyncScope())
+            {
+                AppDbContext dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                Module storage = await dbContext.Modules.SingleAsync(x => x.Id == _storageId);
+                Module source = new()
+                {
+                    UserId = storage.UserId,
+                    Tag = "archive-source",
+                    BackupModuleId = "archive-source-provider",
+                    Destination = ModuleDestination.Source
+                };
+                Backup backup = new()
+                {
+                    UserId = storage.UserId,
+                    Source = source,
+                    StorageId = storage.Id,
+                    Tag = "archive-backup"
+                };
+                Snapshot snapshot = new()
+                {
+                    Backup = backup,
+                    CompletedAt = DateTime.UtcNow
+                };
+                await dbContext.AddRangeAsync(source, backup, snapshot);
+                await dbContext.SaveChangesAsync();
+                SnapshotArchiveJob archiveJob = new()
+                {
+                    UserId = storage.UserId,
+                    SnapshotId = snapshot.Id,
+                    ActiveSnapshotId = snapshot.Id,
+                    RunId = Guid.NewGuid(),
+                    Status = SnapshotArchiveStatus.Running,
+                    Phase = SnapshotArchivePhase.Streaming,
+                    StartedAt = DateTime.UtcNow
+                };
+                await dbContext.SnapshotArchiveJobs.AddAsync(archiveJob);
+                await dbContext.SaveChangesAsync();
+            }
+
+            IStorageOperationCoordinator coordinator = _serviceProvider
+                .GetRequiredService<IStorageOperationCoordinator>();
+            IStorageOperationLease? cleanupLease = await coordinator.TryAcquireAsync(
+                _storageId,
+                StorageOperationKind.Cleanup,
+                CancellationToken.None);
+            IStorageOperationLease? backupLease = await coordinator.TryAcquireAsync(
+                _storageId,
+                StorageOperationKind.Backup,
+                CancellationToken.None);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(cleanupLease, Is.Null);
+                Assert.That(backupLease, Is.Not.Null);
+            });
+            await backupLease!.DisposeAsync();
+        }
+
         private async Task<Module> LoadStorageAsync()
         {
             await using AsyncServiceScope scope = _serviceProvider.CreateAsyncScope();

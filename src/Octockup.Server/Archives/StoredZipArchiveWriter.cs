@@ -22,6 +22,7 @@ namespace Octockup.Server.Archives
         private const int Zip64EndOfCentralDirectorySize = 56;
         private const int Zip64EndOfCentralDirectoryLocatorSize = 20;
         private const int EndOfCentralDirectorySize = 22;
+        private const long ProgressIntervalBytes = 8L * 1024 * 1024;
 
         public static long CalculateContentLength(IReadOnlyCollection<StoredZipArchiveEntry> entries)
         {
@@ -136,6 +137,9 @@ namespace Octockup.Server.Archives
                     record,
                     crc,
                     copyBuffer,
+                    entryCount,
+                    sourceBytesWritten,
+                    reportProgressAsync,
                     cancellationToken).ConfigureAwait(false);
                 if (copied != record.Entry.Size)
                 {
@@ -227,6 +231,9 @@ namespace Octockup.Server.Archives
             ArchiveRecord record,
             Crc32 crc,
             byte[] buffer,
+            long completedEntries,
+            long completedSourceBytes,
+            Func<long, long, CancellationToken, Task>? reportProgressAsync,
             CancellationToken cancellationToken)
         {
             await using var input = await record.Entry
@@ -234,6 +241,7 @@ namespace Octockup.Server.Archives
                 .ConfigureAwait(false);
 
             long copied = 0;
+            long nextProgressAt = ProgressIntervalBytes;
 
             while (true)
             {
@@ -251,6 +259,16 @@ namespace Octockup.Server.Archives
                     .WriteAsync(buffer.AsMemory(0, read), cancellationToken)
                     .ConfigureAwait(false);
                 copied += read;
+                if (reportProgressAsync is not null &&
+                    copied >= nextProgressAt &&
+                    copied < record.Entry.Size)
+                {
+                    await reportProgressAsync(
+                        completedEntries,
+                        completedSourceBytes + copied,
+                        cancellationToken).ConfigureAwait(false);
+                    nextProgressAt = copied + ProgressIntervalBytes;
+                }
             }
         }
 

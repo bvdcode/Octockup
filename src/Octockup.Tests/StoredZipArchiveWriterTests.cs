@@ -86,6 +86,34 @@ namespace Octockup.Tests
         }
 
         [Test]
+        public async Task WriteAsync_LargeEntry_ReportsBytesBeforeEntryCompletes()
+        {
+            byte[] content = new byte[9 * 1024 * 1024];
+            StoredZipArchiveEntry[] entries = [CreateEntry("large.bin", content)];
+            List<(long Files, long Bytes)> progress = [];
+            using MemoryStream archive = new();
+            using MemoryStream centralDirectorySpool = new();
+
+            await StoredZipArchiveWriter.WriteAsync(
+                archive,
+                EnumerateAsync(entries),
+                centralDirectorySpool,
+                (files, bytes, _) =>
+                {
+                    progress.Add((files, bytes));
+                    return Task.CompletedTask;
+                },
+                CancellationToken.None);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(progress, Has.Count.EqualTo(2));
+                Assert.That(progress[0], Is.EqualTo((0L, 8L * 1024 * 1024)));
+                Assert.That(progress[1], Is.EqualTo((1L, (long)content.Length)));
+            });
+        }
+
+        [Test]
         public void CalculateContentLength_LargeEntry_UsesZip64SizedHeaders()
         {
             const long largeSize = (long)uint.MaxValue + 1;

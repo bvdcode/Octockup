@@ -3,10 +3,10 @@
 
 namespace Octockup.Server.Models.Enums
 {
-    public enum DownloadTicketKind
+    public enum SnapshotArchivePhase
     {
-        SnapshotArchiveJob = 0,
-        SnapshotFile = 1,
-        ServerBackup = 2
+        Waiting = 0,
+        Preparing = 1,
+        Streaming = 2
     }
 }

@@ -14,6 +14,7 @@ namespace Octockup.Tests
         public char PathSeparator => '/';
         public IEnumerable<string> RequiredParameters => [];
         public Dictionary<string, BackupFileInfo> Files { get; } = new(StringComparer.Ordinal);
+        public Dictionary<string, byte[]> Contents { get; } = new(StringComparer.Ordinal);
         public List<string?> InventoryCursors { get; } = [];
         public Action<BackupFileInfo>? BeforeInventoryFileYielded { get; set; }
 
@@ -31,7 +32,13 @@ namespace Octockup.Tests
 
         public Task<Stream> GetFileStreamAsync(
             BackupFileInfo file,
-            CancellationToken cancellationToken = default) => Task.FromResult<Stream>(Stream.Null);
+            CancellationToken cancellationToken = default)
+        {
+            Stream stream = Contents.TryGetValue(file.Path, out byte[]? content)
+                ? new MemoryStream(content, writable: false)
+                : Stream.Null;
+            return Task.FromResult(stream);
+        }
 
         public IEnumerable<string> GetDirectories(
             bool recursive = false,

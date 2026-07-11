@@ -29,7 +29,8 @@ namespace Octockup.Tests
             await connection.OpenAsync();
             await using SqliteDbContext dbContext = await CreateDbContextAsync(connection);
 
-            (Guid userId, Guid backupId, _, _, _) = await SeedBackupAsync(dbContext);
+            (Guid userId, Guid backupId, _, _, Guid snapshotId) = await SeedBackupAsync(dbContext);
+            await SeedArchiveHistoryAsync(dbContext, userId, snapshotId);
             BackupDeletionService service = new(dbContext);
 
             var result = await service.DeleteAsync(userId, backupId, CancellationToken.None);
@@ -47,6 +48,8 @@ namespace Octockup.Tests
                 Assert.That(dbContext.Snapshots.Count(), Is.Zero);
                 Assert.That(dbContext.SnapshotFiles.Count(), Is.Zero);
                 Assert.That(dbContext.SnapshotChunkReferences.Count(), Is.Zero);
+                Assert.That(dbContext.SnapshotArchiveJobs.Count(), Is.Zero);
+                Assert.That(dbContext.DownloadTickets.Count(), Is.Zero);
                 Assert.That(dbContext.UploadedHashes.Count(), Is.EqualTo(1));
             });
         }
@@ -79,6 +82,42 @@ namespace Octockup.Tests
         }
 
         [Test]
+        public async Task DeleteAsync_WhenSnapshotArchiveIsActive_KeepsBackupRows()
+        {
+            await using SqliteConnection connection = new("Data Source=:memory:");
+            await connection.OpenAsync();
+            await using SqliteDbContext dbContext = await CreateDbContextAsync(connection);
+
+            (Guid userId, Guid backupId, _, _, Guid snapshotId) = await SeedBackupAsync(dbContext);
+            await dbContext.SnapshotArchiveJobs.AddAsync(new SnapshotArchiveJob
+            {
+                UserId = userId,
+                SnapshotId = snapshotId,
+                ActiveSnapshotId = snapshotId,
+                Status = SnapshotArchiveStatus.Running,
+                Phase = SnapshotArchivePhase.Streaming,
+                RunId = Guid.NewGuid(),
+                StartedAt = DateTime.UtcNow
+            });
+            await dbContext.SaveChangesAsync();
+            BackupDeletionService service = new(dbContext);
+
+            var result = await service.DeleteAsync(
+                userId,
+                backupId,
+                CancellationToken.None);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Deleted, Is.False);
+                Assert.That(result.ErrorMessage, Does.Contain("archive"));
+                Assert.That(dbContext.Backups.Count(), Is.EqualTo(1));
+                Assert.That(dbContext.Snapshots.Count(), Is.EqualTo(1));
+                Assert.That(dbContext.SnapshotArchiveJobs.Count(), Is.EqualTo(1));
+            });
+        }
+
+        [Test]
         public async Task DeleteSnapshotAsync_WhenSnapshotHasFiles_RemovesSnapshotMetadataOnly()
         {
             await using SqliteConnection connection = new("Data Source=:memory:");
@@ -86,6 +125,7 @@ namespace Octockup.Tests
             await using SqliteDbContext dbContext = await CreateDbContextAsync(connection);
 
             (Guid userId, Guid backupId, _, _, Guid snapshotId) = await SeedBackupAsync(dbContext);
+            await SeedArchiveHistoryAsync(dbContext, userId, snapshotId);
             SnapshotDeletionService service = new(dbContext);
 
             var result = await service.DeleteAsync(userId, snapshotId, CancellationToken.None);
@@ -103,7 +143,44 @@ namespace Octockup.Tests
                 Assert.That(dbContext.Snapshots.Count(), Is.Zero);
                 Assert.That(dbContext.SnapshotFiles.Count(), Is.Zero);
                 Assert.That(dbContext.SnapshotChunkReferences.Count(), Is.Zero);
+                Assert.That(dbContext.SnapshotArchiveJobs.Count(), Is.Zero);
+                Assert.That(dbContext.DownloadTickets.Count(), Is.Zero);
                 Assert.That(dbContext.UploadedHashes.Count(), Is.EqualTo(1));
+            });
+        }
+
+        [Test]
+        public async Task DeleteSnapshotAsync_WhenArchiveIsActive_KeepsSnapshotRows()
+        {
+            await using SqliteConnection connection = new("Data Source=:memory:");
+            await connection.OpenAsync();
+            await using SqliteDbContext dbContext = await CreateDbContextAsync(connection);
+
+            (Guid userId, _, _, _, Guid snapshotId) = await SeedBackupAsync(dbContext);
+            await dbContext.SnapshotArchiveJobs.AddAsync(new SnapshotArchiveJob
+            {
+                UserId = userId,
+                SnapshotId = snapshotId,
+                ActiveSnapshotId = snapshotId,
+                Status = SnapshotArchiveStatus.Pending,
+                Phase = SnapshotArchivePhase.Waiting,
+                StartedAt = DateTime.UtcNow
+            });
+            await dbContext.SaveChangesAsync();
+            SnapshotDeletionService service = new(dbContext);
+
+            var result = await service.DeleteAsync(
+                userId,
+                snapshotId,
+                CancellationToken.None);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Deleted, Is.False);
+                Assert.That(result.ErrorMessage, Does.Contain("archive"));
+                Assert.That(dbContext.Snapshots.Count(), Is.EqualTo(1));
+                Assert.That(dbContext.SnapshotFiles.Count(), Is.EqualTo(1));
+                Assert.That(dbContext.SnapshotArchiveJobs.Count(), Is.EqualTo(1));
             });
         }
 
@@ -381,6 +458,33 @@ namespace Octockup.Tests
                 dbContext,
                 NullLogger<SnapshotChunkReferenceWriter>.Instance);
             return new SnapshotChunkReferenceIndexer(dbContext, writer);
+        }
+
+        private static async Task SeedArchiveHistoryAsync(
+            AppDbContext dbContext,
+            Guid userId,
+            Guid snapshotId)
+        {
+            SnapshotArchiveJob job = new()
+            {
+                UserId = userId,
+                SnapshotId = snapshotId,
+                Status = SnapshotArchiveStatus.Completed,
+                Phase = SnapshotArchivePhase.Streaming,
+                StartedAt = DateTime.UtcNow.AddMinutes(-1),
+                FinishedAt = DateTime.UtcNow
+            };
+            await dbContext.SnapshotArchiveJobs.AddAsync(job);
+            await dbContext.SaveChangesAsync();
+            await dbContext.DownloadTickets.AddAsync(new DownloadTicket
+            {
+                UserId = userId,
+                TokenHash = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"),
+                Kind = DownloadTicketKind.SnapshotArchiveJob,
+                ResourceId = job.Id,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(1)
+            });
+            await dbContext.SaveChangesAsync();
         }
 
         private static async Task<SqliteDbContext> CreateDbContextAsync(SqliteConnection connection)

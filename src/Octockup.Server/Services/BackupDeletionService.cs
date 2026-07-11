@@ -47,12 +47,41 @@ namespace Octockup.Server.Services
                 };
             }
 
+            bool hasActiveArchive = await _dbContext.SnapshotArchiveJobs
+                .AsNoTracking()
+                .AnyAsync(
+                    job => job.ActiveSnapshotId != null &&
+                        _dbContext.Snapshots.Any(snapshot =>
+                            snapshot.Id == job.SnapshotId &&
+                            snapshot.BackupId == backupId),
+                    cancellationToken);
+            if (hasActiveArchive)
+            {
+                return new BackupDeletionResult
+                {
+                    ErrorMessage = "A snapshot archive is active and must finish or be canceled before backup deletion."
+                };
+            }
+
             await using IDbContextTransaction transaction = await _dbContext.Database
                 .BeginTransactionAsync(cancellationToken);
 
             IQueryable<Guid> snapshotIds = _dbContext.Snapshots
                 .Where(x => x.BackupId == backupId)
                 .Select(x => x.Id);
+
+            IQueryable<Guid> archiveJobIds = _dbContext.SnapshotArchiveJobs
+                .Where(x => snapshotIds.Contains(x.SnapshotId))
+                .Select(x => x.Id);
+            await _dbContext.DownloadTickets
+                .Where(x =>
+                    x.Kind == DownloadTicketKind.SnapshotArchiveJob &&
+                    x.ResourceId.HasValue &&
+                    archiveJobIds.Contains(x.ResourceId.Value))
+                .ExecuteDeleteAsync(cancellationToken);
+            await _dbContext.SnapshotArchiveJobs
+                .Where(x => snapshotIds.Contains(x.SnapshotId))
+                .ExecuteDeleteAsync(cancellationToken);
 
             await _dbContext.SnapshotChunkReferences
                 .Where(x => snapshotIds.Contains(x.SnapshotId))

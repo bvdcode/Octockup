@@ -14,13 +14,13 @@ namespace Octockup.Server.Controllers
     [Route("/api/v1/download-tickets")]
     public class DownloadTicketController(DownloadTicketService _downloadTickets) : ControllerBase
     {
-        [HttpPost("snapshots/{snapshotId:guid}/archive")]
-        public async Task<IActionResult> CreateSnapshotArchiveTicket(
-            [FromRoute] Guid snapshotId,
+        [HttpPost("snapshot-archive-jobs/{jobId:guid}")]
+        public async Task<IActionResult> CreateSnapshotArchiveJobTicket(
+            [FromRoute] Guid jobId,
             CancellationToken cancellationToken)
         {
             DownloadTicketDto? ticket = await _downloadTickets
-                .CreateSnapshotArchiveAsync(User.GetUserId(), snapshotId, cancellationToken);
+                .CreateSnapshotArchiveJobAsync(User.GetUserId(), jobId, cancellationToken);
             return ticket is null ? NotFound() : Ok(ticket);
         }
 

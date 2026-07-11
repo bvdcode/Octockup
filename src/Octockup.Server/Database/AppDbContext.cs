@@ -20,6 +20,7 @@ namespace Octockup.Server.Database
             Set<SnapshotChunkReference>();
         public DbSet<UploadedHash> UploadedHashes => Set<UploadedHash>();
         public DbSet<StorageCleanupJob> StorageCleanupJobs => Set<StorageCleanupJob>();
+        public DbSet<SnapshotArchiveJob> SnapshotArchiveJobs => Set<SnapshotArchiveJob>();
         public DbSet<DownloadTicket> DownloadTickets => Set<DownloadTicket>();
     }
 }

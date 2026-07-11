@@ -49,12 +49,39 @@ namespace Octockup.Server.Services
                 };
             }
 
+            bool hasActiveArchive = await _dbContext.SnapshotArchiveJobs
+                .AsNoTracking()
+                .AnyAsync(
+                    x => x.ActiveSnapshotId == snapshotId,
+                    cancellationToken);
+            if (hasActiveArchive)
+            {
+                return new SnapshotDeletionResult
+                {
+                    BackupId = snapshot.BackupId,
+                    ErrorMessage = "Snapshot archive is active and must finish or be canceled before deletion."
+                };
+            }
+
             await using IDbContextTransaction transaction = await _dbContext.Database
                 .BeginTransactionAsync(cancellationToken);
 
             long deletedSnapshotFileBytes = await _dbContext.SnapshotFiles
                 .Where(x => x.SnapshotId == snapshotId)
                 .SumAsync(x => (long?)x.Size, cancellationToken) ?? 0;
+
+            IQueryable<Guid> archiveJobIds = _dbContext.SnapshotArchiveJobs
+                .Where(x => x.SnapshotId == snapshotId)
+                .Select(x => x.Id);
+            await _dbContext.DownloadTickets
+                .Where(x =>
+                    x.Kind == DownloadTicketKind.SnapshotArchiveJob &&
+                    x.ResourceId.HasValue &&
+                    archiveJobIds.Contains(x.ResourceId.Value))
+                .ExecuteDeleteAsync(cancellationToken);
+            await _dbContext.SnapshotArchiveJobs
+                .Where(x => x.SnapshotId == snapshotId)
+                .ExecuteDeleteAsync(cancellationToken);
 
             await _dbContext.SnapshotChunkReferences
                 .Where(x => x.SnapshotId == snapshotId)

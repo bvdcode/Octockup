@@ -22,24 +22,25 @@ namespace Octockup.Server.Services
         private const int TokenByteLength = 32;
         private const int EncodedTokenLength = 43;
 
-        public async Task<DownloadTicketDto?> CreateSnapshotArchiveAsync(
+        public async Task<DownloadTicketDto?> CreateSnapshotArchiveJobAsync(
             Guid userId,
-            Guid snapshotId,
+            Guid jobId,
             CancellationToken cancellationToken)
         {
-            bool snapshotExists = await _dbContext.Snapshots
+            bool jobExists = await _dbContext.SnapshotArchiveJobs
                 .AsNoTracking()
                 .AnyAsync(
-                    x => x.Id == snapshotId &&
-                        x.CompletedAt != null &&
-                        x.Backup.Source.UserId == userId,
+                    x => x.Id == jobId &&
+                        x.UserId == userId &&
+                        x.ActiveSnapshotId != null &&
+                        x.Status == SnapshotArchiveStatus.Pending,
                     cancellationToken);
 
-            return snapshotExists
+            return jobExists
                 ? await CreateAsync(
                     userId,
-                    DownloadTicketKind.SnapshotArchive,
-                    snapshotId,
+                    DownloadTicketKind.SnapshotArchiveJob,
+                    jobId,
                     null,
                     false,
                     cancellationToken)
@@ -85,15 +86,15 @@ namespace Octockup.Server.Services
                 cancellationToken);
         }
 
-        public Task<DownloadTicketGrant?> ConsumeSnapshotArchiveAsync(
+        public Task<DownloadTicketGrant?> ConsumeSnapshotArchiveJobAsync(
             string? token,
-            Guid snapshotId,
+            Guid jobId,
             CancellationToken cancellationToken)
         {
             return ConsumeAsync(
                 token,
-                DownloadTicketKind.SnapshotArchive,
-                snapshotId,
+                DownloadTicketKind.SnapshotArchiveJob,
+                jobId,
                 null,
                 cancellationToken);
         }

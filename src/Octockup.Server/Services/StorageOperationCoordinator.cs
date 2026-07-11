@@ -35,6 +35,12 @@ namespace Octockup.Server.Services
                     (kind != StorageOperationKind.Backup ||
                         !dbContext.StorageCleanupJobs.Any(job =>
                             job.ActiveStorageId == x.Id)) &&
+                    (kind != StorageOperationKind.Cleanup ||
+                        !dbContext.SnapshotArchiveJobs.Any(job =>
+                            job.Status == SnapshotArchiveStatus.Running &&
+                            dbContext.Snapshots.Any(snapshot =>
+                                snapshot.Id == job.SnapshotId &&
+                                snapshot.Backup.StorageId == x.Id))) &&
                     (x.ActiveStorageOperationId == null ||
                         x.StorageOperationLeaseExpiresAt == null ||
                         x.StorageOperationLeaseExpiresAt <= now))

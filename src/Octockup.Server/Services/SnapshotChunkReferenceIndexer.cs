@@ -17,17 +17,46 @@ namespace Octockup.Server.Services
             Func<long, long, CancellationToken, Task>? reportProgressAsync,
             CancellationToken cancellationToken)
         {
+            await IndexAsync(
+                storageId,
+                null,
+                reportProgressAsync,
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        public async Task IndexSnapshotAsync(
+            Guid storageId,
+            Guid snapshotId,
+            Func<long, long, CancellationToken, Task>? reportProgressAsync,
+            CancellationToken cancellationToken)
+        {
+            await IndexAsync(
+                storageId,
+                snapshotId,
+                reportProgressAsync,
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        private async Task IndexAsync(
+            Guid storageId,
+            Guid? snapshotId,
+            Func<long, long, CancellationToken, Task>? reportProgressAsync,
+            CancellationToken cancellationToken)
+        {
             long filesIndexed = await _dbContext.SnapshotFiles
                 .AsNoTracking()
                 .LongCountAsync(
                     x => x.ChunkReferencesIndexed &&
                         x.Snapshot.CompletedAt != null &&
-                        x.Snapshot.Backup.StorageId == storageId,
+                        x.Snapshot.Backup.StorageId == storageId &&
+                        (!snapshotId.HasValue || x.SnapshotId == snapshotId.Value),
                     cancellationToken);
             long referencesProcessed = await _dbContext.SnapshotChunkReferences
                 .AsNoTracking()
                 .LongCountAsync(
-                    x => x.StorageId == storageId && x.Snapshot.CompletedAt != null,
+                    x => x.StorageId == storageId &&
+                        x.Snapshot.CompletedAt != null &&
+                        (!snapshotId.HasValue || x.SnapshotId == snapshotId.Value),
                     cancellationToken);
             if (reportProgressAsync is not null)
             {
@@ -43,7 +72,8 @@ namespace Octockup.Server.Services
                     .Where(x =>
                         !x.ChunkReferencesIndexed &&
                         x.Snapshot.CompletedAt != null &&
-                        x.Snapshot.Backup.StorageId == storageId)
+                        x.Snapshot.Backup.StorageId == storageId &&
+                        (!snapshotId.HasValue || x.SnapshotId == snapshotId.Value))
                     .OrderBy(x => x.Id)
                     .Take(FileBatchSize)
                     .ToListAsync(cancellationToken);
@@ -73,6 +103,13 @@ namespace Octockup.Server.Services
                             referencesProcessed += await _writer
                                 .FlushAsync(pendingReferences, cancellationToken);
                             pendingReferences.Clear();
+                            if (reportProgressAsync is not null)
+                            {
+                                await reportProgressAsync(
+                                    filesIndexed,
+                                    referencesProcessed,
+                                    cancellationToken);
+                            }
                         }
                     }
 

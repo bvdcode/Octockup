@@ -22,6 +22,7 @@ namespace Octockup.Tests
         private Guid _secondUserId;
         private Guid _snapshotId;
         private Guid _snapshotFileId;
+        private Guid _archiveJobId;
 
         [SetUp]
         public async Task Setup()
@@ -39,6 +40,18 @@ namespace Octockup.Tests
                 "first",
                 DateTime.UtcNow);
             (_secondUserId, _, _) = await SeedSnapshotAsync("second", DateTime.UtcNow);
+            SnapshotArchiveJob archiveJob = new()
+            {
+                UserId = _firstUserId,
+                SnapshotId = _snapshotId,
+                ActiveSnapshotId = _snapshotId,
+                Status = SnapshotArchiveStatus.Pending,
+                Phase = SnapshotArchivePhase.Waiting,
+                StartedAt = DateTime.UtcNow
+            };
+            await _dbContext.SnapshotArchiveJobs.AddAsync(archiveJob);
+            await _dbContext.SaveChangesAsync();
+            _archiveJobId = archiveJob.Id;
             _service = new DownloadTicketService(
                 _dbContext,
                 TimeProvider.System,
@@ -56,23 +69,23 @@ namespace Octockup.Tests
         }
 
         [Test]
-        public async Task SnapshotArchiveTicket_IsHashedAndCanOnlyBeConsumedOnce()
+        public async Task SnapshotArchiveJobTicket_IsHashedAndCanOnlyBeConsumedOnce()
         {
-            DownloadTicketDto? issued = await _service.CreateSnapshotArchiveAsync(
+            DownloadTicketDto? issued = await _service.CreateSnapshotArchiveJobAsync(
                 _firstUserId,
-                _snapshotId,
+                _archiveJobId,
                 CancellationToken.None);
             DownloadTicket persistedBefore = await _dbContext.DownloadTickets
                 .AsNoTracking()
                 .SingleAsync();
 
-            DownloadTicketGrant? firstGrant = await _service.ConsumeSnapshotArchiveAsync(
+            DownloadTicketGrant? firstGrant = await _service.ConsumeSnapshotArchiveJobAsync(
                 issued!.Ticket,
-                _snapshotId,
+                _archiveJobId,
                 CancellationToken.None);
-            DownloadTicketGrant? secondGrant = await _service.ConsumeSnapshotArchiveAsync(
+            DownloadTicketGrant? secondGrant = await _service.ConsumeSnapshotArchiveJobAsync(
                 issued.Ticket,
-                _snapshotId,
+                _archiveJobId,
                 CancellationToken.None);
             DownloadTicket persistedAfter = await _dbContext.DownloadTickets
                 .AsNoTracking()
@@ -89,11 +102,11 @@ namespace Octockup.Tests
         }
 
         [Test]
-        public async Task SnapshotArchiveTicket_CannotBeIssuedForAnotherUsersSnapshot()
+        public async Task SnapshotArchiveJobTicket_CannotBeIssuedForAnotherUser()
         {
-            DownloadTicketDto? issued = await _service.CreateSnapshotArchiveAsync(
+            DownloadTicketDto? issued = await _service.CreateSnapshotArchiveJobAsync(
                 _secondUserId,
-                _snapshotId,
+                _archiveJobId,
                 CancellationToken.None);
 
             Assert.Multiple(() =>
@@ -104,11 +117,29 @@ namespace Octockup.Tests
         }
 
         [Test]
-        public async Task SnapshotArchiveTicket_CannotAuthorizeFileDownload()
+        public async Task SnapshotArchiveJobTicket_CannotBeIssuedAfterStreamingStarts()
         {
-            DownloadTicketDto? issued = await _service.CreateSnapshotArchiveAsync(
+            await _dbContext.SnapshotArchiveJobs
+                .Where(x => x.Id == _archiveJobId)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(x => x.Status, SnapshotArchiveStatus.Running)
+                    .SetProperty(x => x.Phase, SnapshotArchivePhase.Streaming)
+                    .SetProperty(x => x.RunId, Guid.NewGuid()));
+
+            DownloadTicketDto? issued = await _service.CreateSnapshotArchiveJobAsync(
                 _firstUserId,
-                _snapshotId,
+                _archiveJobId,
+                CancellationToken.None);
+
+            Assert.That(issued, Is.Null);
+        }
+
+        [Test]
+        public async Task SnapshotArchiveJobTicket_CannotAuthorizeFileDownload()
+        {
+            DownloadTicketDto? issued = await _service.CreateSnapshotArchiveJobAsync(
+                _firstUserId,
+                _archiveJobId,
                 CancellationToken.None);
 
             DownloadTicketGrant? wrongPurposeGrant = await _service.ConsumeSnapshotFileAsync(
@@ -116,9 +147,9 @@ namespace Octockup.Tests
                 _snapshotId,
                 _snapshotFileId,
                 CancellationToken.None);
-            DownloadTicketGrant? correctGrant = await _service.ConsumeSnapshotArchiveAsync(
+            DownloadTicketGrant? correctGrant = await _service.ConsumeSnapshotArchiveJobAsync(
                 issued.Ticket,
-                _snapshotId,
+                _archiveJobId,
                 CancellationToken.None);
 
             Assert.Multiple(() =>
@@ -158,17 +189,17 @@ namespace Octockup.Tests
         [Test]
         public async Task ExpiredTicket_CannotBeConsumed()
         {
-            DownloadTicketDto? issued = await _service.CreateSnapshotArchiveAsync(
+            DownloadTicketDto? issued = await _service.CreateSnapshotArchiveJobAsync(
                 _firstUserId,
-                _snapshotId,
+                _archiveJobId,
                 CancellationToken.None);
             DownloadTicket ticket = await _dbContext.DownloadTickets.SingleAsync();
             ticket.ExpiresAt = DateTime.UtcNow.AddMinutes(-1);
             await _dbContext.SaveChangesAsync();
 
-            DownloadTicketGrant? grant = await _service.ConsumeSnapshotArchiveAsync(
+            DownloadTicketGrant? grant = await _service.ConsumeSnapshotArchiveJobAsync(
                 issued!.Ticket,
-                _snapshotId,
+                _archiveJobId,
                 CancellationToken.None);
 
             Assert.That(grant, Is.Null);

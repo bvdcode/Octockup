@@ -18,6 +18,9 @@ namespace Octockup.Server.Extensions
             ScheduleNextRunInitializer scheduleInitializer = scope.ServiceProvider
                 .GetRequiredService<ScheduleNextRunInitializer>();
             await scheduleInitializer.InitializeAsync(cancellationToken);
+            SnapshotArchiveJobService archiveJobs = scope.ServiceProvider
+                .GetRequiredService<SnapshotArchiveJobService>();
+            await archiveJobs.RecoverInterruptedAsync(cancellationToken);
         }
     }
 }

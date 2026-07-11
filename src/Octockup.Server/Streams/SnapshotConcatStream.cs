@@ -11,23 +11,59 @@ using System.IO.Compression;
 
 namespace Octockup.Server.Streams
 {
-    public sealed class SnapshotConcatStream(
-        ILogger _logger,
-        IBackupStorage _storage,
-        IReadOnlyList<ChunkStorageDescriptor> _chunks,
-        SnapshotFile _snapshotFile,
-        IStreamCipher _crypto,
-        CancellationToken _cancellationToken = default,
-        long? _lengthOverride = null) : Stream
+    public class SnapshotConcatStream : Stream
     {
+        private readonly ILogger _logger;
+        private readonly IBackupStorage _storage;
+        private readonly IReadOnlyList<ChunkStorageDescriptor>? _chunks;
+        private readonly Func<CancellationToken, ValueTask<ChunkStorageDescriptor?>>? _readNextChunkAsync;
+        private readonly SnapshotFile _snapshotFile;
+        private readonly IStreamCipher _crypto;
+        private readonly CancellationToken _cancellationToken;
+        private readonly long _length;
         private int _currentIndex = -1;
-
         private Stream? _currentChunkStream;
-        private readonly long _length = _lengthOverride
-            ?? (_chunks.Count > 0 && _chunks.All(x => x.OriginalSize.HasValue)
-                ? _chunks.Sum(x => x.OriginalSize!.Value)
-                : _snapshotFile.Size);
         private long _position;
+
+        public SnapshotConcatStream(
+            ILogger logger,
+            IBackupStorage storage,
+            IReadOnlyList<ChunkStorageDescriptor> chunks,
+            SnapshotFile snapshotFile,
+            IStreamCipher crypto,
+            CancellationToken cancellationToken = default,
+            long? lengthOverride = null)
+        {
+            _logger = logger;
+            _storage = storage;
+            _chunks = chunks;
+            _snapshotFile = snapshotFile;
+            _crypto = crypto;
+            _cancellationToken = cancellationToken;
+            _length = lengthOverride
+                ?? (chunks.Count > 0 && chunks.All(x => x.OriginalSize.HasValue)
+                    ? chunks.Sum(x => x.OriginalSize!.Value)
+                    : snapshotFile.Size);
+        }
+
+        public SnapshotConcatStream(
+            ILogger logger,
+            IBackupStorage storage,
+            Func<CancellationToken, ValueTask<ChunkStorageDescriptor?>> readNextChunkAsync,
+            SnapshotFile snapshotFile,
+            IStreamCipher crypto,
+            long length,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(length);
+            _logger = logger;
+            _storage = storage;
+            _readNextChunkAsync = readNextChunkAsync;
+            _snapshotFile = snapshotFile;
+            _crypto = crypto;
+            _length = length;
+            _cancellationToken = cancellationToken;
+        }
 
         public override bool CanRead => true;
         public override bool CanSeek => false;
@@ -41,27 +77,38 @@ namespace Octockup.Server.Streams
             set => throw new NotSupportedException();
         }
 
-        private async Task<bool> MoveToNextChunkAsync()
+        private async Task<bool> MoveToNextChunkAsync(CancellationToken cancellationToken)
         {
             await DisposeCurrentChunkAsync().ConfigureAwait(false);
 
             _currentIndex++;
-            if (_currentIndex >= _chunks.Count)
+            ChunkStorageDescriptor? nextChunk;
+            if (_chunks is not null)
+            {
+                nextChunk = _currentIndex < _chunks.Count
+                    ? _chunks[_currentIndex]
+                    : null;
+            }
+            else
+            {
+                nextChunk = await _readNextChunkAsync!(cancellationToken).ConfigureAwait(false);
+            }
+
+            if (nextChunk is not ChunkStorageDescriptor chunk)
             {
                 _currentChunkStream = null;
                 return false;
             }
 
-            var chunk = _chunks[_currentIndex];
-            _logger.LogInformation(
-                "Loading chunk {Index}/{Total} with key {Key}",
+            _logger.LogDebug(
+                "Loading chunk {Index} with key {Key}",
                 _currentIndex + 1,
-                _chunks.Count,
-                chunk.Key
-            );
+                chunk.Key);
 
             string path = ChunkStorageHelpers.GetStoragePath(chunk.Key, _storage.PathSeparator);
-            bool exists = await _storage.ExistsAsync(path).ConfigureAwait(false) ?? false;
+            bool exists = await _storage
+                .ExistsAsync(path, cancellationToken)
+                .ConfigureAwait(false) ?? false;
             if (exists != true)
             {
                 throw new IOException($"Chunk '{chunk.Key}' not found in storage.");
@@ -75,15 +122,21 @@ namespace Octockup.Server.Streams
                 LastModified = _snapshotFile.LastModified,
             };
 
-            var storedChunkStream = await _storage
-                .GetFileStreamAsync(fileInfo)
+            Stream storedChunkStream = await _storage
+                .GetFileStreamAsync(fileInfo, cancellationToken)
                 .ConfigureAwait(false);
 
             Stream restored = chunk.IsEncrypted
-                ? await _crypto.DecryptAsync(storedChunkStream).ConfigureAwait(false)
+                ? await _crypto
+                    .DecryptAsync(storedChunkStream, false, cancellationToken)
+                    .ConfigureAwait(false)
                 : storedChunkStream;
 
-            var (source, compressionAlgorithm) = await ResolveLegacyCompressionAsync(restored, chunk).ConfigureAwait(false);
+            (Stream source, CompressionAlgorithm compressionAlgorithm) =
+                await ResolveLegacyCompressionAsync(
+                    restored,
+                    chunk,
+                    cancellationToken).ConfigureAwait(false);
 
             Stream decompressed = compressionAlgorithm switch
             {
@@ -97,7 +150,8 @@ namespace Octockup.Server.Streams
 
         private async Task<(Stream Source, CompressionAlgorithm CompressionAlgorithm)> ResolveLegacyCompressionAsync(
             Stream restored,
-            ChunkStorageDescriptor chunk)
+            ChunkStorageDescriptor chunk,
+            CancellationToken cancellationToken)
         {
             if (chunk.Key != chunk.ContentHash || chunk.CompressionAlgorithm != CompressionHelpers.Algorithm)
             {
@@ -109,7 +163,7 @@ namespace Octockup.Server.Streams
             while (read < prefix.Length)
             {
                 int current = await restored
-                    .ReadAsync(prefix.AsMemory(read, prefix.Length - read))
+                    .ReadAsync(prefix.AsMemory(read, prefix.Length - read), cancellationToken)
                     .ConfigureAwait(false);
 
                 if (current == 0)
@@ -120,7 +174,7 @@ namespace Octockup.Server.Streams
                 read += current;
             }
 
-            var source = new PrefixStream(prefix, read, restored);
+            PrefixStream source = new(prefix, read, restored);
             if (IsZstdFrame(prefix.AsSpan(0, read)))
             {
                 return (source, chunk.CompressionAlgorithm);
@@ -208,11 +262,11 @@ namespace Octockup.Server.Streams
 
             int totalRead = 0;
 
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+            using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
                 _cancellationToken,
                 cancellationToken
             );
-            var ct = linkedCts.Token;
+            CancellationToken ct = linkedCts.Token;
 
             try
             {
@@ -222,7 +276,7 @@ namespace Octockup.Server.Streams
 
                     if (_currentChunkStream == null)
                     {
-                        bool moved = await MoveToNextChunkAsync().ConfigureAwait(false);
+                        bool moved = await MoveToNextChunkAsync(ct).ConfigureAwait(false);
                         if (!moved)
                         {
                             break; // реально конец файла
@@ -270,11 +324,9 @@ namespace Octockup.Server.Streams
             catch (OperationCanceledException)
             {
                 _logger.LogInformation(
-                    "Read canceled at position {Position} (chunk {Index}/{Total}).",
+                    "Read canceled at position {Position} (chunk {Index}).",
                     _position,
-                    Math.Min(_currentIndex + 1, _chunks.Count),
-                    _chunks.Count
-                );
+                    _currentIndex + 1);
                 throw;
             }
 
