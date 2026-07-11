@@ -5,7 +5,6 @@ using EasyExtensions.Abstractions;
 using EasyExtensions;
 using EasyExtensions.AspNetCore.Extensions;
 using EasyExtensions.Models.Enums;
-using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +14,7 @@ using Octockup.Server.Archives;
 using Octockup.Server.Database;
 using Octockup.Server.Helpers;
 using Octockup.Server.Models.Dto;
+using Octockup.Server.Models.Requests;
 using Octockup.Server.Models.Results;
 using Octockup.Server.Services;
 using Octockup.Server.Streams;
@@ -26,6 +26,7 @@ namespace Octockup.Server.Controllers
         IStreamCipher _crypto,
         AppDbContext _dbContext,
         SnapshotDeletionService _snapshotDeletionService,
+        SnapshotFilePageService _snapshotFilePages,
         DownloadTicketService _downloadTickets,
         ILogger<SnapshotController> _logger,
         IEnumerable<IBackupProvider> _providers) : ControllerBase
@@ -225,30 +226,29 @@ namespace Octockup.Server.Controllers
 
         [Authorize]
         [HttpGet("/api/v1/snapshots/{snapshotId:guid}/files")]
-        public async Task<IActionResult> GetSnapshot([FromRoute] Guid snapshotId, CancellationToken cancellationToken)
+        public async Task<IActionResult> GetSnapshotFiles(
+            [FromRoute] Guid snapshotId,
+            [FromQuery] SnapshotFilePageRequest request,
+            CancellationToken cancellationToken)
         {
-            Guid userId = User.GetUserId();
-
-            bool snapshotExists = await _dbContext.Snapshots
-                .AsNoTracking()
-                .AnyAsync(
-                    s => s.Id == snapshotId && s.Backup.Source.UserId == userId,
-                    cancellationToken);
-
-            if (!snapshotExists)
+            try
             {
-                return NotFound();
+                SnapshotFilePageDto? page = await _snapshotFilePages.GetPageAsync(
+                    User.GetUserId(),
+                    snapshotId,
+                    request,
+                    cancellationToken);
+                if (page is null)
+                {
+                    return NotFound();
+                }
+
+                return Ok(page);
             }
-
-            List<SnapshotFileDto> snapshotFiles = (await _dbContext.SnapshotFiles
-                .AsNoTracking()
-                .Where(sf => sf.SnapshotId == snapshotId)
-                .OrderBy(sf => sf.Path)
-                .ThenBy(sf => sf.Name)
-                .ToListAsync(cancellationToken))
-                .Adapt<List<SnapshotFileDto>>();
-
-            return Ok(snapshotFiles);
+            catch (FormatException)
+            {
+                return this.ApiBadRequest("Snapshot file cursor is invalid.");
+            }
         }
 
         [Authorize]

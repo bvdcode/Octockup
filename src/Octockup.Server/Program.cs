@@ -84,6 +84,7 @@ namespace Octockup.Server
                 .AddScoped<IBackupProvider, FileSystemBackupSource>()
                 .AddScoped<BackupDeletionService>()
                 .AddScoped<SnapshotDeletionService>()
+                .AddScoped<SnapshotFilePageService>()
                 .AddScoped<DownloadTicketService>()
                 .AddScoped<RefreshSessionService>()
                 .AddScoped<BackupOwnershipInitializer>()

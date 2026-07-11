@@ -4,9 +4,15 @@ import { useAxios } from "@bvdcode/react-kit";
 import type {
   DownloadTicket,
   SnapshotDto,
-  SnapshotFileDto,
+  SnapshotFilePage,
   SnapshotDeletionResult,
 } from "../types/api";
+
+interface SnapshotFilePageRequest {
+  pageSize: number;
+  cursor?: string;
+  search?: string;
+}
 
 class SnapshotsApiClient {
   private axiosFactory: () => AxiosInstance;
@@ -27,9 +33,20 @@ class SnapshotsApiClient {
     return result.data;
   }
 
-  async getFiles(snapshotId: string): Promise<SnapshotFileDto[]> {
-    const result = await this.axios().get<Array<SnapshotFileDto>>(
+  async getFiles(
+    snapshotId: string,
+    request: SnapshotFilePageRequest,
+  ): Promise<SnapshotFilePage> {
+    const search = request.search?.trim();
+    const result = await this.axios().get<SnapshotFilePage>(
       `/api/v1/snapshots/${snapshotId}/files`,
+      {
+        params: {
+          pageSize: request.pageSize,
+          cursor: request.cursor,
+          search: search || undefined,
+        },
+      },
     );
     return result.data;
   }

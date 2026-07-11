@@ -15,8 +15,15 @@ import type { SnapshotFileDto } from "../types/api";
 import { useSnapshotsApi } from "../api/snapshotsApi";
 import { ArrowBack, Download } from "@mui/icons-material";
 import { useNavigate, useParams } from "react-router-dom";
-import { DataGrid, type GridColDef } from "@mui/x-data-grid";
+import {
+  DataGrid,
+  type GridColDef,
+  type GridPaginationModel,
+} from "@mui/x-data-grid";
 import { openTicketDownload } from "../utils/downloadUtils";
+
+const defaultPageSize = 50;
+const searchDebounceMs = 300;
 
 interface State {
   loading: boolean;
@@ -36,18 +43,65 @@ export default function SnapshotFilesPage() {
     error: snapshotId ? null : t("snapshotFiles.missingSnapshotId"),
   });
   const [files, setFiles] = useState<SnapshotFileDto[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
+    page: 0,
+    pageSize: defaultPageSize,
+  });
+  const [pageCursors, setPageCursors] = useState<Map<number, string | null>>(
+    new Map([[0, null]]),
+  );
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const pageCursor = pageCursors.get(paginationModel.page);
 
   useEffect(() => {
-    if (!snapshotId) return;
+    const timer = window.setTimeout(() => {
+      const nextSearch = searchInput.trim();
+      if (nextSearch === searchQuery) return;
+
+      setSearchQuery(nextSearch);
+      setPaginationModel((current) => ({ ...current, page: 0 }));
+      setPageCursors(new Map([[0, null]]));
+    }, searchDebounceMs);
+
+    return () => window.clearTimeout(timer);
+  }, [searchInput, searchQuery]);
+
+  useEffect(() => {
+    if (!snapshotId || (paginationModel.page > 0 && pageCursor === undefined)) {
+      return;
+    }
 
     let active = true;
+    setState((current) => ({ ...current, loading: true, error: null }));
     snapshotsApi
-      .getFiles(snapshotId)
-      .then((fileList) => {
+      .getFiles(snapshotId, {
+        pageSize: paginationModel.pageSize,
+        cursor: pageCursor ?? undefined,
+        search: searchQuery || undefined,
+      })
+      .then((page) => {
         if (!active) return;
-        setFiles(fileList);
+        setFiles(page.items);
+        setTotalCount(page.totalCount);
+        setHasNextPage(page.hasNextPage);
+        setPageCursors((current) => {
+          const next = new Map(current);
+          for (const pageNumber of next.keys()) {
+            if (pageNumber > paginationModel.page + 1) {
+              next.delete(pageNumber);
+            }
+          }
+          if (page.nextCursor) {
+            next.set(paginationModel.page + 1, page.nextCursor);
+          } else {
+            next.delete(paginationModel.page + 1);
+          }
+          return next;
+        });
         setState({ loading: false, error: null });
       })
       .catch((error) => {
@@ -63,7 +117,27 @@ export default function SnapshotFilesPage() {
     return () => {
       active = false;
     };
-  }, [snapshotId, snapshotsApi, t]);
+  }, [
+    pageCursor,
+    paginationModel.page,
+    paginationModel.pageSize,
+    searchQuery,
+    snapshotId,
+    snapshotsApi,
+    t,
+  ]);
+
+  const handlePaginationChange = (nextModel: GridPaginationModel) => {
+    if (nextModel.pageSize !== paginationModel.pageSize) {
+      setPaginationModel({ page: 0, pageSize: nextModel.pageSize });
+      setPageCursors(new Map([[0, null]]));
+      return;
+    }
+
+    if (nextModel.page === 0 || pageCursors.has(nextModel.page)) {
+      setPaginationModel(nextModel);
+    }
+  };
 
   const handleDownload = async (fileId: string) => {
     if (!snapshotId) return;
@@ -84,10 +158,6 @@ export default function SnapshotFilesPage() {
       setDownloadingId(null);
     }
   };
-
-  const filteredFiles = files.filter((file) =>
-    file.path.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
 
   const columns: GridColDef<SnapshotFileDto>[] = [
     {
@@ -168,24 +238,31 @@ export default function SnapshotFilesPage() {
         fullWidth
         variant="outlined"
         placeholder={t("snapshotFiles.searchPlaceholder")}
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
+        value={searchInput}
+        onChange={(e) => setSearchInput(e.target.value)}
       />
-      <Box flex={1}>
+      <Box flex={1} minHeight={480}>
         <DataGrid
-          rows={filteredFiles}
+          rows={files}
           columns={columns}
           loading={state.loading}
-          pageSizeOptions={[10, 25, 50, 100]}
-          autoPageSize
+          pagination
+          paginationMode="server"
+          filterMode="server"
+          rowCount={totalCount}
+          paginationMeta={{ hasNextPage }}
+          paginationModel={paginationModel}
+          onPaginationModelChange={handlePaginationChange}
+          pageSizeOptions={[25, 50, 100, 200]}
           initialState={{
-            pagination: { paginationModel: { pageSize: 25 } },
             columns: {
               columnVisibilityModel: {
                 name: false,
               },
             },
           }}
+          disableColumnFilter
+          disableColumnSorting
           disableRowSelectionOnClick
           sx={{
             "& .MuiDataGrid-cell:focus": {

@@ -172,6 +172,13 @@ export interface SnapshotFileDto {
   hashsum: string;
 }
 
+export interface SnapshotFilePage {
+  items: SnapshotFileDto[];
+  nextCursor?: string | null;
+  hasNextPage: boolean;
+  totalCount: number;
+}
+
 export enum StorageCleanupStatus {
   Pending = 0,
   Running = 1,
