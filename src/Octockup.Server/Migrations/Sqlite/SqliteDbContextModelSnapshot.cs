@@ -338,6 +338,10 @@ namespace Octockup.Server.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("interval");
 
+                    b.Property<string>("NextRunAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("next_run_at");
+
                     b.Property<string>("StartAt")
                         .IsRequired()
                         .HasColumnType("TEXT")
@@ -355,6 +359,8 @@ namespace Octockup.Server.Migrations.Sqlite
                     b.HasKey("Id");
 
                     b.HasIndex("BackupId");
+
+                    b.HasIndex("NextRunAt");
 
                     b.ToTable("schedules");
                 });

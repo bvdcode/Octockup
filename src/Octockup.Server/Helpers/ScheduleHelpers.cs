@@ -25,38 +25,16 @@ namespace Octockup.Server.Helpers
             CancellationToken cancellationToken)
         {
             DateTime now = DateTime.UtcNow;
-
-            List<Schedule> schedules = await schedulesQuery
+            return await schedulesQuery
+                .Where(x => x.NextRunAt != null && x.NextRunAt <= now)
+                .OrderBy(x => x.NextRunAt)
+                .ThenBy(x => x.Id)
+                .Take(maxCount)
                 .Include(x => x.Backup)
                 .ThenInclude(b => b.Source)
                 .Include(x => x.Backup)
                 .ThenInclude(b => b.Storage)
                 .ToListAsync(cancellationToken: cancellationToken);
-
-            List<(Schedule Schedule, DateTime NextRun)> readySchedules = [];
-
-            foreach (Schedule schedule in schedules)
-            {
-                DateTime? nextRun = CalculateNextRun(schedule, now);
-                if (nextRun is null)
-                {
-                    continue;
-                }
-
-                if (nextRun > now)
-                {
-                    continue;
-                }
-
-                readySchedules.Add((schedule, nextRun.Value));
-            }
-
-            return readySchedules
-                .OrderBy(x => x.NextRun)
-                .ThenBy(x => x.Schedule.Id)
-                .Take(maxCount)
-                .Select(x => x.Schedule)
-                .ToList();
         }
 
         public static DateTime? CalculateNextRun(Schedule schedule, DateTime now)

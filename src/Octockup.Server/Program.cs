@@ -76,6 +76,7 @@ namespace Octockup.Server
                 .AddScoped<DownloadTicketService>()
                 .AddScoped<RefreshSessionService>()
                 .AddScoped<BackupOwnershipInitializer>()
+                .AddScoped<ScheduleNextRunInitializer>()
                 .AddScoped<UploadedChunkLookup>()
                 .AddScoped<PreviousSnapshotFileLookup>()
                 .AddScoped<UploadedHashWriter>()

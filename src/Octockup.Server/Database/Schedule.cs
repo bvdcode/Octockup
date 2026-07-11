@@ -9,6 +9,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace Octockup.Server.Database
 {
     [Table("schedules")]
+    [Index(nameof(NextRunAt))]
     public class Schedule : BaseEntity<Guid>
     {
         [Column("backup_id")]
@@ -22,6 +23,9 @@ namespace Octockup.Server.Database
 
         [Column("start_at")]
         public DateTime StartAt { get; set; }
+
+        [Column("next_run_at")]
+        public DateTime? NextRunAt { get; set; }
 
         [Column("interval")]
         public TimeSpan? Interval { get; set; }

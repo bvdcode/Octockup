@@ -15,6 +15,9 @@ namespace Octockup.Server.Extensions
             BackupOwnershipInitializer initializer = scope.ServiceProvider
                 .GetRequiredService<BackupOwnershipInitializer>();
             await initializer.InitializeAsync(cancellationToken);
+            ScheduleNextRunInitializer scheduleInitializer = scope.ServiceProvider
+                .GetRequiredService<ScheduleNextRunInitializer>();
+            await scheduleInitializer.InitializeAsync(cancellationToken);
         }
     }
 }

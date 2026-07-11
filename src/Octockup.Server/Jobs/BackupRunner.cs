@@ -91,6 +91,9 @@ namespace Octockup.Server.Jobs
 
                 schedule.Status = ScheduleStatus.Completed;
                 schedule.FinishedAt = DateTime.UtcNow;
+                schedule.NextRunAt = ScheduleHelpers.CalculateNextRun(
+                    schedule,
+                    schedule.FinishedAt.Value);
                 await dbContext.SaveChangesAsync(cancellationToken);
 
                 logger.LogInformation("Schedule {ScheduleId} backup completed successfully", schedule.Id);
@@ -118,6 +121,9 @@ namespace Octockup.Server.Jobs
                     schedule.ErrorMessage = $"Backup interrupted: {ex.Message}";
                     schedule.Status = ScheduleStatus.Failed;
                     schedule.FinishedAt = DateTime.UtcNow;
+                    schedule.NextRunAt = ScheduleHelpers.CalculateNextRun(
+                        schedule,
+                        schedule.FinishedAt.Value);
                     await dbContext.SaveChangesAsync(CancellationToken.None);
 
                     logger.LogError(ex, "Schedule {ScheduleId} backup interrupted unexpectedly", schedule.Id);
@@ -135,6 +141,9 @@ namespace Octockup.Server.Jobs
                 schedule.ErrorMessage = $"Backup failed: {ex.Message}";
                 schedule.Status = ScheduleStatus.Failed;
                 schedule.FinishedAt = DateTime.UtcNow;
+                schedule.NextRunAt = ScheduleHelpers.CalculateNextRun(
+                    schedule,
+                    schedule.FinishedAt.Value);
                 await dbContext.SaveChangesAsync(CancellationToken.None);
 
                 logger.LogError(ex, "Schedule {ScheduleId} backup failed", schedule.Id);
@@ -191,6 +200,9 @@ namespace Octockup.Server.Jobs
                 schedule.ErrorMessage = $"Source provider not found: {schedule.Backup.Source.BackupModuleId}";
                 schedule.Status = ScheduleStatus.Failed;
                 schedule.FinishedAt = DateTime.UtcNow;
+                schedule.NextRunAt = ScheduleHelpers.CalculateNextRun(
+                    schedule,
+                    schedule.FinishedAt.Value);
                 dbContext.SaveChanges();
                 logger.LogWarning("{msg}", schedule.ErrorMessage);
 
@@ -209,6 +221,9 @@ namespace Octockup.Server.Jobs
                 schedule.ErrorMessage = $"Storage provider not found: {schedule.Backup.Storage.BackupModuleId}";
                 schedule.Status = ScheduleStatus.Failed;
                 schedule.FinishedAt = DateTime.UtcNow;
+                schedule.NextRunAt = ScheduleHelpers.CalculateNextRun(
+                    schedule,
+                    schedule.FinishedAt.Value);
                 dbContext.SaveChanges();
                 logger.LogWarning("{msg}", schedule.ErrorMessage);
 
@@ -698,6 +713,9 @@ namespace Octockup.Server.Jobs
             schedule.Status = ScheduleStatus.Failed;
             schedule.ErrorMessage = "Backup was canceled.";
             schedule.FinishedAt = DateTime.UtcNow;
+            schedule.NextRunAt = ScheduleHelpers.CalculateNextRun(
+                schedule,
+                schedule.FinishedAt.Value);
             await dbContext.SaveChangesAsync(CancellationToken.None);
 
             await report.SendAsync(

@@ -58,6 +58,7 @@ namespace Octockup.Server.Controllers
             schedule.Status = ScheduleStatus.Created;
             schedule.ErrorMessage = null;
             schedule.FinishedAt = null;
+            schedule.NextRunAt = DateTime.UtcNow;
             await _dbContext.SaveChangesAsync();
             await _scheduler.TriggerJobAsync<ExecuteBackupJob>();
             return Ok(new { message = "Schedule error reset successfully." });
@@ -104,6 +105,7 @@ namespace Octockup.Server.Controllers
             {
                 BackupId = backup.Id,
                 StartAt = request.StartAt,
+                NextRunAt = request.StartAt,
                 Status = ScheduleStatus.Created,
                 Interval = request.IntervalMinutes.HasValue ? TimeSpan.FromMinutes(request.IntervalMinutes.Value) : null,
             };

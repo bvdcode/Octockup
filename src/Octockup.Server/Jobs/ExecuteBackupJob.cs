@@ -25,6 +25,7 @@ namespace Octockup.Server.Jobs
         ILogger<ExecuteBackupJob> _logger) : IJob
     {
         private static readonly ConcurrentDictionary<Guid, CancellationTokenSource> _runningSchedules = new();
+        private static readonly TimeSpan StorageBusyRetryDelay = TimeSpan.FromMinutes(1);
 
         public static bool IsScheduleRunning(Guid scheduleId)
         {
@@ -147,9 +148,13 @@ namespace Octockup.Server.Jobs
 
                 if (storageLease is null)
                 {
-                    schedule.Status = ScheduleStatus.Created;
-                    schedule.ErrorMessage = null;
-                    schedule.FinishedAt = null;
+                    if (schedule.Status != ScheduleStatus.Running)
+                    {
+                        schedule.Status = ScheduleStatus.Created;
+                        schedule.ErrorMessage = null;
+                        schedule.FinishedAt = null;
+                    }
+                    schedule.NextRunAt = DateTime.UtcNow.Add(StorageBusyRetryDelay);
                     await dbContext.SaveChangesAsync(scheduleCts.Token);
                     _logger.LogInformation(
                         "Deferred schedule {ScheduleId} because storage {StorageId} is busy.",
