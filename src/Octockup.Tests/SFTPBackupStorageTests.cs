@@ -6,6 +6,8 @@ using Octockup.Server.Modules;
 
 namespace Octockup.Tests
 {
+    [Explicit("Requires configured external SFTP credentials.")]
+    [Category("External")]
     public class SFTPBackupStorageTestsTests
     {
         private SFTPBackupStorage _storage;

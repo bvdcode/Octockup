@@ -6,6 +6,8 @@ using Octockup.Server.Modules;
 
 namespace Octockup.Tests
 {
+    [Explicit("Requires configured external IMAP credentials.")]
+    [Category("External")]
     public class IMAPBackupSourceTests
     {
         private IMAPSource _imap;
