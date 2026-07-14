@@ -10,7 +10,7 @@
 
 > Live: [octockup.splidex.com](https://octockup.splidex.com)
 
-Octockup is an all-in-one client and server application for autobackup that includes both backend and frontend in a single Docker container. It allows you to gather and manage data from various sources, such as YouTube, SSH, FTP, Email, and more, directly through the browser.
+Octockup is an autobackup application that ships its backend and frontend in one Docker container and stores metadata in PostgreSQL. It allows you to gather and manage data from various sources, such as YouTube, SSH, FTP, Email, and more, directly through the browser.
 
 <img width="820" height="319" alt="image" src="https://github.com/user-attachments/assets/9cdaf805-5b28-4a3c-8621-88b5dd847278" />
 
@@ -19,14 +19,14 @@ Octockup is an all-in-one client and server application for autobackup that incl
 
 ## Key Features
 
-- **Containerization:** A single Docker container includes all necessary components.
+- **Application Container:** The backend and frontend ship together as one image.
 - **Backend and Frontend:** Full integration of backend and frontend for simplified deployment.
 - **Incremental Backups:** Save only the necessary changes with each backup.
 - **Connecting Various Sources:** You can connect YouTube, SSH, FTP, and many other sources to gather data.
 - **Web Interface:** User-friendly web interface for managing all application functions.
 - **Data Deduplication:** Efficient storage usage by avoiding duplicate data.
 - **Encryption:** All backup data is encrypted before leaving the server using AES-GCM.
-- **Dual Database Support:** Supports both SQLite (default) and PostgreSQL for flexible data management.
+- **PostgreSQL Metadata Store:** Uses PostgreSQL for durable application and backup metadata.
 
 ---
 
@@ -39,8 +39,25 @@ Dockerhub: [Link](https://hub.docker.com/r/bvdcode/octockup)
 
 ```yaml
 services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_DB=octockup
+      - POSTGRES_USER=octockup_client
+      - POSTGRES_PASSWORD=${OCTOCKUP_DB_PASS}
+    volumes:
+      - octockup-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U octockup_client -d octockup"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   octockup:
     image: bvdcode/octockup:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - 8080:8080
     environment:
@@ -50,16 +67,20 @@ services:
       # Optional: Allow multiple users (default: false)
       - OCTOCKUP_ALLOW_MULTIUSER=false
 
-      # Optional: Use PostgreSQL instead of default SQLite
-      - OCTOCKUP_POSTGRES_HOST=postgres-server
-      - OCTOCKUP_POSTGRES_DB=octockup
-      - OCTOCKUP_POSTGRES_USER=octockup_client
+      # Required: PostgreSQL connection
+      - OCTOCKUP_POSTGRES_HOST=postgres
+      - OCTOCKUP_POSTGRES_PORT=5432
+      - OCTOCKUP_POSTGRES_DATABASE=octockup
+      - OCTOCKUP_POSTGRES_USERNAME=octockup_client
       - OCTOCKUP_POSTGRES_PASSWORD=${OCTOCKUP_DB_PASS}
     volumes:
       - /data/octockup:/app/data
       # Mounts to backup if needed:
       - /files:/app/data/mounts/files:ro
       - /apps:/app/data/mounts/apps:ro
+
+volumes:
+  octockup-postgres:
 ```
 
 3. Start the application using Docker Compose:
@@ -88,8 +109,13 @@ docker compose up -d
 
 ### Environment variables
 
-```yaml
-MASTER_KEY: A 32-character master key for encrypting sensitive data in the database.
+```text
+OCTOCKUP_MASTER_KEY: 32-character master key for encrypting sensitive data.
+OCTOCKUP_POSTGRES_HOST: PostgreSQL host.
+OCTOCKUP_POSTGRES_PORT: PostgreSQL port (default: 5432).
+OCTOCKUP_POSTGRES_DATABASE: PostgreSQL database name.
+OCTOCKUP_POSTGRES_USERNAME: PostgreSQL username.
+OCTOCKUP_POSTGRES_PASSWORD: PostgreSQL password.
 ```
 
 ---
