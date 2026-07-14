@@ -12,11 +12,53 @@ on:
       - ".github/workflows/**"
     branches:
       - main
+  pull_request:
+    paths:
+      - "src/**"
+      - ".github/workflows/**"
   workflow_dispatch:
 
 jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Check repository
+        uses: actions/checkout@v4
+        with:
+          lfs: "true"
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Test backup integrity
+        env:
+          OCTOCKUP_TEST_POSTGRES_HOST: localhost
+          OCTOCKUP_TEST_POSTGRES_PORT: 5432
+          OCTOCKUP_TEST_POSTGRES_USERNAME: postgres
+          OCTOCKUP_TEST_POSTGRES_PASSWORD: postgres
+        run: dotnet test src/Octockup.Tests/Octockup.Tests.csproj --configuration Release -p:ShouldRunNpmInstall=false
+
   build:
     name: Build and Push Docker Image
+    needs: test
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     outputs:
       Version: ${{ steps.gitversion.outputs.SemVer }}
@@ -25,7 +67,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - name: check repository
+      - name: Check repository
         uses: actions/checkout@v4
         with:
           lfs: "true"
