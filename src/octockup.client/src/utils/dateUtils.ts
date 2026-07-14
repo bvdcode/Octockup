@@ -1,6 +1,6 @@
 /**
- * Parses a datetime string from backend (SQLite doesn't include 'Z' suffix)
- * and returns a proper Date object treating the input as UTC.
+ * Parses a datetime string from the backend and treats values without an
+ * explicit timezone as UTC.
  */
 export function parseUtcDate(
   dateString: string | null | undefined,

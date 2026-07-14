@@ -21,23 +21,14 @@ namespace Octockup.Server.Extensions
                 new KeyValuePair<string, string?>("Pepper", KeyDerivation.DeriveSubkeyBase64(masterKey, "pepper", 32))
             ]);
             byte[] cryptoKey = KeyDerivation.DeriveSubkey(masterKey, "crypto", 32);
-            builder.Services.AddScoped<IStreamCipher>(sp => new AesGcmStreamCipher(cryptoKey));
-            bool hasPostgresSettings = InjectPostgresSettings(builder.Configuration);
-            if (hasPostgresSettings)
-            {
-                builder.Services.AddPostgresDbContext<AppDbContext, PostgresDbContext>(x => x.UseLazyLoadingProxies = false);
-            }
-            else
-            {
-                string sqlitePassword = KeyDerivation.DeriveSubkeyBase64(masterKey, "sqlite", 32);
-                string sqlitePath = Helpers.PathHelpers.GetPath("octockup.sqlite");
-                builder.Services.AddDbContext<AppDbContext, SqliteDbContext>(
-                    x => x.UseSqlite(connectionString: $"Data Source={sqlitePath};Password={sqlitePassword};"));
-            }
+            builder.Services.AddScoped<IStreamCipher>(_ => new AesGcmStreamCipher(cryptoKey));
+            InjectPostgresSettings(builder.Configuration);
+            builder.Services.AddPostgresDbContext<AppDbContext, PostgresDbContext>(
+                options => options.UseLazyLoadingProxies = false);
             return builder;
         }
 
-        private static bool InjectPostgresSettings(ConfigurationManager configuration)
+        private static void InjectPostgresSettings(ConfigurationManager configuration)
         {
             string? host = Environment.GetEnvironmentVariable(PostgresEnvPrefix + "HOST");
             string? port = Environment.GetEnvironmentVariable(PostgresEnvPrefix + "PORT");
@@ -66,7 +57,12 @@ namespace Octockup.Server.Extensions
                 envVars["DatabaseSettings:Password"] = password;
             }
             configuration.AddInMemoryCollection(envVars);
-            return !string.IsNullOrEmpty(configuration["DatabaseSettings:Password"]);
+
+            if (string.IsNullOrWhiteSpace(configuration["DatabaseSettings:Password"]))
+            {
+                throw new InvalidOperationException(
+                    $"PostgreSQL password is required. Set {PostgresEnvPrefix}PASSWORD.");
+            }
         }
     }
 }
