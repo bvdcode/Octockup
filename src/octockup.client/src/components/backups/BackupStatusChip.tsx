@@ -32,12 +32,19 @@ export function BackupStatusChip({
     created: "default",
   } as const;
 
+  const hasFailedRun = status === "failed" || status === "warning";
   let errorMessage = "";
-  if (status === "failed") {
-    const failedSchedule = (backup.schedules || []).find(
-      (schedule) =>
-        schedule.status === BackupStatus.Failed && schedule.errorMessage,
-    );
+  if (hasFailedRun) {
+    const failedSchedule = (backup.schedules || [])
+      .filter(
+        (schedule) =>
+          schedule.status === BackupStatus.Failed && schedule.errorMessage,
+      )
+      .sort(
+        (left, right) =>
+          new Date(right.finishedAt || right.startAt).getTime() -
+          new Date(left.finishedAt || left.startAt).getTime(),
+      )[0];
     errorMessage = failedSchedule?.errorMessage || t("backups.unknownError");
   }
 
@@ -50,7 +57,7 @@ export function BackupStatusChip({
     />
   );
 
-  if (status === "failed" && errorMessage) {
+  if (hasFailedRun && errorMessage) {
     return (
       <Tooltip title={errorMessage} placement="top" arrow>
         <Box component="span">{chip}</Box>

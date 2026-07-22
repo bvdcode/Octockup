@@ -5,6 +5,7 @@ using EasyExtensions.Abstractions;
 using EasyExtensions.Crypto;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Octockup.Server.Abstractions;
@@ -56,6 +57,7 @@ namespace Octockup.Tests
 
         public static async Task<BackupIntegrationScenario> CreateAsync(
             string connectionString,
+            IInterceptor? interceptor = null,
             CancellationToken cancellationToken = default)
         {
             string scenarioId = Guid.NewGuid().ToString("N");
@@ -72,9 +74,13 @@ namespace Octockup.Tests
             Directory.CreateDirectory(sourceDirectory);
             Directory.CreateDirectory(storageDirectory);
 
-            DbContextOptions<PostgresDbContext> options = new DbContextOptionsBuilder<PostgresDbContext>()
-                .UseNpgsql(connectionString)
-                .Options;
+            DbContextOptionsBuilder<PostgresDbContext> optionsBuilder = new DbContextOptionsBuilder<PostgresDbContext>()
+                .UseNpgsql(connectionString);
+            if (interceptor is not null)
+            {
+                optionsBuilder.AddInterceptors(interceptor);
+            }
+            DbContextOptions<PostgresDbContext> options = optionsBuilder.Options;
             PostgresDbContext dbContext = new(options);
             ServiceCollection services = new();
             services.AddLogging();
@@ -166,6 +172,10 @@ namespace Octockup.Tests
         {
             return File.GetLastWriteTimeUtc(GetSourcePath(relativePath));
         }
+
+        public PostgresDbContext DbContext => _dbContext;
+
+        public Guid BackupId => _backupId;
 
         public async Task<Schedule> RunBackupAsync(CancellationToken cancellationToken = default)
         {

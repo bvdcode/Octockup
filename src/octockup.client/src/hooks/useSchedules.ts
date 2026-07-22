@@ -119,7 +119,9 @@ export function useSchedules(): UseSchedulesReturn {
     [api, scheduleRetry, items.length],
   );
 
-  refetchRef.current = refetchSchedules;
+  useEffect(() => {
+    refetchRef.current = refetchSchedules;
+  }, [refetchSchedules]);
 
   useEffect(() => {
     let active = true;
@@ -186,7 +188,13 @@ export function useSchedules(): UseSchedulesReturn {
               setTimeout(() => refetchSchedules(true), 500);
             }
 
-            return { ...item, status: report.status };
+            return {
+              ...item,
+              status: report.status,
+              errorMessage:
+                report.status === BackupStatus.Failed ? report.message : null,
+              finishedAt: isNowNotRunning ? report.timestamp : null,
+            };
           }
           return item;
         });

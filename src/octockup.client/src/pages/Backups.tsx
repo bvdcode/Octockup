@@ -129,6 +129,32 @@ export default function BackupsPage() {
       // Force re-render by incrementing version
       setReportsVersion((v) => v + 1);
 
+      setBackups((previousBackups) =>
+        previousBackups.map((backup) =>
+          backup.id === backupId
+            ? {
+                ...backup,
+                schedules: (backup.schedules || []).map((schedule) =>
+                  schedule.id === report.scheduleId
+                    ? {
+                        ...schedule,
+                        status: report.status,
+                        errorMessage:
+                          report.status === BackupStatus.Failed
+                            ? report.message
+                            : null,
+                        finishedAt:
+                          report.status === BackupStatus.Running
+                            ? null
+                            : report.timestamp,
+                      }
+                    : schedule,
+                ),
+              }
+            : backup,
+        ),
+      );
+
       // Reload backups whenever status changes to get fresh data
       if (report.status !== BackupStatus.Running) {
         setTimeout(() => {

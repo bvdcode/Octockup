@@ -28,6 +28,7 @@ namespace Octockup.Server.Jobs
         IEnumerable<IBackupProvider> providers)
     {
         private const int ChunkSize = 8 * 1024 * 1024;
+        private const int PreviousFilesBatchSize = 4_096;
         private readonly List<UploadedHash> _pendingUploadedHashes = [];
         private readonly Stopwatch _uploadedHashesStopwatch = Stopwatch.StartNew();
         private const int UploadedHashesFlushCount = 500; // flush every 500 new hashes
@@ -58,6 +59,8 @@ namespace Octockup.Server.Jobs
 
                 await report.SendAsync(0, "Listing files to backup...", cancellationToken: cancellationToken);
                 schedule.Status = ScheduleStatus.Running;
+                schedule.ErrorMessage = null;
+                schedule.FinishedAt = null;
                 await dbContext.SaveChangesAsync(cancellationToken);
 
                 // Set ignored paths before enumerating files
@@ -166,6 +169,9 @@ namespace Octockup.Server.Jobs
             IEnumerable<BackupFileInfo> lazyFiles,
             CancellationToken cancellationToken)
         {
+            IReadOnlyList<Guid> incrementalSnapshotIds = await GetIncrementalSnapshotIdsAsync(
+                schedule.BackupId,
+                cancellationToken);
             SnapshotBatchWriter snapshotWriter = new(dbContext);
             Snapshot snapshot = await snapshotWriter.CreateAsync(
                 schedule.BackupId,
@@ -173,30 +179,40 @@ namespace Octockup.Server.Jobs
                 cancellationToken);
             using LazyLoader<BackupFileInfo> loader = new(lazyFiles);
             HashSet<string> uploadedChunks = await LoadChunkHashesAsync(schedule.Backup.StorageId, cancellationToken);
-            var previousFiles = await GetFilesFromLastSnapshotAsync(schedule.BackupId, cancellationToken);
-            logger.LogInformation("Previous snapshot had {Count} files", previousFiles.Count);
+            logger.LogInformation(
+                "Using {SnapshotCount} snapshot layers for incremental lookup",
+                incrementalSnapshotIds.Count);
 
             int counter = 0;
             Stopwatch stopwatch = Stopwatch.StartNew();
 
             cancellationToken.ThrowIfCancellationRequested();
-            foreach (var file in loader)
+            foreach (BackupFileInfo[] filesBatch in loader.Chunk(PreviousFilesBatchSize))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                counter = await ProcessFileAsync(
-                    schedule,
-                    snapshot,
-                    snapshotWriter,
-                    source,
-                    storage,
-                    report,
-                    loader,
-                    uploadedChunks,
-                    previousFiles,
-                    stopwatch,
-                    counter,
-                    file,
+                Dictionary<string, SnapshotFile> previousFiles = await GetPreviousFilesAsync(
+                    incrementalSnapshotIds,
+                    filesBatch,
                     cancellationToken);
+
+                foreach (BackupFileInfo file in filesBatch)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    counter = await ProcessFileAsync(
+                        schedule,
+                        snapshot,
+                        snapshotWriter,
+                        source,
+                        storage,
+                        report,
+                        loader,
+                        uploadedChunks,
+                        previousFiles,
+                        stopwatch,
+                        counter,
+                        file,
+                        cancellationToken);
+                }
             }
 
             await FinalizeSnapshotAsync(
@@ -601,19 +617,57 @@ namespace Octockup.Server.Jobs
             await snapshotWriter.CompleteAsync(snapshot, schedule, cancellationToken);
         }
 
-        private async Task<IDictionary<string, SnapshotFile>> GetFilesFromLastSnapshotAsync(Guid backupId, CancellationToken cancellationToken)
+        private Task<List<Guid>> GetIncrementalSnapshotIdsAsync(
+            Guid backupId,
+            CancellationToken cancellationToken)
         {
-            const int maxFilesToFetch = 1_000_000;
-
-            var files = await dbContext.Snapshots
+            return dbContext.Snapshots
                 .AsNoTracking()
                 .Where(x => x.BackupId == backupId)
                 .OrderByDescending(x => x.CreatedAt)
-                .SelectMany(x => x.Files)
-                .Take(maxFilesToFetch)
-                .ToListAsync(cancellationToken: cancellationToken);
+                .ThenByDescending(x => x.Id)
+                .Select(x => x.Id)
+                .ToListAsync(cancellationToken);
+        }
 
-            return files.DistinctBy(x => x.Path).ToDictionary(x => x.Path, x => x);
+        private async Task<Dictionary<string, SnapshotFile>> GetPreviousFilesAsync(
+            IReadOnlyList<Guid> snapshotIds,
+            IReadOnlyCollection<BackupFileInfo> files,
+            CancellationToken cancellationToken)
+        {
+            if (snapshotIds.Count == 0 || files.Count == 0)
+            {
+                return [];
+            }
+
+            HashSet<string> remainingPaths = files
+                .Select(x => x.Path)
+                .ToHashSet(StringComparer.Ordinal);
+            Dictionary<string, SnapshotFile> previousFiles = new(StringComparer.Ordinal);
+
+            foreach (Guid snapshotId in snapshotIds)
+            {
+                string[] paths = remainingPaths.ToArray();
+                List<SnapshotFile> foundFiles = await dbContext.SnapshotFiles
+                    .AsNoTracking()
+                    .Where(x => x.SnapshotId == snapshotId && paths.Contains(x.Path))
+                    .ToListAsync(cancellationToken);
+
+                foreach (SnapshotFile foundFile in foundFiles)
+                {
+                    if (remainingPaths.Remove(foundFile.Path))
+                    {
+                        previousFiles.Add(foundFile.Path, foundFile);
+                    }
+                }
+
+                if (remainingPaths.Count == 0)
+                {
+                    break;
+                }
+            }
+
+            return previousFiles;
         }
 
         private Task<HashSet<string>> LoadChunkHashesAsync(Guid storageId, CancellationToken cancellationToken)
