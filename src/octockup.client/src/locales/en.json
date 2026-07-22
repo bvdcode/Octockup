@@ -165,8 +165,11 @@
     "never": "Never",
     "actions": "Actions",
     "download": "Download",
+    "downloadValidated": "Download with validation",
     "copyLink": "Copy link",
-    "linkCopied": "Snapshot download link copied."
+    "copyValidatedLink": "Copy link with validation",
+    "linkCopied": "Snapshot download link copied.",
+    "validatedLinkCopied": "Snapshot download link with validation copied."
   },
   "snapshotFiles": {
     "title": "Snapshot Files",
@@ -176,6 +179,7 @@
     "size": "Size",
     "lastModified": "Last Modified",
     "download": "Download",
+    "downloadValidated": "Download with validation",
     "searchPlaceholder": "Search by path..."
   },
   "backupWizard": {

@@ -67,6 +67,15 @@ namespace Octockup.Server.Controllers
         [HttpPost("/api/v1/schedules/{scheduleId:guid}/cancel")]
         public async Task<IActionResult> CancelSchedule(Guid scheduleId)
         {
+            Guid userId = User.GetUserId();
+            bool isOwned = await _dbContext.Schedules
+                .AsNoTracking()
+                .AnyAsync(s => s.Id == scheduleId && s.Backup.Source.UserId == userId);
+            if (!isOwned)
+            {
+                return this.ApiNotFound("Schedule not found: " + scheduleId);
+            }
+
             ExecuteBackupJob.StopRunningBackup(scheduleId);
             await _scheduler.TriggerJobAsync<ExecuteBackupJob>();
             return Ok(new { message = "Schedule cancellation requested." });

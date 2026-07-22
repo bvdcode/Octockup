@@ -140,12 +140,16 @@ namespace Octockup.Server.Controllers
         [HttpPatch("/api/v1/backups/{backupId:guid}/ignored-paths")]
         public async Task<IActionResult> UpdateIgnoredPaths([FromRoute] Guid backupId, [FromBody] List<string> ignoredPaths)
         {
-            var backup = await _dbContext.Backups.FindAsync(backupId);
+            Guid userId = User.GetUserId();
+            Backup? backup = await _dbContext.Backups
+                .FirstOrDefaultAsync(x =>
+                    x.Id == backupId &&
+                    x.Source.UserId == userId &&
+                    x.Storage.UserId == userId);
             if (backup == null)
             {
                 return this.ApiNotFound("Backup not found: " + backupId);
             }
-            var userId = User.GetUserId();
             var source = await _dbContext.Modules.FirstOrDefaultAsync(m => m.Id == backup.SourceId && m.UserId == userId && m.Destination == ModuleDestination.Source);
             if (source == null)
             {
@@ -166,12 +170,16 @@ namespace Octockup.Server.Controllers
         [HttpPatch("/api/v1/backups/{backupId:guid}/rename")]
         public async Task<IActionResult> RenameBackup([FromRoute] Guid backupId, [FromBody] RenameModuleRequest request)
         {
-            var backup = await _dbContext.Backups.FindAsync(backupId);
+            Guid userId = User.GetUserId();
+            Backup? backup = await _dbContext.Backups
+                .FirstOrDefaultAsync(x =>
+                    x.Id == backupId &&
+                    x.Source.UserId == userId &&
+                    x.Storage.UserId == userId);
             if (backup == null)
             {
                 return this.ApiNotFound("Backup not found: " + backupId);
             }
-            var userId = User.GetUserId();
             var source = await _dbContext.Modules.FirstOrDefaultAsync(m => m.Id == backup.SourceId && m.UserId == userId && m.Destination == ModuleDestination.Source);
             if (source == null)
             {
@@ -247,7 +255,9 @@ namespace Octockup.Server.Controllers
         [HttpDelete("/api/v1/backups/{backupId:guid}")]
         public async Task<IActionResult> DeleteBackup([FromRoute] Guid backupId)
         {
-            var backup = await _dbContext.Backups.FindAsync(backupId);
+            Guid userId = User.GetUserId();
+            Backup? backup = await _dbContext.Backups
+                .FirstOrDefaultAsync(x => x.Id == backupId && x.Source.UserId == userId);
             if (backup == null)
             {
                 return this.ApiNotFound("Backup not found: " + backupId);

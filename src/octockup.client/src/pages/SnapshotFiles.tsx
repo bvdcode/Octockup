@@ -5,6 +5,7 @@ import {
   Button,
   TextField,
   IconButton,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { useEffect, useState } from "react";
@@ -13,7 +14,7 @@ import { formatSize } from "../utils/formatUtils";
 import { useAuthStore } from "@bvdcode/react-kit";
 import type { SnapshotFileDto } from "../types/api";
 import { useSnapshotsApi } from "../api/snapshotsApi";
-import { ArrowBack, Download } from "@mui/icons-material";
+import { ArrowBack, Download, Verified } from "@mui/icons-material";
 import { useNavigate, useParams } from "react-router-dom";
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
 
@@ -61,9 +62,14 @@ export default function SnapshotFilesPage() {
     };
   }, [snapshotId, snapshotsApi]);
 
-  const handleDownload = (fileId: string) => {
-    const url = `/api/v1/snapshots/${snapshotId}/files/${fileId}/download?access_token=${accessToken}`;
-    window.open(url, "_blank");
+  const handleDownload = (fileId: string, validate: boolean) => {
+    const url = new URL(
+      `/api/v1/snapshots/${snapshotId}/files/${fileId}/download`,
+      window.location.origin,
+    );
+    url.searchParams.set("access_token", accessToken || "");
+    url.searchParams.set("validate", String(validate));
+    window.open(url.toString(), "_blank");
   };
 
   const filteredFiles = files.filter((file) =>
@@ -101,20 +107,38 @@ export default function SnapshotFilesPage() {
     {
       field: "actions",
       headerName: t("snapshotFiles.download"),
-      width: 80,
+      width: 120,
       sortable: false,
       filterable: false,
       align: "center",
       headerAlign: "center",
       renderCell: (params) => (
-        <IconButton
-          size="small"
-          color="primary"
-          onClick={() => handleDownload(params.row.id)}
-          title={t("snapshotFiles.download")}
-        >
-          <Download />
-        </IconButton>
+        <Box display="flex" gap={0.5}>
+          <Tooltip title={t("snapshotFiles.download")}>
+            <span>
+              <IconButton
+                size="small"
+                color="primary"
+                disabled={!accessToken}
+                onClick={() => handleDownload(params.row.id, false)}
+              >
+                <Download />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title={t("snapshotFiles.downloadValidated")}>
+            <span>
+              <IconButton
+                size="small"
+                color="primary"
+                disabled={!accessToken}
+                onClick={() => handleDownload(params.row.id, true)}
+              >
+                <Verified />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Box>
       ),
     },
   ];

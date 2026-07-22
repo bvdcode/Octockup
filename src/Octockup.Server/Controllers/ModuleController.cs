@@ -28,7 +28,9 @@ namespace Octockup.Server.Controllers
         [HttpPatch("/api/v1/modules/{moduleId:guid}/rename")]
         public async Task<IActionResult> RenameModule([FromRoute] Guid moduleId, [FromBody] RenameModuleRequest request)
         {
-            var found = await _dbContext.Modules.FindAsync(moduleId);
+            Guid userId = User.GetUserId();
+            Module? found = await _dbContext.Modules
+                .FirstOrDefaultAsync(x => x.Id == moduleId && x.UserId == userId);
             if (found == null)
             {
                 return this.ApiNotFound("Module not found: " + moduleId);
@@ -48,7 +50,9 @@ namespace Octockup.Server.Controllers
         [HttpDelete("/api/v1/modules/{moduleId:guid}")]
         public async Task<IActionResult> DeleteUserBackupStorage([FromRoute] Guid moduleId)
         {
-            var found = await _dbContext.Modules.FindAsync(moduleId);
+            Guid userId = User.GetUserId();
+            Module? found = await _dbContext.Modules
+                .FirstOrDefaultAsync(x => x.Id == moduleId && x.UserId == userId);
             if (found == null)
             {
                 return this.ApiNotFound("Module not found: " + moduleId);

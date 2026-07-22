@@ -8,6 +8,7 @@ using Octockup.Server.Database;
 using Octockup.Server.Helpers;
 using Octockup.Server.Models;
 using System.IO.Compression;
+using System.Security.Cryptography;
 
 namespace Octockup.Server.Streams
 {
@@ -18,7 +19,8 @@ namespace Octockup.Server.Streams
         SnapshotFile _snapshotFile,
         IStreamCipher _crypto,
         CancellationToken _cancellationToken = default,
-        long? _lengthOverride = null) : Stream
+        long? _lengthOverride = null,
+        bool validate = false) : Stream
     {
         private int _currentIndex = -1;
 
@@ -27,6 +29,11 @@ namespace Octockup.Server.Streams
             ?? (_chunks.Count > 0 && _chunks.All(x => x.OriginalSize.HasValue)
                 ? _chunks.Sum(x => x.OriginalSize!.Value)
                 : _snapshotFile.Size);
+        private IncrementalHash? _fileHasher = validate
+            ? IncrementalHash.CreateHash(HashAlgorithmName.SHA256)
+            : null;
+        private InvalidDataException? _validationFailure;
+        private bool _validationCompleted;
         private long _position;
 
         public override bool CanRead => true;
@@ -201,8 +208,15 @@ namespace Octockup.Server.Streams
             Memory<byte> buffer,
             CancellationToken cancellationToken = default)
         {
-            if (_position >= Length || buffer.IsEmpty)
+            if (buffer.IsEmpty)
             {
+                return 0;
+            }
+
+            ThrowRememberedValidationFailure();
+            if (_position >= Length)
+            {
+                CompleteValidation();
                 return 0;
             }
 
@@ -225,7 +239,8 @@ namespace Octockup.Server.Streams
                         bool moved = await MoveToNextChunkAsync().ConfigureAwait(false);
                         if (!moved)
                         {
-                            break; // реально конец файла
+                            CompleteValidation();
+                            break;
                         }
                     }
 
@@ -256,6 +271,7 @@ namespace Octockup.Server.Streams
                         continue;
                     }
 
+                    _fileHasher?.AppendData(target.Span[..read]);
                     totalRead += read;
                     _position += read;
                     buffer = buffer[read..];
@@ -263,6 +279,7 @@ namespace Octockup.Server.Streams
                     if (_position >= Length)
                     {
                         await FinishCurrentChunkAsync(ct).ConfigureAwait(false);
+                        CompleteValidation();
                         break;
                     }
                 }
@@ -277,8 +294,80 @@ namespace Octockup.Server.Streams
                 );
                 throw;
             }
+            catch (InvalidDataException ex) when (validate)
+            {
+                RememberValidationFailure(ex);
+                throw;
+            }
 
             return totalRead;
+        }
+
+        private void CompleteValidation()
+        {
+            if (!validate || _validationCompleted)
+            {
+                return;
+            }
+
+            ThrowRememberedValidationFailure();
+
+            try
+            {
+                if (_position != Length)
+                {
+                    throw new InvalidDataException(
+                        $"Snapshot file '{_snapshotFile.Path}' ended at {_position} bytes, but {Length} bytes were expected.");
+                }
+
+                if (_currentIndex + 1 < _chunks.Count)
+                {
+                    throw new InvalidDataException(
+                        $"Snapshot file '{_snapshotFile.Path}' contains chunks beyond its recorded size.");
+                }
+
+                if (_fileHasher == null)
+                {
+                    throw new InvalidDataException(
+                        $"Snapshot file '{_snapshotFile.Path}' validation state is unavailable.");
+                }
+
+                string actualHash = Convert
+                    .ToHexString(_fileHasher.GetHashAndReset())
+                    .ToLowerInvariant();
+                if (!string.Equals(actualHash, _snapshotFile.Hashsum, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidDataException(
+                        $"Snapshot file '{_snapshotFile.Path}' failed checksum validation.");
+                }
+
+                _validationCompleted = true;
+            }
+            catch (InvalidDataException ex)
+            {
+                RememberValidationFailure(ex);
+                throw;
+            }
+            finally
+            {
+                _fileHasher?.Dispose();
+                _fileHasher = null;
+            }
+        }
+
+        private void ThrowRememberedValidationFailure()
+        {
+            if (_validationFailure != null)
+            {
+                throw _validationFailure;
+            }
+        }
+
+        private void RememberValidationFailure(InvalidDataException exception)
+        {
+            _validationFailure ??= exception;
+            _fileHasher?.Dispose();
+            _fileHasher = null;
         }
 
         public override int Read(byte[] buffer, int offset, int count)
@@ -305,19 +394,37 @@ namespace Octockup.Server.Streams
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing)
+            if (!disposing)
             {
-                _currentChunkStream?.Dispose();
-                _currentChunkStream = null;
+                base.Dispose(false);
+                return;
             }
 
-            base.Dispose(disposing);
+            try
+            {
+                _currentChunkStream?.Dispose();
+            }
+            finally
+            {
+                _currentChunkStream = null;
+                _fileHasher?.Dispose();
+                _fileHasher = null;
+                base.Dispose(true);
+            }
         }
 
         public override async ValueTask DisposeAsync()
         {
-            await DisposeCurrentChunkAsync().ConfigureAwait(false);
-            await base.DisposeAsync().ConfigureAwait(false);
+            try
+            {
+                await DisposeCurrentChunkAsync().ConfigureAwait(false);
+            }
+            finally
+            {
+                _fileHasher?.Dispose();
+                _fileHasher = null;
+                await base.DisposeAsync().ConfigureAwait(false);
+            }
         }
 
         private sealed class PrefixStream(byte[] prefix, int prefixLength, Stream inner) : Stream

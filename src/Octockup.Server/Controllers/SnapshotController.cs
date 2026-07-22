@@ -30,7 +30,8 @@ namespace Octockup.Server.Controllers
         [HttpGet("/api/v1/snapshots/{snapshotId:guid}/download")]
         public async Task<IActionResult> DownloadSnapshotArchive(
             [FromRoute] Guid snapshotId,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            [FromQuery] bool validate = false)
         {
             Guid userId = User.GetUserId();
 
@@ -90,7 +91,12 @@ namespace Octockup.Server.Controllers
             }
 
             var entries = snapshotFiles
-                .Select(snapshotFile => CreateArchiveEntry(snapshotFile, chunksByFile[snapshotFile.Id], storage, cancellationToken))
+                .Select(snapshotFile => CreateArchiveEntry(
+                    snapshotFile,
+                    chunksByFile[snapshotFile.Id],
+                    storage,
+                    cancellationToken,
+                    validate))
                 .ToList();
 
             string fileName = SnapshotArchiveFileName.Create(
@@ -112,14 +118,24 @@ namespace Octockup.Server.Controllers
 
         [Authorize]
         [HttpGet("/api/v1/snapshots/{snapshotId:guid}/files/{fileId:guid}/download")]
-        public async Task<IActionResult> DownloadSnapshotFile([FromRoute] Guid snapshotId, [FromRoute] Guid fileId)
+        public async Task<IActionResult> DownloadSnapshotFile(
+            [FromRoute] Guid snapshotId,
+            [FromRoute] Guid fileId,
+            [FromQuery] bool validate = false)
         {
-            var snapshotFile = await _dbContext.SnapshotFiles
+            Guid userId = User.GetUserId();
+            SnapshotFile? snapshotFile = await _dbContext.SnapshotFiles
                 .AsNoTracking()
                 .Include(sf => sf.Snapshot)
                     .ThenInclude(s => s.Backup)
                         .ThenInclude(b => b.Storage)
-                .FirstOrDefaultAsync(sf => sf.SnapshotId == snapshotId && sf.Id == fileId);
+                .Include(sf => sf.Snapshot)
+                    .ThenInclude(s => s.Backup)
+                        .ThenInclude(b => b.Source)
+                .FirstOrDefaultAsync(sf =>
+                    sf.SnapshotId == snapshotId &&
+                    sf.Id == fileId &&
+                    sf.Snapshot.Backup.Source.UserId == userId);
 
             if (snapshotFile == null)
             {
@@ -175,7 +191,8 @@ namespace Octockup.Server.Controllers
                 snapshotFile,
                 _crypto,
                 HttpContext.RequestAborted,
-                restoredSize
+                restoredSize,
+                validate
             );
 
             string contentType = MimeTypes.GetMimeType(snapshotFile.Name) ?? "application/octet-stream";
@@ -193,7 +210,16 @@ namespace Octockup.Server.Controllers
         [HttpGet("/api/v1/snapshots/{snapshotId:guid}/files")]
         public IActionResult GetSnapshot([FromRoute] Guid snapshotId)
         {
-            var snapshotFiles = _dbContext.SnapshotFiles
+            Guid userId = User.GetUserId();
+            bool isOwned = _dbContext.Snapshots
+                .AsNoTracking()
+                .Any(s => s.Id == snapshotId && s.Backup.Source.UserId == userId);
+            if (!isOwned)
+            {
+                return NotFound();
+            }
+
+            List<SnapshotFileDto> snapshotFiles = _dbContext.SnapshotFiles
                 .AsNoTracking()
                 .Where(sf => sf.SnapshotId == snapshotId)
                 .OrderBy(sf => sf.Path)
@@ -207,8 +233,11 @@ namespace Octockup.Server.Controllers
         [HttpDelete("/api/v1/snapshots/{snapshotId:guid}")]
         public async Task<IActionResult> DeleteSnapshot([FromRoute] Guid snapshotId)
         {
-            var snapshot = _dbContext.Snapshots
-                .FirstOrDefault(s => s.Id == snapshotId);
+            Guid userId = User.GetUserId();
+            Snapshot? snapshot = await _dbContext.Snapshots
+                .FirstOrDefaultAsync(s =>
+                    s.Id == snapshotId &&
+                    s.Backup.Source.UserId == userId);
             if (snapshot == null)
             {
                 return NotFound();
@@ -217,7 +246,7 @@ namespace Octockup.Server.Controllers
                 .Where(sf => sf.SnapshotId == snapshotId)
                 .ExecuteDeleteAsync();
             _dbContext.Snapshots.Remove(snapshot);
-            _dbContext.SaveChanges();
+            await _dbContext.SaveChangesAsync();
             return NoContent();
         }
 
@@ -225,7 +254,16 @@ namespace Octockup.Server.Controllers
         [HttpGet("/api/v1/snapshots")]
         public IActionResult GetSnapshots([FromQuery] Guid backupId)
         {
-            var snapshots = _dbContext.Snapshots
+            Guid userId = User.GetUserId();
+            bool isOwned = _dbContext.Backups
+                .AsNoTracking()
+                .Any(b => b.Id == backupId && b.Source.UserId == userId);
+            if (!isOwned)
+            {
+                return NotFound();
+            }
+
+            List<Snapshot> snapshots = _dbContext.Snapshots
                 .Where(s => s.BackupId == backupId)
                 .OrderBy(s => s.CreatedAt)
                 .ToList();
@@ -248,7 +286,8 @@ namespace Octockup.Server.Controllers
             SnapshotFile snapshotFile,
             IReadOnlyList<ChunkStorageDescriptor> chunks,
             IBackupStorage storage,
-            CancellationToken requestCancellationToken)
+            CancellationToken requestCancellationToken,
+            bool validate)
         {
             string entryName = StoredZipArchiveWriter.NormalizeEntryName(
                 snapshotFile.Path,
@@ -267,7 +306,8 @@ namespace Octockup.Server.Controllers
                         snapshotFile,
                         _crypto,
                         requestCancellationToken,
-                        GetRestoredFileSize(snapshotFile, chunks));
+                        GetRestoredFileSize(snapshotFile, chunks),
+                        validate);
 
                     return Task.FromResult<Stream>(stream);
                 });

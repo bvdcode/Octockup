@@ -17,7 +17,13 @@ import {
 } from "@mui/x-data-grid";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowBack, ContentCopy, Download } from "@mui/icons-material";
+import {
+  ArrowBack,
+  ContentCopy,
+  Download,
+  FactCheck,
+  Verified,
+} from "@mui/icons-material";
 import { formatSize } from "../utils/formatUtils";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSnapshotsApi } from "../api/snapshotsApi";
@@ -65,18 +71,33 @@ export default function SnapshotsPage() {
     };
   }, [backupId, snapshotsApi]);
 
-  const createSnapshotDownloadUrl = (snapshotId: string) => {
-    const path = `/api/v1/snapshots/${snapshotId}/download?access_token=${encodeURIComponent(accessToken || "")}`;
-    return new URL(path, window.location.origin).toString();
+  const createSnapshotDownloadUrl = (
+    snapshotId: string,
+    validate: boolean,
+  ) => {
+    const url = new URL(
+      `/api/v1/snapshots/${snapshotId}/download`,
+      window.location.origin,
+    );
+    url.searchParams.set("access_token", accessToken || "");
+    url.searchParams.set("validate", String(validate));
+    return url.toString();
   };
 
-  const handleDownload = (snapshotId: string) => {
-    window.open(createSnapshotDownloadUrl(snapshotId), "_blank");
+  const handleDownload = (snapshotId: string, validate: boolean) => {
+    window.open(createSnapshotDownloadUrl(snapshotId, validate), "_blank");
   };
 
-  const handleCopyDownloadLink = async (snapshotId: string) => {
-    await navigator.clipboard.writeText(createSnapshotDownloadUrl(snapshotId));
-    setCopyMessage(t("snapshots.linkCopied"));
+  const handleCopyDownloadLink = async (
+    snapshotId: string,
+    validate: boolean,
+  ) => {
+    await navigator.clipboard.writeText(
+      createSnapshotDownloadUrl(snapshotId, validate),
+    );
+    setCopyMessage(
+      t(validate ? "snapshots.validatedLinkCopied" : "snapshots.linkCopied"),
+    );
   };
 
   const columns: GridColDef<SnapshotDto>[] = [
@@ -113,7 +134,7 @@ export default function SnapshotsPage() {
     {
       field: "actions",
       headerName: t("snapshots.actions"),
-      width: 120,
+      width: 200,
       sortable: false,
       filterable: false,
       align: "center",
@@ -128,10 +149,25 @@ export default function SnapshotsPage() {
                 disabled={!accessToken || !params.row.completedAt}
                 onClick={(event) => {
                   event.stopPropagation();
-                  handleDownload(params.row.id);
+                  handleDownload(params.row.id, false);
                 }}
               >
                 <Download />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title={t("snapshots.downloadValidated")}>
+            <span>
+              <IconButton
+                size="small"
+                color="primary"
+                disabled={!accessToken || !params.row.completedAt}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleDownload(params.row.id, true);
+                }}
+              >
+                <Verified />
               </IconButton>
             </span>
           </Tooltip>
@@ -143,10 +179,25 @@ export default function SnapshotsPage() {
                 disabled={!accessToken || !params.row.completedAt}
                 onClick={(event) => {
                   event.stopPropagation();
-                  void handleCopyDownloadLink(params.row.id);
+                  void handleCopyDownloadLink(params.row.id, false);
                 }}
               >
                 <ContentCopy />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title={t("snapshots.copyValidatedLink")}>
+            <span>
+              <IconButton
+                size="small"
+                color="primary"
+                disabled={!accessToken || !params.row.completedAt}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void handleCopyDownloadLink(params.row.id, true);
+                }}
+              >
+                <FactCheck />
               </IconButton>
             </span>
           </Tooltip>
