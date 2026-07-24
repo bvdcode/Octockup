@@ -45,54 +45,92 @@ namespace Octockup.Server.Collections
         {
             StartBackgroundLoadingIfNeeded();
 
-            while (true)
+            while (TryTakeNext(out T item))
             {
-                T item;
-                bool shouldWait;
-                bool hasItem;
-
-                lock (_sync)
-                {
-                    if (_buffer.Count > 0)
-                    {
-                        item = _buffer.Dequeue();
-                        hasItem = true;
-                        shouldWait = false;
-                    }
-                    else if (_isCompleted)
-                    {
-                        if (_loadingException is not null)
-                        {
-                            ExceptionDispatchInfo.Capture(_loadingException).Throw();
-                        }
-
-                        yield break;
-                    }
-                    else
-                    {
-                        shouldWait = true;
-                        hasItem = false;
-                        item = default!;
-                    }
-                }
-
-                if (shouldWait)
-                {
-                    _itemOrCompleted.Wait();
-                    _itemOrCompleted.Reset();
-                    continue;
-                }
-
-                if (hasItem)
-                {
-                    yield return item;
-                }
+                yield return item;
             }
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
+        }
+
+        public IEnumerable<T[]> GetBatches(int maxBatchSize, TimeSpan flushAfterIdle)
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(maxBatchSize, 1);
+            if (flushAfterIdle <= TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(flushAfterIdle));
+            }
+
+            StartBackgroundLoadingIfNeeded();
+
+            while (TryTakeNext(out T first))
+            {
+                List<T> batch = [first];
+
+                while (batch.Count < maxBatchSize)
+                {
+                    bool isCompleted;
+
+                    lock (_sync)
+                    {
+                        while (batch.Count < maxBatchSize && _buffer.Count > 0)
+                        {
+                            batch.Add(_buffer.Dequeue());
+                        }
+
+                        isCompleted = _isCompleted;
+                        if (batch.Count < maxBatchSize && !isCompleted)
+                        {
+                            _itemOrCompleted.Reset();
+                        }
+                    }
+
+                    if (batch.Count == maxBatchSize || isCompleted)
+                    {
+                        break;
+                    }
+
+                    if (!_itemOrCompleted.Wait(flushAfterIdle))
+                    {
+                        break;
+                    }
+                }
+
+                yield return batch.ToArray();
+            }
+        }
+
+        private bool TryTakeNext(out T item)
+        {
+            while (true)
+            {
+                lock (_sync)
+                {
+                    if (_buffer.Count > 0)
+                    {
+                        item = _buffer.Dequeue();
+                        return true;
+                    }
+
+                    if (_isCompleted)
+                    {
+                        if (_loadingException is not null)
+                        {
+                            ExceptionDispatchInfo.Capture(_loadingException).Throw();
+                        }
+
+                        item = default!;
+                        return false;
+                    }
+
+                    _itemOrCompleted.Reset();
+                }
+
+                _itemOrCompleted.Wait();
+            }
         }
 
         private void StartBackgroundLoadingIfNeeded()

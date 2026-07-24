@@ -34,6 +34,7 @@ namespace Octockup.Server.Jobs
         private const int UploadedHashesFlushCount = 500; // flush every 500 new hashes
         private static readonly TimeSpan UploadedHashesFlushInterval = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan SnapshotFlushInterval = TimeSpan.FromSeconds(10);
+        private static readonly TimeSpan PreviousFilesBatchIdleTimeout = TimeSpan.FromSeconds(1);
 
         public async Task RunAsync(Schedule schedule, CancellationToken cancellationToken)
         {
@@ -187,7 +188,9 @@ namespace Octockup.Server.Jobs
             Stopwatch stopwatch = Stopwatch.StartNew();
 
             cancellationToken.ThrowIfCancellationRequested();
-            foreach (BackupFileInfo[] filesBatch in loader.Chunk(PreviousFilesBatchSize))
+            foreach (BackupFileInfo[] filesBatch in loader.GetBatches(
+                PreviousFilesBatchSize,
+                PreviousFilesBatchIdleTimeout))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 Dictionary<string, SnapshotFile> previousFiles = await GetPreviousFilesAsync(
