@@ -7,6 +7,8 @@ using Octockup.Server.Models;
 using Renci.SshNet;
 using Renci.SshNet.Common;
 using Renci.SshNet.Sftp;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Octockup.Server.Modules
 {
@@ -22,6 +24,7 @@ namespace Octockup.Server.Modules
 
         private string? _path;
         private SftpClient? _sftp;
+        private PrivateKeyFile? _privateKey;
         private bool _skipPermissionDenied = false;
         private ICollection<string>? _ignoredPaths;
 
@@ -30,15 +33,78 @@ namespace Octockup.Server.Modules
             string host = parameters["host"];
             int port = int.TryParse(parameters["port"], out var p) ? p : 22;
             string username = parameters["username"];
-            string password = parameters["password"];
+            string credential = parameters["password"];
 
             _path = parameters["path"].Trim().Trim('/');
             _skipPermissionDenied = parameters.TryGetValue("skipPermissionDenied", out var skipStr) &&
                                     bool.TryParse(skipStr, out var skip) && skip;
-            _sftp = new SftpClient(host, port, username, password)
+            SftpClient sftp = CreateSftpClient(
+                host,
+                port,
+                username,
+                credential,
+                out PrivateKeyFile? privateKey
+            );
+
+            DisposeConnection();
+            _sftp = sftp;
+            _privateKey = privateKey;
+        }
+
+        internal static SftpClient CreateSftpClient(
+            string host,
+            int port,
+            string username,
+            string credential,
+            out PrivateKeyFile? ownedPrivateKey
+        )
+        {
+            ownedPrivateKey = null;
+            SftpClient client;
+
+            if (LooksLikePrivateKey(credential))
             {
-                ConnectionInfo = { Timeout = TimeSpan.FromSeconds(30) }
-            };
+                byte[] privateKeyBytes = Encoding.UTF8.GetBytes(credential);
+
+                try
+                {
+                    using MemoryStream privateKeyStream = new(privateKeyBytes, writable: false);
+                    ownedPrivateKey = new PrivateKeyFile(privateKeyStream);
+                    client = new SftpClient(host, port, username, ownedPrivateKey);
+                }
+                catch
+                {
+                    ownedPrivateKey?.Dispose();
+                    ownedPrivateKey = null;
+                    throw;
+                }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(privateKeyBytes);
+                }
+            }
+            else
+            {
+                client = new SftpClient(host, port, username, credential);
+            }
+
+            client.ConnectionInfo.Timeout = TimeSpan.FromSeconds(30);
+            return client;
+        }
+
+        private static bool LooksLikePrivateKey(string credential)
+        {
+            ReadOnlySpan<char> trimmedCredential = credential.AsSpan().TrimStart();
+            int firstLineEnd = trimmedCredential.IndexOfAny('\r', '\n');
+            ReadOnlySpan<char> firstLine = firstLineEnd >= 0
+                ? trimmedCredential[..firstLineEnd]
+                : trimmedCredential;
+
+            return (
+                    firstLine.StartsWith("-----BEGIN ", StringComparison.Ordinal) &&
+                    firstLine.EndsWith(" PRIVATE KEY-----", StringComparison.Ordinal)
+                ) ||
+                firstLine.StartsWith("PuTTY-User-Key-File-", StringComparison.Ordinal);
         }
 
         public void SetIgnoredPaths(ICollection<string>? ignoredPaths)
@@ -416,7 +482,24 @@ namespace Octockup.Server.Modules
         public void Dispose()
         {
             GC.SuppressFinalize(this);
-            _sftp?.Dispose();
+            DisposeConnection();
+        }
+
+        private void DisposeConnection()
+        {
+            SftpClient? sftp = _sftp;
+            PrivateKeyFile? privateKey = _privateKey;
+            _sftp = null;
+            _privateKey = null;
+
+            try
+            {
+                sftp?.Dispose();
+            }
+            finally
+            {
+                privateKey?.Dispose();
+            }
         }
 
         private static bool IsClearlyInaccessible(ISftpFile entry)
