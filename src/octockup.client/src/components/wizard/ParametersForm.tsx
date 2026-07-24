@@ -1,5 +1,6 @@
 import {
   Card,
+  Button,
   Stack,
   Checkbox,
   TextField,
@@ -15,6 +16,11 @@ import { useTranslation } from "react-i18next";
 import type { ModuleProviderInfo } from "../../types/api";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { CHECKBOX_PARAMETERS } from "../../constants/checkboxParameters";
+import {
+  isEncryptedPuttyKey,
+  PuttyKeyError,
+  unlockPuttyKey,
+} from "../../utils/puttyPrivateKey";
 
 const SFTP_PROVIDER_ID = "Octockup.Server.Modules.SFTPBackupStorage";
 
@@ -43,12 +49,34 @@ export function ParametersForm({
 }: ParametersFormProps) {
   const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState<Record<string, boolean>>({});
+  const [keyPassphrase, setKeyPassphrase] = useState("");
+  const [keyError, setKeyError] = useState<string | null>(null);
+  const [unlockingKey, setUnlockingKey] = useState(false);
 
   const togglePasswordVisibility = (paramName: string) => {
     setShowPassword((prev) => ({
       ...prev,
       [paramName]: !prev[paramName],
     }));
+  };
+
+  const unlockPrivateKey = async () => {
+    try {
+      setUnlockingKey(true);
+      setKeyError(null);
+      const unlocked = await unlockPuttyKey(
+        params.password ?? "",
+        keyPassphrase,
+      );
+      onParamChange("password", unlocked);
+      setKeyPassphrase("");
+    } catch (error: unknown) {
+      const key =
+        error instanceof PuttyKeyError ? error.code : "sftpKeyInvalid";
+      setKeyError(t(`wizard.${key}`));
+    } finally {
+      setUnlockingKey(false);
+    }
   };
 
   return (
@@ -101,49 +129,88 @@ export function ParametersForm({
                   );
                 }
 
-                const isPassword = p.toLowerCase().includes("password");
                 const isSftpCredential =
                   moduleMeta.id === SFTP_PROVIDER_ID && p === "password";
+
+                if (isSftpCredential) {
+                  const encrypted = isEncryptedPuttyKey(params[p] ?? "");
+                  return (
+                    <Stack key={p} spacing={2}>
+                      <TextField
+                        required
+                        fullWidth
+                        label={t("wizard.sftpCredential")}
+                        multiline
+                        minRows={3}
+                        maxRows={10}
+                        value={params[p] ?? ""}
+                        onChange={(event) => {
+                          setKeyPassphrase("");
+                          setKeyError(null);
+                          onParamChange(p, event.target.value);
+                        }}
+                        placeholder={t("wizard.sftpCredentialPlaceholder")}
+                        helperText={t("wizard.sftpCredentialHelp")}
+                        disabled={disabled || unlockingKey}
+                      />
+                      {encrypted && (
+                        <Stack
+                          direction={{ xs: "column", sm: "row" }}
+                          spacing={1}
+                          alignItems={{ sm: "flex-start" }}
+                        >
+                          <TextField
+                            required
+                            fullWidth
+                            label={t("wizard.sftpKeyPassphrase")}
+                            type="password"
+                            value={keyPassphrase}
+                            onChange={(event) => {
+                              setKeyPassphrase(event.target.value);
+                              setKeyError(null);
+                            }}
+                            error={Boolean(keyError)}
+                            helperText={
+                              keyError ?? t("wizard.sftpKeyPassphraseHelp")
+                            }
+                            autoComplete="new-password"
+                            disabled={disabled || unlockingKey}
+                          />
+                          <Button
+                            type="button"
+                            variant="outlined"
+                            onClick={unlockPrivateKey}
+                            disabled={
+                              disabled || unlockingKey || !keyPassphrase
+                            }
+                            sx={{ minWidth: 150, minHeight: 56 }}
+                          >
+                            {unlockingKey
+                              ? t("wizard.sftpKeyUnlocking")
+                              : t("wizard.sftpKeyUnlock")}
+                          </Button>
+                        </Stack>
+                      )}
+                    </Stack>
+                  );
+                }
+
+                const isPassword = p.toLowerCase().includes("password");
                 const inputType =
-                  isPassword && !isSftpCredential && !showPassword[p]
-                    ? "password"
-                    : "text";
+                  isPassword && !showPassword[p] ? "password" : "text";
 
                 return (
                   <TextField
                     key={p}
                     required={p !== "path"}
                     fullWidth
-                    label={
-                      isSftpCredential ? t("wizard.sftpCredential") : p
-                    }
+                    label={p}
                     type={inputType}
-                    multiline={isSftpCredential}
-                    minRows={isSftpCredential ? 3 : undefined}
-                    maxRows={isSftpCredential ? 10 : undefined}
                     value={params[p] ?? ""}
                     onChange={(e) => onParamChange(p, e.target.value)}
-                    onPaste={isSftpCredential ? undefined : onParamsPaste}
-                    placeholder={
-                      isSftpCredential
-                        ? t("wizard.sftpCredentialPlaceholder")
-                        : t("wizard.enterValue", { param: p })
-                    }
-                    helperText={
-                      isSftpCredential
-                        ? t("wizard.sftpCredentialHelp")
-                        : undefined
-                    }
+                    onPaste={onParamsPaste}
+                    placeholder={t("wizard.enterValue", { param: p })}
                     disabled={disabled}
-                    sx={
-                      isSftpCredential && !showPassword[p]
-                        ? {
-                            "& textarea": {
-                              WebkitTextSecurity: "disc",
-                            },
-                          }
-                        : undefined
-                    }
                     InputProps={
                       isPassword
                         ? {

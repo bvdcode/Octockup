@@ -315,6 +315,7 @@ export default function BackupModuleWizard({
               <ModuleHeader moduleMeta={moduleMeta} />
 
               <ParametersForm
+                key={moduleMeta.id}
                 moduleMeta={moduleMeta}
                 params={params}
                 tag={tag}
