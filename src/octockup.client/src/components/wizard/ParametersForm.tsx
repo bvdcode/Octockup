@@ -1,6 +1,5 @@
 import {
   Card,
-  Button,
   Stack,
   Checkbox,
   TextField,
@@ -18,11 +17,8 @@ import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { CHECKBOX_PARAMETERS } from "../../constants/checkboxParameters";
 import {
   isEncryptedPuttyKey,
-  PuttyKeyError,
-  unlockPuttyKey,
+  SFTP_PROVIDER_ID,
 } from "../../utils/puttyPrivateKey";
-
-const SFTP_PROVIDER_ID = "Octockup.Server.Modules.SFTPBackupStorage";
 
 interface ParamState {
   [key: string]: string;
@@ -31,8 +27,10 @@ interface ParamState {
 interface ParametersFormProps {
   moduleMeta: ModuleProviderInfo;
   params: ParamState;
+  privateKeyPassphrase: string;
   tag: string;
   onParamChange: (name: string, value: string) => void;
+  onPrivateKeyPassphraseChange: (value: string) => void;
   onTagChange: (value: string) => void;
   onParamsPaste: (e: ClipboardEvent<HTMLInputElement>) => void;
   disabled?: boolean;
@@ -41,42 +39,22 @@ interface ParametersFormProps {
 export function ParametersForm({
   moduleMeta,
   params,
+  privateKeyPassphrase,
   tag,
   onParamChange,
+  onPrivateKeyPassphraseChange,
   onTagChange,
   onParamsPaste,
   disabled,
 }: ParametersFormProps) {
   const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState<Record<string, boolean>>({});
-  const [keyPassphrase, setKeyPassphrase] = useState("");
-  const [keyError, setKeyError] = useState<string | null>(null);
-  const [unlockingKey, setUnlockingKey] = useState(false);
 
   const togglePasswordVisibility = (paramName: string) => {
     setShowPassword((prev) => ({
       ...prev,
       [paramName]: !prev[paramName],
     }));
-  };
-
-  const unlockPrivateKey = async () => {
-    try {
-      setUnlockingKey(true);
-      setKeyError(null);
-      const unlocked = await unlockPuttyKey(
-        params.password ?? "",
-        keyPassphrase,
-      );
-      onParamChange("password", unlocked);
-      setKeyPassphrase("");
-    } catch (error: unknown) {
-      const key =
-        error instanceof PuttyKeyError ? error.code : "sftpKeyInvalid";
-      setKeyError(t(`wizard.${key}`));
-    } finally {
-      setUnlockingKey(false);
-    }
   };
 
   return (
@@ -144,52 +122,27 @@ export function ParametersForm({
                         minRows={3}
                         maxRows={10}
                         value={params[p] ?? ""}
-                        onChange={(event) => {
-                          setKeyPassphrase("");
-                          setKeyError(null);
-                          onParamChange(p, event.target.value);
-                        }}
+                        onChange={(event) =>
+                          onParamChange(p, event.target.value)
+                        }
                         placeholder={t("wizard.sftpCredentialPlaceholder")}
                         helperText={t("wizard.sftpCredentialHelp")}
-                        disabled={disabled || unlockingKey}
+                        disabled={disabled}
                       />
                       {encrypted && (
-                        <Stack
-                          direction={{ xs: "column", sm: "row" }}
-                          spacing={1}
-                          alignItems={{ sm: "flex-start" }}
-                        >
-                          <TextField
-                            required
-                            fullWidth
-                            label={t("wizard.sftpKeyPassphrase")}
-                            type="password"
-                            value={keyPassphrase}
-                            onChange={(event) => {
-                              setKeyPassphrase(event.target.value);
-                              setKeyError(null);
-                            }}
-                            error={Boolean(keyError)}
-                            helperText={
-                              keyError ?? t("wizard.sftpKeyPassphraseHelp")
-                            }
-                            autoComplete="new-password"
-                            disabled={disabled || unlockingKey}
-                          />
-                          <Button
-                            type="button"
-                            variant="outlined"
-                            onClick={unlockPrivateKey}
-                            disabled={
-                              disabled || unlockingKey || !keyPassphrase
-                            }
-                            sx={{ minWidth: 150, minHeight: 56 }}
-                          >
-                            {unlockingKey
-                              ? t("wizard.sftpKeyUnlocking")
-                              : t("wizard.sftpKeyUnlock")}
-                          </Button>
-                        </Stack>
+                        <TextField
+                          required
+                          fullWidth
+                          label={t("wizard.sftpKeyPassphrase")}
+                          type="password"
+                          value={privateKeyPassphrase}
+                          onChange={(event) =>
+                            onPrivateKeyPassphraseChange(event.target.value)
+                          }
+                          helperText={t("wizard.sftpKeyPassphraseHelp")}
+                          autoComplete="new-password"
+                          disabled={disabled}
+                        />
                       )}
                     </Stack>
                   );

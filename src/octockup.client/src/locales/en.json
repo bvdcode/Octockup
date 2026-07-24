@@ -80,8 +80,6 @@
     "sftpCredentialHelp": "Accepts an SSH password or private key.",
     "sftpKeyPassphrase": "Private key passphrase",
     "sftpKeyPassphraseHelp": "Used only in this browser to unlock the key.",
-    "sftpKeyUnlock": "Unlock key",
-    "sftpKeyUnlocking": "Unlocking…",
     "sftpKeyInvalid": "The PuTTY private key is invalid.",
     "sftpKeyUnsupported": "Only encrypted PuTTY v2 keys are supported.",
     "sftpKeyWrongPassphrase": "Wrong private key passphrase.",

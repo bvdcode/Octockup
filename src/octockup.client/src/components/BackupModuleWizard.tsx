@@ -8,7 +8,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import type { ClipboardEvent } from "react";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { TestActions } from "./wizard/TestActions";
 import { ModuleHeader } from "./wizard/ModuleHeader";
@@ -23,6 +23,12 @@ import { ModuleDestination } from "../types/api";
 import type { ModuleProviderInfo } from "../types/api";
 import { useDirectoryBrowser } from "../hooks/useDirectoryBrowser";
 import { CHECKBOX_PARAMETERS } from "../constants/checkboxParameters";
+import {
+  isEncryptedPuttyKey,
+  PuttyKeyError,
+  SFTP_PROVIDER_ID,
+  unlockPuttyKey,
+} from "../utils/puttyPrivateKey";
 
 type ModuleType = "source" | "storage" | "target";
 
@@ -87,12 +93,65 @@ export default function BackupModuleWizard({
     resetUnsavedChanges,
     bulkUpdateParams,
   } = useWizardForm(moduleMeta);
+  const [privateKeyPassphrase, setPrivateKeyPassphrase] = useState("");
+
+  const prepareSftpParameters = useCallback(
+    async (
+      parameters: Record<string, string>,
+    ): Promise<Record<string, string>> => {
+      if (
+        providerId !== SFTP_PROVIDER_ID ||
+        !isEncryptedPuttyKey(parameters.password ?? "")
+      ) {
+        return parameters;
+      }
+
+      try {
+        const password = await unlockPuttyKey(
+          parameters.password,
+          privateKeyPassphrase,
+        );
+        updateParam("password", password);
+        setPrivateKeyPassphrase("");
+        return { ...parameters, password };
+      } catch (error: unknown) {
+        const key =
+          error instanceof PuttyKeyError ? error.code : "sftpKeyInvalid";
+        throw new Error(t(`wizard.${key}`));
+      }
+    },
+    [privateKeyPassphrase, providerId, t, updateParam],
+  );
+
+  const preparedApiClient = useMemo(
+    () => ({
+      test: async (
+        id: string,
+        parameters: Record<string, string>,
+        requestedDestination: ModuleDestination,
+      ) =>
+        apiClient.test(
+          id,
+          await prepareSftpParameters(parameters),
+          requestedDestination,
+        ),
+      getDirectories: async (
+        id: string,
+        parameters: Record<string, string>,
+      ) =>
+        apiClient.getDirectories(
+          id,
+          await prepareSftpParameters(parameters),
+        ),
+    }),
+    [apiClient, prepareSftpParameters],
+  );
 
   const browser = useDirectoryBrowser(
     moduleMeta,
     params,
     providerId,
-    apiClient,
+    preparedApiClient,
   );
   const destination =
     moduleType === "source"
@@ -103,7 +162,7 @@ export default function BackupModuleWizard({
     params,
     providerId,
     destination,
-    apiClient,
+    preparedApiClient,
   );
 
   const [creating, setCreating] = useState(false);
@@ -131,6 +190,10 @@ export default function BackupModuleWizard({
   // Reset test state when params change (except path and checkboxes)
   const handleParamChange = (name: string, value: string) => {
     updateParam(name, value);
+
+    if (providerId === SFTP_PROVIDER_ID && name === "password") {
+      setPrivateKeyPassphrase("");
+    }
     
     // Don't reset test for checkbox parameters (they don't affect connection)
     if (!CHECKBOX_PARAMETERS.includes(name)) {
@@ -140,6 +203,12 @@ export default function BackupModuleWizard({
     if (name !== "path" && moduleMeta?.requiredParameters.includes("path")) {
       browser.resetBrowser();
     }
+  };
+
+  const handlePrivateKeyPassphraseChange = (value: string) => {
+    setPrivateKeyPassphrase(value);
+    test.resetTest();
+    browser.resetBrowser();
   };
 
   // Handle multi-line paste
@@ -235,6 +304,7 @@ export default function BackupModuleWizard({
     try {
       setCreating(true);
       setSubmitError(null);
+      const preparedParameters = await prepareSftpParameters(params);
       await apiClient.create(
         providerId,
         moduleType === "source"
@@ -242,7 +312,7 @@ export default function BackupModuleWizard({
           : ModuleDestination.Target,
         tag.trim(),
         providerId,
-        params,
+        preparedParameters,
       );
       resetUnsavedChanges();
       setShowSuccessToast(true);
@@ -318,8 +388,12 @@ export default function BackupModuleWizard({
                 key={moduleMeta.id}
                 moduleMeta={moduleMeta}
                 params={params}
+                privateKeyPassphrase={privateKeyPassphrase}
                 tag={tag}
                 onParamChange={handleParamChange}
+                onPrivateKeyPassphraseChange={
+                  handlePrivateKeyPassphraseChange
+                }
                 onTagChange={updateTag}
                 onParamsPaste={handleParamsPaste}
                 disabled={creating}

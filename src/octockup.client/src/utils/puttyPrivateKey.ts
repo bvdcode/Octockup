@@ -20,6 +20,7 @@ type Ppk = {
 };
 
 const text = new TextEncoder();
+export const SFTP_PROVIDER_ID = "Octockup.Server.Modules.SFTPBackupStorage";
 
 export function isEncryptedPuttyKey(value: string): boolean {
   return /^PuTTY-User-Key-File-\d+: .+\nEncryption: aes256-cbc(?:\n|$)/.test(

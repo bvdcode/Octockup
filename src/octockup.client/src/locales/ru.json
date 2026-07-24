@@ -104,8 +104,6 @@
     "sftpCredentialHelp": "Поддерживается SSH-пароль или приватный ключ.",
     "sftpKeyPassphrase": "Пароль приватного ключа",
     "sftpKeyPassphraseHelp": "Используется только в этом браузере для разблокировки ключа.",
-    "sftpKeyUnlock": "Разблокировать ключ",
-    "sftpKeyUnlocking": "Разблокировка…",
     "sftpKeyInvalid": "Некорректный приватный ключ PuTTY.",
     "sftpKeyUnsupported": "Поддерживаются только зашифрованные ключи PuTTY v2.",
     "sftpKeyWrongPassphrase": "Неверный пароль приватного ключа.",
