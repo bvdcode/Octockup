@@ -164,10 +164,13 @@ namespace Octockup.Tests
         }
 
         [Test]
-        public async Task DeleteBackup_WhenOwnedByCurrentUser_DeletesBackup()
+        public async Task DeleteBackup_WhenOwnedByCurrentUser_DeletesDependentMetadata()
         {
             await using PostgresDbContext dbContext = CreateDbContext();
-            OwnedGraph graph = await SeedOwnedGraphAsync(dbContext);
+            OwnedGraph graph = await SeedOwnedGraphAsync(
+                dbContext,
+                includeSchedule: true,
+                includeSnapshot: true);
             BackupController controller = AsUser(
                 new BackupController(
                     dbContext,
@@ -180,7 +183,22 @@ namespace Octockup.Tests
 
             Assert.That(result, Is.InstanceOf<OkObjectResult>());
             dbContext.ChangeTracker.Clear();
-            Assert.That(await dbContext.Backups.AnyAsync(x => x.Id == graph.Backup.Id), Is.False);
+            bool backupExists = await dbContext.Backups.AnyAsync(x => x.Id == graph.Backup.Id);
+            bool scheduleExists = await dbContext.Schedules.AnyAsync(x => x.Id == graph.Schedule!.Id);
+            bool snapshotExists = await dbContext.Snapshots.AnyAsync(x => x.Id == graph.Snapshot!.Id);
+            bool snapshotFileExists = await dbContext.SnapshotFiles.AnyAsync(x => x.Id == graph.SnapshotFile!.Id);
+            bool sourceExists = await dbContext.Modules.AnyAsync(x => x.Id == graph.Source.Id);
+            bool storageExists = await dbContext.Modules.AnyAsync(x => x.Id == graph.Storage.Id);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(backupExists, Is.False);
+                Assert.That(scheduleExists, Is.False);
+                Assert.That(snapshotExists, Is.False);
+                Assert.That(snapshotFileExists, Is.False);
+                Assert.That(sourceExists, Is.True);
+                Assert.That(storageExists, Is.True);
+            });
         }
 
         [Test]

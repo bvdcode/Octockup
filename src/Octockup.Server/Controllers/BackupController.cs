@@ -253,17 +253,54 @@ namespace Octockup.Server.Controllers
 
         [Authorize]
         [HttpDelete("/api/v1/backups/{backupId:guid}")]
-        public async Task<IActionResult> DeleteBackup([FromRoute] Guid backupId)
+        public async Task<IActionResult> DeleteBackup(
+            [FromRoute] Guid backupId,
+            CancellationToken cancellationToken = default)
         {
             Guid userId = User.GetUserId();
             Backup? backup = await _dbContext.Backups
-                .FirstOrDefaultAsync(x => x.Id == backupId && x.Source.UserId == userId);
+                .FirstOrDefaultAsync(
+                    x => x.Id == backupId && x.Source.UserId == userId,
+                    cancellationToken);
             if (backup == null)
             {
                 return this.ApiNotFound("Backup not found: " + backupId);
             }
-            _dbContext.Backups.Remove(backup);
-            await _dbContext.SaveChangesAsync();
+
+            List<Guid> scheduleIds = await _dbContext.Schedules
+                .Where(x => x.BackupId == backupId)
+                .Select(x => x.Id)
+                .ToListAsync(cancellationToken);
+            List<Guid> snapshotIds = await _dbContext.Snapshots
+                .Where(x => x.BackupId == backupId)
+                .Select(x => x.Id)
+                .ToListAsync(cancellationToken);
+
+            foreach (Guid scheduleId in scheduleIds)
+            {
+                ExecuteBackupJob.StopRunningBackup(scheduleId);
+            }
+
+            await using var transaction = await _dbContext.Database
+                .BeginTransactionAsync(cancellationToken);
+
+            if (snapshotIds.Count > 0)
+            {
+                await _dbContext.SnapshotFiles
+                    .Where(x => snapshotIds.Contains(x.SnapshotId))
+                    .ExecuteDeleteAsync(cancellationToken);
+            }
+            await _dbContext.Snapshots
+                .Where(x => x.BackupId == backupId)
+                .ExecuteDeleteAsync(cancellationToken);
+            await _dbContext.Schedules
+                .Where(x => x.BackupId == backupId)
+                .ExecuteDeleteAsync(cancellationToken);
+            await _dbContext.Backups
+                .Where(x => x.Id == backupId)
+                .ExecuteDeleteAsync(cancellationToken);
+
+            await transaction.CommitAsync(cancellationToken);
             return Ok(new { message = "Backup deleted successfully." });
         }
 
