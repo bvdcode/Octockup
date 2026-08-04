@@ -27,6 +27,7 @@ Octockup is an autobackup application that ships its backend and frontend in one
 - **Data Deduplication:** Efficient storage usage by avoiding duplicate data.
 - **Encryption:** All backup data is encrypted before leaving the server using AES-GCM.
 - **PostgreSQL Metadata Store:** Uses PostgreSQL for durable application and backup metadata.
+- **External Authentication:** Supports account-linked OpenID Connect providers and administrator-managed users.
 
 ---
 
@@ -64,9 +65,6 @@ services:
       # Required: 32 chars master key for encrypting everything
       - OCTOCKUP_MASTER_KEY=${OCTOCKUP_MASTER_KEY}
 
-      # Optional: Allow multiple users (default: false)
-      - OCTOCKUP_ALLOW_MULTIUSER=false
-
       # Required: PostgreSQL connection
       - OCTOCKUP_POSTGRES_HOST=postgres
       - OCTOCKUP_POSTGRES_PORT=5432
@@ -98,6 +96,16 @@ docker compose up -d
 1. Open your browser and navigate to the address where the application is running.
 2. Log in and set up connections to the necessary data sources (YouTube, SSH, FTP, etc.).
 3. Start gathering and managing data using the user-friendly web interface.
+
+### External authentication
+
+The first password login creates the initial administrator. An administrator can then:
+
+1. Add and enable an OpenID Connect provider in **Settings** and register the callback URL shown there with the provider.
+2. Link each existing Octockup account to its external account from **Connected Accounts**.
+3. Disable password login after every active user has an account linked to an enabled provider.
+
+OIDC sign-in never creates or links users automatically. Password login can only be disabled while every active user retains an enabled external sign-in method.
 
 ---
 
