@@ -16,8 +16,9 @@ export const useSnapshotsStore = create<SnapshotsState>((set, get) => ({
     })),
   clearSnapshots: (backupId) =>
     set((state) => {
-      const { [backupId]: _, ...rest } = state.snapshots;
-      return { snapshots: rest };
+      const snapshots = { ...state.snapshots };
+      delete snapshots[backupId];
+      return { snapshots };
     }),
   getSnapshots: (backupId) => get().snapshots[backupId],
 }));

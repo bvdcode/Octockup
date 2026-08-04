@@ -47,7 +47,24 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      - name: Test backup integrity
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: src/octockup.client/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: src/octockup.client
+        run: npm ci
+
+      - name: Check frontend
+        working-directory: src/octockup.client
+        run: |
+          npm run lint
+          npm run build
+
+      - name: Test backend
         env:
           OCTOCKUP_TEST_POSTGRES_HOST: localhost
           OCTOCKUP_TEST_POSTGRES_PORT: 5432

@@ -27,7 +27,7 @@ export function parseUtcDate(
  */
 export function formatRelativeTime(
   date: Date | string | null | undefined, 
-  t: (key: string, options?: any) => string,
+  t: (key: string, options?: { count: number }) => string,
   mode: "past" | "future" = "past"
 ): string {
   if (!date) return t("common.never");
