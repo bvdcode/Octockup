@@ -3,52 +3,60 @@
 
 using EasyExtensions;
 using EasyExtensions.Abstractions;
-using EasyExtensions.AspNetCore.Authorization.Abstractions;
 using EasyExtensions.AspNetCore.Authorization.Models.Dto;
 using EasyExtensions.AspNetCore.Extensions;
-using EasyExtensions.EntityFrameworkCore.Database;
-using EasyExtensions.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Octockup.Server.Abstractions;
 using Octockup.Server.Database;
 using Octockup.Server.Models.Requests;
-using System.IdentityModel.Tokens.Jwt;
+using Octockup.Server.Services;
 
 namespace Octockup.Server.Controllers
 {
     [ApiController]
     [Route("/api/v1/auth")]
     public class AuthController(
-        ITokenProvider _tokens,
         AppDbContext _dbContext,
         ILogger<ActionContext> _logger,
-        IPasswordHashService _passwords) : ControllerBase
+        IPasswordHashService _passwords,
+        AuthenticationSettingsService _authenticationSettings,
+        IAuthSessionIssuer _sessionIssuer) : ControllerBase
     {
         [Authorize]
         [HttpGet("me")]
-        public async Task<IActionResult> MeAsync()
+        public async Task<IActionResult> MeAsync(CancellationToken cancellationToken)
         {
             Guid userId = User.GetUserId();
-            var user = await _dbContext.Users.FindAsync(userId);
+            User? user = await _dbContext.Users
+                .AsNoTracking()
+                .SingleOrDefaultAsync(x => x.Id == userId, cancellationToken);
             if (user == null)
             {
                 return NotFound();
             }
+            int externalIdentityCount = await _dbContext.UserExternalIdentities
+                .CountAsync(x => x.UserId == userId, cancellationToken);
             return Ok(new
             {
                 id = user.Id,
                 username = user.Username,
                 displayName = user.Username + "@octockup",
+                isAdmin = user.IsAdmin,
+                isDisabled = user.IsDisabled,
+                externalIdentityCount,
             });
         }
 
         [Authorize]
         [HttpPost("change-password")]
-        public async Task<IActionResult> ChangePasswordAsync([FromBody] ChangePasswordRequest request)
+        public async Task<IActionResult> ChangePasswordAsync(
+            [FromBody] ChangePasswordRequest request,
+            CancellationToken cancellationToken)
         {
             Guid userId = User.GetUserId();
-            var user = await _dbContext.Users.FindAsync(userId);
+            User? user = await _dbContext.Users.FindAsync([userId], cancellationToken);
             if (user == null)
             {
                 return NotFound();
@@ -60,7 +68,7 @@ namespace Octockup.Server.Controllers
             }
             user.PasswordPhc = _passwords.Hash(request.NewPassword);
             _dbContext.Users.Update(user);
-            var result = await _dbContext.SaveChangesAsync();
+            int result = await _dbContext.SaveChangesAsync(cancellationToken);
             bool success = result > 0;
             if (!success)
             {
@@ -70,113 +78,132 @@ namespace Octockup.Server.Controllers
         }
 
         [HttpPost("refresh")]
-        public async Task<IActionResult> RefreshTokenAsync([FromBody] RefreshTokenRequestDto request)
+        public async Task<IActionResult> RefreshTokenAsync(
+            [FromBody] RefreshTokenRequestDto request,
+            CancellationToken cancellationToken)
         {
-            if (string.IsNullOrEmpty(request.RefreshToken))
+            string? refreshToken = request.RefreshToken;
+            if (string.IsNullOrEmpty(refreshToken))
             {
                 if (Request.Cookies.TryGetValue("refresh_token", out var cookieToken))
                 {
-                    request.RefreshToken = cookieToken;
+                    refreshToken = cookieToken;
                 }
             }
-            var foundToken = _dbContext.RefreshTokens.FirstOrDefault(x => x.Token == request.RefreshToken && x.RevokedAt == null);
-            if (foundToken == null)
+            if (string.IsNullOrEmpty(refreshToken))
             {
                 return this.ApiUnauthorized("Invalid refresh token.");
             }
-            string accessToken = _tokens.CreateToken(x => x.Add(JwtRegisteredClaimNames.Sub, foundToken.UserId.ToString()));
-            string refreshToken = StringHelpers.CreateRandomString(64);
-            var newSession = new RefreshToken()
+
+            TokenPairResponseDto? tokens = await _sessionIssuer.RotateAsync(
+                refreshToken,
+                Response,
+                cancellationToken);
+            if (tokens is null)
             {
-                UserId = foundToken.UserId,
-                Token = refreshToken,
-            };
-            _logger.LogInformation("Refresh token rotated for user {UserId}", foundToken.UserId);
-            _dbContext.RefreshTokens.Add(newSession);
-            foundToken.RevokedAt = DateTime.UtcNow;
-            await _dbContext.SaveChangesAsync();
-            Response.Cookies.Append("refresh_token", refreshToken, new CookieOptions()
-            {
-                Secure = true,
-                HttpOnly = true,
-                SameSite = SameSiteMode.Strict,
-                Expires = DateTimeOffset.UtcNow.AddDays(30),
-            });
-            return Ok(new TokenPairResponseDto()
-            {
-                AccessToken = accessToken,
-                RefreshToken = refreshToken,
-            });
+                return this.ApiUnauthorized("Invalid refresh token.");
+            }
+
+            return Ok(tokens);
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> LoginAsync([FromBody] LoginRequestDto request)
+        public async Task<IActionResult> LoginAsync(
+            [FromBody] LoginRequestDto request,
+            CancellationToken cancellationToken)
         {
-            var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
+            User? user = await AuthMutationTransaction.ExecuteAsync(
+                _dbContext,
+                () => AuthenticatePasswordAsync(request, cancellationToken),
+                cancellationToken);
+            if (user is null)
+            {
+                return this.ApiUnauthorized("Invalid username or password.");
+            }
+
+            TokenPairResponseDto tokens = await _sessionIssuer.IssueAsync(
+                user,
+                Response,
+                cancellationToken);
+            _logger.LogInformation("User '{user}' logged in", user.Username);
+            return Ok(tokens);
+        }
+
+        private async Task<User?> AuthenticatePasswordAsync(
+            LoginRequestDto request,
+            CancellationToken cancellationToken)
+        {
+            if (!await _authenticationSettings.IsPasswordLoginEnabledAsync(cancellationToken))
+            {
+                return null;
+            }
+            if (string.IsNullOrWhiteSpace(request.Password))
+            {
+                return null;
+            }
+
+            string requestedUsername = request.Username ?? string.Empty;
+            User? user = await _dbContext.Users
+                .FirstOrDefaultAsync(u => u.Username == requestedUsername, cancellationToken);
             if (user == null)
             {
-                int userCount = await _dbContext.Users.CountAsync();
-                bool multiUserAllowed = Environment.GetEnvironmentVariable("OCTOCKUP_ALLOW_MULTIUSER") == "true";
-                if (!multiUserAllowed && userCount > 0)
+                int userCount = await _dbContext.Users.CountAsync(cancellationToken);
+                if (userCount > 0)
                 {
-                    return this.ApiUnauthorized("Invalid username or password.");
+                    return null;
+                }
+                if (!UsernameValidator.TryNormalize(requestedUsername, out string normalizedUsername))
+                {
+                    return null;
                 }
                 user = new()
                 {
-                    Username = request.Username,
-                    PasswordPhc = _passwords.Hash(request.Password)
+                    Username = normalizedUsername,
+                    PasswordPhc = _passwords.Hash(request.Password),
+                    IsAdmin = userCount == 0,
+                    IsDisabled = false,
                 };
                 _dbContext.Users.Add(user);
-                await _dbContext.SaveChangesAsync();
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+            if (user.IsDisabled)
+            {
+                return null;
             }
             bool isValid = _passwords.Verify(request.Password, user.PasswordPhc, out bool needsRehash);
             if (!isValid)
             {
-                _logger.LogWarning("Invalid login attempt for user '{user}'", request.Username);
-                return this.ApiUnauthorized("Invalid username or password.");
+                _logger.LogWarning("Invalid login attempt for user '{user}'", user.Username);
+                return null;
             }
 
-            string refreshToken = StringHelpers.CreateRandomString(64);
-            var session = new RefreshToken()
-            {
-                UserId = user.Id,
-                Token = refreshToken,
-            };
-            _dbContext.RefreshTokens.Add(session);
             if (needsRehash)
             {
                 user.PasswordPhc = _passwords.Hash(request.Password);
                 _dbContext.Users.Update(user);
+                await _dbContext.SaveChangesAsync(cancellationToken);
             }
-            await _dbContext.SaveChangesAsync();
-            string accessToken = _tokens.CreateToken(x => x.Add(JwtRegisteredClaimNames.Sub, user.Id.ToString()));
-            _logger.LogInformation("User '{user}' logged in", request.Username);
-            Response.Cookies.Append("refresh_token", refreshToken, new CookieOptions()
-            {
-                Secure = true,
-                HttpOnly = true,
-                SameSite = SameSiteMode.Strict,
-                Expires = DateTimeOffset.UtcNow.AddDays(30),
-            });
-            return Ok(new TokenPairResponseDto()
-            {
-                AccessToken = accessToken,
-                RefreshToken = refreshToken,
-            });
+
+            return user;
         }
 
         [HttpPost("logout")]
-        public async Task<IActionResult> LogoutAsync()
+        public async Task<IActionResult> LogoutAsync(CancellationToken cancellationToken)
         {
             string refreshToken = Request.Cookies["refresh_token"] ?? string.Empty;
-            var foundToken = await _dbContext.RefreshTokens.FirstOrDefaultAsync(x => x.Token == refreshToken && x.RevokedAt == null);
+            EasyExtensions.EntityFrameworkCore.Database.RefreshToken? foundToken = await _dbContext.RefreshTokens
+                .FirstOrDefaultAsync(
+                    x => x.Token == refreshToken && x.RevokedAt == null,
+                    cancellationToken);
             if (foundToken != null)
             {
                 foundToken.RevokedAt = DateTime.UtcNow;
                 _dbContext.RefreshTokens.Update(foundToken);
-                await _dbContext.SaveChangesAsync();
+                await _dbContext.SaveChangesAsync(cancellationToken);
             }
-            Response.Cookies.Delete("refresh_token");
+            Response.Cookies.Delete(
+                "refresh_token",
+                new CookieOptions { Path = "/api/v1/auth" });
             return Ok("Logged out successfully.");
         }
     }

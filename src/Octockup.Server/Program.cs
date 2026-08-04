@@ -13,6 +13,7 @@ using Octockup.Server.Database;
 using Octockup.Server.Extensions;
 using Octockup.Server.Hubs;
 using Octockup.Server.Modules;
+using Octockup.Server.Services;
 
 namespace Octockup.Server
 {
@@ -45,6 +46,8 @@ namespace Octockup.Server
                 .AddScoped<IBackupProvider, SFTPBackupStorage>()
                 .AddScoped<IBackupProvider, FileSystemBackupSource>()
                 .AddPbkdf2PasswordHashService()
+                .AddScoped<AuthenticationSettingsService>()
+                .AddScoped<IAuthSessionIssuer, AuthSessionIssuer>()
                 .AddCpuUsageService()
                 .AddQuartzJobs()
                 .AddHttpContextAccessor()
