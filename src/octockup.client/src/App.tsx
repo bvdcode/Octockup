@@ -15,13 +15,16 @@ import BackupsPage from "./pages/Backups";
 import BackupWizard from "./pages/BackupWizard";
 import SourceWizard from "./pages/SourceWizard";
 import StorageWizard from "./pages/StorageWizard";
-import { AppShell, type TokenPair, type UserInfo } from "@bvdcode/react-kit";
+import { AppShell, type TokenPair } from "@bvdcode/react-kit";
 import SchedulesPage from "./pages/Schedules";
 import ScheduleWizard from "./pages/ScheduleWizard";
 import SnapshotsPage from "./pages/Snapshots";
 import SnapshotFilesPage from "./pages/SnapshotFiles";
 import SettingsPage from "./pages/Settings";
 import { Fab } from "@mui/material";
+import LoginPage from "./pages/Login";
+import type { CurrentUser } from "./types/auth";
+import { toCookieSession } from "./utils/authSession";
 
 function App() {
   return (
@@ -34,6 +37,7 @@ function App() {
           en: { translation: locales.en },
           ru: { translation: locales.ru },
         }}
+        renderLoginPage={() => <LoginPage />}
         authConfig={{
           usernamePattern: /^[a-zA-Z0-9._-]+$/,
           login: async (credentials, axiosInstance) => {
@@ -41,21 +45,24 @@ function App() {
               "/api/v1/auth/login",
               credentials,
             );
-            return response.data;
+            return toCookieSession(response.data);
           },
           getUserInfo: async (axiosInstance) => {
-            const response = await axiosInstance.get<UserInfo>(
+            const response = await axiosInstance.get<CurrentUser>(
               "/api/v1/auth/me",
             );
             response.data.avatarUrl = "/octockup.png";
             return response.data;
           },
-          refreshToken: async (refreshToken, axiosInstance) => {
+          refreshToken: async (_refreshToken, axiosInstance) => {
             const response = await axiosInstance.post<TokenPair>(
               "/api/v1/auth/refresh",
-              { refreshToken },
+              { refreshToken: "" },
             );
-            return response.data;
+            return toCookieSession(response.data);
+          },
+          logout: async (_refreshToken, axiosInstance) => {
+            await axiosInstance.post("/api/v1/auth/logout");
           },
         }}
         pages={[
