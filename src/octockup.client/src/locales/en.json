@@ -4,10 +4,27 @@
     "back": "Back",
     "cancel": "Cancel",
     "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
     "save": "Save",
     "retry": "Retry",
+    "saving": "Saving...",
     "confirmDelete": "Confirm Delete",
     "never": "Never"
+  },
+  "auth": {
+    "title": "Sign in to continue",
+    "username": "Username",
+    "password": "Password",
+    "signIn": "Sign in",
+    "signingIn": "Signing in...",
+    "or": "or",
+    "continueWith": "Continue with {{provider}}",
+    "redirecting": "Redirecting...",
+    "invalidCredentials": "Invalid username or password.",
+    "externalSignInFailed": "External sign-in failed.",
+    "optionsFailed": "Could not load sign-in methods.",
+    "noLoginMethods": "No sign-in methods are currently available."
   },
   "time": {
     "justNow": "just now",
@@ -262,6 +279,59 @@
   },
   "settings": {
     "title": "Settings",
+    "loadFailed": "Could not load settings.",
+    "saveFailed": "Could not save changes.",
+    "deleteFailed": "Could not delete this provider.",
+    "linkFailed": "Could not link this account.",
+    "unlinkFailed": "Could not unlink this account.",
+    "connectedAccounts": {
+      "title": "Connected accounts",
+      "description": "Link an external identity before disabling password sign-in.",
+      "none": "No external accounts are linked.",
+      "link": "Link {{provider}}",
+      "unlink": "Unlink",
+      "linked": "External account linked successfully."
+    },
+    "authentication": {
+      "title": "Authentication",
+      "description": "Choose which sign-in methods are available to everyone.",
+      "passwordLogin": "Allow password sign-in",
+      "disableHint": "Password sign-in can be disabled only after every enabled user has linked an enabled external provider.",
+      "disableTitle": "Disable password sign-in?",
+      "disableDescription": "After this change, all enabled users must sign in through a linked external provider.",
+      "disableConfirm": "Disable password sign-in"
+    },
+    "oidc": {
+      "title": "External identity providers",
+      "description": "Configure OpenID Connect providers for sign-in and account linking.",
+      "none": "No external identity providers are configured.",
+      "addProvider": "Add provider",
+      "editProvider": "Edit provider",
+      "name": "Name",
+      "slug": "Identifier",
+      "slugHint": "Optional lowercase identifier; generated from the name when blank.",
+      "issuer": "Issuer URL",
+      "publicBaseUrl": "Public Octockup URL",
+      "callbackUrl": "Callback URL",
+      "clientId": "Client ID",
+      "clientSecret": "Client secret",
+      "secretPreserved": "Leave blank to keep the existing secret.",
+      "clearSecret": "Remove existing secret",
+      "scopes": "Scopes",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "deleteTitle": "Delete identity provider?",
+      "deleteDescription": "{{provider}} can be deleted only when no accounts are linked to it."
+    },
+    "users": {
+      "title": "Users",
+      "description": "Manage access without deleting user-owned backup data.",
+      "create": "Create user",
+      "admin": "Administrator",
+      "enabled": "Enabled",
+      "linkedAccounts_one": "{{count}} linked account",
+      "linkedAccounts_other": "{{count}} linked accounts"
+    },
     "dataExport": {
       "title": "Data Export",
       "description": "Export all backup configuration and metadata to a JSON file.",
@@ -272,7 +342,8 @@
       "title": "Data Import",
       "description": "Import backup configuration and metadata from a previously exported file.",
       "button": "Import user data",
-      "importing": "Importing..."
+      "importing": "Importing...",
+      "failed": "Could not import backup data."
     }
   }
 }

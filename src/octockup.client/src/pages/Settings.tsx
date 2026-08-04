@@ -1,134 +1,85 @@
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Typography,
-  Alert,
-  Stack,
-  FormControlLabel,
-  Checkbox,
-} from "@mui/material";
-import { Download, Upload } from "@mui/icons-material";
+import { Alert, Box, CircularProgress, Stack, Typography } from "@mui/material";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useAuthStore } from "@bvdcode/react-kit";
-import { useBackupsApi } from "../api/backupsApi";
-import { useState, useRef } from "react";
+import { useAuthApi } from "../api/authApi";
+import AdminSettingsSection from "../components/settings/AdminSettingsSection";
+import ConnectedAccountsCard from "../components/settings/ConnectedAccountsCard";
+import DataTransferSettings from "../components/settings/DataTransferSettings";
+import type { CurrentUser } from "../types/auth";
+import {
+  clearOidcCallbackStatus,
+  getOidcCallbackStatus,
+} from "../utils/authUtils";
 
 export default function SettingsPage() {
   const { t } = useTranslation();
-  const accessToken = useAuthStore((s) => s.accessToken);
-  const backupsApi = useBackupsApi();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [importing, setImporting] = useState(false);
-  const [importMessage, setImportMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
-  const [includeFiles, setIncludeFiles] = useState(false);
+  const authApi = useAuthApi();
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [oidcRevision, setOidcRevision] = useState(0);
+  const [oidcStatus, setOidcStatus] = useState(
+    () => getOidcCallbackStatus(window.location.search),
+  );
 
-  const handleExportUserData = () => {
-    const url = `/api/v1/backups/server?access_token=${accessToken}&includeFiles=${includeFiles}`;
-    window.open(url, "_blank");
-  };
-
-  const handleImportClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setImporting(true);
-    setImportMessage(null);
-
-    try {
-      const result = await backupsApi.importServerBackup(file);
-      setImportMessage({ type: "success", text: result.message });
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to import backup data";
-      setImportMessage({ type: "error", text: errorMessage });
-    } finally {
-      setImporting(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+  useEffect(() => {
+    if (oidcStatus === "linked" || oidcStatus === "error") {
+      clearOidcCallbackStatus();
     }
-  };
+  }, [oidcStatus]);
+
+  useEffect(() => {
+    let active = true;
+
+    authApi
+      .getCurrentUser()
+      .then((user) => {
+        if (active) {
+          setCurrentUser(user);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setLoadFailed(true);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [authApi]);
 
   return (
-    <Box sx={{ padding: 2 }}>
+    <Box p={2}>
       <Typography variant="h4" gutterBottom>
         {t("settings.title")}
       </Typography>
       <Stack spacing={2}>
-        <Card>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              {t("settings.dataExport.title")}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              {t("settings.dataExport.description")}
-            </Typography>
-            <Box display="flex" alignItems="center" gap={2} flexDirection="row">
-              <Button
-                variant="contained"
-                color="primary"
-                startIcon={<Download />}
-                onClick={handleExportUserData}
-              >
-                {t("settings.dataExport.button")}
-              </Button>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={includeFiles}
-                    onChange={(e) => setIncludeFiles(e.target.checked)}
-                  />
-                }
-                label={t("settings.dataExport.includeFiles")}
-              />
-            </Box>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              {t("settings.dataImport.title")}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              {t("settings.dataImport.description")}
-            </Typography>
-            {importMessage && (
-              <Alert severity={importMessage.type} sx={{ mb: 2 }}>
-                {importMessage.text}
-              </Alert>
-            )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".oct"
-              style={{ display: "none" }}
-              onChange={handleFileChange}
-            />
-            <Button
-              variant="contained"
-              color="secondary"
-              startIcon={<Upload />}
-              onClick={handleImportClick}
-              disabled={importing}
-            >
-              {importing
-                ? t("settings.dataImport.importing")
-                : t("settings.dataImport.button")}
-            </Button>
-          </CardContent>
-        </Card>
+        {oidcStatus === "linked" && (
+          <Alert severity="success" onClose={() => setOidcStatus(null)}>
+            {t("settings.connectedAccounts.linked")}
+          </Alert>
+        )}
+        {oidcStatus === "error" && (
+          <Alert severity="error" onClose={() => setOidcStatus(null)}>
+            {t("settings.linkFailed")}
+          </Alert>
+        )}
+        {loadFailed && (
+          <Alert severity="error">{t("settings.loadFailed")}</Alert>
+        )}
+        <ConnectedAccountsCard key={oidcRevision} />
+        {currentUser === null && !loadFailed && (
+          <Box display="flex" justifyContent="center" p={2}>
+            <CircularProgress size={24} />
+          </Box>
+        )}
+        <AdminSettingsSection
+          isAdmin={currentUser?.isAdmin === true}
+          onProvidersChanged={() =>
+            setOidcRevision((currentRevision) => currentRevision + 1)
+          }
+        />
+        <DataTransferSettings />
       </Stack>
     </Box>
   );
