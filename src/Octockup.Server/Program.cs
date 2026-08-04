@@ -12,8 +12,8 @@ using Octockup.Server.Abstractions;
 using Octockup.Server.Database;
 using Octockup.Server.Extensions;
 using Octockup.Server.Hubs;
+using Octockup.Server.Middleware;
 using Octockup.Server.Modules;
-using Octockup.Server.Services;
 
 namespace Octockup.Server
 {
@@ -46,8 +46,7 @@ namespace Octockup.Server
                 .AddScoped<IBackupProvider, SFTPBackupStorage>()
                 .AddScoped<IBackupProvider, FileSystemBackupSource>()
                 .AddPbkdf2PasswordHashService()
-                .AddScoped<AuthenticationSettingsService>()
-                .AddScoped<IAuthSessionIssuer, AuthSessionIssuer>()
+                .AddOctockupAuthentication()
                 .AddCpuUsageService()
                 .AddQuartzJobs()
                 .AddHttpContextAccessor()
@@ -58,6 +57,7 @@ namespace Octockup.Server
             builder.Services.AddDefaultCorsWithOrigins(corsOrigins);
 
             var app = builder.Build();
+            app.UseMiddleware<AuthApiExceptionMiddleware>();
             app.UseCors().UseDefaultFiles();
             app.MapStaticAssets();
             app.UseAuthentication()
