@@ -17,5 +17,9 @@ namespace Octockup.Server.Database
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<SnapshotFile> SnapshotFiles => Set<SnapshotFile>();
         public DbSet<UploadedHash> UploadedHashes => Set<UploadedHash>();
+        public DbSet<AuthenticationSettings> AuthenticationSettings => Set<AuthenticationSettings>();
+        public DbSet<OidcProvider> OidcProviders => Set<OidcProvider>();
+        public DbSet<OidcLoginState> OidcLoginStates => Set<OidcLoginState>();
+        public DbSet<UserExternalIdentity> UserExternalIdentities => Set<UserExternalIdentity>();
     }
 }

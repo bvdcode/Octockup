@@ -17,6 +17,16 @@ namespace Octockup.Server.Database
         [Column("password_phc")]
         public string PasswordPhc { get; set; } = string.Empty;
 
+        [Column("is_admin")]
+        public bool IsAdmin { get; set; }
+
+        [Column("is_disabled")]
+        public bool IsDisabled { get; set; }
+
         public virtual ICollection<Module> Modules { get; set; } = [];
+
+        public virtual ICollection<UserExternalIdentity> ExternalIdentities { get; set; } = [];
+
+        public virtual ICollection<OidcLoginState> OidcLoginStates { get; set; } = [];
     }
 }
