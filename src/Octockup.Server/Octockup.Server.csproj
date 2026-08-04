@@ -25,6 +25,7 @@
 		<PackageReference Include="EasyExtensions.Crypto" Version="3.0.69" />
 		<PackageReference Include="EasyExtensions.AspNetCore" Version="3.0.69" />
 		<PackageReference Include="EasyExtensions.EntityFrameworkCore" Version="3.0.69" />
+		<PackageReference Include="EasyExtensions.Mediator" Version="3.0.69" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Proxies" Version="10.0.9" />
 		<PackageReference Include="EasyExtensions.AspNetCore.Authorization" Version="3.0.69" />
 		<PackageReference Include="EasyExtensions.EntityFrameworkCore.Npgsql" Version="3.0.69" />
