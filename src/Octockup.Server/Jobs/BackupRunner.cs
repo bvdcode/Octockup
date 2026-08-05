@@ -29,6 +29,7 @@ namespace Octockup.Server.Jobs
     {
         private const int ChunkSize = 8 * 1024 * 1024;
         private const int PreviousFilesBatchSize = 4_096;
+        private const int PrefetchedFileBatchCount = 2;
         private readonly List<UploadedHash> _pendingUploadedHashes = [];
         private readonly Stopwatch _uploadedHashesStopwatch = Stopwatch.StartNew();
         private const int UploadedHashesFlushCount = 500; // flush every 500 new hashes
@@ -178,8 +179,12 @@ namespace Octockup.Server.Jobs
                 schedule.BackupId,
                 schedule,
                 cancellationToken);
-            using LazyLoader<BackupFileInfo> loader = new(lazyFiles);
-            HashSet<string> uploadedChunks = await LoadChunkHashesAsync(schedule.Backup.StorageId, cancellationToken);
+            using LazyLoader<BackupFileInfo> loader = new(
+                lazyFiles,
+                PreviousFilesBatchSize * PrefetchedFileBatchCount);
+            HashSet<string> uploadedChunks = await LoadChunkHashesAsync(
+                schedule.Backup.StorageId,
+                cancellationToken);
             logger.LogInformation(
                 "Using {SnapshotCount} snapshot layers for incremental lookup",
                 incrementalSnapshotIds.Count);
@@ -388,7 +393,7 @@ namespace Octockup.Server.Jobs
                     string chunkKey = ChunkStorageHelpers.CreateKey(contentHash, algorithm, encryptChunk);
                     string shortHash = contentHash[^8..];
 
-                    var alreadyUploaded = uploadedChunks.Contains(chunkKey);
+                    bool alreadyUploaded = uploadedChunks.Contains(chunkKey);
                     if (alreadyUploaded)
                     {
                         logger.LogInformation("Chunk {shortHash} for file {FileName} already uploaded in previous snapshot, skipping upload", shortHash, file.Name);
