@@ -182,7 +182,7 @@ namespace Octockup.Server.Jobs
             using LazyLoader<BackupFileInfo> loader = new(
                 lazyFiles,
                 PreviousFilesBatchSize * PrefetchedFileBatchCount);
-            HashSet<string> uploadedChunks = await LoadChunkHashesAsync(
+            HashSet<ChunkKeyIdentity> uploadedChunks = await LoadChunkHashesAsync(
                 schedule.Backup.StorageId,
                 cancellationToken);
             logger.LogInformation(
@@ -240,7 +240,7 @@ namespace Octockup.Server.Jobs
             IBackupStorage storage,
             ScheduleReport report,
             LazyLoader<BackupFileInfo> loader,
-            HashSet<string> uploadedChunks,
+            HashSet<ChunkKeyIdentity> uploadedChunks,
             IDictionary<string, SnapshotFile> previousFiles,
             Stopwatch stopwatch,
             int counter,
@@ -358,7 +358,7 @@ namespace Octockup.Server.Jobs
             BackupFileInfo file,
             IBackupStorage storage,
             ScheduleReport report,
-            HashSet<string> uploadedChunks,
+            HashSet<ChunkKeyIdentity> uploadedChunks,
             Stream stream,
             int counter,
             CancellationToken cancellationToken)
@@ -391,9 +391,10 @@ namespace Octockup.Server.Jobs
                         : CompressionHelpers.Algorithm;
                     bool encryptChunk = !schedule.Backup.DisableEncryption;
                     string chunkKey = ChunkStorageHelpers.CreateKey(contentHash, algorithm, encryptChunk);
+                    ChunkKeyIdentity chunkIdentity = ChunkKeyIdentity.Parse(chunkKey);
                     string shortHash = contentHash[^8..];
 
-                    bool alreadyUploaded = uploadedChunks.Contains(chunkKey);
+                    bool alreadyUploaded = uploadedChunks.Contains(chunkIdentity);
                     if (alreadyUploaded)
                     {
                         logger.LogInformation("Chunk {shortHash} for file {FileName} already uploaded in previous snapshot, skipping upload", shortHash, file.Name);
@@ -458,7 +459,7 @@ namespace Octockup.Server.Jobs
                             await storage.UploadAsync(path, src, cancellationToken);
                         }
 
-                        uploadedChunks.Add(chunkKey);
+                        uploadedChunks.Add(chunkIdentity);
 
                         await EnsureUploadedHashRecordedAsync(schedule.Backup.StorageId, chunkKey, storedSize, chunkLength, algorithm, cancellationToken);
 
@@ -678,13 +679,25 @@ namespace Octockup.Server.Jobs
             return previousFiles;
         }
 
-        private Task<HashSet<string>> LoadChunkHashesAsync(Guid storageId, CancellationToken cancellationToken)
+        private async Task<HashSet<ChunkKeyIdentity>> LoadChunkHashesAsync(
+            Guid storageId,
+            CancellationToken cancellationToken)
         {
-            return dbContext.UploadedHashes
+            var query = dbContext.UploadedHashes
                 .AsNoTracking()
                 .Where(x => x.ModuleId == storageId)
-                .Select(x => x.Hash)
-                .ToHashSetAsync(cancellationToken: cancellationToken);
+                .Select(x => x.Hash);
+            int hashCount = await query.CountAsync(cancellationToken);
+            HashSet<ChunkKeyIdentity> uploadedChunks = new(hashCount);
+
+            await foreach (string hash in query
+                .AsAsyncEnumerable()
+                .WithCancellation(cancellationToken))
+            {
+                uploadedChunks.Add(ChunkKeyIdentity.Parse(hash));
+            }
+
+            return uploadedChunks;
         }
 
         private static bool ShouldIgnoreFile(Schedule schedule, BackupFileInfo file)
