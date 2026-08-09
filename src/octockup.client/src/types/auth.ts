@@ -98,8 +98,14 @@ export interface UpdateUserAccessRequest {
   isDisabled: boolean;
 }
 
+export interface ChangePasswordRequest {
+  oldPassword: string;
+  newPassword: string;
+}
+
 export interface ApiErrorResponse {
   message?: string;
+  detail?: string;
 }
 
 export type OidcCallbackStatus = "success" | "linked" | "error" | null;

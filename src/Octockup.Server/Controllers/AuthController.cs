@@ -64,7 +64,7 @@ namespace Octockup.Server.Controllers
             bool isValid = _passwords.Verify(request.OldPassword, user.PasswordPhc);
             if (!isValid)
             {
-                return BadRequest("Old password is incorrect.");
+                return this.ApiBadRequest("Old password is incorrect.");
             }
             user.PasswordPhc = _passwords.Hash(request.NewPassword);
             _dbContext.Users.Update(user);
@@ -72,7 +72,7 @@ namespace Octockup.Server.Controllers
             bool success = result > 0;
             if (!success)
             {
-                return BadRequest("Password change failed.");
+                return this.ApiBadRequest("Password change failed.");
             }
             return Ok("Password changed successfully.");
         }

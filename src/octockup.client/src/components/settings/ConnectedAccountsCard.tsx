@@ -64,7 +64,7 @@ export default function ConnectedAccountsCard() {
     try {
       const authorizationUrl = await authApi.beginOidcAuthorization(
         provider.slug,
-        "/settings",
+        "/profile",
         true,
       );
       window.location.assign(authorizationUrl);

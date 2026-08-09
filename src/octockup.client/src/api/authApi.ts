@@ -5,6 +5,7 @@ import type {
   AdminUser,
   AuthenticationOptions,
   AuthenticationSettings,
+  ChangePasswordRequest,
   CreateUserRequest,
   CurrentUser,
   ExternalIdentity,
@@ -58,6 +59,10 @@ export class AuthApiClient {
       "/api/v1/auth/external-identities",
     );
     return response.data;
+  }
+
+  async changePassword(request: ChangePasswordRequest): Promise<void> {
+    await this.axiosInstance.post("/api/v1/auth/change-password", request);
   }
 
   async unlinkExternalIdentity(identityId: string): Promise<void> {

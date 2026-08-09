@@ -13,6 +13,31 @@
     "confirmDelete": "Confirm Delete",
     "never": "Never"
   },
+  "navigation": {
+    "profile": "Profile",
+    "user": "User",
+    "userMenu": "User menu",
+    "lightMode": "Light mode",
+    "darkMode": "Dark mode",
+    "language": "Language",
+    "logout": "Log out"
+  },
+  "profile": {
+    "title": "Profile",
+    "description": "Manage your sign-in methods and account credentials.",
+    "password": {
+      "title": "Change password",
+      "description": "Update the password used for direct sign-in.",
+      "current": "Current password",
+      "new": "New password",
+      "confirm": "Confirm new password",
+      "save": "Change password",
+      "saving": "Changing...",
+      "saved": "Password changed successfully.",
+      "mismatch": "New passwords do not match.",
+      "failed": "Could not change the password."
+    }
+  },
   "auth": {
     "title": "Sign in to continue",
     "username": "Username",

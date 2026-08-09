@@ -17,19 +17,30 @@ import BackupsPage from "./pages/Backups";
 import BackupWizard from "./pages/BackupWizard";
 import SourceWizard from "./pages/SourceWizard";
 import StorageWizard from "./pages/StorageWizard";
-import { AppShell, type TokenPair, useAuthStore } from "@bvdcode/react-kit";
+import {
+  AppShell,
+  type ReactKitProps,
+  type TokenPair,
+  useAuthStore,
+} from "@bvdcode/react-kit";
 import SchedulesPage from "./pages/Schedules";
 import ScheduleWizard from "./pages/ScheduleWizard";
 import SnapshotsPage from "./pages/Snapshots";
 import SnapshotFilesPage from "./pages/SnapshotFiles";
 import SettingsPage from "./pages/Settings";
 import StorageCleanupPage from "./pages/StorageCleanup";
+import ProfilePage from "./pages/Profile";
 import { Fab } from "@mui/material";
 import LoginPage from "./pages/Login";
 import type { CurrentUser } from "./types/auth";
 import { loginWithPassword } from "./api/passwordLoginApi";
 import { toCookieSession } from "./utils/authSession";
 import { queryClient } from "./query/queryClient";
+import AppNavigationBar from "./components/navigation/AppNavigationBar";
+
+const renderNavigationBar = (props: ReactKitProps) => (
+  <AppNavigationBar {...props} />
+);
 
 function App() {
   const accessToken = useAuthStore((state) => state.accessToken);
@@ -53,6 +64,7 @@ function App() {
           ru: { translation: locales.ru },
         }}
         renderLoginPage={() => <LoginPage />}
+        renderNavigationBar={renderNavigationBar}
         authConfig={{
           usernamePattern: /^[a-zA-Z0-9._-]+$/,
           login: loginWithPassword,
@@ -134,6 +146,10 @@ function App() {
             name: "Storage Cleanup",
             route: "/admin/storage-cleanup",
             component: <StorageCleanupPage />,
+          },
+          {
+            route: "/profile",
+            component: <ProfilePage />,
           },
           {
             icon: <Settings />,
