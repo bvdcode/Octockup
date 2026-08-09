@@ -152,7 +152,12 @@ namespace Octockup.Server.Services
             string marker;
             if (loginState.LinkUserId is Guid linkUserId)
             {
-                await LinkIdentityAsync(linkUserId, loginState.Provider, claims, cancellationToken);
+                User user = await LinkIdentityAsync(
+                    linkUserId,
+                    loginState.Provider,
+                    claims,
+                    cancellationToken);
+                await _sessionIssuer.IssueAsync(user, response, cancellationToken);
                 marker = "linked";
             }
             else
@@ -311,23 +316,19 @@ namespace Octockup.Server.Services
             return QueryHelpers.AddQueryString(authorizationEndpoint, parameters);
         }
 
-        private async Task LinkIdentityAsync(
+        private async Task<User> LinkIdentityAsync(
             Guid userId,
             OidcProvider provider,
             OidcIdentityClaims claims,
             CancellationToken cancellationToken)
         {
-            await AuthMutationTransaction.ExecuteAsync(
+            return await AuthMutationTransaction.ExecuteAsync(
                 _dbContext,
-                async () =>
-                {
-                    await LinkIdentityCoreAsync(userId, provider, claims, cancellationToken);
-                    return true;
-                },
+                () => LinkIdentityCoreAsync(userId, provider, claims, cancellationToken),
                 cancellationToken);
         }
 
-        private async Task LinkIdentityCoreAsync(
+        private async Task<User> LinkIdentityCoreAsync(
             Guid userId,
             OidcProvider expectedProvider,
             OidcIdentityClaims claims,
@@ -381,7 +382,7 @@ namespace Octockup.Server.Services
 
                 ApplyClaims(providerLink, claims);
                 await _dbContext.SaveChangesAsync(cancellationToken);
-                return;
+                return user;
             }
 
             UserExternalIdentity identity = new()
@@ -394,6 +395,7 @@ namespace Octockup.Server.Services
             ApplyClaims(identity, claims);
             await _dbContext.UserExternalIdentities.AddAsync(identity, cancellationToken);
             await _dbContext.SaveChangesAsync(cancellationToken);
+            return user;
         }
 
         private async Task<User> ResolveSignInUserAsync(

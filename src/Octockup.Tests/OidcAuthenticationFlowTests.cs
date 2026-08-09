@@ -183,7 +183,7 @@ namespace Octockup.Tests
         }
 
         [Test]
-        public async Task CompleteLink_ThenSignIn_UsesTheExistingUser()
+        public async Task CompleteLink_RenewsSessionAndThenSignInUsesTheExistingUser()
         {
             await using PostgresDbContext dbContext = CreateDbContext();
             using OidcTestHttpMessageHandler handler = new(_rsa);
@@ -229,7 +229,8 @@ namespace Octockup.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(linkReturnUrl, Is.EqualTo("/settings?oidc=linked"));
-                Assert.That(sessionIssuer.IssuedUserId, Is.Null);
+                Assert.That(sessionIssuer.IssuedUserId, Is.EqualTo(user.Id));
+                Assert.That(sessionIssuer.IssueCount, Is.EqualTo(1));
                 Assert.That(identityExists, Is.True);
             });
 
@@ -257,7 +258,7 @@ namespace Octockup.Tests
             {
                 Assert.That(signInReturnUrl, Is.EqualTo("/login?oidc=success"));
                 Assert.That(sessionIssuer.IssuedUserId, Is.EqualTo(user.Id));
-                Assert.That(sessionIssuer.IssueCount, Is.EqualTo(1));
+                Assert.That(sessionIssuer.IssueCount, Is.EqualTo(2));
                 Assert.That(
                     deletedCorrelationCookie,
                     Does.Contain("expires=thu, 01 jan 1970 00:00:00 gmt"));
@@ -274,7 +275,7 @@ namespace Octockup.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(replayException.StatusCode, Is.EqualTo(StatusCodes.Status400BadRequest));
-                Assert.That(sessionIssuer.IssueCount, Is.EqualTo(1));
+                Assert.That(sessionIssuer.IssueCount, Is.EqualTo(2));
             });
         }
 
