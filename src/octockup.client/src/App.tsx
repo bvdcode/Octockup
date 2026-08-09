@@ -25,6 +25,7 @@ import StorageCleanupPage from "./pages/StorageCleanup";
 import { Fab } from "@mui/material";
 import LoginPage from "./pages/Login";
 import type { CurrentUser } from "./types/auth";
+import { loginWithPassword } from "./api/passwordLoginApi";
 import { toCookieSession } from "./utils/authSession";
 
 function App() {
@@ -41,13 +42,7 @@ function App() {
         renderLoginPage={() => <LoginPage />}
         authConfig={{
           usernamePattern: /^[a-zA-Z0-9._-]+$/,
-          login: async (credentials, axiosInstance) => {
-            const response = await axiosInstance.post<TokenPair>(
-              "/api/v1/auth/login",
-              credentials,
-            );
-            return toCookieSession(response.data);
-          },
+          login: loginWithPassword,
           getUserInfo: async (axiosInstance) => {
             const response = await axiosInstance.get<CurrentUser>(
               "/api/v1/auth/me",
