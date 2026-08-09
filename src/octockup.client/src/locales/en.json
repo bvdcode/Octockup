@@ -350,7 +350,6 @@
       "slug": "Identifier",
       "slugHint": "Optional lowercase identifier; generated from the name when blank.",
       "issuer": "Issuer URL",
-      "publicBaseUrl": "Public Octockup URL",
       "callbackUrl": "Callback URL",
       "clientId": "Client ID",
       "clientSecret": "Client secret",

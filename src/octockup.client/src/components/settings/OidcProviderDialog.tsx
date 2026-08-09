@@ -42,9 +42,6 @@ export default function OidcProviderDialog({
   const [name, setName] = useState(provider?.name ?? "");
   const [slug, setSlug] = useState(provider?.slug ?? "");
   const [issuer, setIssuer] = useState(provider?.issuer ?? "");
-  const [publicBaseUrl, setPublicBaseUrl] = useState(
-    provider?.publicBaseUrl ?? "",
-  );
   const [clientId, setClientId] = useState(provider?.clientId ?? "");
   const [clientSecret, setClientSecret] = useState("");
   const [scopes, setScopes] = useState(
@@ -52,6 +49,7 @@ export default function OidcProviderDialog({
   );
   const [isEnabled, setIsEnabled] = useState(provider?.isEnabled ?? true);
   const [clearClientSecret, setClearClientSecret] = useState(false);
+  const publicBaseUrl = window.location.origin;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -100,22 +98,10 @@ export default function OidcProviderDialog({
               required
             />
             <TextField
-              label={t("settings.oidc.publicBaseUrl")}
-              value={publicBaseUrl}
-              onChange={(event) => setPublicBaseUrl(event.target.value)}
-              required
+              label={t("settings.oidc.callbackUrl")}
+              value={buildOidcCallbackUrl(publicBaseUrl)}
+              slotProps={{ input: { readOnly: true } }}
             />
-            {publicBaseUrl.trim() && (
-              <TextField
-                label={t("settings.oidc.callbackUrl")}
-                value={
-                  publicBaseUrl === provider?.publicBaseUrl
-                    ? provider.callbackUrl
-                    : buildOidcCallbackUrl(publicBaseUrl)
-                }
-                slotProps={{ input: { readOnly: true } }}
-              />
-            )}
             <TextField
               label={t("settings.oidc.clientId")}
               value={clientId}

@@ -374,7 +374,6 @@
       "slug": "Идентификатор",
       "slugHint": "Необязательный идентификатор; если пусто, создаётся из названия.",
       "issuer": "URL издателя",
-      "publicBaseUrl": "Публичный URL Octockup",
       "callbackUrl": "Callback URL",
       "clientId": "Client ID",
       "clientSecret": "Client secret",
