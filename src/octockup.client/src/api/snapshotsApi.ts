@@ -28,6 +28,10 @@ class SnapshotsApiClient {
     );
     return result.data;
   }
+
+  async deleteSnapshot(snapshotId: string): Promise<void> {
+    await this.axios().delete(`/api/v1/snapshots/${snapshotId}`);
+  }
 }
 
 export function useSnapshotsApi(): SnapshotsApiClient {

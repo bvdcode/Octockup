@@ -4,8 +4,6 @@ import {
   Stack,
   Alert,
   Button,
-  Tooltip,
-  IconButton,
   Typography,
   CardContent,
   CircularProgress,
@@ -17,18 +15,15 @@ import {
 } from "@mui/x-data-grid";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  ArrowBack,
-  ContentCopy,
-  Download,
-  FactCheck,
-  Verified,
-} from "@mui/icons-material";
+import { ArrowBack } from "@mui/icons-material";
 import { formatSize } from "../utils/formatUtils";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSnapshotsApi } from "../api/snapshotsApi";
 import type { SnapshotDto } from "../types/api";
 import { useAuthStore } from "@bvdcode/react-kit";
+import { confirm } from "material-ui-confirm";
+import SnapshotActionsCell from "../components/snapshots/SnapshotActionsCell";
+import { getApiErrorMessage } from "../utils/apiError";
 
 interface State {
   loading: boolean;
@@ -43,10 +38,11 @@ export default function SnapshotsPage() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const [state, setState] = useState<State>({
     loading: true,
-    error: backupId ? null : "Backup ID is missing",
+    error: backupId ? null : t("snapshots.missingBackupId"),
   });
   const [snapshots, setSnapshots] = useState<SnapshotDto[]>([]);
   const [copyMessage, setCopyMessage] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!backupId) return;
@@ -59,17 +55,17 @@ export default function SnapshotsPage() {
         setSnapshots(snapshotList);
         setState({ loading: false, error: null });
       })
-      .catch((e) => {
+      .catch((caughtError: Error) => {
         if (!active) return;
         setState({
           loading: false,
-          error: e?.message || "Failed to load snapshots",
+          error: getApiErrorMessage(caughtError, t("snapshots.loadFailed")),
         });
       });
     return () => {
       active = false;
     };
-  }, [backupId, snapshotsApi]);
+  }, [backupId, snapshotsApi, t]);
 
   const createSnapshotDownloadUrl = (
     snapshotId: string,
@@ -98,6 +94,37 @@ export default function SnapshotsPage() {
     setCopyMessage(
       t(validate ? "snapshots.validatedLinkCopied" : "snapshots.linkCopied"),
     );
+  };
+
+  const handleDelete = async (snapshot: SnapshotDto) => {
+    const result = await confirm({
+      title: t("snapshots.deleteTitle"),
+      description: t("snapshots.deleteText"),
+      confirmationText: t("common.delete"),
+      cancellationText: t("common.cancel"),
+      confirmationButtonProps: { color: "error" },
+    });
+    if (!result.confirmed) {
+      return;
+    }
+
+    setDeletingId(snapshot.id);
+    setState((current) => ({ ...current, error: null }));
+    try {
+      await snapshotsApi.deleteSnapshot(snapshot.id);
+      setSnapshots((current) =>
+        current.filter((item) => item.id !== snapshot.id),
+      );
+    } catch (caughtError) {
+      if (caughtError instanceof Error) {
+        setState((current) => ({
+          ...current,
+          error: getApiErrorMessage(caughtError, t("snapshots.deleteFailed")),
+        }));
+      }
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const columns: GridColDef<SnapshotDto>[] = [
@@ -134,74 +161,22 @@ export default function SnapshotsPage() {
     {
       field: "actions",
       headerName: t("snapshots.actions"),
-      width: 200,
+      width: 112,
       sortable: false,
       filterable: false,
       align: "center",
       headerAlign: "center",
+      cellClassName: "snapshot-actions-cell",
       renderCell: (params) => (
-        <Box display="flex" gap={0.5}>
-          <Tooltip title={t("snapshots.download")}>
-            <span>
-              <IconButton
-                size="small"
-                color="primary"
-                disabled={!accessToken || !params.row.completedAt}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  handleDownload(params.row.id, false);
-                }}
-              >
-                <Download />
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Tooltip title={t("snapshots.downloadValidated")}>
-            <span>
-              <IconButton
-                size="small"
-                color="primary"
-                disabled={!accessToken || !params.row.completedAt}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  handleDownload(params.row.id, true);
-                }}
-              >
-                <Verified />
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Tooltip title={t("snapshots.copyLink")}>
-            <span>
-              <IconButton
-                size="small"
-                color="primary"
-                disabled={!accessToken || !params.row.completedAt}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  void handleCopyDownloadLink(params.row.id, false);
-                }}
-              >
-                <ContentCopy />
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Tooltip title={t("snapshots.copyValidatedLink")}>
-            <span>
-              <IconButton
-                size="small"
-                color="primary"
-                disabled={!accessToken || !params.row.completedAt}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  void handleCopyDownloadLink(params.row.id, true);
-                }}
-              >
-                <FactCheck />
-              </IconButton>
-            </span>
-          </Tooltip>
-        </Box>
+        <SnapshotActionsCell
+          downloadDisabled={!accessToken || !params.row.completedAt}
+          deleting={deletingId === params.row.id}
+          onDownload={(validate) => handleDownload(params.row.id, validate)}
+          onCopyLink={(validate) =>
+            handleCopyDownloadLink(params.row.id, validate)
+          }
+          onDelete={() => handleDelete(params.row)}
+        />
       ),
     },
   ];
@@ -267,6 +242,9 @@ export default function SnapshotsPage() {
               cursor: "pointer",
               "& .MuiDataGrid-row:hover": {
                 cursor: "pointer",
+              },
+              "& .snapshot-actions-cell": {
+                overflow: "visible",
               },
             }}
           />

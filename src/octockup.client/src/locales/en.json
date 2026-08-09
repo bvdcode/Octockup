@@ -191,12 +191,19 @@
     "inProgress": "In progress...",
     "never": "Never",
     "actions": "Actions",
+    "missingBackupId": "Backup ID is missing.",
+    "loadFailed": "Failed to load snapshots.",
     "download": "Download",
+    "downloadOptions": "Download options",
     "downloadValidated": "Download with validation",
     "copyLink": "Copy link",
     "copyValidatedLink": "Copy link with validation",
     "linkCopied": "Snapshot download link copied.",
-    "validatedLinkCopied": "Snapshot download link with validation copied."
+    "validatedLinkCopied": "Snapshot download link with validation copied.",
+    "deleteTitle": "Delete snapshot?",
+    "deleteText": "The snapshot and its file list will be deleted. Unused stored chunks can be reclaimed by storage cleanup.",
+    "deleteTooltip": "Delete snapshot",
+    "deleteFailed": "Could not delete the snapshot."
   },
   "snapshotFiles": {
     "title": "Snapshot Files",
