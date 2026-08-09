@@ -8,6 +8,7 @@ using Octockup.Server.Abstractions;
 using Octockup.Server.Database;
 using Octockup.Server.Helpers;
 using Octockup.Server.Hubs;
+using Octockup.Server.Services;
 using Quartz;
 using System.Collections.Concurrent;
 
@@ -78,7 +79,8 @@ namespace Octockup.Server.Jobs
                     scope.ServiceProvider,
                     runnerLogger,
                     scope.ServiceProvider.GetRequiredService<IHubContext<EventHub>>(),
-                    scope.ServiceProvider.GetRequiredService<IEnumerable<IBackupProvider>>());
+                    scope.ServiceProvider.GetRequiredService<IEnumerable<IBackupProvider>>(),
+                    scope.ServiceProvider.GetRequiredService<StorageOperationCoordinator>());
 
                 await runner.RunAsync(next, scheduleCts.Token);
                 _logger.LogInformation("Backup job for schedule {ScheduleId} completed", next.Id);

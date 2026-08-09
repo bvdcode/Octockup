@@ -14,6 +14,7 @@ using Octockup.Server.Hubs;
 using Octockup.Server.Jobs;
 using Octockup.Server.Models;
 using Octockup.Server.Models.Enums;
+using Octockup.Server.Services;
 using System.Security.Cryptography;
 
 namespace Octockup.Tests
@@ -154,7 +155,8 @@ namespace Octockup.Tests
                 serviceProvider,
                 serviceProvider.GetRequiredService<ILogger<BackupRunner>>(),
                 serviceProvider.GetRequiredService<IHubContext<EventHub>>(),
-                [new TestBackupStorage()]);
+                [new TestBackupStorage()],
+                new StorageOperationCoordinator());
             await runner.RunAsync(schedule, cancellationToken);
             dbContext.ChangeTracker.Clear();
 

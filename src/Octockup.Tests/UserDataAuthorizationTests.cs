@@ -98,6 +98,60 @@ namespace Octockup.Tests
         }
 
         [Test]
+        public async Task DeleteModule_WhenCleanupCompleted_RemovesCleanupState()
+        {
+            await using PostgresDbContext dbContext = CreateDbContext();
+            Module module = await SeedStandaloneModuleAsync(dbContext);
+            StorageCleanup cleanup = new()
+            {
+                ModuleId = module.Id,
+                Status = StorageCleanupStatus.Completed,
+            };
+            await dbContext.StorageCleanups.AddAsync(cleanup);
+            await dbContext.SaveChangesAsync();
+            ModuleController controller = AsUser(
+                new ModuleController(CreateCipher(), dbContext, NullLogger<ModuleController>.Instance, []),
+                module.UserId);
+
+            IActionResult result = await controller.DeleteUserBackupStorage(module.Id);
+
+            Assert.That(result, Is.InstanceOf<OkObjectResult>());
+            dbContext.ChangeTracker.Clear();
+            bool moduleExists = await dbContext.Modules.AnyAsync(x => x.Id == module.Id);
+            bool cleanupExists = await dbContext.StorageCleanups.AnyAsync(x => x.ModuleId == module.Id);
+            Assert.Multiple(() =>
+            {
+                Assert.That(moduleExists, Is.False);
+                Assert.That(cleanupExists, Is.False);
+            });
+        }
+
+        [Test]
+        public async Task DeleteModule_WhenCleanupRunning_ReturnsConflict()
+        {
+            await using PostgresDbContext dbContext = CreateDbContext();
+            Module module = await SeedStandaloneModuleAsync(dbContext);
+            StorageCleanup cleanup = new()
+            {
+                ModuleId = module.Id,
+                Status = StorageCleanupStatus.Running,
+            };
+            await dbContext.StorageCleanups.AddAsync(cleanup);
+            await dbContext.SaveChangesAsync();
+            ModuleController controller = AsUser(
+                new ModuleController(CreateCipher(), dbContext, NullLogger<ModuleController>.Instance, []),
+                module.UserId);
+
+            IActionResult result = await controller.DeleteUserBackupStorage(module.Id);
+
+            ObjectResult conflict = result as ObjectResult
+                ?? throw new AssertionException("Expected an object result.");
+            Assert.That(conflict.StatusCode, Is.EqualTo(StatusCodes.Status409Conflict));
+            dbContext.ChangeTracker.Clear();
+            Assert.That(await dbContext.Modules.AnyAsync(x => x.Id == module.Id), Is.True);
+        }
+
+        [Test]
         public async Task DeleteBackup_WhenOwnedByAnotherUser_ReturnsNotFoundAndDoesNotDelete()
         {
             await using PostgresDbContext dbContext = CreateDbContext();

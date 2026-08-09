@@ -15,6 +15,7 @@ using Octockup.Server.Hubs;
 using Octockup.Server.Jobs;
 using Octockup.Server.Models.Enums;
 using Octockup.Server.Modules;
+using Octockup.Server.Services;
 using Octockup.Server.Streams;
 using System.Security.Cryptography;
 
@@ -203,7 +204,8 @@ namespace Octockup.Tests
                 _serviceProvider,
                 _serviceProvider.GetRequiredService<ILogger<BackupRunner>>(),
                 _serviceProvider.GetRequiredService<IHubContext<EventHub>>(),
-                [provider]);
+                [provider],
+                new StorageOperationCoordinator());
             await runner.RunAsync(trackedSchedule, cancellationToken);
             _dbContext.ChangeTracker.Clear();
 

@@ -13,6 +13,7 @@ using Octockup.Server.Helpers;
 using Octockup.Server.Hubs;
 using Octockup.Server.Models;
 using Octockup.Server.Models.Enums;
+using Octockup.Server.Services;
 using System.Buffers;
 using System.Diagnostics;
 using System.Security.Cryptography;
@@ -25,7 +26,8 @@ namespace Octockup.Server.Jobs
         IServiceProvider serviceProvider,
         ILogger<BackupRunner> logger,
         IHubContext<EventHub> hubContext,
-        IEnumerable<IBackupProvider> providers)
+        IEnumerable<IBackupProvider> providers,
+        StorageOperationCoordinator storageOperations)
     {
         private const int ChunkSize = 8 * 1024 * 1024;
         private const int PreviousFilesBatchSize = 4_096;
@@ -42,6 +44,7 @@ namespace Octockup.Server.Jobs
             Guid userId = schedule.Backup.Source.UserId;
             ScheduleReport report = new(userId, schedule.Id, schedule.BackupId, hubContext);
             report.StartBackgroundReporting(cancellationToken);
+            StorageOperationLease? storageLease = null;
 
             try
             {
@@ -58,6 +61,10 @@ namespace Octockup.Server.Jobs
                     await report.SendAsync(0, schedule.ErrorMessage ?? "Storage provider not found.", cancellationToken: cancellationToken);
                     return;
                 }
+
+                storageLease = await storageOperations.AcquireBackupAsync(
+                    schedule.Backup.StorageId,
+                    cancellationToken);
 
                 await report.SendAsync(0, "Listing files to backup...", cancellationToken: cancellationToken);
                 schedule.Status = ScheduleStatus.Running;
@@ -121,6 +128,11 @@ namespace Octockup.Server.Jobs
                 catch (Exception flushEx)
                 {
                     logger.LogError(flushEx, "Failed to flush pending uploaded hashes after backup execution");
+                }
+
+                if (storageLease is not null)
+                {
+                    await storageLease.DisposeAsync();
                 }
 
                 await report.DisposeAsync();

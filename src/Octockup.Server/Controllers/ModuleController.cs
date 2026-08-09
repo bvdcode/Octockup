@@ -57,8 +57,21 @@ namespace Octockup.Server.Controllers
             {
                 return this.ApiNotFound("Module not found: " + moduleId);
             }
-            _dbContext.Modules.Remove(found);
-            await _dbContext.SaveChangesAsync();
+            bool cleanupInProgress = await _dbContext.StorageCleanups.AnyAsync(
+                x => x.ModuleId == moduleId && x.Status == StorageCleanupStatus.Running);
+            bool hasPendingCleanupChunks = await _dbContext.StorageCleanupChunks.AnyAsync(
+                x => x.ModuleId == moduleId);
+            if (cleanupInProgress || hasPendingCleanupChunks)
+            {
+                return this.ApiConflict("Storage cleanup is still in progress: " + moduleId);
+            }
+
+            await _dbContext.StorageCleanups
+                .Where(x => x.ModuleId == moduleId)
+                .ExecuteDeleteAsync();
+            await _dbContext.Modules
+                .Where(x => x.Id == moduleId)
+                .ExecuteDeleteAsync();
             return Ok(new { message = "Module deleted successfully." });
         }
 
