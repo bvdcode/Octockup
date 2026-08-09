@@ -332,6 +332,22 @@
       "linkedAccounts_one": "{{count}} linked account",
       "linkedAccounts_other": "{{count}} linked accounts"
     },
+    "cleanup": {
+      "title": "Storage cleanup",
+      "description": "Slowly removes chunks that are no longer referenced by any snapshot. Progress and totals survive server restarts.",
+      "noStorages": "No backup storages are configured.",
+      "loadFailed": "Could not load storage cleanup status.",
+      "startFailed": "Could not start storage cleanup.",
+      "start": "Start cleanup",
+      "running": "Cleaning...",
+      "statistics": "Scanned: {{scanned}} · Pending: {{pending}} · Deleted: {{deleted}} · Reclaimed: {{reclaimed}}",
+      "status": {
+        "idle": "Idle",
+        "running": "Running",
+        "completed": "Completed",
+        "failed": "Failed"
+      }
+    },
     "dataExport": {
       "title": "Data Export",
       "description": "Export all backup configuration and metadata to a JSON file.",

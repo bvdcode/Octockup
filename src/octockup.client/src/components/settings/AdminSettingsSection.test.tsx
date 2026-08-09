@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import AdminSettingsSection from "./AdminSettingsSection";
 
@@ -14,6 +14,10 @@ vi.mock("./UserManagementCard", () => ({
   default: () => <div>user-management</div>,
 }));
 
+vi.mock("./StorageCleanupCard", () => ({
+  default: () => <div>storage-cleanup</div>,
+}));
+
 describe("AdminSettingsSection", () => {
   it("renders no administration controls for a non-admin user", () => {
     const result = render(
@@ -21,5 +25,11 @@ describe("AdminSettingsSection", () => {
     );
 
     expect(result.container).toBeEmptyDOMElement();
+  });
+
+  it("renders storage cleanup controls for an administrator", () => {
+    render(<AdminSettingsSection isAdmin onProvidersChanged={vi.fn()} />);
+
+    expect(screen.getByText("storage-cleanup")).toBeInTheDocument();
   });
 });

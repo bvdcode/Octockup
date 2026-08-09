@@ -1,5 +1,6 @@
 import AuthenticationSettingsCard from "./AuthenticationSettingsCard";
 import OidcProvidersCard from "./OidcProvidersCard";
+import StorageCleanupCard from "./StorageCleanupCard";
 import UserManagementCard from "./UserManagementCard";
 
 interface AdminSettingsSectionProps {
@@ -20,6 +21,7 @@ export default function AdminSettingsSection({
       <AuthenticationSettingsCard />
       <OidcProvidersCard onProvidersChanged={onProvidersChanged} />
       <UserManagementCard />
+      <StorageCleanupCard />
     </>
   );
 }
