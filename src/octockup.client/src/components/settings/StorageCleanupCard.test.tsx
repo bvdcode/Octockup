@@ -1,58 +1,25 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { StorageCleanupStatus } from "../../types/storageCleanup";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import StorageCleanupCard from "./StorageCleanupCard";
 
-const api = vi.hoisted(() => ({
-  list: vi.fn(),
-  start: vi.fn(),
-}));
-const translation = vi.hoisted(() => ({
-  t: (key: string) => key,
-}));
+const navigate = vi.hoisted(() => vi.fn());
 
-vi.mock("../../api/storageCleanupApi", () => ({
-  useStorageCleanupApi: () => api,
+vi.mock("react-router-dom", () => ({
+  useNavigate: () => navigate,
 }));
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => translation,
+  useTranslation: () => ({ t: (key: string) => key }),
 }));
 
 describe("StorageCleanupCard", () => {
-  beforeEach(() => {
-    api.list.mockReset();
-    api.start.mockReset();
-  });
-
-  it("shows persistent cleanup statistics and starts a storage cleanup", async () => {
-    const idleCleanup = {
-      id: "cleanup-id",
-      moduleId: "storage-id",
-      moduleTag: "Archive storage",
-      status: StorageCleanupStatus.Completed,
-      scannedChunks: 12000,
-      pendingChunks: 4,
-      totalDeletedChunks: 80,
-      totalReclaimedBytes: 4096,
-      createdAt: "2026-08-08T00:00:00Z",
-      updatedAt: "2026-08-08T01:00:00Z",
-    };
-    api.list.mockResolvedValue([idleCleanup]);
-    api.start.mockResolvedValue({
-      ...idleCleanup,
-      status: StorageCleanupStatus.Running,
-      scannedChunks: 0,
-    });
-
+  it("opens the technical cleanup dashboard", () => {
     render(<StorageCleanupCard />);
 
-    expect(await screen.findByText("Archive storage")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "settings.cleanup.start" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "settings.cleanup.openDashboard" }),
+    );
 
-    await waitFor(() => {
-      expect(api.start).toHaveBeenCalledWith("storage-id");
-    });
-    expect(await screen.findByText("settings.cleanup.running")).toBeDisabled();
+    expect(navigate).toHaveBeenCalledWith("/admin/storage-cleanup");
   });
 });

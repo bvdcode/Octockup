@@ -1,7 +1,10 @@
 import type { AxiosInstance } from "axios";
 import { useMemo } from "react";
 import { useAxios } from "@bvdcode/react-kit";
-import type { StorageCleanup } from "../types/storageCleanup";
+import type {
+  StorageCleanup,
+  StorageCleanupRun,
+} from "../types/storageCleanup";
 
 export class StorageCleanupApiClient {
   constructor(private readonly axiosInstance: AxiosInstance) {}
@@ -16,6 +19,14 @@ export class StorageCleanupApiClient {
   async start(moduleId: string): Promise<StorageCleanup> {
     const response = await this.axiosInstance.post<StorageCleanup>(
       `/api/v1/admin/storage-cleanups/${encodeURIComponent(moduleId)}/start`,
+    );
+    return response.data;
+  }
+
+  async listRuns(limit = 50): Promise<StorageCleanupRun[]> {
+    const response = await this.axiosInstance.get<StorageCleanupRun[]>(
+      "/api/v1/admin/storage-cleanups/runs",
+      { params: { limit } },
     );
     return response.data;
   }

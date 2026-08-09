@@ -20,3 +20,18 @@ export interface StorageCleanup {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface StorageCleanupRun {
+  id: string;
+  moduleId: string;
+  moduleTag: string;
+  status: StorageCleanupStatus;
+  startedAt: string;
+  completedAt?: string | null;
+  scannedChunks: number;
+  deletedChunks: number;
+  reclaimedBytes: number;
+  errorMessage?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

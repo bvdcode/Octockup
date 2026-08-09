@@ -8,6 +8,7 @@
     "create": "Create",
     "save": "Save",
     "retry": "Retry",
+    "refresh": "Refresh",
     "saving": "Saving...",
     "confirmDelete": "Confirm Delete",
     "never": "Never"
@@ -335,18 +336,7 @@
     "cleanup": {
       "title": "Storage cleanup",
       "description": "Slowly removes chunks that are no longer referenced by any snapshot. Progress and totals survive server restarts.",
-      "noStorages": "No backup storages are configured.",
-      "loadFailed": "Could not load storage cleanup status.",
-      "startFailed": "Could not start storage cleanup.",
-      "start": "Start cleanup",
-      "running": "Cleaning...",
-      "statistics": "Scanned: {{scanned}} · Pending: {{pending}} · Deleted: {{deleted}} · Reclaimed: {{reclaimed}}",
-      "status": {
-        "idle": "Idle",
-        "running": "Running",
-        "completed": "Completed",
-        "failed": "Failed"
-      }
+      "openDashboard": "Open dashboard"
     },
     "dataExport": {
       "title": "Data Export",
@@ -360,6 +350,55 @@
       "button": "Import user data",
       "importing": "Importing...",
       "failed": "Could not import backup data."
+    }
+  },
+  "storageCleanup": {
+    "title": "Storage cleanup",
+    "description": "Inspect garbage collection progress, reclaimed space, and cleanup history for every backup storage.",
+    "storages": "Storage state",
+    "noStorages": "No backup storages are configured.",
+    "loadFailed": "Could not load storage cleanup statistics.",
+    "startFailed": "Could not start storage cleanup.",
+    "start": "Start cleanup",
+    "running": "Cleaning...",
+    "chunksPerSecond": "{{count}} chunks/s",
+    "duration": {
+      "hoursMinutes": "{{hours}}h {{minutes}}m",
+      "minutesSeconds": "{{minutes}}m {{seconds}}s",
+      "seconds": "{{seconds}}s"
+    },
+    "summary": {
+      "active": "Active",
+      "pending": "Pending deletion",
+      "deleted": "Deleted total",
+      "reclaimed": "Reclaimed total"
+    },
+    "metrics": {
+      "scanned": "Scanned this run",
+      "pending": "Pending deletion",
+      "scanRate": "Scan rate",
+      "duration": "Run duration"
+    },
+    "status": {
+      "idle": "Idle",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed"
+    },
+    "historyChart": {
+      "title": "Reclaimed space over time",
+      "description": "The latest cleanup runs, oldest to newest.",
+      "tooltip": "{{storage}}: {{reclaimed}} reclaimed, {{deleted}} chunks deleted"
+    },
+    "history": {
+      "title": "Run history",
+      "started": "Started",
+      "storage": "Storage",
+      "status": "Status",
+      "duration": "Duration",
+      "scanned": "Scanned",
+      "deleted": "Deleted",
+      "reclaimed": "Reclaimed"
     }
   }
 }

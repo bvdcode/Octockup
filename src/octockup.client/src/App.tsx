@@ -21,6 +21,7 @@ import ScheduleWizard from "./pages/ScheduleWizard";
 import SnapshotsPage from "./pages/Snapshots";
 import SnapshotFilesPage from "./pages/SnapshotFiles";
 import SettingsPage from "./pages/Settings";
+import StorageCleanupPage from "./pages/StorageCleanup";
 import { Fab } from "@mui/material";
 import LoginPage from "./pages/Login";
 import type { CurrentUser } from "./types/auth";
@@ -125,6 +126,10 @@ function App() {
             name: "Settings",
             route: "/settings",
             component: <SettingsPage />,
+          },
+          {
+            route: "/admin/storage-cleanup",
+            component: <StorageCleanupPage />,
           },
         ]}
       />
