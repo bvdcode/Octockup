@@ -24,6 +24,8 @@ import { useEffect, useMemo, useState } from "react";
 import { getSourceIcon } from "../constants/sourceIcons";
 import { getIgnoredPathsPreset } from "../constants/ignoredPathsPresets";
 import type { Module, CreateBackupRequest } from "../types/api";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "../query/queryKeys";
 
 interface State {
   loading: boolean;
@@ -37,6 +39,7 @@ export default function BackupWizard() {
   const navigate = useNavigate();
   const backupsApi = useBackupsApi();
   const modulesApi = useModulesApi();
+  const queryClient = useQueryClient();
 
   const [state, setState] = useState<State>({
     loading: true,
@@ -321,6 +324,10 @@ export default function BackupWizard() {
                 disableEncryption,
               };
               await backupsApi.create(payload);
+              await queryClient.invalidateQueries({
+                queryKey: queryKeys.backups,
+                refetchType: "all",
+              });
               navigate("/backups");
             } catch (e: unknown) {
               const message = e instanceof Error ? e.message : String(e);

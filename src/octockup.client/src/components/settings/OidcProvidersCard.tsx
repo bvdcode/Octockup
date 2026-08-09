@@ -16,7 +16,8 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useAuthApi } from "../../api/authApi";
 import type {
@@ -25,6 +26,7 @@ import type {
 } from "../../types/auth";
 import { getApiErrorMessage } from "../../utils/apiError";
 import OidcProviderDialog from "./OidcProviderDialog";
+import { queryKeys } from "../../query/queryKeys";
 
 interface OidcProvidersCardProps {
   onProvidersChanged: () => void;
@@ -35,33 +37,21 @@ export default function OidcProvidersCard({
 }: OidcProvidersCardProps) {
   const { t } = useTranslation();
   const authApi = useAuthApi();
-  const [providers, setProviders] = useState<OidcProvider[]>([]);
+  const queryClient = useQueryClient();
+  const providersQuery = useQuery({
+    queryKey: queryKeys.oidcProviders,
+    queryFn: () => authApi.listOidcProviders(),
+  });
+  const providers = providersQuery.data ?? [];
   const [editing, setEditing] = useState<OidcProvider | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState<OidcProvider | null>(null);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    authApi
-      .listOidcProviders()
-      .then((loadedProviders) => {
-        if (active) {
-          setProviders(loadedProviders);
-        }
-      })
-      .catch((caughtError) => {
-        if (active && caughtError instanceof Error) {
-          setError(getApiErrorMessage(caughtError, t("settings.loadFailed")));
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [authApi, t]);
+  const error = providersQuery.error
+    ? getApiErrorMessage(providersQuery.error, t("settings.loadFailed"))
+    : null;
 
   const openCreate = () => {
     setEditing(null);
@@ -82,14 +72,17 @@ export default function OidcProvidersCard({
       const savedProvider = editing
         ? await authApi.updateOidcProvider(editing.id, request)
         : await authApi.createOidcProvider(request);
-      setProviders((current) => {
-        const withoutSaved = current.filter(
-          (provider) => provider.id !== savedProvider.id,
-        );
-        return [...withoutSaved, savedProvider].sort((left, right) =>
-          left.name.localeCompare(right.name),
-        );
-      });
+      queryClient.setQueryData<OidcProvider[]>(
+        queryKeys.oidcProviders,
+        (current) => {
+          const withoutSaved = (current ?? []).filter(
+            (provider) => provider.id !== savedProvider.id,
+          );
+          return [...withoutSaved, savedProvider].sort((left, right) =>
+            left.name.localeCompare(right.name),
+          );
+        },
+      );
       setDialogOpen(false);
       onProvidersChanged();
     } catch (caughtError) {
@@ -112,8 +105,10 @@ export default function OidcProvidersCard({
     setDeleteError(null);
     try {
       await authApi.deleteOidcProvider(deleting.id);
-      setProviders((current) =>
-        current.filter((provider) => provider.id !== deleting.id),
+      queryClient.setQueryData<OidcProvider[]>(
+        queryKeys.oidcProviders,
+        (current) =>
+          (current ?? []).filter((provider) => provider.id !== deleting.id),
       );
       setDeleting(null);
       setDeleteError(null);

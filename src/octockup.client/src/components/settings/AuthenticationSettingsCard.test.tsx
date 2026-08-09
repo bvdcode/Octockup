@@ -1,7 +1,8 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AuthenticationSettingsCard from "./AuthenticationSettingsCard";
+import { renderWithQueryClient } from "../../test/renderWithQueryClient";
 
 const mocks = vi.hoisted(() => ({
   confirm: vi.fn(),
@@ -51,7 +52,7 @@ describe("AuthenticationSettingsCard", () => {
         resolveConfirmation = resolve;
       }),
     );
-    render(<AuthenticationSettingsCard />);
+    renderWithQueryClient(<AuthenticationSettingsCard />);
 
     const passwordLogin = await screen.findByRole("switch", {
       name: "settings.authentication.passwordLogin",
@@ -74,7 +75,7 @@ describe("AuthenticationSettingsCard", () => {
   it("keeps password login enabled when disabling is cancelled", async () => {
     const user = userEvent.setup();
     mocks.confirm.mockResolvedValue({ confirmed: false });
-    render(<AuthenticationSettingsCard />);
+    renderWithQueryClient(<AuthenticationSettingsCard />);
 
     const passwordLogin = await screen.findByRole("switch", {
       name: "settings.authentication.passwordLogin",

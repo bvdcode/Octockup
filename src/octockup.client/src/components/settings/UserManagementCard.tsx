@@ -11,7 +11,8 @@ import {
   Switch,
   Typography,
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useAuthApi } from "../../api/authApi";
 import type {
@@ -21,38 +22,29 @@ import type {
 } from "../../types/auth";
 import { getApiErrorMessage } from "../../utils/apiError";
 import CreateUserDialog from "./CreateUserDialog";
+import { queryKeys } from "../../query/queryKeys";
 
 export default function UserManagementCard() {
   const { t } = useTranslation();
   const authApi = useAuthApi();
-  const [users, setUsers] = useState<AdminUser[]>([]);
+  const queryClient = useQueryClient();
+  const usersQuery = useQuery({
+    queryKey: queryKeys.users,
+    queryFn: () => authApi.listUsers(),
+  });
+  const users = usersQuery.data ?? [];
   const [createOpen, setCreateOpen] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    authApi
-      .listUsers()
-      .then((loadedUsers) => {
-        if (active) {
-          setUsers(loadedUsers);
-        }
-      })
-      .catch((caughtError) => {
-        if (active && caughtError instanceof Error) {
-          setError(getApiErrorMessage(caughtError, t("settings.loadFailed")));
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [authApi, t]);
+  const error = actionError ??
+    (usersQuery.error
+      ? getApiErrorMessage(usersQuery.error, t("settings.loadFailed"))
+      : null);
 
   const replaceUser = (updatedUser: AdminUser) => {
-    setUsers((current) =>
-      current.map((user) =>
+    queryClient.setQueryData<AdminUser[]>(queryKeys.users, (current) =>
+      (current ?? []).map((user) =>
         user.id === updatedUser.id ? updatedUser : user,
       ),
     );
@@ -63,12 +55,14 @@ export default function UserManagementCard() {
     request: UpdateUserAccessRequest,
   ) => {
     setSavingId(user.id);
-    setError(null);
+    setActionError(null);
     try {
       replaceUser(await authApi.updateUserAccess(user.id, request));
     } catch (caughtError) {
       if (caughtError instanceof Error) {
-        setError(getApiErrorMessage(caughtError, t("settings.saveFailed")));
+        setActionError(
+          getApiErrorMessage(caughtError, t("settings.saveFailed")),
+        );
       }
     } finally {
       setSavingId(null);
@@ -80,7 +74,10 @@ export default function UserManagementCard() {
     setCreateError(null);
     try {
       const createdUser = await authApi.createUser(request);
-      setUsers((current) => [...current, createdUser]);
+      queryClient.setQueryData<AdminUser[]>(queryKeys.users, (current) => [
+        ...(current ?? []),
+        createdUser,
+      ]);
       setCreateOpen(false);
     } catch (caughtError) {
       if (caughtError instanceof Error) {

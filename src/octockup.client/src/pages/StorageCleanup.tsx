@@ -7,7 +7,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useStorageCleanupApi } from "../api/storageCleanupApi";
 import StorageCleanupHistoryChart from "../components/storage-cleanup/StorageCleanupHistoryChart";
@@ -20,59 +20,49 @@ import {
   type StorageCleanupRun,
 } from "../types/storageCleanup";
 import { getApiErrorMessage } from "../utils/apiError";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "../query/queryKeys";
 
 const POLL_INTERVAL_MS = 5_000;
 
 export default function StorageCleanupPage() {
   const { t } = useTranslation();
   const storageCleanupApi = useStorageCleanupApi();
-  const [cleanups, setCleanups] = useState<StorageCleanup[] | null>(null);
-  const [runs, setRuns] = useState<StorageCleanupRun[]>([]);
-  const [startingModuleId, setStartingModuleId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      const [loadedCleanups, loadedRuns] = await Promise.all([
+  const queryClient = useQueryClient();
+  const dashboardQuery = useQuery({
+    queryKey: queryKeys.storageCleanup,
+    queryFn: async () => {
+      const [cleanups, runs] = await Promise.all([
         storageCleanupApi.list(),
         storageCleanupApi.listRuns(),
       ]);
-      setCleanups(loadedCleanups);
-      setRuns(loadedRuns);
-      setError(null);
-    } catch (caughtError) {
-      if (caughtError instanceof Error) {
-        setError(
-          getApiErrorMessage(caughtError, t("storageCleanup.loadFailed")),
-        );
-      }
-    }
-  }, [storageCleanupApi, t]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  useEffect(() => {
-    if (!cleanups?.some((item) => item.status === StorageCleanupStatus.Running)) {
-      return;
-    }
-
-    const interval = window.setInterval(() => {
-      void load();
-    }, POLL_INTERVAL_MS);
-    return () => window.clearInterval(interval);
-  }, [cleanups, load]);
+      return { cleanups, runs };
+    },
+    refetchInterval: (query) =>
+      query.state.data?.cleanups.some(
+        (item) => item.status === StorageCleanupStatus.Running,
+      )
+        ? POLL_INTERVAL_MS
+        : false,
+  });
+  const cleanups: StorageCleanup[] | null =
+    dashboardQuery.data?.cleanups ?? null;
+  const runs: StorageCleanupRun[] = dashboardQuery.data?.runs ?? [];
+  const [startingModuleId, setStartingModuleId] = useState<string | null>(null);
+  const [startError, setStartError] = useState<string | null>(null);
+  const loadError = dashboardQuery.error;
 
   const startCleanup = async (moduleId: string) => {
     setStartingModuleId(moduleId);
-    setError(null);
+    setStartError(null);
     try {
       await storageCleanupApi.start(moduleId.trim());
-      await load();
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.storageCleanup,
+      });
     } catch (caughtError) {
       if (caughtError instanceof Error) {
-        setError(
+        setStartError(
           getApiErrorMessage(caughtError, t("storageCleanup.startFailed")),
         );
       }
@@ -96,16 +86,24 @@ export default function StorageCleanupPage() {
               {t("storageCleanup.description")}
             </Typography>
           </Box>
-          <Button startIcon={<Refresh />} onClick={() => void load()}>
+          <Button
+            startIcon={<Refresh />}
+            onClick={() => void dashboardQuery.refetch()}
+          >
             {t("common.refresh")}
           </Button>
         </Stack>
-        {error && <Alert severity="error">{error}</Alert>}
-        {cleanups === null ? (
+        {loadError && (
+          <Alert severity="error">
+            {getApiErrorMessage(loadError, t("storageCleanup.loadFailed"))}
+          </Alert>
+        )}
+        {startError && <Alert severity="error">{startError}</Alert>}
+        {cleanups === null && dashboardQuery.isPending ? (
           <Box display="flex" justifyContent="center" p={4}>
             <CircularProgress />
           </Box>
-        ) : (
+        ) : cleanups !== null ? (
           <>
             <StorageCleanupSummary cleanups={cleanups} />
             <Box>
@@ -131,7 +129,7 @@ export default function StorageCleanupPage() {
               </>
             )}
           </>
-        )}
+        ) : null}
       </Stack>
     </Box>
   );

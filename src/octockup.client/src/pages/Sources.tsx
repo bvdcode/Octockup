@@ -11,105 +11,47 @@ import {
   CardContent,
   CircularProgress,
 } from "@mui/material";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { confirm } from "material-ui-confirm";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { ModuleDestination } from "../types/api";
 import { parseUtcDate } from "../utils/dateUtils";
-import { useModulesApi } from "../api/modulesApi";
 import { DeleteOutline } from "@mui/icons-material";
 import { AddCircleOutline } from "@mui/icons-material";
 import { getSourceIcon } from "../constants/sourceIcons";
-import type { Module, ModuleProviderInfo } from "../types/api";
 import { EditableModuleTag } from "../components/EditableModuleTag";
-
-interface State {
-  loading: boolean;
-  error: string | null;
-  availableLoading: boolean;
-  availableError: string | null;
-}
+import { useModuleCatalog } from "../hooks/useModuleCatalog";
+import { getApiErrorMessage } from "../utils/apiError";
 
 export function SourcesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const api = useModulesApi();
-  const [state, setState] = useState<State>({
-    loading: true,
-    error: null,
-    availableLoading: true,
-    availableError: null,
-  });
-  const [userSources, setUserSources] = useState<Module[]>([]);
-  const [availableSources, setAvailableSources] = useState<
-    ModuleProviderInfo[]
-  >([]);
+  const {
+    modules: userSources,
+    providers: availableSources,
+    isPending,
+    hasData,
+    error,
+    renameModule,
+    deleteModule,
+  } = useModuleCatalog(ModuleDestination.Source, "source");
   const [snackbar, setSnackbar] = useState<string | null>(null);
 
   const handleRename = async (moduleId: string, newTag: string) => {
     try {
-      await api.rename(moduleId, newTag);
-      setUserSources((prev) =>
-        prev.map((s) => (s.id === moduleId ? { ...s, tag: newTag } : s)),
-      );
-    } catch (e) {
-      const error = e as { response?: { data?: { message?: string } } };
-      setSnackbar(error?.response?.data?.message || "Failed to rename");
-      throw e;
+      await renameModule(moduleId, newTag);
+    } catch (caughtError) {
+      if (caughtError instanceof Error) {
+        setSnackbar(
+          getApiErrorMessage(caughtError, t("sources.renameFailed")),
+        );
+      }
+      throw caughtError;
     }
   };
 
-  useEffect(() => {
-    let active = true;
-
-    // Load user's created sources
-    api
-      .list()
-      .then((data) => {
-        if (!active) return;
-        // filter sources
-        setUserSources(
-          data.filter((m) => m.destination === ModuleDestination.Source),
-        );
-        setState((prev) => ({ ...prev, loading: false, error: null }));
-      })
-      .catch((e) => {
-        if (!active) return;
-        setState((prev) => ({
-          ...prev,
-          loading: false,
-          error: e?.message || "Failed to load sources",
-        }));
-      });
-
-    // Load available source types
-    api
-      .listProvidersByType("source")
-      .then((data) => {
-        if (!active) return;
-        setAvailableSources(data);
-        setState((prev) => ({
-          ...prev,
-          availableLoading: false,
-          availableError: null,
-        }));
-      })
-      .catch((e) => {
-        if (!active) return;
-        setState((prev) => ({
-          ...prev,
-          availableLoading: false,
-          availableError: e?.message || "Failed to load available sources",
-        }));
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [api]);
-
-  if (state.loading || state.availableLoading) {
+  if (isPending) {
     return (
       <Box display="flex" justifyContent="center" p={4}>
         <CircularProgress />
@@ -117,10 +59,12 @@ export function SourcesPage() {
     );
   }
 
-  if (state.error || state.availableError) {
+  if (error && !hasData) {
     return (
       <Box p={2}>
-        <Alert severity="error">{state.error || state.availableError}</Alert>
+        <Alert severity="error">
+          {getApiErrorMessage(error, t("sources.loadFailed"))}
+        </Alert>
       </Box>
     );
   }
@@ -180,10 +124,7 @@ export function SourcesPage() {
                         confirmationButtonProps: { color: "error" },
                       });
                       if (result.confirmed) {
-                        await api.delete(s.id);
-                        setUserSources((prev) =>
-                          prev.filter((x) => x.id !== s.id),
-                        );
+                        await deleteModule(s.id);
                       }
                     }}
                   >

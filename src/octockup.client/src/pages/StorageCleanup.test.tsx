@@ -1,7 +1,11 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StorageCleanupStatus } from "../types/storageCleanup";
 import StorageCleanupPage from "./StorageCleanup";
+import {
+  createTestQueryClient,
+  renderWithQueryClient,
+} from "../test/renderWithQueryClient";
 
 const api = vi.hoisted(() => ({
   list: vi.fn(),
@@ -22,6 +26,8 @@ vi.mock("react-i18next", () => ({
 }));
 
 describe("StorageCleanupPage", () => {
+  afterEach(cleanup);
+
   beforeEach(() => {
     api.list.mockReset();
     api.listRuns.mockReset();
@@ -61,7 +67,7 @@ describe("StorageCleanupPage", () => {
       status: StorageCleanupStatus.Running,
     });
 
-    render(<StorageCleanupPage />);
+    renderWithQueryClient(<StorageCleanupPage />);
 
     expect(await screen.findAllByText("Archive storage")).toHaveLength(2);
     expect(screen.getByText("storageCleanup.history.title")).toBeInTheDocument();
@@ -72,5 +78,24 @@ describe("StorageCleanupPage", () => {
     await waitFor(() => {
       expect(api.start).toHaveBeenCalledWith("storage-id");
     });
+  });
+
+  it("reuses fresh cleanup data after the page is reopened", async () => {
+    api.list.mockResolvedValue([]);
+    api.listRuns.mockResolvedValue([]);
+    const queryClient = createTestQueryClient();
+
+    const firstView = renderWithQueryClient(
+      <StorageCleanupPage />,
+      queryClient,
+    );
+    await screen.findByText("storageCleanup.storages");
+    firstView.unmount();
+
+    renderWithQueryClient(<StorageCleanupPage />, queryClient);
+
+    expect(screen.getByText("storageCleanup.storages")).toBeInTheDocument();
+    expect(api.list).toHaveBeenCalledOnce();
+    expect(api.listRuns).toHaveBeenCalledOnce();
   });
 });

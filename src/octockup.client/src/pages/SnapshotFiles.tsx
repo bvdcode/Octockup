@@ -8,7 +8,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatSize } from "../utils/formatUtils";
 import { useAuthStore } from "@bvdcode/react-kit";
@@ -17,11 +17,9 @@ import { useSnapshotsApi } from "../api/snapshotsApi";
 import { ArrowBack, Download, Verified } from "@mui/icons-material";
 import { useNavigate, useParams } from "react-router-dom";
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
-
-interface State {
-  loading: boolean;
-  error: string | null;
-}
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "../query/queryKeys";
+import { getApiErrorMessage } from "../utils/apiError";
 
 export default function SnapshotFilesPage() {
   const { t } = useTranslation();
@@ -32,35 +30,21 @@ export default function SnapshotFilesPage() {
   }>();
   const snapshotsApi = useSnapshotsApi();
   const accessToken = useAuthStore((s) => s.accessToken);
-  const [state, setState] = useState<State>({
-    loading: true,
-    error: snapshotId ? null : "Snapshot ID is missing",
+  const filesQuery = useQuery({
+    queryKey: queryKeys.snapshotFiles(snapshotId ?? ""),
+    queryFn: () => {
+      if (!snapshotId) {
+        throw new Error(t("snapshotFiles.missingSnapshotId"));
+      }
+      return snapshotsApi.getFiles(snapshotId);
+    },
+    enabled: Boolean(snapshotId),
   });
-  const [files, setFiles] = useState<SnapshotFileDto[]>([]);
+  const files = filesQuery.data ?? [];
   const [searchQuery, setSearchQuery] = useState("");
-
-  useEffect(() => {
-    if (!snapshotId) return;
-
-    let active = true;
-    snapshotsApi
-      .getFiles(snapshotId)
-      .then((fileList) => {
-        if (!active) return;
-        setFiles(fileList);
-        setState({ loading: false, error: null });
-      })
-      .catch((e) => {
-        if (!active) return;
-        setState({
-          loading: false,
-          error: e?.message || "Failed to load snapshot files",
-        });
-      });
-    return () => {
-      active = false;
-    };
-  }, [snapshotId, snapshotsApi]);
+  const loadError = snapshotId
+    ? filesQuery.error
+    : new Error(t("snapshotFiles.missingSnapshotId"));
 
   const handleDownload = (fileId: string, validate: boolean) => {
     const url = new URL(
@@ -143,17 +127,23 @@ export default function SnapshotFilesPage() {
     },
   ];
 
-  if (state.error && files.length === 0) {
+  if (loadError && files.length === 0) {
     return (
       <Box p={2}>
-        <Alert severity="error">{state.error}</Alert>
+        <Alert severity="error">
+          {getApiErrorMessage(loadError, t("snapshotFiles.loadFailed"))}
+        </Alert>
       </Box>
     );
   }
 
   return (
     <Stack spacing={3} display="flex" flexDirection="column" flex={1}>
-      {state.error && <Alert severity="error">{state.error}</Alert>}
+      {loadError && (
+        <Alert severity="error">
+          {getApiErrorMessage(loadError, t("snapshotFiles.loadFailed"))}
+        </Alert>
+      )}
       <Box display="flex" alignItems="center" gap={2}>
         <Button
           variant="outlined"
@@ -175,7 +165,7 @@ export default function SnapshotFilesPage() {
         <DataGrid
           rows={filteredFiles}
           columns={columns}
-          loading={state.loading}
+          loading={filesQuery.isPending && files.length === 0}
           pageSizeOptions={[10, 25, 50, 100]}
           autoPageSize
           initialState={{

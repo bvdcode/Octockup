@@ -13,7 +13,7 @@ import {
   type GridColDef,
   type GridRowParams,
 } from "@mui/x-data-grid";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowBack } from "@mui/icons-material";
 import { formatSize } from "../utils/formatUtils";
@@ -24,48 +24,33 @@ import { useAuthStore } from "@bvdcode/react-kit";
 import { confirm } from "material-ui-confirm";
 import SnapshotActionsCell from "../components/snapshots/SnapshotActionsCell";
 import { getApiErrorMessage } from "../utils/apiError";
-
-interface State {
-  loading: boolean;
-  error: string | null;
-}
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "../query/queryKeys";
 
 export default function SnapshotsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { backupId } = useParams<{ backupId: string }>();
   const snapshotsApi = useSnapshotsApi();
+  const queryClient = useQueryClient();
   const accessToken = useAuthStore((s) => s.accessToken);
-  const [state, setState] = useState<State>({
-    loading: true,
-    error: backupId ? null : t("snapshots.missingBackupId"),
+  const snapshotsQuery = useQuery({
+    queryKey: queryKeys.snapshots(backupId ?? ""),
+    queryFn: () => {
+      if (!backupId) {
+        throw new Error(t("snapshots.missingBackupId"));
+      }
+      return snapshotsApi.listByBackup(backupId);
+    },
+    enabled: Boolean(backupId),
   });
-  const [snapshots, setSnapshots] = useState<SnapshotDto[]>([]);
+  const snapshots = snapshotsQuery.data ?? [];
   const [copyMessage, setCopyMessage] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!backupId) return;
-
-    let active = true;
-    snapshotsApi
-      .listByBackup(backupId)
-      .then((snapshotList) => {
-        if (!active) return;
-        setSnapshots(snapshotList);
-        setState({ loading: false, error: null });
-      })
-      .catch((caughtError: Error) => {
-        if (!active) return;
-        setState({
-          loading: false,
-          error: getApiErrorMessage(caughtError, t("snapshots.loadFailed")),
-        });
-      });
-    return () => {
-      active = false;
-    };
-  }, [backupId, snapshotsApi, t]);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const loadError = backupId
+    ? snapshotsQuery.error
+    : new Error(t("snapshots.missingBackupId"));
 
   const createSnapshotDownloadUrl = (
     snapshotId: string,
@@ -109,18 +94,20 @@ export default function SnapshotsPage() {
     }
 
     setDeletingId(snapshot.id);
-    setState((current) => ({ ...current, error: null }));
+    setActionError(null);
     try {
       await snapshotsApi.deleteSnapshot(snapshot.id);
-      setSnapshots((current) =>
-        current.filter((item) => item.id !== snapshot.id),
+      queryClient.setQueryData<SnapshotDto[]>(
+        queryKeys.snapshots(backupId ?? ""),
+        (current) =>
+          (current ?? []).filter((item) => item.id !== snapshot.id),
       );
+      await queryClient.invalidateQueries({ queryKey: queryKeys.backups });
     } catch (caughtError) {
       if (caughtError instanceof Error) {
-        setState((current) => ({
-          ...current,
-          error: getApiErrorMessage(caughtError, t("snapshots.deleteFailed")),
-        }));
+        setActionError(
+          getApiErrorMessage(caughtError, t("snapshots.deleteFailed")),
+        );
       }
     } finally {
       setDeletingId(null);
@@ -185,17 +172,24 @@ export default function SnapshotsPage() {
     navigate(`/backups/${backupId}/snapshots/${params.row.id}/files`);
   };
 
-  if (state.error && snapshots.length === 0) {
+  if (loadError && snapshots.length === 0) {
     return (
       <Box p={2}>
-        <Alert severity="error">{state.error}</Alert>
+        <Alert severity="error">
+          {getApiErrorMessage(loadError, t("snapshots.loadFailed"))}
+        </Alert>
       </Box>
     );
   }
 
   return (
     <Stack spacing={3} display="flex" flexDirection="column" flex={1}>
-      {state.error && <Alert severity="error">{state.error}</Alert>}
+      {loadError && (
+        <Alert severity="error">
+          {getApiErrorMessage(loadError, t("snapshots.loadFailed"))}
+        </Alert>
+      )}
+      {actionError && <Alert severity="error">{actionError}</Alert>}
       {copyMessage && (
         <Alert severity="success" onClose={() => setCopyMessage(null)}>
           {copyMessage}
@@ -211,7 +205,7 @@ export default function SnapshotsPage() {
         </Button>
         <Typography variant="h5">{t("snapshots.title")}</Typography>
       </Box>
-      {state.loading && snapshots.length === 0 ? (
+      {snapshotsQuery.isPending && snapshots.length === 0 ? (
         <Box display="flex" justifyContent="center" p={4}>
           <CircularProgress />
         </Box>

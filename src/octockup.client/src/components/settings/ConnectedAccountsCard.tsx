@@ -10,7 +10,8 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useAuthApi } from "../../api/authApi";
 import type {
@@ -19,37 +20,38 @@ import type {
 } from "../../types/auth";
 import { getApiErrorMessage } from "../../utils/apiError";
 import { getUnlinkedProviders } from "../../utils/authUtils";
+import { queryKeys } from "../../query/queryKeys";
 
 export default function ConnectedAccountsCard() {
   const { t } = useTranslation();
   const authApi = useAuthApi();
-  const [identities, setIdentities] = useState<ExternalIdentity[]>([]);
-  const [providers, setProviders] = useState<PublicOidcProvider[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const identitiesQuery = useQuery({
+    queryKey: queryKeys.externalIdentities,
+    queryFn: () => authApi.listExternalIdentities(),
+  });
+  const optionsQuery = useQuery({
+    queryKey: queryKeys.authenticationOptions,
+    queryFn: () => authApi.getOptions(),
+  });
+  const identities = useMemo<ExternalIdentity[]>(
+    () => identitiesQuery.data ?? [],
+    [identitiesQuery.data],
+  );
+  const providers = useMemo<PublicOidcProvider[]>(
+    () => optionsQuery.data?.oidcProviders ?? [],
+    [optionsQuery.data],
+  );
+  const loading =
+    (identitiesQuery.isPending && identitiesQuery.data === undefined) ||
+    (optionsQuery.isPending && optionsQuery.data === undefined);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    Promise.all([authApi.listExternalIdentities(), authApi.getOptions()])
-      .then(([loadedIdentities, options]) => {
-        if (active) {
-          setIdentities(loadedIdentities);
-          setProviders(options.oidcProviders);
-          setLoading(false);
-        }
-      })
-      .catch((caughtError) => {
-        if (active && caughtError instanceof Error) {
-          setError(getApiErrorMessage(caughtError, t("settings.loadFailed")));
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [authApi, t]);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const queryError = identitiesQuery.error ?? optionsQuery.error;
+  const error = actionError ??
+    (queryError
+      ? getApiErrorMessage(queryError, t("settings.loadFailed"))
+      : null);
 
   const availableProviders = useMemo(
     () => getUnlinkedProviders(providers, identities),
@@ -58,7 +60,7 @@ export default function ConnectedAccountsCard() {
 
   const handleLink = async (provider: PublicOidcProvider) => {
     setBusyId(provider.slug);
-    setError(null);
+    setActionError(null);
     try {
       const authorizationUrl = await authApi.beginOidcAuthorization(
         provider.slug,
@@ -68,7 +70,9 @@ export default function ConnectedAccountsCard() {
       window.location.assign(authorizationUrl);
     } catch (caughtError) {
       if (caughtError instanceof Error) {
-        setError(getApiErrorMessage(caughtError, t("settings.linkFailed")));
+        setActionError(
+          getApiErrorMessage(caughtError, t("settings.linkFailed")),
+        );
       }
       setBusyId(null);
     }
@@ -76,15 +80,19 @@ export default function ConnectedAccountsCard() {
 
   const handleUnlink = async (identityId: string) => {
     setBusyId(identityId);
-    setError(null);
+    setActionError(null);
     try {
       await authApi.unlinkExternalIdentity(identityId);
-      setIdentities((current) =>
-        current.filter((identity) => identity.id !== identityId),
+      queryClient.setQueryData<ExternalIdentity[]>(
+        queryKeys.externalIdentities,
+        (current) =>
+          (current ?? []).filter((identity) => identity.id !== identityId),
       );
     } catch (caughtError) {
       if (caughtError instanceof Error) {
-        setError(getApiErrorMessage(caughtError, t("settings.unlinkFailed")));
+        setActionError(
+          getApiErrorMessage(caughtError, t("settings.unlinkFailed")),
+        );
       }
     } finally {
       setBusyId(null);

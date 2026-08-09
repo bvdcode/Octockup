@@ -24,9 +24,10 @@ import { getBackupOverallStatus } from "../utils/backupUtils";
 import { EditIgnoredPathsDialog } from "../components/EditIgnoredPathsDialog";
 import { BackupCard } from "../components/backups/BackupCard";
 import { formatSize } from "../utils/formatUtils";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "../query/queryKeys";
 
 interface State {
-  loading: boolean;
   deletingId: string | null;
   runningId: string | null;
   cancelingId: string | null;
@@ -37,19 +38,23 @@ export default function BackupsPage() {
   const navigate = useNavigate();
   const backupsApi = useBackupsApi();
   const schedulesApi = useSchedulesApi();
+  const queryClient = useQueryClient();
   const { connection, isConnected } = useSignalR("/api/v1/event-hub");
   const [state, setState] = useState<State>({
-    loading: true,
     deletingId: null,
     runningId: null,
     cancelingId: null,
   });
-  const [backups, setBackups] = useState<BackupItem[]>([]);
+  const backupsQuery = useQuery({
+    queryKey: queryKeys.backups,
+    queryFn: () => backupsApi.list(),
+  });
+  const backups = useMemo(
+    () => backupsQuery.data ?? [],
+    [backupsQuery.data],
+  );
   const [scheduleReports] = useState<Map<string, ScheduleReport>>(new Map());
   const [, setReportsVersion] = useState(0);
-  const [scheduleToBackupMap, setScheduleToBackupMap] = useState<
-    Record<string, string>
-  >({});
   const [editingIgnoredPathsId, setEditingIgnoredPathsId] = useState<
     string | null
   >(null);
@@ -60,57 +65,28 @@ export default function BackupsPage() {
     null,
   );
 
+  const updateBackups = useCallback(
+    (updater: (current: BackupItem[]) => BackupItem[]) => {
+      queryClient.setQueryData<BackupItem[]>(queryKeys.backups, (current) =>
+        updater(current ?? []),
+      );
+    },
+    [queryClient],
+  );
+
   const reloadBackups = useCallback(async () => {
-    try {
-      const backupList = await backupsApi.list();
-      setBackups(backupList);
+    await queryClient.invalidateQueries({ queryKey: queryKeys.backups });
+  }, [queryClient]);
 
-      const mapping: Record<string, string> = {};
-      backupList.forEach((backup) => {
-        backup.schedules?.forEach((schedule) => {
-          mapping[schedule.id] = schedule.backupId;
-        });
+  const scheduleToBackupMap = useMemo(() => {
+    const mapping: Record<string, string> = {};
+    backups.forEach((backup) => {
+      backup.schedules?.forEach((schedule) => {
+        mapping[schedule.id] = schedule.backupId;
       });
-      setScheduleToBackupMap(mapping);
-    } catch {
-      // Silent fail
-    }
-  }, [backupsApi]);
-
-  useEffect(() => {
-    let active = true;
-
-    // Load backups - schedules already included in backup.schedules
-    backupsApi
-      .list()
-      .then((backupList) => {
-        if (!active) return;
-        setBackups(backupList);
-
-        // Create mapping scheduleId -> backupId from embedded schedules
-        const mapping: Record<string, string> = {};
-        backupList.forEach((backup) => {
-          backup.schedules?.forEach((schedule) => {
-            mapping[schedule.id] = schedule.backupId;
-          });
-        });
-        setScheduleToBackupMap(mapping);
-
-        setState((s) => ({ ...s, loading: false }));
-      })
-      .catch(() => {
-        if (!active) return;
-        // Silently fail for background requests - just stop loading
-        setState((s) => ({
-          ...s,
-          loading: false,
-        }));
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [backupsApi]);
+    });
+    return mapping;
+  }, [backups]);
 
   // WebSocket listener for schedule reports
   useEffect(() => {
@@ -129,7 +105,7 @@ export default function BackupsPage() {
       // Force re-render by incrementing version
       setReportsVersion((v) => v + 1);
 
-      setBackups((previousBackups) =>
+      updateBackups((previousBackups) =>
         previousBackups.map((backup) =>
           backup.id === backupId
             ? {
@@ -158,15 +134,10 @@ export default function BackupsPage() {
       // Reload backups whenever status changes to get fresh data
       if (report.status !== BackupStatus.Running) {
         setTimeout(() => {
-          reloadBackups();
+          void reloadBackups();
         }, 500);
       }
 
-      // Update mapping
-      setScheduleToBackupMap((prev) => ({
-        ...prev,
-        [report.scheduleId]: backupId,
-      }));
     };
 
     connection.on("ScheduleReport", handler);
@@ -174,12 +145,13 @@ export default function BackupsPage() {
     return () => {
       connection.off("ScheduleReport", handler);
     };
-  }, [connection, isConnected, reloadBackups, scheduleReports]);
+  }, [connection, isConnected, reloadBackups, scheduleReports, updateBackups]);
 
   const handleRename = async (backupId: string, newTag: string) => {
-    await backupsApi.rename(backupId, newTag);
-    setBackups((prev) =>
-      prev.map((b) => (b.id === backupId ? { ...b, tag: newTag } : b)),
+    const trimmedTag = newTag.trim();
+    await backupsApi.rename(backupId, trimmedTag);
+    updateBackups((prev) =>
+      prev.map((b) => (b.id === backupId ? { ...b, tag: trimmedTag } : b)),
     );
   };
 
@@ -187,7 +159,7 @@ export default function BackupsPage() {
     setSavingIgnoredPathsId(backupId);
     try {
       await backupsApi.updateIgnoredPaths(backupId, paths);
-      setBackups((prev) =>
+      updateBackups((prev) =>
         prev.map((b) =>
           b.id === backupId ? { ...b, ignoredPaths: paths } : b,
         ),
@@ -234,9 +206,13 @@ export default function BackupsPage() {
 
   const handleDelete = async (backupId: string) => {
     setState((s) => ({ ...s, deletingId: backupId }));
-    await backupsApi.delete(backupId);
-    setBackups((prev) => prev.filter((x) => x.id !== backupId));
-    setState((s) => ({ ...s, deletingId: null }));
+    try {
+      await backupsApi.delete(backupId);
+      updateBackups((prev) => prev.filter((x) => x.id !== backupId));
+      await queryClient.invalidateQueries({ queryKey: queryKeys.schedules });
+    } finally {
+      setState((s) => ({ ...s, deletingId: null }));
+    }
   };
 
   const totalStats = useMemo(() => {
@@ -286,7 +262,7 @@ export default function BackupsPage() {
       : backups;
   }, [backups, selectedStorageId]);
 
-  if (state.loading && backups.length === 0) {
+  if (backupsQuery.isPending && backups.length === 0) {
     return (
       <Box display="flex" justifyContent="center" p={4}>
         <CircularProgress />

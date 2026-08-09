@@ -11,102 +11,46 @@ import {
   CardContent,
   CircularProgress,
 } from "@mui/material";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { confirm } from "material-ui-confirm";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { ModuleDestination } from "../types/api";
-import { useModulesApi } from "../api/modulesApi";
 import { parseUtcDate } from "../utils/dateUtils";
 import { getSourceIcon } from "../constants/sourceIcons";
-import type { Module, ModuleProviderInfo } from "../types/api";
 import { AddCircleOutline, DeleteOutline } from "@mui/icons-material";
 import { EditableModuleTag } from "../components/EditableModuleTag";
-
-interface State {
-  loading: boolean;
-  error: string | null;
-  availableLoading: boolean;
-  availableError: string | null;
-}
+import { useModuleCatalog } from "../hooks/useModuleCatalog";
+import { getApiErrorMessage } from "../utils/apiError";
 
 export function StoragesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const api = useModulesApi();
-  const [state, setState] = useState<State>({
-    loading: true,
-    error: null,
-    availableLoading: true,
-    availableError: null,
-  });
-  const [userStorages, setUserStorages] = useState<Module[]>([]);
-  const [availableStorages, setAvailableStorages] = useState<
-    ModuleProviderInfo[]
-  >([]);
+  const {
+    modules: userStorages,
+    providers: availableStorages,
+    isPending,
+    hasData,
+    error,
+    renameModule,
+    deleteModule,
+  } = useModuleCatalog(ModuleDestination.Target, "storage");
   const [snackbar, setSnackbar] = useState<string | null>(null);
 
   const handleRename = async (moduleId: string, newTag: string) => {
     try {
-      await api.rename(moduleId, newTag);
-      setUserStorages((prev) =>
-        prev.map((s) => (s.id === moduleId ? { ...s, tag: newTag } : s)),
-      );
-    } catch (e) {
-      const error = e as { response?: { data?: { message?: string } } };
-      setSnackbar(error?.response?.data?.message || "Failed to rename");
-      throw e;
+      await renameModule(moduleId, newTag);
+    } catch (caughtError) {
+      if (caughtError instanceof Error) {
+        setSnackbar(
+          getApiErrorMessage(caughtError, t("storages.renameFailed")),
+        );
+      }
+      throw caughtError;
     }
   };
 
-  useEffect(() => {
-    let active = true;
-    // load user-created storages
-    api
-      .list()
-      .then((data) => {
-        if (!active) return;
-        setUserStorages(
-          data.filter((m) => m.destination === ModuleDestination.Target),
-        );
-        setState((prev) => ({ ...prev, loading: false, error: null }));
-      })
-      .catch((e) => {
-        if (!active) return;
-        setState((prev) => ({
-          ...prev,
-          loading: false,
-          error: e?.message || "Failed to load storages",
-        }));
-      });
-
-    // load available storage types
-    api
-      .listProvidersByType("storage")
-      .then((data) => {
-        if (!active) return;
-        setAvailableStorages(data);
-        setState((prev) => ({
-          ...prev,
-          availableLoading: false,
-          availableError: null,
-        }));
-      })
-      .catch((e) => {
-        if (!active) return;
-        setState((prev) => ({
-          ...prev,
-          availableLoading: false,
-          availableError: e?.message || "Failed to load available storages",
-        }));
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [api]);
-
-  if (state.loading || state.availableLoading) {
+  if (isPending) {
     return (
       <Box display="flex" justifyContent="center" p={4}>
         <CircularProgress />
@@ -114,10 +58,12 @@ export function StoragesPage() {
     );
   }
 
-  if (state.error || state.availableError) {
+  if (error && !hasData) {
     return (
       <Box p={2}>
-        <Alert severity="error">{state.error}</Alert>
+        <Alert severity="error">
+          {getApiErrorMessage(error, t("storages.loadFailed"))}
+        </Alert>
       </Box>
     );
   }
@@ -177,10 +123,7 @@ export function StoragesPage() {
                         confirmationButtonProps: { color: "error" },
                       });
                       if (result.confirmed) {
-                        await api.delete(s.id);
-                        setUserStorages((prev) =>
-                          prev.filter((x) => x.id !== s.id),
-                        );
+                        await deleteModule(s.id);
                       }
                     }}
                   >

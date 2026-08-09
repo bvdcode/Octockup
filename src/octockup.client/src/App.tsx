@@ -4,9 +4,11 @@ import {
   Schedule,
   CloudDone,
   CloudDownload,
+  CleaningServices,
   GitHub,
   Settings,
 } from "@mui/icons-material";
+import { useEffect, useRef } from "react";
 import * as locales from "./locales";
 import HomePage from "./pages/Home";
 import SourcesPage from "./pages/Sources";
@@ -15,7 +17,7 @@ import BackupsPage from "./pages/Backups";
 import BackupWizard from "./pages/BackupWizard";
 import SourceWizard from "./pages/SourceWizard";
 import StorageWizard from "./pages/StorageWizard";
-import { AppShell, type TokenPair } from "@bvdcode/react-kit";
+import { AppShell, type TokenPair, useAuthStore } from "@bvdcode/react-kit";
 import SchedulesPage from "./pages/Schedules";
 import ScheduleWizard from "./pages/ScheduleWizard";
 import SnapshotsPage from "./pages/Snapshots";
@@ -27,8 +29,19 @@ import LoginPage from "./pages/Login";
 import type { CurrentUser } from "./types/auth";
 import { loginWithPassword } from "./api/passwordLoginApi";
 import { toCookieSession } from "./utils/authSession";
+import { queryClient } from "./query/queryClient";
 
 function App() {
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const previousAccessToken = useRef(accessToken);
+
+  useEffect(() => {
+    if (previousAccessToken.current && !accessToken) {
+      queryClient.clear();
+    }
+    previousAccessToken.current = accessToken;
+  }, [accessToken]);
+
   return (
     <>
       <AppShell
@@ -117,14 +130,16 @@ function App() {
             component: <ScheduleWizard />,
           },
           {
+            icon: <CleaningServices />,
+            name: "Storage Cleanup",
+            route: "/admin/storage-cleanup",
+            component: <StorageCleanupPage />,
+          },
+          {
             icon: <Settings />,
             name: "Settings",
             route: "/settings",
             component: <SettingsPage />,
-          },
-          {
-            route: "/admin/storage-cleanup",
-            component: <StorageCleanupPage />,
           },
         ]}
       />

@@ -14,10 +14,6 @@ vi.mock("./UserManagementCard", () => ({
   default: () => <div>user-management</div>,
 }));
 
-vi.mock("./StorageCleanupCard", () => ({
-  default: () => <div>storage-cleanup</div>,
-}));
-
 describe("AdminSettingsSection", () => {
   it("renders no administration controls for a non-admin user", () => {
     const result = render(
@@ -27,9 +23,11 @@ describe("AdminSettingsSection", () => {
     expect(result.container).toBeEmptyDOMElement();
   });
 
-  it("renders storage cleanup controls for an administrator", () => {
+  it("renders administration controls for an administrator", () => {
     render(<AdminSettingsSection isAdmin onProvidersChanged={vi.fn()} />);
 
-    expect(screen.getByText("storage-cleanup")).toBeInTheDocument();
+    expect(screen.getByText("authentication-settings")).toBeInTheDocument();
+    expect(screen.getByText("oidc-providers")).toBeInTheDocument();
+    expect(screen.getByText("user-management")).toBeInTheDocument();
   });
 });

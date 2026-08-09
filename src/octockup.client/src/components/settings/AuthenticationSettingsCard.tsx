@@ -9,38 +9,31 @@ import {
   Switch,
   Typography,
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useConfirm } from "material-ui-confirm";
 import { useAuthApi } from "../../api/authApi";
 import { getApiErrorMessage } from "../../utils/apiError";
+import { queryKeys } from "../../query/queryKeys";
+import type { AuthenticationSettings } from "../../types/auth";
 
 export default function AuthenticationSettingsCard() {
   const { t } = useTranslation();
   const confirm = useConfirm();
   const authApi = useAuthApi();
-  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const queryClient = useQueryClient();
+  const settingsQuery = useQuery({
+    queryKey: queryKeys.authenticationSettings,
+    queryFn: () => authApi.getAuthenticationSettings(),
+  });
+  const enabled = settingsQuery.data?.passwordLoginEnabled ?? null;
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    authApi
-      .getAuthenticationSettings()
-      .then((settings) => {
-        if (active) {
-          setEnabled(settings.passwordLoginEnabled);
-        }
-      })
-      .catch((caughtError) => {
-        if (active && caughtError instanceof Error) {
-          setError(getApiErrorMessage(caughtError, t("settings.loadFailed")));
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [authApi, t]);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const error = actionError ??
+    (settingsQuery.error
+      ? getApiErrorMessage(settingsQuery.error, t("settings.loadFailed"))
+      : null);
 
   const handleChange = async (nextEnabled: boolean) => {
     if (!nextEnabled) {
@@ -57,15 +50,20 @@ export default function AuthenticationSettingsCard() {
     }
 
     setSaving(true);
-    setError(null);
+    setActionError(null);
     try {
       const settings = await authApi.updateAuthenticationSettings({
         passwordLoginEnabled: nextEnabled,
       });
-      setEnabled(settings.passwordLoginEnabled);
+      queryClient.setQueryData<AuthenticationSettings>(
+        queryKeys.authenticationSettings,
+        settings,
+      );
     } catch (caughtError) {
       if (caughtError instanceof Error) {
-        setError(getApiErrorMessage(caughtError, t("settings.saveFailed")));
+        setActionError(
+          getApiErrorMessage(caughtError, t("settings.saveFailed")),
+        );
       }
     } finally {
       setSaving(false);
@@ -85,9 +83,9 @@ export default function AuthenticationSettingsCard() {
             </Typography>
           </Box>
           {error && <Alert severity="error">{error}</Alert>}
-          {enabled === null ? (
+          {enabled === null && settingsQuery.isPending ? (
             <CircularProgress size={24} />
-          ) : (
+          ) : enabled !== null ? (
             <FormControlLabel
               control={
                 <Switch
@@ -98,7 +96,7 @@ export default function AuthenticationSettingsCard() {
               }
               label={t("settings.authentication.passwordLogin")}
             />
-          )}
+          ) : null}
           <Alert severity="info">
             {t("settings.authentication.disableHint")}
           </Alert>

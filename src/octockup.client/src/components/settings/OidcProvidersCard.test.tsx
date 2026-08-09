@@ -1,7 +1,8 @@
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import OidcProvidersCard from "./OidcProvidersCard";
+import { renderWithQueryClient } from "../../test/renderWithQueryClient";
 
 const authApiMocks = vi.hoisted(() => ({
   listOidcProviders: vi.fn(),
@@ -44,7 +45,9 @@ describe("OidcProvidersCard", () => {
     );
     const user = userEvent.setup();
 
-    render(<OidcProvidersCard onProvidersChanged={vi.fn()} />);
+    renderWithQueryClient(
+      <OidcProvidersCard onProvidersChanged={vi.fn()} />,
+    );
 
     await screen.findByText("Company");
     const deleteButton = screen.getByTestId("DeleteIcon").closest("button");

@@ -19,6 +19,8 @@ import { useNavigate } from "react-router-dom";
 import { useBackupsApi } from "../api/backupsApi";
 import { useSchedulesApi } from "../api/schedulesApi";
 import type { BackupItem, CreateScheduleRequest } from "../types/api";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "../query/queryKeys";
 
 interface State { loading: boolean; error: string | null; creating: boolean; createError: string | null; }
 
@@ -27,6 +29,7 @@ export default function ScheduleWizard() {
   const navigate = useNavigate();
   const backupsApi = useBackupsApi();
   const schedulesApi = useSchedulesApi();
+  const queryClient = useQueryClient();
 
   const [state, setState] = useState<State>({ loading: true, error: null, creating: false, createError: null });
   const [backups, setBackups] = useState<BackupItem[]>([]);
@@ -132,6 +135,16 @@ export default function ScheduleWizard() {
                 intervalMinutes: intervalMinutes ? parseInt(intervalMinutes, 10) : undefined,
               };
               await schedulesApi.create(payload);
+              await Promise.all([
+                queryClient.invalidateQueries({
+                  queryKey: queryKeys.schedules,
+                  refetchType: "all",
+                }),
+                queryClient.invalidateQueries({
+                  queryKey: queryKeys.backups,
+                  refetchType: "all",
+                }),
+              ]);
               navigate("/schedules");
             } catch (e: unknown) {
               const message = e instanceof Error ? e.message : String(e);

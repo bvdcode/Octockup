@@ -81,7 +81,9 @@
     "deleteConfirm": "Are you sure you want to delete source '{{tag}}'?",
     "deleteTitle": "Delete source",
     "deleteText": "This action is permanent!",
-    "deleteTooltip": "Delete source"
+    "deleteTooltip": "Delete source",
+    "loadFailed": "Failed to load sources.",
+    "renameFailed": "Failed to rename source."
   },
   "wizard": {
     "back": "Back",
@@ -138,7 +140,9 @@
     "deleteConfirm": "Are you sure you want to delete storage '{{tag}}'?",
     "deleteTitle": "Delete storage",
     "deleteText": "This action is permanent!",
-    "deleteTooltip": "Delete storage"
+    "deleteTooltip": "Delete storage",
+    "loadFailed": "Failed to load storages.",
+    "renameFailed": "Failed to rename storage."
   },
   "storageWizard": {
     "back": "Back",
@@ -214,7 +218,9 @@
     "lastModified": "Last Modified",
     "download": "Download",
     "downloadValidated": "Download with validation",
-    "searchPlaceholder": "Search by path..."
+    "searchPlaceholder": "Search by path...",
+    "missingSnapshotId": "Snapshot ID is missing.",
+    "loadFailed": "Failed to load snapshot files."
   },
   "backupWizard": {
     "title": "Create Backup",

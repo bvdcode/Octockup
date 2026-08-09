@@ -29,6 +29,8 @@ import {
   SFTP_PROVIDER_ID,
   unlockPuttyKey,
 } from "../utils/puttyPrivateKey";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "../query/queryKeys";
 
 type ModuleType = "source" | "storage" | "target";
 
@@ -67,6 +69,7 @@ export default function BackupModuleWizard({
 }: BackupModuleWizardProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const providerId = searchParams.get("type") || ""; // provider full name
 
@@ -314,6 +317,10 @@ export default function BackupModuleWizard({
         providerId,
         preparedParameters,
       );
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.modules,
+        refetchType: "all",
+      });
       resetUnsavedChanges();
       setShowSuccessToast(true);
       setTimeout(() => {

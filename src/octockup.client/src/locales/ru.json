@@ -105,7 +105,9 @@
     "deleteConfirm": "Вы уверены, что хотите удалить источник '{{tag}}'?",
     "deleteTitle": "Удалить источник",
     "deleteText": "Действие необратимо!",
-    "deleteTooltip": "Удалить источник"
+    "deleteTooltip": "Удалить источник",
+    "loadFailed": "Не удалось загрузить источники.",
+    "renameFailed": "Не удалось переименовать источник."
   },
   "wizard": {
     "back": "Назад",
@@ -162,7 +164,9 @@
     "deleteConfirm": "Вы уверены, что хотите удалить хранилище '{{tag}}'?",
     "deleteTitle": "Удалить хранилище",
     "deleteText": "Действие необратимо!",
-    "deleteTooltip": "Удалить хранилище"
+    "deleteTooltip": "Удалить хранилище",
+    "loadFailed": "Не удалось загрузить хранилища.",
+    "renameFailed": "Не удалось переименовать хранилище."
   },
   "storageWizard": {
     "back": "Назад",
@@ -238,7 +242,9 @@
     "lastModified": "Дата изменения",
     "download": "Скачать",
     "downloadValidated": "Скачать с проверкой целостности",
-    "searchPlaceholder": "Поиск по пути..."
+    "searchPlaceholder": "Поиск по пути...",
+    "missingSnapshotId": "Не указан идентификатор снапшота.",
+    "loadFailed": "Не удалось загрузить файлы снапшота."
   },
   "backupWizard": {
     "title": "Создать бэкап",

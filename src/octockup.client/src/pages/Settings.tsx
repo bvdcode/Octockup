@@ -1,11 +1,12 @@
 import { Alert, Box, CircularProgress, Stack, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useAuthApi } from "../api/authApi";
 import AdminSettingsSection from "../components/settings/AdminSettingsSection";
 import ConnectedAccountsCard from "../components/settings/ConnectedAccountsCard";
 import DataTransferSettings from "../components/settings/DataTransferSettings";
-import type { CurrentUser } from "../types/auth";
+import { queryKeys } from "../query/queryKeys";
 import {
   clearOidcCallbackStatus,
   getOidcCallbackStatus,
@@ -14,9 +15,13 @@ import {
 export default function SettingsPage() {
   const { t } = useTranslation();
   const authApi = useAuthApi();
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
-  const [loadFailed, setLoadFailed] = useState(false);
-  const [oidcRevision, setOidcRevision] = useState(0);
+  const queryClient = useQueryClient();
+  const currentUserQuery = useQuery({
+    queryKey: queryKeys.currentUser,
+    queryFn: () => authApi.getCurrentUser(),
+  });
+  const currentUser = currentUserQuery.data;
+  const loadFailed = currentUserQuery.isError && currentUser === undefined;
   const [oidcStatus, setOidcStatus] = useState(
     () => getOidcCallbackStatus(window.location.search),
   );
@@ -26,27 +31,6 @@ export default function SettingsPage() {
       clearOidcCallbackStatus();
     }
   }, [oidcStatus]);
-
-  useEffect(() => {
-    let active = true;
-
-    authApi
-      .getCurrentUser()
-      .then((user) => {
-        if (active) {
-          setCurrentUser(user);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setLoadFailed(true);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [authApi]);
 
   return (
     <Box p={2}>
@@ -67,8 +51,8 @@ export default function SettingsPage() {
         {loadFailed && (
           <Alert severity="error">{t("settings.loadFailed")}</Alert>
         )}
-        <ConnectedAccountsCard key={oidcRevision} />
-        {currentUser === null && !loadFailed && (
+        <ConnectedAccountsCard />
+        {currentUser === undefined && !loadFailed && (
           <Box display="flex" justifyContent="center" p={2}>
             <CircularProgress size={24} />
           </Box>
@@ -76,7 +60,9 @@ export default function SettingsPage() {
         <AdminSettingsSection
           isAdmin={currentUser?.isAdmin === true}
           onProvidersChanged={() =>
-            setOidcRevision((currentRevision) => currentRevision + 1)
+            void queryClient.invalidateQueries({
+              queryKey: queryKeys.authenticationOptions,
+            })
           }
         />
         <DataTransferSettings />

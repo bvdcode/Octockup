@@ -13,6 +13,7 @@ import {
 import { useRef, useState, type ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@bvdcode/react-kit";
+import { useQueryClient } from "@tanstack/react-query";
 import { useBackupsApi } from "../../api/backupsApi";
 import { getApiErrorMessage } from "../../utils/apiError";
 
@@ -25,6 +26,7 @@ export default function DataTransferSettings() {
   const { t } = useTranslation();
   const accessToken = useAuthStore((state) => state.accessToken);
   const backupsApi = useBackupsApi();
+  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
   const [importMessage, setImportMessage] = useState<ImportMessage | null>(null);
@@ -45,6 +47,7 @@ export default function DataTransferSettings() {
     setImportMessage(null);
     try {
       const result = await backupsApi.importServerBackup(file);
+      await queryClient.invalidateQueries();
       setImportMessage({ type: "success", text: result.message });
     } catch (caughtError) {
       if (caughtError instanceof Error) {
