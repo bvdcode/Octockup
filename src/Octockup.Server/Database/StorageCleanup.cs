@@ -18,6 +18,9 @@ namespace Octockup.Server.Database
         [Column("status")]
         public StorageCleanupStatus Status { get; set; }
 
+        [Column("speed")]
+        public StorageCleanupSpeed Speed { get; set; }
+
         [Column("cursor_hash")]
         public string? CursorHash { get; set; }
 

@@ -422,9 +422,13 @@
     "noStorages": "Хранилища для бэкапов не настроены.",
     "loadFailed": "Не удалось загрузить статистику очистки хранилищ.",
     "startFailed": "Не удалось запустить очистку хранилища.",
+    "speedFailed": "Не удалось изменить скорость очистки.",
     "start": "Запустить очистку",
     "running": "Очистка...",
     "chunksPerSecond": "{{count}} чанков/с",
+    "speed": {
+      "faster": "Быстрая очистка · 10 000/мин"
+    },
     "duration": {
       "hoursMinutes": "{{hours}} ч {{minutes}} мин",
       "minutesSeconds": "{{minutes}} мин {{seconds}} с",

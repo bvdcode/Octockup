@@ -11,6 +11,7 @@ namespace Octockup.Server.Models.Dto
         public Guid ModuleId { get; set; }
         public string ModuleTag { get; set; } = string.Empty;
         public StorageCleanupStatus Status { get; set; }
+        public StorageCleanupSpeed Speed { get; set; }
         public long ScannedChunks { get; set; }
         public long PendingChunks { get; set; }
         public long TotalDeletedChunks { get; set; }

@@ -1,6 +1,9 @@
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { StorageCleanupStatus } from "../types/storageCleanup";
+import {
+  StorageCleanupSpeed,
+  StorageCleanupStatus,
+} from "../types/storageCleanup";
 import StorageCleanupPage from "./StorageCleanup";
 import {
   createTestQueryClient,
@@ -11,6 +14,7 @@ const api = vi.hoisted(() => ({
   list: vi.fn(),
   listRuns: vi.fn(),
   start: vi.fn(),
+  setSpeed: vi.fn(),
 }));
 const translation = vi.hoisted(() => ({
   t: (key: string) => key,
@@ -32,6 +36,7 @@ describe("StorageCleanupPage", () => {
     api.list.mockReset();
     api.listRuns.mockReset();
     api.start.mockReset();
+    api.setSpeed.mockReset();
   });
 
   it("renders storage state and persistent run history", async () => {
@@ -40,6 +45,7 @@ describe("StorageCleanupPage", () => {
       moduleId: "storage-id",
       moduleTag: "Archive storage",
       status: StorageCleanupStatus.Completed,
+      speed: StorageCleanupSpeed.Normal,
       scannedChunks: 12000,
       pendingChunks: 4,
       totalDeletedChunks: 80,
@@ -74,9 +80,18 @@ describe("StorageCleanupPage", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "storageCleanup.start" }),
     );
+    fireEvent.click(
+      screen.getByRole("switch", {
+        name: "storageCleanup.speed.faster",
+      }),
+    );
 
     await waitFor(() => {
       expect(api.start).toHaveBeenCalledWith("storage-id");
+      expect(api.setSpeed).toHaveBeenCalledWith(
+        "storage-id",
+        StorageCleanupSpeed.Faster,
+      );
     });
   });
 

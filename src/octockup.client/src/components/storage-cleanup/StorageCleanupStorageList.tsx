@@ -6,12 +6,15 @@ import {
   Card,
   CardContent,
   Chip,
+  FormControlLabel,
   LinearProgress,
   Stack,
+  Switch,
   Typography,
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import {
+  StorageCleanupSpeed,
   StorageCleanupStatus,
   type StorageCleanup,
   type StorageCleanupRun,
@@ -27,14 +30,21 @@ interface StorageCleanupStorageListProps {
   cleanups: StorageCleanup[];
   runs: StorageCleanupRun[];
   startingModuleId: string | null;
+  speedingModuleId: string | null;
   onStart: (moduleId: string) => Promise<void>;
+  onSpeedChange: (
+    moduleId: string,
+    speed: StorageCleanupSpeed,
+  ) => Promise<void>;
 }
 
 export default function StorageCleanupStorageList({
   cleanups,
   runs,
   startingModuleId,
+  speedingModuleId,
   onStart,
+  onSpeedChange,
 }: StorageCleanupStorageListProps) {
   const { t, i18n } = useTranslation();
 
@@ -83,19 +93,44 @@ export default function StorageCleanupStorageList({
                       color={getStorageCleanupStatusColor(cleanup.status)}
                     />
                   </Stack>
-                  <Button
-                    variant="outlined"
-                    startIcon={<CleaningServices />}
-                    disabled={
-                      cleanup.status === StorageCleanupStatus.Running ||
-                      startingModuleId === cleanup.moduleId
-                    }
-                    onClick={() => onStart(cleanup.moduleId)}
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    alignItems={{ xs: "stretch", sm: "center" }}
+                    spacing={1}
                   >
-                    {cleanup.status === StorageCleanupStatus.Running
-                      ? t("storageCleanup.running")
-                      : t("storageCleanup.start")}
-                  </Button>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={
+                            cleanup.speed === StorageCleanupSpeed.Faster
+                          }
+                          disabled={speedingModuleId === cleanup.moduleId}
+                          onChange={(event) =>
+                            void onSpeedChange(
+                              cleanup.moduleId,
+                              event.target.checked
+                                ? StorageCleanupSpeed.Faster
+                                : StorageCleanupSpeed.Normal,
+                            )
+                          }
+                        />
+                      }
+                      label={t("storageCleanup.speed.faster")}
+                    />
+                    <Button
+                      variant="outlined"
+                      startIcon={<CleaningServices />}
+                      disabled={
+                        cleanup.status === StorageCleanupStatus.Running ||
+                        startingModuleId === cleanup.moduleId
+                      }
+                      onClick={() => onStart(cleanup.moduleId)}
+                    >
+                      {cleanup.status === StorageCleanupStatus.Running
+                        ? t("storageCleanup.running")
+                        : t("storageCleanup.start")}
+                    </Button>
+                  </Stack>
                 </Stack>
                 <Box
                   display="grid"

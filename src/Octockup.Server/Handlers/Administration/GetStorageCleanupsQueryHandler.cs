@@ -54,6 +54,7 @@ namespace Octockup.Server.Handlers.Administration
                 ModuleId = module.Id,
                 ModuleTag = module.Tag,
                 Status = cleanup?.Status ?? StorageCleanupStatus.Idle,
+                Speed = cleanup?.Speed ?? StorageCleanupSpeed.Normal,
                 ScannedChunks = cleanup?.ScannedChunks ?? 0,
                 PendingChunks = pendingChunks,
                 TotalDeletedChunks = cleanup?.TotalDeletedChunks ?? 0,

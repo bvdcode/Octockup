@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Octockup.Server.Extensions;
 using Octockup.Server.Handlers.Administration;
 using Octockup.Server.Models.Dto;
+using Octockup.Server.Models.Enums;
 
 namespace Octockup.Server.Controllers
 {
@@ -45,6 +46,18 @@ namespace Octockup.Server.Controllers
                 new StartStorageCleanupCommand(moduleId),
                 cancellationToken);
             return Ok(cleanup);
+        }
+
+        [HttpPut("{moduleId:guid}/speed")]
+        public async Task<ActionResult<StorageCleanupSpeed>> SetSpeedAsync(
+            Guid moduleId,
+            [FromQuery] StorageCleanupSpeed speed,
+            CancellationToken cancellationToken)
+        {
+            StorageCleanupSpeed savedSpeed = await mediator.Send(
+                new SetStorageCleanupSpeedCommand(moduleId, speed),
+                cancellationToken);
+            return Ok(savedSpeed);
         }
     }
 }

@@ -18,9 +18,7 @@ namespace Octockup.Server.Jobs
         ILogger<StorageCleanupProcessor> logger)
     {
         internal const int ScanBatchSize = 10_000;
-        internal const int DeleteBatchSize = 250;
         private const int MaximumQueuedChunks = ScanBatchSize * 2;
-        private static readonly TimeSpan DeleteDelay = TimeSpan.FromMilliseconds(50);
 
         public async Task ProcessAsync(
             StorageCleanup cleanup,
@@ -170,12 +168,14 @@ namespace Octockup.Server.Jobs
             IBackupStorage storage,
             CancellationToken cancellationToken)
         {
+            StorageCleanupExecutionOptions executionOptions =
+                StorageCleanupExecutionOptions.Create(cleanup.Speed);
             List<StorageCleanupChunk> queuedChunks = await dbContext.StorageCleanupChunks
                 .AsNoTracking()
                 .Where(x => x.ModuleId == cleanup.ModuleId)
                 .OrderBy(x => x.UpdatedAt)
                 .ThenBy(x => x.Hash)
-                .Take(DeleteBatchSize)
+                .Take(executionOptions.DeleteBatchSize)
                 .ToListAsync(cancellationToken);
             if (queuedChunks.Count == 0)
             {
@@ -219,7 +219,7 @@ namespace Octockup.Server.Jobs
 
                 deletedIds.Add(chunk.Id);
                 reclaimedBytes += chunk.StoredSize;
-                await Task.Delay(DeleteDelay, cancellationToken);
+                await Task.Delay(executionOptions.DeleteDelay, cancellationToken);
             }
 
             if (!deletionFailed)

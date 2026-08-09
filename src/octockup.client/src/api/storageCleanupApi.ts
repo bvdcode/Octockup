@@ -5,6 +5,7 @@ import type {
   StorageCleanup,
   StorageCleanupRun,
 } from "../types/storageCleanup";
+import { StorageCleanupSpeed } from "../types/storageCleanup";
 
 export class StorageCleanupApiClient {
   constructor(private readonly axiosInstance: AxiosInstance) {}
@@ -19,6 +20,18 @@ export class StorageCleanupApiClient {
   async start(moduleId: string): Promise<StorageCleanup> {
     const response = await this.axiosInstance.post<StorageCleanup>(
       `/api/v1/admin/storage-cleanups/${encodeURIComponent(moduleId)}/start`,
+    );
+    return response.data;
+  }
+
+  async setSpeed(
+    moduleId: string,
+    speed: StorageCleanupSpeed,
+  ): Promise<StorageCleanupSpeed> {
+    const response = await this.axiosInstance.put<StorageCleanupSpeed>(
+      `/api/v1/admin/storage-cleanups/${encodeURIComponent(moduleId)}/speed`,
+      null,
+      { params: { speed } },
     );
     return response.data;
   }

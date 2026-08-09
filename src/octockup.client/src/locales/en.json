@@ -396,9 +396,13 @@
     "noStorages": "No backup storages are configured.",
     "loadFailed": "Could not load storage cleanup statistics.",
     "startFailed": "Could not start storage cleanup.",
+    "speedFailed": "Could not change cleanup speed.",
     "start": "Start cleanup",
     "running": "Cleaning...",
     "chunksPerSecond": "{{count}} chunks/s",
+    "speed": {
+      "faster": "Faster cleanup · 10,000/min"
+    },
     "duration": {
       "hoursMinutes": "{{hours}}h {{minutes}}m",
       "minutesSeconds": "{{minutes}}m {{seconds}}s",

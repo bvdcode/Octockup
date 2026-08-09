@@ -5,11 +5,17 @@ export enum StorageCleanupStatus {
   Failed = 3,
 }
 
+export enum StorageCleanupSpeed {
+  Normal = 0,
+  Faster = 1,
+}
+
 export interface StorageCleanup {
   id: string;
   moduleId: string;
   moduleTag: string;
   status: StorageCleanupStatus;
+  speed: StorageCleanupSpeed;
   scannedChunks: number;
   pendingChunks: number;
   totalDeletedChunks: number;

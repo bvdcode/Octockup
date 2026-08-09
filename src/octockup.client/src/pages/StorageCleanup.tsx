@@ -15,6 +15,7 @@ import StorageCleanupRunHistory from "../components/storage-cleanup/StorageClean
 import StorageCleanupStorageList from "../components/storage-cleanup/StorageCleanupStorageList";
 import StorageCleanupSummary from "../components/storage-cleanup/StorageCleanupSummary";
 import {
+  StorageCleanupSpeed,
   StorageCleanupStatus,
   type StorageCleanup,
   type StorageCleanupRun,
@@ -49,6 +50,7 @@ export default function StorageCleanupPage() {
     dashboardQuery.data?.cleanups ?? null;
   const runs: StorageCleanupRun[] = dashboardQuery.data?.runs ?? [];
   const [startingModuleId, setStartingModuleId] = useState<string | null>(null);
+  const [speedingModuleId, setSpeedingModuleId] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
   const loadError = dashboardQuery.error;
 
@@ -68,6 +70,28 @@ export default function StorageCleanupPage() {
       }
     } finally {
       setStartingModuleId(null);
+    }
+  };
+
+  const setCleanupSpeed = async (
+    moduleId: string,
+    speed: StorageCleanupSpeed,
+  ) => {
+    setSpeedingModuleId(moduleId);
+    setStartError(null);
+    try {
+      await storageCleanupApi.setSpeed(moduleId.trim(), speed);
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.storageCleanup,
+      });
+    } catch (caughtError) {
+      if (caughtError instanceof Error) {
+        setStartError(
+          getApiErrorMessage(caughtError, t("storageCleanup.speedFailed")),
+        );
+      }
+    } finally {
+      setSpeedingModuleId(null);
     }
   };
 
@@ -114,7 +138,9 @@ export default function StorageCleanupPage() {
                 cleanups={cleanups}
                 runs={runs}
                 startingModuleId={startingModuleId}
+                speedingModuleId={speedingModuleId}
                 onStart={startCleanup}
+                onSpeedChange={setCleanupSpeed}
               />
             </Box>
             {runs.length > 0 && (
