@@ -50,7 +50,7 @@ async function initializeLogin(
     clearOidcCallbackStatus();
   }
 
-  if (callbackStatus === "success") {
+  if (callbackStatus === "success" || callbackStatus === "linked") {
     try {
       const session = await authApi.refreshFromCookie();
       clearOidcCallbackStatus();

@@ -31,7 +31,9 @@ export function getCurrentReturnUrl(): string {
     return "/";
   }
 
-  const relativeUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  const url = new URL(window.location.href);
+  url.searchParams.delete("oidc");
+  const relativeUrl = `${url.pathname}${url.search}${url.hash}`;
   return relativeUrl.startsWith("/") ? relativeUrl : "/";
 }
 

@@ -1,5 +1,5 @@
 import { StrictMode } from "react";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import LoginPage from "./Login";
@@ -90,5 +90,29 @@ describe("LoginPage", () => {
       }),
     ).toBeInTheDocument();
     expect(apiMocks.getOptions).toHaveBeenCalledTimes(2);
+  });
+
+  it("restores the cookie session after an account-link callback", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/settings?oidc=linked&oidc=success",
+    );
+    apiMocks.refreshFromCookie.mockResolvedValue({
+      accessToken: "access-token",
+      refreshToken: "cookie-session",
+    });
+
+    render(<LoginPage />);
+
+    await waitFor(() => {
+      expect(apiMocks.refreshFromCookie).toHaveBeenCalledTimes(1);
+    });
+    expect(authStore.setRefreshToken).toHaveBeenCalledWith("cookie-session");
+    expect(authStore.setAccessToken).toHaveBeenCalledWith("access-token");
+    expect(apiMocks.getOptions).not.toHaveBeenCalled();
+    expect(`${window.location.pathname}${window.location.search}`).toBe(
+      "/settings",
+    );
   });
 });

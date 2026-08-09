@@ -28,6 +28,18 @@ describe("auth utilities", () => {
     );
   });
 
+  it("removes stale OIDC markers from the next return URL", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/settings?view=authentication&oidc=linked&oidc=success#providers",
+    );
+
+    expect(getCurrentReturnUrl()).toBe(
+      "/settings?view=authentication#providers",
+    );
+  });
+
   it("offers only providers that are not already linked", () => {
     const providers: PublicOidcProvider[] = [
       { slug: "company", name: "Company" },
