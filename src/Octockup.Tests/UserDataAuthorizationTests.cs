@@ -107,7 +107,14 @@ namespace Octockup.Tests
                 ModuleId = module.Id,
                 Status = StorageCleanupStatus.Completed,
             };
-            await dbContext.StorageCleanups.AddAsync(cleanup);
+            StorageCleanupRun run = new()
+            {
+                ModuleId = module.Id,
+                Status = StorageCleanupStatus.Completed,
+                StartedAt = DateTime.UtcNow.AddMinutes(-1),
+                CompletedAt = DateTime.UtcNow,
+            };
+            await dbContext.AddRangeAsync(cleanup, run);
             await dbContext.SaveChangesAsync();
             ModuleController controller = AsUser(
                 new ModuleController(CreateCipher(), dbContext, NullLogger<ModuleController>.Instance, []),
@@ -119,10 +126,12 @@ namespace Octockup.Tests
             dbContext.ChangeTracker.Clear();
             bool moduleExists = await dbContext.Modules.AnyAsync(x => x.Id == module.Id);
             bool cleanupExists = await dbContext.StorageCleanups.AnyAsync(x => x.ModuleId == module.Id);
+            bool cleanupRunExists = await dbContext.StorageCleanupRuns.AnyAsync(x => x.ModuleId == module.Id);
             Assert.Multiple(() =>
             {
                 Assert.That(moduleExists, Is.False);
                 Assert.That(cleanupExists, Is.False);
+                Assert.That(cleanupRunExists, Is.False);
             });
         }
 

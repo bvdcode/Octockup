@@ -48,12 +48,21 @@ namespace Octockup.Server.Handlers.Administration
 
             if (cleanup.Status != StorageCleanupStatus.Running)
             {
+                DateTime startedAt = DateTime.UtcNow;
                 cleanup.Status = StorageCleanupStatus.Running;
                 cleanup.CursorHash = null;
                 cleanup.ScanUpperBoundHash = null;
                 cleanup.ScannedChunks = 0;
-                cleanup.LastStartedAt = DateTime.UtcNow;
+                cleanup.LastStartedAt = startedAt;
                 cleanup.ErrorMessage = null;
+                StorageCleanupRun run = new()
+                {
+                    ModuleId = request.ModuleId,
+                    Status = StorageCleanupStatus.Running,
+                    StartedAt = startedAt,
+                };
+                await dbContext.StorageCleanupRuns.AddAsync(run, cancellationToken);
+                cleanup.LastRun = run;
                 await dbContext.SaveChangesAsync(cancellationToken);
             }
 

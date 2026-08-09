@@ -41,14 +41,21 @@ namespace Octockup.Tests
             await scenario.ProcessAsync();
 
             StorageCleanup cleanup = await scenario.GetCleanupAsync();
+            StorageCleanupRun run = await scenario.GetRunAsync();
             Assert.Multiple(() =>
             {
                 Assert.That(cleanup.Status, Is.EqualTo(StorageCleanupStatus.Completed));
                 Assert.That(cleanup.ScannedChunks, Is.EqualTo(2));
                 Assert.That(cleanup.TotalDeletedChunks, Is.EqualTo(1));
                 Assert.That(cleanup.TotalReclaimedBytes, Is.EqualTo(4));
+                Assert.That(cleanup.LastRunId, Is.EqualTo(run.Id));
                 Assert.That(scenario.ChunkExists(referencedHash), Is.True);
                 Assert.That(scenario.ChunkExists(orphanHash), Is.False);
+                Assert.That(run.Status, Is.EqualTo(StorageCleanupStatus.Completed));
+                Assert.That(run.ScannedChunks, Is.EqualTo(2));
+                Assert.That(run.DeletedChunks, Is.EqualTo(1));
+                Assert.That(run.ReclaimedBytes, Is.EqualTo(4));
+                Assert.That(run.CompletedAt, Is.Not.Null);
             });
             Assert.That(await scenario.UploadedHashesAsync(), Is.EqualTo([referencedHash]));
             Assert.That(await scenario.QueuedChunksAsync(), Is.Empty);
@@ -67,12 +74,15 @@ namespace Octockup.Tests
             await scenario.ProcessAsync();
 
             StorageCleanup cleanup = await scenario.GetCleanupAsync();
+            StorageCleanupRun run = await scenario.GetRunAsync();
             Assert.Multiple(() =>
             {
                 Assert.That(cleanup.Status, Is.EqualTo(StorageCleanupStatus.Completed));
                 Assert.That(cleanup.TotalDeletedChunks, Is.Zero);
                 Assert.That(cleanup.TotalReclaimedBytes, Is.Zero);
                 Assert.That(scenario.ChunkExists(hash), Is.True);
+                Assert.That(run.Status, Is.EqualTo(StorageCleanupStatus.Completed));
+                Assert.That(run.DeletedChunks, Is.Zero);
             });
             Assert.That(await scenario.UploadedHashesAsync(), Is.EqualTo([hash]));
             Assert.That(await scenario.QueuedChunksAsync(), Is.Empty);
@@ -89,11 +99,14 @@ namespace Octockup.Tests
             await scenario.ProcessAsync();
 
             StorageCleanup cleanup = await scenario.GetCleanupAsync();
+            StorageCleanupRun run = await scenario.GetRunAsync();
             Assert.Multiple(() =>
             {
                 Assert.That(cleanup.Status, Is.EqualTo(StorageCleanupStatus.Completed));
                 Assert.That(cleanup.TotalDeletedChunks, Is.EqualTo(1));
                 Assert.That(cleanup.TotalReclaimedBytes, Is.EqualTo(7));
+                Assert.That(run.DeletedChunks, Is.EqualTo(1));
+                Assert.That(run.ReclaimedBytes, Is.EqualTo(7));
             });
             Assert.That(await scenario.QueuedChunksAsync(), Is.Empty);
         }
@@ -113,11 +126,14 @@ namespace Octockup.Tests
             await scenario.ProcessAsync();
 
             StorageCleanup cleanup = await scenario.GetCleanupAsync();
+            StorageCleanupRun run = await scenario.GetRunAsync();
             Assert.Multiple(() =>
             {
                 Assert.That(cleanup.Status, Is.EqualTo(StorageCleanupStatus.Running));
                 Assert.That(cleanup.ScannedChunks, Is.EqualTo(StorageCleanupProcessor.ScanBatchSize));
                 Assert.That(cleanup.TotalDeletedChunks, Is.Zero);
+                Assert.That(run.Status, Is.EqualTo(StorageCleanupStatus.Running));
+                Assert.That(run.ScannedChunks, Is.EqualTo(StorageCleanupProcessor.ScanBatchSize));
             });
             Assert.That(await scenario.UploadedHashesAsync(), Has.Count.EqualTo(chunkCount));
             Assert.That(await scenario.QueuedChunksAsync(), Is.Empty);

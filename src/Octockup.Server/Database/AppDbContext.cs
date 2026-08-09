@@ -19,6 +19,7 @@ namespace Octockup.Server.Database
         public DbSet<UploadedHash> UploadedHashes => Set<UploadedHash>();
         public DbSet<StorageCleanup> StorageCleanups => Set<StorageCleanup>();
         public DbSet<StorageCleanupChunk> StorageCleanupChunks => Set<StorageCleanupChunk>();
+        public DbSet<StorageCleanupRun> StorageCleanupRuns => Set<StorageCleanupRun>();
         public DbSet<AuthenticationSettings> AuthenticationSettings => Set<AuthenticationSettings>();
         public DbSet<OidcProvider> OidcProviders => Set<OidcProvider>();
         public DbSet<OidcLoginState> OidcLoginStates => Set<OidcLoginState>();

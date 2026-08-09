@@ -26,6 +26,7 @@ namespace Octockup.Tests
         private readonly Guid _storageId;
         private readonly Guid _backupId;
         private readonly Guid _cleanupId;
+        private readonly Guid _runId;
 
         private StorageCleanupTestScenario(
             PostgresDbContext dbContext,
@@ -34,7 +35,8 @@ namespace Octockup.Tests
             string rootDirectory,
             Guid storageId,
             Guid backupId,
-            Guid cleanupId)
+            Guid cleanupId,
+            Guid runId)
         {
             _dbContext = dbContext;
             _crypto = crypto;
@@ -43,6 +45,7 @@ namespace Octockup.Tests
             _storageId = storageId;
             _backupId = backupId;
             _cleanupId = cleanupId;
+            _runId = runId;
         }
 
         public static async Task<StorageCleanupTestScenario> CreateAsync(string connectionString)
@@ -97,8 +100,15 @@ namespace Octockup.Tests
                 Status = StorageCleanupStatus.Running,
                 LastStartedAt = DateTime.UtcNow,
             };
+            StorageCleanupRun run = new()
+            {
+                Module = storage,
+                Status = StorageCleanupStatus.Running,
+                StartedAt = cleanup.LastStartedAt.Value,
+            };
+            cleanup.LastRun = run;
 
-            dbContext.AddRange(user, source, storage, backup, cleanup);
+            dbContext.AddRange(user, source, storage, backup, cleanup, run);
             await dbContext.SaveChangesAsync();
             dbContext.ChangeTracker.Clear();
             return new StorageCleanupTestScenario(
@@ -108,7 +118,8 @@ namespace Octockup.Tests
                 rootDirectory,
                 storage.Id,
                 backup.Id,
-                cleanup.Id);
+                cleanup.Id,
+                run.Id);
         }
 
         public async Task AddUploadedChunkAsync(string hash, byte[] content)
@@ -171,12 +182,14 @@ namespace Octockup.Tests
             StorageCleanup cleanup = await _dbContext.StorageCleanups
                 .Include(x => x.Module)
                 .SingleAsync(x => x.Id == _cleanupId);
+            StorageCleanupRun run = await _dbContext.StorageCleanupRuns
+                .SingleAsync(x => x.Id == _runId);
             StorageCleanupProcessor processor = new(
                 _crypto,
                 _dbContext,
                 [_provider],
                 NullLogger<StorageCleanupProcessor>.Instance);
-            await processor.ProcessAsync(cleanup, CancellationToken.None);
+            await processor.ProcessAsync(cleanup, run, CancellationToken.None);
             _dbContext.ChangeTracker.Clear();
         }
 
@@ -185,6 +198,13 @@ namespace Octockup.Tests
             return _dbContext.StorageCleanups
                 .AsNoTracking()
                 .SingleAsync(x => x.Id == _cleanupId);
+        }
+
+        public Task<StorageCleanupRun> GetRunAsync()
+        {
+            return _dbContext.StorageCleanupRuns
+                .AsNoTracking()
+                .SingleAsync(x => x.Id == _runId);
         }
 
         public Task<List<string>> UploadedHashesAsync()

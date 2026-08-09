@@ -25,6 +25,17 @@ namespace Octockup.Server.Controllers
             return Ok(cleanups);
         }
 
+        [HttpGet("runs")]
+        public async Task<ActionResult<IReadOnlyCollection<StorageCleanupRunDto>>> GetRunsAsync(
+            [FromQuery] int limit = 50,
+            CancellationToken cancellationToken = default)
+        {
+            IReadOnlyCollection<StorageCleanupRunDto> runs = await mediator.Send(
+                new GetStorageCleanupRunsQuery(limit),
+                cancellationToken);
+            return Ok(runs);
+        }
+
         [HttpPost("{moduleId:guid}/start")]
         public async Task<ActionResult<StorageCleanupDto>> StartAsync(
             Guid moduleId,

@@ -69,6 +69,9 @@ namespace Octockup.Server.Controllers
             await _dbContext.StorageCleanups
                 .Where(x => x.ModuleId == moduleId)
                 .ExecuteDeleteAsync();
+            await _dbContext.StorageCleanupRuns
+                .Where(x => x.ModuleId == moduleId)
+                .ExecuteDeleteAsync();
             await _dbContext.Modules
                 .Where(x => x.Id == moduleId)
                 .ExecuteDeleteAsync();

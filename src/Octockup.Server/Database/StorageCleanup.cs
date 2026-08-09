@@ -42,7 +42,14 @@ namespace Octockup.Server.Database
         [Column("error_message")]
         public string? ErrorMessage { get; set; }
 
+        [Column("last_run_id")]
+        public Guid? LastRunId { get; set; }
+
         [DeleteBehavior(DeleteBehavior.Restrict)]
         public virtual Module Module { get; set; } = null!;
+
+        [ForeignKey(nameof(LastRunId))]
+        [DeleteBehavior(DeleteBehavior.Restrict)]
+        public virtual StorageCleanupRun? LastRun { get; set; }
     }
 }

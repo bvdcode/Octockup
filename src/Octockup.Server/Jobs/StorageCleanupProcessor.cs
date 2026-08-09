@@ -24,10 +24,11 @@ namespace Octockup.Server.Jobs
 
         public async Task ProcessAsync(
             StorageCleanup cleanup,
+            StorageCleanupRun run,
             CancellationToken cancellationToken)
         {
             IBackupStorage storage = CreateStorage(cleanup.Module);
-            await ProcessQueuedChunksAsync(cleanup, storage, cancellationToken);
+            await ProcessQueuedChunksAsync(cleanup, run, storage, cancellationToken);
 
             int queuedChunks = await dbContext.StorageCleanupChunks
                 .CountAsync(x => x.ModuleId == cleanup.ModuleId, cancellationToken);
@@ -46,7 +47,7 @@ namespace Octockup.Server.Jobs
 
                 if (cleanup.ScanUpperBoundHash is null)
                 {
-                    await CompleteAsync(cleanup, cancellationToken);
+                    await CompleteAsync(cleanup, run, cancellationToken);
                     return;
                 }
             }
@@ -60,12 +61,12 @@ namespace Octockup.Server.Jobs
             {
                 if (queuedChunks == 0)
                 {
-                    await CompleteAsync(cleanup, cancellationToken);
+                    await CompleteAsync(cleanup, run, cancellationToken);
                 }
                 return;
             }
 
-            await QueueOrphansAsync(cleanup, candidates, cancellationToken);
+            await QueueOrphansAsync(cleanup, run, candidates, cancellationToken);
         }
 
         private IBackupStorage CreateStorage(Module module)
@@ -113,6 +114,7 @@ namespace Octockup.Server.Jobs
 
         private async Task QueueOrphansAsync(
             StorageCleanup cleanup,
+            StorageCleanupRun run,
             IReadOnlyList<UploadedHash> candidates,
             CancellationToken cancellationToken)
         {
@@ -150,6 +152,8 @@ namespace Octockup.Server.Jobs
 
             cleanup.CursorHash = candidates[^1].Hash;
             cleanup.ScannedChunks += candidates.Count;
+            run.ScannedChunks += candidates.Count;
+            run.ErrorMessage = null;
             await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
 
@@ -162,6 +166,7 @@ namespace Octockup.Server.Jobs
 
         private async Task ProcessQueuedChunksAsync(
             StorageCleanup cleanup,
+            StorageCleanupRun run,
             IBackupStorage storage,
             CancellationToken cancellationToken)
         {
@@ -220,6 +225,11 @@ namespace Octockup.Server.Jobs
             if (!deletionFailed)
             {
                 cleanup.ErrorMessage = null;
+                run.ErrorMessage = null;
+            }
+            else
+            {
+                run.ErrorMessage = cleanup.ErrorMessage;
             }
 
             if (deletedIds.Count == 0)
@@ -235,6 +245,8 @@ namespace Octockup.Server.Jobs
                 .ExecuteDeleteAsync(cancellationToken);
             cleanup.TotalDeletedChunks += deletedIds.Count;
             cleanup.TotalReclaimedBytes += reclaimedBytes;
+            run.DeletedChunks += deletedIds.Count;
+            run.ReclaimedBytes += reclaimedBytes;
             await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
 
@@ -309,13 +321,18 @@ namespace Octockup.Server.Jobs
 
         private async Task CompleteAsync(
             StorageCleanup cleanup,
+            StorageCleanupRun run,
             CancellationToken cancellationToken)
         {
+            DateTime completedAt = DateTime.UtcNow;
             cleanup.Status = StorageCleanupStatus.Completed;
             cleanup.CursorHash = null;
             cleanup.ScanUpperBoundHash = null;
-            cleanup.LastCompletedAt = DateTime.UtcNow;
+            cleanup.LastCompletedAt = completedAt;
             cleanup.ErrorMessage = null;
+            run.Status = StorageCleanupStatus.Completed;
+            run.CompletedAt = completedAt;
+            run.ErrorMessage = null;
             await dbContext.SaveChangesAsync(cancellationToken);
         }
     }
