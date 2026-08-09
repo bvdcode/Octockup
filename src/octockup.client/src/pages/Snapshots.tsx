@@ -46,7 +46,9 @@ export default function SnapshotsPage() {
   });
   const snapshots = snapshotsQuery.data ?? [];
   const [copyMessage, setCopyMessage] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingIds, setDeletingIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const [actionError, setActionError] = useState<string | null>(null);
   const loadError = backupId
     ? snapshotsQuery.error
@@ -93,7 +95,11 @@ export default function SnapshotsPage() {
       return;
     }
 
-    setDeletingId(snapshot.id);
+    setDeletingIds((current) => {
+      const next = new Set(current);
+      next.add(snapshot.id);
+      return next;
+    });
     setActionError(null);
     try {
       await snapshotsApi.deleteSnapshot(snapshot.id);
@@ -110,7 +116,11 @@ export default function SnapshotsPage() {
         );
       }
     } finally {
-      setDeletingId(null);
+      setDeletingIds((current) => {
+        const next = new Set(current);
+        next.delete(snapshot.id);
+        return next;
+      });
     }
   };
 
@@ -157,7 +167,7 @@ export default function SnapshotsPage() {
       renderCell: (params) => (
         <SnapshotActionsCell
           downloadDisabled={!accessToken || !params.row.completedAt}
-          deleting={deletingId === params.row.id}
+          deleting={deletingIds.has(params.row.id)}
           onDownload={(validate) => handleDownload(params.row.id, validate)}
           onCopyLink={(validate) =>
             handleCopyDownloadLink(params.row.id, validate)
