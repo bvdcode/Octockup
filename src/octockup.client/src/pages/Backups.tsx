@@ -20,6 +20,7 @@ import { BackupCard } from "../components/backups/BackupCard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../query/queryKeys";
 import { BackupListToolbar } from "../components/backups/BackupListToolbar";
+import { BackupListSummary } from "../components/backups/BackupListSummary";
 import { BackupSortOption } from "../types/backupList";
 import {
   filterBackups,
@@ -250,12 +251,8 @@ export default function BackupsPage() {
   }
 
   return (
-    <Stack spacing={1.5}>
+    <Stack spacing={1.5} mt={-2}>
       <BackupListToolbar
-        backupCount={filteredBackups.length}
-        issueCount={summary.issueCount}
-        logicalSize={summary.logicalSize}
-        runningCount={summary.runningCount}
         search={search}
         selectedStorageId={selectedStorageId}
         sort={sort}
@@ -319,6 +316,14 @@ export default function BackupsPage() {
               />
             ))}
         </Stack>
+      )}
+      {visibleBackups.length > 0 && (
+        <BackupListSummary
+          backupCount={filteredBackups.length}
+          issueCount={summary.issueCount}
+          logicalSize={summary.logicalSize}
+          runningCount={summary.runningCount}
+        />
       )}
       {editingIgnoredPathsId &&
         (() => {
