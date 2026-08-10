@@ -47,6 +47,7 @@ namespace Octockup.Server
                 .AddScoped<IBackupProvider, S3BackupStorage>()
                 .AddScoped<IBackupProvider, SFTPBackupStorage>()
                 .AddScoped<IBackupProvider, FileSystemBackupSource>()
+                .AddScoped<IBackupJobScheduler, BackupJobScheduler>()
                 .AddSingleton<StorageOperationCoordinator>()
                 .AddScoped<StorageCleanupProcessor>()
                 .AddPbkdf2PasswordHashService()
