@@ -80,12 +80,12 @@ namespace Octockup.Server.Handlers.Scheduling
 
         private async Task<Guid?> RunNowAsync(
             Guid backupId,
-            IReadOnlyCollection<Schedule> schedules,
+            IReadOnlyList<Schedule> schedules,
             CancellationToken cancellationToken)
         {
             Schedule? schedule = schedules.FirstOrDefault(x => x.Status == ScheduleStatus.Running)
                 ?? schedules.FirstOrDefault(x => x.Interval is not null)
-                ?? schedules.FirstOrDefault();
+                ?? GetFirstSchedule(schedules);
 
             if (schedule is null)
             {
@@ -111,7 +111,7 @@ namespace Octockup.Server.Handlers.Scheduling
 
         private async Task<Guid?> SetIntervalAsync(
             Guid backupId,
-            IReadOnlyCollection<Schedule> schedules,
+            IReadOnlyList<Schedule> schedules,
             int intervalMinutes,
             CancellationToken cancellationToken)
         {
@@ -128,10 +128,10 @@ namespace Octockup.Server.Handlers.Scheduling
                     "Multiple recurring schedules are currently running for this backup.");
             }
 
-            Schedule? schedule = runningRecurringSchedules.SingleOrDefault()
-                ?? recurringSchedules.FirstOrDefault()
+            Schedule? schedule = GetOnlySchedule(runningRecurringSchedules)
+                ?? GetFirstSchedule(recurringSchedules)
                 ?? schedules.FirstOrDefault(x => x.Status == ScheduleStatus.Running)
-                ?? schedules.FirstOrDefault();
+                ?? GetFirstSchedule(schedules);
             TimeSpan interval = TimeSpan.FromMinutes(intervalMinutes);
 
             if (schedule is null)
@@ -168,7 +168,7 @@ namespace Octockup.Server.Handlers.Scheduling
         }
 
         private async Task<Guid?> DisableAsync(
-            IReadOnlyCollection<Schedule> schedules,
+            IReadOnlyList<Schedule> schedules,
             CancellationToken cancellationToken)
         {
             List<Schedule> recurringSchedules = schedules
@@ -184,7 +184,7 @@ namespace Octockup.Server.Handlers.Scheduling
                     "Multiple recurring schedules are currently running for this backup.");
             }
 
-            Schedule? runningSchedule = runningSchedules.SingleOrDefault();
+            Schedule? runningSchedule = GetOnlySchedule(runningSchedules);
             if (runningSchedule is not null)
             {
                 runningSchedule.Interval = null;
@@ -196,6 +196,16 @@ namespace Octockup.Server.Handlers.Scheduling
             dbContext.Schedules.RemoveRange(removableSchedules);
             await dbContext.SaveChangesAsync(cancellationToken);
             return runningSchedule?.Id;
+        }
+
+        private static Schedule? GetFirstSchedule(IReadOnlyList<Schedule> schedules)
+        {
+            return schedules.Count > 0 ? schedules[0] : null;
+        }
+
+        private static Schedule? GetOnlySchedule(IReadOnlyList<Schedule> schedules)
+        {
+            return schedules.Count == 1 ? schedules[0] : null;
         }
     }
 }

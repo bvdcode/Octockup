@@ -333,38 +333,11 @@ namespace Octockup.Server.Services
             OidcIdentityClaims claims,
             CancellationToken cancellationToken)
         {
-            OidcProvider provider = await _dbContext.OidcProviders
-                .AsNoTracking()
-                .SingleOrDefaultAsync(x => x.Id == expectedProvider.Id, cancellationToken)
-                ?? throw new AuthApiException(
-                    StatusCodes.Status409Conflict,
-                    "OIDC provider changed while the account was being linked.");
-            if (!provider.IsEnabled
-                || !string.Equals(provider.Issuer, expectedProvider.Issuer, StringComparison.Ordinal)
-                || !string.Equals(provider.ClientId, expectedProvider.ClientId, StringComparison.Ordinal))
-            {
-                throw new AuthApiException(
-                    StatusCodes.Status409Conflict,
-                    "OIDC provider changed while the account was being linked. Try again.");
-            }
-
-            User user = await _dbContext.Users.FindAsync([userId], cancellationToken)
-                ?? throw new AuthApiException(StatusCodes.Status404NotFound, "User was not found.");
-            if (user.IsDisabled)
-            {
-                throw new AuthApiException(StatusCodes.Status403Forbidden, "User account is unavailable.");
-            }
-
-            UserExternalIdentity? subjectLink = await _dbContext.UserExternalIdentities
-                .SingleOrDefaultAsync(
-                    x => x.ProviderId == provider.Id && x.Subject == claims.Subject,
-                    cancellationToken);
-            if (subjectLink is not null && subjectLink.UserId != userId)
-            {
-                throw new AuthApiException(
-                    StatusCodes.Status409Conflict,
-                    "This external account is already linked to another user.");
-            }
+            OidcProvider provider = await GetCurrentLinkProviderAsync(
+                expectedProvider,
+                cancellationToken);
+            User user = await GetAvailableUserAsync(userId, cancellationToken);
+            await EnsureSubjectIsAvailableAsync(provider.Id, claims.Subject, userId, cancellationToken);
 
             UserExternalIdentity? providerLink = await _dbContext.UserExternalIdentities
                 .SingleOrDefaultAsync(
@@ -372,18 +345,95 @@ namespace Octockup.Server.Services
                     cancellationToken);
             if (providerLink is not null)
             {
-                if (!string.Equals(providerLink.Subject, claims.Subject, StringComparison.Ordinal))
-                {
-                    throw new AuthApiException(
-                        StatusCodes.Status409Conflict,
-                        "This user is already linked to another account from the same provider.");
-                }
-
+                EnsureProviderLinkMatches(providerLink, claims.Subject);
                 ApplyClaims(providerLink, claims);
-                await _dbContext.SaveChangesAsync(cancellationToken);
-                return user;
+            }
+            else
+            {
+                UserExternalIdentity identity = CreateIdentity(userId, provider, claims);
+                await _dbContext.UserExternalIdentities.AddAsync(identity, cancellationToken);
             }
 
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            return user;
+        }
+
+        private async Task<OidcProvider> GetCurrentLinkProviderAsync(
+            OidcProvider expectedProvider,
+            CancellationToken cancellationToken)
+        {
+            OidcProvider provider = await _dbContext.OidcProviders
+                .AsNoTracking()
+                .SingleOrDefaultAsync(x => x.Id == expectedProvider.Id, cancellationToken)
+                ?? throw new AuthApiException(
+                    StatusCodes.Status409Conflict,
+                    "OIDC provider changed while the account was being linked.");
+            if (provider.IsEnabled
+                && string.Equals(provider.Issuer, expectedProvider.Issuer, StringComparison.Ordinal)
+                && string.Equals(provider.ClientId, expectedProvider.ClientId, StringComparison.Ordinal))
+            {
+                return provider;
+            }
+
+            throw new AuthApiException(
+                StatusCodes.Status409Conflict,
+                "OIDC provider changed while the account was being linked. Try again.");
+        }
+
+        private async Task<User> GetAvailableUserAsync(
+            Guid userId,
+            CancellationToken cancellationToken)
+        {
+            User user = await _dbContext.Users.FindAsync([userId], cancellationToken)
+                ?? throw new AuthApiException(StatusCodes.Status404NotFound, "User was not found.");
+            if (user.IsDisabled)
+            {
+                throw new AuthApiException(StatusCodes.Status403Forbidden, "User account is unavailable.");
+            }
+
+            return user;
+        }
+
+        private async Task EnsureSubjectIsAvailableAsync(
+            Guid providerId,
+            string subject,
+            Guid userId,
+            CancellationToken cancellationToken)
+        {
+            UserExternalIdentity? subjectLink = await _dbContext.UserExternalIdentities
+                .AsNoTracking()
+                .SingleOrDefaultAsync(
+                    x => x.ProviderId == providerId && x.Subject == subject,
+                    cancellationToken);
+            if (subjectLink is null || subjectLink.UserId == userId)
+            {
+                return;
+            }
+
+            throw new AuthApiException(
+                StatusCodes.Status409Conflict,
+                "This external account is already linked to another user.");
+        }
+
+        private static void EnsureProviderLinkMatches(
+            UserExternalIdentity providerLink,
+            string subject)
+        {
+            if (string.Equals(providerLink.Subject, subject, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            throw new AuthApiException(
+                StatusCodes.Status409Conflict,
+                "This user is already linked to another account from the same provider.");
+        }
+
+        private static UserExternalIdentity CreateIdentity(
+            Guid userId,
+            OidcProvider provider,
+            OidcIdentityClaims claims)
+        {
             UserExternalIdentity identity = new()
             {
                 UserId = userId,
@@ -392,9 +442,7 @@ namespace Octockup.Server.Services
                 Subject = claims.Subject,
             };
             ApplyClaims(identity, claims);
-            await _dbContext.UserExternalIdentities.AddAsync(identity, cancellationToken);
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            return user;
+            return identity;
         }
 
         private async Task<User> ResolveSignInUserAsync(
@@ -435,11 +483,39 @@ namespace Octockup.Server.Services
             string idToken,
             string nonce)
         {
-            JwtSecurityTokenHandler handler = new()
+            try
             {
-                MapInboundClaims = false,
-            };
-            TokenValidationParameters validationParameters = new()
+                JwtSecurityTokenHandler handler = new()
+                {
+                    MapInboundClaims = false,
+                };
+                TokenValidationParameters validationParameters = CreateTokenValidationParameters(
+                    configuration,
+                    provider);
+                ClaimsPrincipal principal = handler.ValidateToken(
+                    idToken,
+                    validationParameters,
+                    out SecurityToken validatedToken);
+                JwtSecurityToken jwt = GetSignedJwt(validatedToken);
+                ValidateNonce(principal, nonce);
+                ValidateAuthorizedParty(principal, jwt, provider.ClientId);
+                return principal;
+            }
+            catch (Exception exception) when (exception is SecurityTokenException or ArgumentException)
+            {
+                _logger.LogWarning(
+                    exception,
+                    "OIDC ID token validation failed for provider {ProviderId}",
+                    provider.Id);
+                throw new AuthApiException(StatusCodes.Status400BadRequest, "OIDC ID token is invalid.");
+            }
+        }
+
+        private static TokenValidationParameters CreateTokenValidationParameters(
+            OpenIdConnectConfiguration configuration,
+            OidcProvider provider)
+        {
+            TokenValidationParameters parameters = new()
             {
                 ValidateIssuer = true,
                 ValidIssuer = configuration.Issuer ?? provider.Issuer,
@@ -455,44 +531,46 @@ namespace Octockup.Server.Services
             };
             if (configuration.IdTokenSigningAlgValuesSupported.Count > 0)
             {
-                validationParameters.ValidAlgorithms = configuration.IdTokenSigningAlgValuesSupported;
+                parameters.ValidAlgorithms = configuration.IdTokenSigningAlgValuesSupported;
             }
 
-            try
+            return parameters;
+        }
+
+        private static JwtSecurityToken GetSignedJwt(SecurityToken validatedToken)
+        {
+            if (validatedToken is JwtSecurityToken jwt
+                && !string.Equals(
+                    jwt.Header.Alg,
+                    SecurityAlgorithms.None,
+                    StringComparison.OrdinalIgnoreCase))
             {
-                ClaimsPrincipal principal = handler.ValidateToken(
-                    idToken,
-                    validationParameters,
-                    out SecurityToken validatedToken);
-                if (validatedToken is not JwtSecurityToken jwt
-                    || string.Equals(jwt.Header.Alg, SecurityAlgorithms.None, StringComparison.OrdinalIgnoreCase))
-                {
-                    throw new SecurityTokenValidationException("Unsigned ID token.");
-                }
-
-                string? tokenNonce = FindClaim(principal, "nonce");
-                if (!string.Equals(tokenNonce, nonce, StringComparison.Ordinal))
-                {
-                    throw new SecurityTokenValidationException("Invalid nonce.");
-                }
-
-                List<string> audiences = jwt.Audiences.ToList();
-                string? authorizedParty = FindClaim(principal, "azp");
-                if ((audiences.Count > 1 || authorizedParty is not null)
-                    && !string.Equals(authorizedParty, provider.ClientId, StringComparison.Ordinal))
-                {
-                    throw new SecurityTokenValidationException("Invalid authorized party.");
-                }
-
-                return principal;
+                return jwt;
             }
-            catch (Exception exception) when (exception is SecurityTokenException or ArgumentException)
+
+            throw new SecurityTokenValidationException("Unsigned ID token.");
+        }
+
+        private static void ValidateNonce(ClaimsPrincipal principal, string nonce)
+        {
+            string? tokenNonce = FindClaim(principal, "nonce");
+            if (!string.Equals(tokenNonce, nonce, StringComparison.Ordinal))
             {
-                _logger.LogWarning(
-                    exception,
-                    "OIDC ID token validation failed for provider {ProviderId}",
-                    provider.Id);
-                throw new AuthApiException(StatusCodes.Status400BadRequest, "OIDC ID token is invalid.");
+                throw new SecurityTokenValidationException("Invalid nonce.");
+            }
+        }
+
+        private static void ValidateAuthorizedParty(
+            ClaimsPrincipal principal,
+            JwtSecurityToken jwt,
+            string clientId)
+        {
+            List<string> audiences = jwt.Audiences.ToList();
+            string? authorizedParty = FindClaim(principal, "azp");
+            if ((audiences.Count > 1 || authorizedParty is not null)
+                && !string.Equals(authorizedParty, clientId, StringComparison.Ordinal))
+            {
+                throw new SecurityTokenValidationException("Invalid authorized party.");
             }
         }
 

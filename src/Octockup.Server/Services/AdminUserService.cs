@@ -112,73 +112,112 @@ namespace Octockup.Server.Services
             bool isDisabled,
             CancellationToken cancellationToken)
         {
-            bool actorIsAdmin = await _dbContext.Users
-                .AnyAsync(
-                    x => x.Id == actorUserId && x.IsAdmin && !x.IsDisabled,
-                    cancellationToken);
-            if (!actorIsAdmin)
-            {
-                throw new AuthApiException(StatusCodes.Status403Forbidden, "Administrator access is required.");
-            }
-
-            User user = await _dbContext.Users
-                .SingleOrDefaultAsync(x => x.Id == userId, cancellationToken)
-                ?? throw new AuthApiException(StatusCodes.Status404NotFound, "User was not found.");
-
-            if (user.IsDisabled && !isDisabled)
-            {
-                AuthenticationSettingsService authenticationSettings = new(_dbContext);
-                bool passwordLoginEnabled = await authenticationSettings.IsPasswordLoginEnabledAsync(
-                    cancellationToken);
-                bool hasEnabledExternalIdentity = await _dbContext.UserExternalIdentities
-                    .AnyAsync(
-                        x => x.UserId == userId
-                            && x.Provider.IsEnabled
-                            && x.Issuer == x.Provider.Issuer,
-                        cancellationToken);
-                if (!passwordLoginEnabled && !hasEnabledExternalIdentity)
-                {
-                    throw new AuthApiException(
-                        StatusCodes.Status409Conflict,
-                        "Link an enabled external identity before activating this user while password login is disabled.");
-                }
-            }
-
-            bool removesEnabledAdmin = user.IsAdmin
-                && !user.IsDisabled
-                && (!isAdmin || isDisabled);
-            if (removesEnabledAdmin)
-            {
-                bool hasAnotherEnabledAdmin = await _dbContext.Users
-                    .AnyAsync(
-                        x => x.Id != userId && x.IsAdmin && !x.IsDisabled,
-                        cancellationToken);
-                if (!hasAnotherEnabledAdmin)
-                {
-                    throw new AuthApiException(
-                        StatusCodes.Status409Conflict,
-                        "The last active administrator cannot be disabled or demoted.");
-                }
-            }
+            await EnsureActorIsAdminAsync(actorUserId, cancellationToken);
+            User user = await GetUserAsync(userId, cancellationToken);
+            await EnsureUserCanBeEnabledAsync(user, isDisabled, cancellationToken);
+            await EnsureEnabledAdminRemainsAsync(user, isAdmin, isDisabled, cancellationToken);
 
             user.IsAdmin = isAdmin;
             user.IsDisabled = isDisabled;
             if (isDisabled)
             {
-                List<RefreshToken> refreshTokens = await _dbContext.RefreshTokens
-                    .Where(x => x.UserId == userId && x.RevokedAt == null)
-                    .ToListAsync(cancellationToken);
-                DateTime revokedAt = DateTime.UtcNow;
-                foreach (RefreshToken refreshToken in refreshTokens)
-                {
-                    refreshToken.RevokedAt = revokedAt;
-                }
+                await RevokeRefreshTokensAsync(userId, cancellationToken);
             }
 
             await _dbContext.SaveChangesAsync(cancellationToken);
             int identityCount = await _dbContext.UserExternalIdentities
                 .CountAsync(x => x.UserId == user.Id, cancellationToken);
             return ToDto(user, identityCount);
+        }
+
+        private async Task EnsureActorIsAdminAsync(
+            Guid actorUserId,
+            CancellationToken cancellationToken)
+        {
+            bool actorIsAdmin = await _dbContext.Users
+                .AnyAsync(
+                    x => x.Id == actorUserId && x.IsAdmin && !x.IsDisabled,
+                    cancellationToken);
+            if (!actorIsAdmin)
+            {
+                throw new AuthApiException(
+                    StatusCodes.Status403Forbidden,
+                    "Administrator access is required.");
+            }
+        }
+
+        private async Task<User> GetUserAsync(Guid userId, CancellationToken cancellationToken)
+        {
+            return await _dbContext.Users
+                .SingleOrDefaultAsync(x => x.Id == userId, cancellationToken)
+                ?? throw new AuthApiException(StatusCodes.Status404NotFound, "User was not found.");
+        }
+
+        private async Task EnsureUserCanBeEnabledAsync(
+            User user,
+            bool isDisabled,
+            CancellationToken cancellationToken)
+        {
+            if (!user.IsDisabled || isDisabled)
+            {
+                return;
+            }
+
+            AuthenticationSettingsService authenticationSettings = new(_dbContext);
+            bool passwordLoginEnabled = await authenticationSettings.IsPasswordLoginEnabledAsync(
+                cancellationToken);
+            bool hasEnabledExternalIdentity = await _dbContext.UserExternalIdentities
+                .AnyAsync(
+                    x => x.UserId == user.Id
+                        && x.Provider.IsEnabled
+                        && x.Issuer == x.Provider.Issuer,
+                    cancellationToken);
+            if (!passwordLoginEnabled && !hasEnabledExternalIdentity)
+            {
+                throw new AuthApiException(
+                    StatusCodes.Status409Conflict,
+                    "Link an enabled external identity before activating this user while password login is disabled.");
+            }
+        }
+
+        private async Task EnsureEnabledAdminRemainsAsync(
+            User user,
+            bool isAdmin,
+            bool isDisabled,
+            CancellationToken cancellationToken)
+        {
+            bool removesEnabledAdmin = user.IsAdmin
+                && !user.IsDisabled
+                && (!isAdmin || isDisabled);
+            if (!removesEnabledAdmin)
+            {
+                return;
+            }
+
+            bool hasAnotherEnabledAdmin = await _dbContext.Users
+                .AnyAsync(
+                    x => x.Id != user.Id && x.IsAdmin && !x.IsDisabled,
+                    cancellationToken);
+            if (!hasAnotherEnabledAdmin)
+            {
+                throw new AuthApiException(
+                    StatusCodes.Status409Conflict,
+                    "The last active administrator cannot be disabled or demoted.");
+            }
+        }
+
+        private async Task RevokeRefreshTokensAsync(
+            Guid userId,
+            CancellationToken cancellationToken)
+        {
+            List<RefreshToken> refreshTokens = await _dbContext.RefreshTokens
+                .Where(x => x.UserId == userId && x.RevokedAt == null)
+                .ToListAsync(cancellationToken);
+            DateTime revokedAt = DateTime.UtcNow;
+            foreach (RefreshToken refreshToken in refreshTokens)
+            {
+                refreshToken.RevokedAt = revokedAt;
+            }
         }
 
         private static AdminUserDto ToDto(User user, int identityCount)
