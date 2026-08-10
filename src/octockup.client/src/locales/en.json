@@ -208,6 +208,7 @@
     "status": "Status",
     "unknownError": "Unknown error",
     "enumerating": "Enumerating...",
+    "remaining": "{{value}} left",
     "filterByStorage": "Filter by storage",
     "allStorages": "All storages",
     "storage": "Storage",
@@ -284,6 +285,7 @@
   },
   "backupWizard": {
     "title": "Create Backup",
+    "loadFailed": "Failed to load backup modules.",
     "source": "Source",
     "storage": "Storage",
     "to": "to",

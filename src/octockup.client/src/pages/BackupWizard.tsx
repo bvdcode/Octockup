@@ -1,13 +1,11 @@
 import {
   Box,
   Card,
-  Paper,
   Stack,
   Alert,
   Button,
   Checkbox,
   Divider,
-  MenuItem,
   TextField,
   Typography,
   CardContent,
@@ -21,11 +19,11 @@ import { ModuleDestination } from "../types/api";
 import { useBackupsApi } from "../api/backupsApi";
 import { useModulesApi } from "../api/modulesApi";
 import { useEffect, useMemo, useState } from "react";
-import { getSourceIcon } from "../constants/sourceIcons";
 import { getIgnoredPathsPreset } from "../constants/ignoredPathsPresets";
 import type { Module, CreateBackupRequest } from "../types/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../query/queryKeys";
+import { BackupModuleSelector } from "../components/backups/BackupModuleSelector";
 
 interface State {
   loading: boolean;
@@ -63,22 +61,26 @@ export default function BackupWizard() {
     modulesApi
       .list()
       .then((data) => {
-        if (!active) return;
+        if (!active) {
+          return;
+        }
         setModules(data);
         setState((s) => ({ ...s, loading: false }));
       })
-      .catch((e) => {
-        if (!active) return;
+      .catch(() => {
+        if (!active) {
+          return;
+        }
         setState((s) => ({
           ...s,
           loading: false,
-          error: e?.message || "Failed to load modules",
+          error: t("backupWizard.loadFailed"),
         }));
       });
     return () => {
       active = false;
     };
-  }, [modulesApi]);
+  }, [modulesApi, t]);
 
   const sources = useMemo(
     () => modules.filter((m) => m.destination === ModuleDestination.Source),
@@ -111,6 +113,10 @@ export default function BackupWizard() {
     () => !!sourceId && !!storageId && !!displayTag,
     [sourceId, storageId, displayTag],
   );
+  const ignoredPathsPreset = useMemo(() => {
+    const source = modules.find((module) => module.id === sourceId);
+    return source ? getIgnoredPathsPreset(source.backupModuleId) : [];
+  }, [modules, sourceId]);
 
   if (state.loading) {
     return (
@@ -141,50 +147,12 @@ export default function BackupWizard() {
               justifyContent="center"
               sx={{ flexDirection: { xs: "column", md: "row" } }}
             >
-              <Paper
-                variant="outlined"
-                sx={{
-                  p: 3,
-                  flex: "1 1 auto",
-                  textAlign: "center",
-                  minWidth: 280,
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <Box
-                  sx={{
-                    fontSize: 96,
-                    lineHeight: 1,
-                    mb: 2,
-                    minHeight: 96,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {getSourceIcon(
-                    modules.find((m) => m.id === sourceId)?.backupModuleId ||
-                      "",
-                  )}
-                </Box>
-                <TextField
-                  select
-                  label={t("backupWizard.source")}
-                  value={sourceId}
-                  onChange={(e) => setSourceId(e.target.value)}
-                  fullWidth
-                  sx={{ maxWidth: 400 }}
-                >
-                  {sources.map((s) => (
-                    <MenuItem key={s.id} value={s.id}>
-                      {s.tag}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Paper>
+              <BackupModuleSelector
+                label={t("backupWizard.source")}
+                modules={sources}
+                value={sourceId}
+                onChange={setSourceId}
+              />
               <Box
                 display="flex"
                 alignItems="center"
@@ -194,50 +162,12 @@ export default function BackupWizard() {
               >
                 →
               </Box>
-              <Paper
-                variant="outlined"
-                sx={{
-                  p: 3,
-                  flex: "1 1 auto",
-                  textAlign: "center",
-                  minWidth: 280,
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <Box
-                  sx={{
-                    fontSize: 96,
-                    lineHeight: 1,
-                    mb: 2,
-                    minHeight: 96,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {getSourceIcon(
-                    modules.find((m) => m.id === storageId)?.backupModuleId ||
-                      "",
-                  )}
-                </Box>
-                <TextField
-                  select
-                  label={t("backupWizard.storage")}
-                  value={storageId}
-                  onChange={(e) => setStorageId(e.target.value)}
-                  fullWidth
-                  sx={{ maxWidth: 400 }}
-                >
-                  {storages.map((s) => (
-                    <MenuItem key={s.id} value={s.id}>
-                      {s.tag}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Paper>
+              <BackupModuleSelector
+                label={t("backupWizard.storage")}
+                modules={storages}
+                value={storageId}
+                onChange={setStorageId}
+              />
             </Box>
             <Stack spacing={2}>
               <TextField
@@ -261,22 +191,17 @@ export default function BackupWizard() {
                     placeholder={t("backupWizard.ignoredPathsPlaceholder")}
                   />
                 </Box>
-                {sourceId &&
-                  (() => {
-                    const sourceMod = modules.find((m) => m.id === sourceId);
-                    const preset = sourceMod
-                      ? getIgnoredPathsPreset(sourceMod.backupModuleId)
-                      : [];
-                    return preset.length > 0 ? (
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        onClick={() => setIgnoredPathsInput(preset.join("\n"))}
-                      >
-                        {t("backupWizard.applyPreset")}
-                      </Button>
-                    ) : null;
-                  })()}
+                {ignoredPathsPreset.length > 0 && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() =>
+                      setIgnoredPathsInput(ignoredPathsPreset.join("\n"))
+                    }
+                  >
+                    {t("backupWizard.applyPreset")}
+                  </Button>
+                )}
               </Stack>
               <FormGroup row sx={{ gap: 2 }}>
                 <FormControlLabel
@@ -329,8 +254,11 @@ export default function BackupWizard() {
                 refetchType: "all",
               });
               navigate("/backups");
-            } catch (e: unknown) {
-              const message = e instanceof Error ? e.message : String(e);
+            } catch (caughtError) {
+              const message =
+                caughtError instanceof Error
+                  ? caughtError.message
+                  : t("backupWizard.createError");
               setState((s) => ({
                 ...s,
                 creating: false,

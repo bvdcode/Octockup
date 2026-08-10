@@ -232,6 +232,7 @@
     "status": "Статус",
     "unknownError": "Неизвестная ошибка",
     "enumerating": "Подсчёт файлов...",
+    "remaining": "Осталось: {{value}}",
     "filterByStorage": "Фильтр по хранилищу",
     "allStorages": "Все хранилища",
     "storage": "Хранилище",
@@ -308,6 +309,7 @@
   },
   "backupWizard": {
     "title": "Создать бэкап",
+    "loadFailed": "Не удалось загрузить модули бэкапа.",
     "source": "Источник",
     "storage": "Хранилище",
     "to": "в",
