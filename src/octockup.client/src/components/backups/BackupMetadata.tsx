@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import type { BackupItem } from "../../types/api";
 import { formatSize } from "../../utils/formatUtils";
 import { formatRelativeTime, parseUtcDate } from "../../utils/dateUtils";
+import { getLatestCompletedSnapshot } from "../../utils/backupListUtils";
+import { formatInterval } from "../../utils/scheduleUtils";
 
 interface BackupMetadataProps {
   backup: BackupItem;
@@ -11,15 +13,12 @@ interface BackupMetadataProps {
 export function BackupMetadata({ backup }: BackupMetadataProps) {
   const { t } = useTranslation();
 
-  const lastSnapshot = backup.snapshots
-    ?.filter((s) => s.completedAt)
-    .sort(
-      (a, b) =>
-        new Date(b.completedAt!).getTime() -
-        new Date(a.completedAt!).getTime(),
-    )[0];
+  const lastSnapshot = getLatestCompletedSnapshot(backup);
 
   const completedSnapshots = backup.snapshots?.filter((s) => s.completedAt);
+  const recurringSchedule = backup.schedules.find(
+    (schedule) => schedule.interval !== null && schedule.interval !== undefined,
+  );
 
   return (
     <Box display="flex" alignItems="center" gap={1} flexWrap="wrap" mt={0.5}>
@@ -71,6 +70,14 @@ export function BackupMetadata({ backup }: BackupMetadataProps) {
               </Typography>
             </>
           )}
+        </>
+      )}
+      {recurringSchedule?.interval && (
+        <>
+          <Divider orientation="vertical" flexItem />
+          <Typography variant="caption" color="warning.main">
+            {formatInterval(recurringSchedule.interval, t)}
+          </Typography>
         </>
       )}
     </Box>

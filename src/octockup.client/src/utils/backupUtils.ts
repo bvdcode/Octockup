@@ -1,5 +1,6 @@
 import { BackupStatus } from "../types/api";
 import type { ScheduleReport, BackupItem } from "../types/api";
+import { getLatestCompletedSnapshot } from "./backupListUtils";
 
 export type BackupOverallStatus =
   | "running"
@@ -49,16 +50,7 @@ export function getBackupOverallStatus(
     return "scheduled";
   }
 
-  // Analyze snapshots - successful = has completedAt
-  const completedSnapshots = (backup.snapshots || []).filter(
-    (snapshot) => snapshot.completedAt,
-  );
-
-  // Get the latest successful snapshot
-  const latestSuccessfulSnapshot = completedSnapshots.sort(
-    (a, b) =>
-      new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime(),
-  )[0];
+  const latestSuccessfulSnapshot = getLatestCompletedSnapshot(backup);
 
   // Priority 3: No snapshots yet - check if there are any failed schedules
   if (!latestSuccessfulSnapshot) {

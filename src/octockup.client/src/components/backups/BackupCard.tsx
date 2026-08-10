@@ -14,13 +14,16 @@ interface BackupCardProps {
   backup: BackupItem;
   scheduleToBackupMap: Record<string, string>;
   scheduleReports: Map<string, ScheduleReport>;
-  runningId: string | null;
-  cancelingId: string | null;
-  deletingId: string | null;
-  savingIgnoredPathsId: string | null;
+  isCanceling: boolean;
+  isDeleting: boolean;
+  isSavingIgnoredPaths: boolean;
+  isScheduling: boolean;
+  isStarting: boolean;
   onRename: (backupId: string, newTag: string) => Promise<void>;
   onEditIgnoredPaths: (backupId: string) => void;
   onRunOnce: (backupId: string) => Promise<void>;
+  onSetSchedule: (backupId: string, intervalMinutes: number) => Promise<void>;
+  onDisableSchedule: (backupId: string) => Promise<void>;
   onCancel: (scheduleId: string) => Promise<void>;
   onDelete: (backupId: string) => Promise<void>;
 }
@@ -29,13 +32,16 @@ export function BackupCard({
   backup,
   scheduleToBackupMap,
   scheduleReports,
-  runningId,
-  cancelingId,
-  deletingId,
-  savingIgnoredPathsId,
+  isCanceling,
+  isDeleting,
+  isSavingIgnoredPaths,
+  isScheduling,
+  isStarting,
   onRename,
   onEditIgnoredPaths,
   onRunOnce,
+  onSetSchedule,
+  onDisableSchedule,
   onCancel,
   onDelete,
 }: BackupCardProps) {
@@ -52,7 +58,7 @@ export function BackupCard({
     <Card
       sx={(theme) => ({
         display: "flex",
-        alignItems: "center",
+        alignItems: { xs: "stretch", sm: "center" },
         position: "relative",
         minHeight: 80,
         borderLeft: `3px solid ${
@@ -75,8 +81,9 @@ export function BackupCard({
       <CardContent
         sx={{
           display: "flex",
-          alignItems: "center",
-          gap: 2,
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: { xs: "stretch", sm: "center" },
+          gap: { xs: 1, sm: 2 },
           width: "100%",
           p: 2,
           "&:last-child": { pb: 2 },
@@ -87,6 +94,7 @@ export function BackupCard({
           alignItems="center"
           justifyContent="center"
           flexDirection="column"
+          sx={{ display: { xs: "none", sm: "flex" } }}
         >
           <Box
             fontSize={36}
@@ -117,16 +125,27 @@ export function BackupCard({
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Box
             display="flex"
-            alignItems="center"
+            alignItems={{ xs: "flex-start", sm: "center" }}
+            flexDirection={{ xs: "column", sm: "row" }}
             justifyContent="space-between"
             gap={1}
           >
-            <Box display="flex" alignItems="center" gap={1} minWidth={0}>
+            <Box
+              display="flex"
+              alignItems="center"
+              flexWrap="wrap"
+              gap={1}
+              minWidth={0}
+            >
               <EditableModuleTag
                 tag={backup.tag}
                 onRename={(newTag) => onRename(backup.id, newTag)}
               />
-              <Divider orientation="vertical" flexItem />
+              <Divider
+                orientation="vertical"
+                flexItem
+                sx={{ display: { xs: "none", sm: "block" } }}
+              />
               <Typography variant="caption" sx={{ color: "text.secondary" }}>
                 {backup.source.tag} → {backup.storage.tag}
               </Typography>
@@ -140,20 +159,30 @@ export function BackupCard({
           <BackupMetadata backup={backup} />
           {report && <BackupProgress report={report} />}
         </Box>
-        <Divider orientation="vertical" flexItem />
+        <Divider
+          orientation="vertical"
+          flexItem
+          sx={{ display: { xs: "none", sm: "block" } }}
+        />
+        <Divider sx={{ display: { xs: "block", sm: "none" } }} />
         <BackupActions
           backup={backup}
           scheduleReports={scheduleReports}
-          runningId={runningId}
-          cancelingId={cancelingId}
-          deletingId={deletingId}
-          savingIgnoredPathsId={savingIgnoredPathsId}
+          isCanceling={isCanceling}
+          isDeleting={isDeleting}
+          isSavingIgnoredPaths={isSavingIgnoredPaths}
+          isScheduling={isScheduling}
+          isStarting={isStarting}
           status={status}
           onNavigateToSnapshots={() =>
             navigate(`/backups/${backup.id}/snapshots`)
           }
           onEditIgnoredPaths={() => onEditIgnoredPaths(backup.id)}
           onRunOnce={() => onRunOnce(backup.id)}
+          onSetSchedule={(intervalMinutes) =>
+            onSetSchedule(backup.id, intervalMinutes)
+          }
+          onDisableSchedule={() => onDisableSchedule(backup.id)}
           onCancel={onCancel}
           onDelete={() => onDelete(backup.id)}
         />

@@ -209,7 +209,42 @@
     "unknownError": "Unknown error",
     "enumerating": "Enumerating...",
     "filterByStorage": "Filter by storage",
-    "allStorages": "All storages"
+    "allStorages": "All storages",
+    "storage": "Storage",
+    "searchPlaceholder": "Search backups...",
+    "loadFailed": "Could not load backups.",
+    "actionFailed": "Could not complete the backup action.",
+    "noMatches": "No backups match the current filters.",
+    "runOrSchedule": "Run or schedule",
+    "summary": {
+      "backups": "Backups: {{count}}",
+      "logicalSize": "Logical size: {{size}}",
+      "running": "Running: {{count}}",
+      "issues": "Needs attention: {{count}}"
+    },
+    "sort": {
+      "label": "Sort",
+      "smart": "Smart",
+      "recent": "Last backup: newest",
+      "oldest": "Last backup: oldest / never",
+      "largest": "Largest",
+      "smallest": "Smallest",
+      "name": "Name"
+    },
+    "schedule": {
+      "now": "Now",
+      "off": "Disable schedule",
+      "custom": "Custom interval",
+      "customTitle": "Custom backup interval",
+      "intervalMinutes": "Interval in minutes",
+      "customHint": "Enter a whole number greater than zero.",
+      "quick": {
+        "hour": "1h",
+        "day": "1d",
+        "week": "1w",
+        "month": "30d"
+      }
+    }
   },
   "snapshots": {
     "title": "Snapshots",

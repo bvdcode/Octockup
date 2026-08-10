@@ -3,25 +3,30 @@ import {
   BackupTable,
   DeleteOutline,
   FilterAlt,
-  PlayArrow,
   StopCircle,
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 import { confirm } from "material-ui-confirm";
 import type { BackupItem, ScheduleReport } from "../../types/api";
 import { BackupStatus } from "../../types/api";
+import type { BackupOverallStatus } from "../../utils/backupUtils";
+import { parseInterval } from "../../utils/scheduleUtils";
+import { BackupRunMenu } from "./BackupRunMenu";
 
 interface BackupActionsProps {
   backup: BackupItem;
   scheduleReports: Map<string, ScheduleReport>;
-  runningId: string | null;
-  cancelingId: string | null;
-  deletingId: string | null;
-  savingIgnoredPathsId: string | null;
-  status: string;
+  isCanceling: boolean;
+  isDeleting: boolean;
+  isSavingIgnoredPaths: boolean;
+  isScheduling: boolean;
+  isStarting: boolean;
+  status: BackupOverallStatus;
   onNavigateToSnapshots: () => void;
   onEditIgnoredPaths: () => void;
   onRunOnce: () => Promise<void>;
+  onSetSchedule: (intervalMinutes: number) => Promise<void>;
+  onDisableSchedule: () => Promise<void>;
   onCancel: (scheduleId: string) => Promise<void>;
   onDelete: () => Promise<void>;
 }
@@ -29,14 +34,17 @@ interface BackupActionsProps {
 export function BackupActions({
   backup,
   scheduleReports,
-  runningId,
-  cancelingId,
-  deletingId,
-  savingIgnoredPathsId,
+  isCanceling,
+  isDeleting,
+  isSavingIgnoredPaths,
+  isScheduling,
+  isStarting,
   status,
   onNavigateToSnapshots,
   onEditIgnoredPaths,
   onRunOnce,
+  onSetSchedule,
+  onDisableSchedule,
   onCancel,
   onDelete,
 }: BackupActionsProps) {
@@ -45,17 +53,25 @@ export function BackupActions({
   const reportForBackup = scheduleReports.get(backup.id);
   const isRunningFromReport = reportForBackup?.status === BackupStatus.Running;
 
-  // Find the running or just-created schedule so we can cancel immediately
-  const activeSchedule = (backup.schedules || []).find(
-    (s) =>
-      s.status === BackupStatus.Running || s.status === BackupStatus.Created,
+  const activeSchedule = backup.schedules.find(
+    (schedule) => schedule.status === BackupStatus.Running,
   );
   const runningScheduleId = activeSchedule?.id;
 
   const isRunning = isRunningFromReport || !!activeSchedule;
+  const recurringSchedule = backup.schedules.find(
+    (schedule) => schedule.interval !== null && schedule.interval !== undefined,
+  );
+  const intervalMinutes = recurringSchedule?.interval
+    ? parseInterval(recurringSchedule.interval)
+    : null;
 
   return (
-    <Box display="flex" flexDirection="column">
+    <Box
+      display="flex"
+      flexDirection={{ xs: "row", sm: "column" }}
+      justifyContent="flex-end"
+    >
       <Tooltip title={t("backups.showSnapshots")} placement="left">
         <IconButton
           size="small"
@@ -69,7 +85,7 @@ export function BackupActions({
         <IconButton
           size="small"
           aria-label={t("backups.ignoredPaths")}
-          disabled={savingIgnoredPathsId === backup.id}
+          disabled={isSavingIgnoredPaths}
           onClick={(e) => {
             e.stopPropagation();
             onEditIgnoredPaths();
@@ -82,7 +98,7 @@ export function BackupActions({
         <IconButton
           size="small"
           aria-label={t("backups.stop")}
-          disabled={cancelingId === backup.id || !runningScheduleId}
+          disabled={isCanceling || !runningScheduleId}
           onClick={async (e) => {
             e.stopPropagation();
             if (runningScheduleId) {
@@ -90,33 +106,26 @@ export function BackupActions({
             }
           }}
         >
-          {cancelingId === backup.id ? (
+          {isCanceling ? (
             <CircularProgress size={20} />
           ) : (
             <StopCircle color="error" />
           )}
         </IconButton>
       ) : (
-        <IconButton
-          size="small"
-          aria-label={t("backups.runOnce")}
-          disabled={runningId === backup.id || status === "running"}
-          onClick={async (e) => {
-            e.stopPropagation();
-            await onRunOnce();
-          }}
-        >
-          {runningId === backup.id ? (
-            <CircularProgress size={20} />
-          ) : (
-            <PlayArrow color="success" />
-          )}
-        </IconButton>
+        <BackupRunMenu
+          disabled={status === "running"}
+          intervalMinutes={intervalMinutes}
+          loading={isStarting || isScheduling}
+          onRunNow={onRunOnce}
+          onSetSchedule={onSetSchedule}
+          onDisableSchedule={onDisableSchedule}
+        />
       )}
       <IconButton
         size="small"
         aria-label={t("common.delete")}
-        disabled={deletingId === backup.id}
+        disabled={isDeleting}
         onClick={async (e) => {
           e.stopPropagation();
           const result = await confirm({
@@ -131,7 +140,11 @@ export function BackupActions({
           }
         }}
       >
-        <DeleteOutline color="primary" />
+        {isDeleting ? (
+          <CircularProgress size={20} color="inherit" />
+        ) : (
+          <DeleteOutline color="primary" />
+        )}
       </IconButton>
     </Box>
   );

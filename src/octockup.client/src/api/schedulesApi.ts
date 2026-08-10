@@ -23,6 +23,28 @@ class SchedulesApiClient {
     await this.axios().post("/api/v1/schedules", request);
   }
 
+  async runBackupNow(backupId: string): Promise<void> {
+    await this.axios().post(
+      `/api/v1/backups/${encodeURIComponent(backupId)}/run`,
+    );
+  }
+
+  async setBackupSchedule(
+    backupId: string,
+    intervalMinutes: number,
+  ): Promise<void> {
+    await this.axios().put(
+      `/api/v1/backups/${encodeURIComponent(backupId)}/schedule`,
+      { intervalMinutes },
+    );
+  }
+
+  async disableBackupSchedule(backupId: string): Promise<void> {
+    await this.axios().delete(
+      `/api/v1/backups/${encodeURIComponent(backupId)}/schedule`,
+    );
+  }
+
   async delete(scheduleId: string): Promise<void> {
     await this.axios().delete(`/api/v1/schedules/${scheduleId}`);
   }

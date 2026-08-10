@@ -1,50 +1,49 @@
 import {
+  Alert,
   Box,
   Card,
   Stack,
-  Button,
   Typography,
   CardContent,
   CircularProgress,
-  Divider,
-  Select,
-  MenuItem,
-  FormControl,
 } from "@mui/material";
-import { AddCircleOutline } from "@mui/icons-material";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
-import type { BackupItem, ScheduleReport } from "../types/api";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import type { BackupItem } from "../types/api";
 import { useBackupsApi } from "../api/backupsApi";
 import { useSchedulesApi } from "../api/schedulesApi";
 import { useSignalR } from "../hooks/useSignalR";
-import { BackupStatus } from "../types/api";
 import { getBackupOverallStatus } from "../utils/backupUtils";
 import { EditIgnoredPathsDialog } from "../components/EditIgnoredPathsDialog";
 import { BackupCard } from "../components/backups/BackupCard";
-import { formatSize } from "../utils/formatUtils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../query/queryKeys";
-
-interface State {
-  deletingId: string | null;
-  runningId: string | null;
-  cancelingId: string | null;
-}
+import { BackupListToolbar } from "../components/backups/BackupListToolbar";
+import { BackupSortOption } from "../types/backupList";
+import {
+  filterBackups,
+  getLatestCompletedSnapshot,
+  parseBackupSortOption,
+  sortBackups,
+} from "../utils/backupListUtils";
+import { usePendingIds } from "../hooks/usePendingIds";
+import { useBackupScheduleReports } from "../hooks/useBackupScheduleReports";
+import { getApiErrorMessage } from "../utils/apiError";
 
 export default function BackupsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const backupsApi = useBackupsApi();
   const schedulesApi = useSchedulesApi();
   const queryClient = useQueryClient();
   const { connection, isConnected } = useSignalR("/api/v1/event-hub");
-  const [state, setState] = useState<State>({
-    deletingId: null,
-    runningId: null,
-    cancelingId: null,
-  });
+  const deleting = usePendingIds();
+  const starting = usePendingIds();
+  const canceling = usePendingIds();
+  const savingIgnoredPaths = usePendingIds();
+  const scheduling = usePendingIds();
   const backupsQuery = useQuery({
     queryKey: queryKeys.backups,
     queryFn: () => backupsApi.list(),
@@ -53,17 +52,13 @@ export default function BackupsPage() {
     () => backupsQuery.data ?? [],
     [backupsQuery.data],
   );
-  const [scheduleReports] = useState<Map<string, ScheduleReport>>(new Map());
-  const [, setReportsVersion] = useState(0);
   const [editingIgnoredPathsId, setEditingIgnoredPathsId] = useState<
     string | null
   >(null);
-  const [savingIgnoredPathsId, setSavingIgnoredPathsId] = useState<
-    string | null
-  >(null);
-  const [selectedStorageId, setSelectedStorageId] = useState<string | null>(
-    null,
-  );
+  const [actionError, setActionError] = useState<string | null>(null);
+  const selectedStorageId = searchParams.get("storage");
+  const search = searchParams.get("search") ?? "";
+  const sort = parseBackupSortOption(searchParams.get("sort"));
 
   const updateBackups = useCallback(
     (updater: (current: BackupItem[]) => BackupItem[]) => {
@@ -78,6 +73,40 @@ export default function BackupsPage() {
     await queryClient.invalidateQueries({ queryKey: queryKeys.backups });
   }, [queryClient]);
 
+  const scheduleReports = useBackupScheduleReports(
+    connection,
+    isConnected,
+    updateBackups,
+    reloadBackups,
+  );
+
+  const executeAction = async (
+    backupId: string,
+    run: (id: string, action: () => Promise<void>) => Promise<void>,
+    action: () => Promise<void>,
+  ) => {
+    setActionError(null);
+    try {
+      await run(backupId, action);
+    } catch (caughtError) {
+      if (caughtError instanceof Error) {
+        setActionError(
+          getApiErrorMessage(caughtError, t("backups.actionFailed")),
+        );
+      }
+    }
+  };
+
+  const updateSearchParameter = (key: string, value: string | null) => {
+    const next = new URLSearchParams(searchParams);
+    if (value) {
+      next.set(key, value);
+    } else {
+      next.delete(key);
+    }
+    setSearchParams(next, { replace: true });
+  };
+
   const scheduleToBackupMap = useMemo(() => {
     const mapping: Record<string, string> = {};
     backups.forEach((backup) => {
@@ -88,65 +117,6 @@ export default function BackupsPage() {
     return mapping;
   }, [backups]);
 
-  // WebSocket listener for schedule reports
-  useEffect(() => {
-    if (!connection || !isConnected) return;
-
-    const handler = (report: ScheduleReport) => {
-      const backupId = report.backupId;
-
-      // Mutate the Map directly instead of cloning it
-      if (report.status === BackupStatus.Running) {
-        scheduleReports.set(backupId, report);
-      } else {
-        scheduleReports.delete(backupId);
-      }
-
-      // Force re-render by incrementing version
-      setReportsVersion((v) => v + 1);
-
-      updateBackups((previousBackups) =>
-        previousBackups.map((backup) =>
-          backup.id === backupId
-            ? {
-                ...backup,
-                schedules: (backup.schedules || []).map((schedule) =>
-                  schedule.id === report.scheduleId
-                    ? {
-                        ...schedule,
-                        status: report.status,
-                        errorMessage:
-                          report.status === BackupStatus.Failed
-                            ? report.message
-                            : null,
-                        finishedAt:
-                          report.status === BackupStatus.Running
-                            ? null
-                            : report.timestamp,
-                      }
-                    : schedule,
-                ),
-              }
-            : backup,
-        ),
-      );
-
-      // Reload backups whenever status changes to get fresh data
-      if (report.status !== BackupStatus.Running) {
-        setTimeout(() => {
-          void reloadBackups();
-        }, 500);
-      }
-
-    };
-
-    connection.on("ScheduleReport", handler);
-
-    return () => {
-      connection.off("ScheduleReport", handler);
-    };
-  }, [connection, isConnected, reloadBackups, scheduleReports, updateBackups]);
-
   const handleRename = async (backupId: string, newTag: string) => {
     const trimmedTag = newTag.trim();
     await backupsApi.rename(backupId, trimmedTag);
@@ -156,90 +126,73 @@ export default function BackupsPage() {
   };
 
   const handleSaveIgnoredPaths = async (backupId: string, paths: string[]) => {
-    setSavingIgnoredPathsId(backupId);
-    try {
+    await executeAction(backupId, savingIgnoredPaths.run, async () => {
       await backupsApi.updateIgnoredPaths(backupId, paths);
-      updateBackups((prev) =>
-        prev.map((b) =>
-          b.id === backupId ? { ...b, ignoredPaths: paths } : b,
+      updateBackups((previous) =>
+        previous.map((backup) =>
+          backup.id === backupId ? { ...backup, ignoredPaths: paths } : backup,
         ),
       );
-    } finally {
-      setSavingIgnoredPathsId(null);
-    }
+    });
   };
 
   const handleRunOnce = async (backupId: string) => {
-    setState((s) => ({ ...s, runningId: backupId }));
-    try {
-      await schedulesApi.create({
-        backupId,
-        startAt: new Date().toISOString(),
-      });
+    await executeAction(backupId, starting.run, async () => {
+      await schedulesApi.runBackupNow(backupId);
+      await Promise.all([
+        reloadBackups(),
+        queryClient.invalidateQueries({ queryKey: queryKeys.schedules }),
+      ]);
+    });
+  };
 
-      // Reload backups to get the actual schedule from server
-      await reloadBackups();
-    } finally {
-      setState((s) => ({ ...s, runningId: null }));
-    }
+  const handleSetSchedule = async (
+    backupId: string,
+    intervalMinutes: number,
+  ) => {
+    await executeAction(backupId, scheduling.run, async () => {
+      await schedulesApi.setBackupSchedule(backupId, intervalMinutes);
+      await Promise.all([
+        reloadBackups(),
+        queryClient.invalidateQueries({ queryKey: queryKeys.schedules }),
+      ]);
+    });
+  };
+
+  const handleDisableSchedule = async (backupId: string) => {
+    await executeAction(backupId, scheduling.run, async () => {
+      await schedulesApi.disableBackupSchedule(backupId);
+      await Promise.all([
+        reloadBackups(),
+        queryClient.invalidateQueries({ queryKey: queryKeys.schedules }),
+      ]);
+    });
   };
 
   const handleCancel = async (scheduleId: string) => {
-    const backupIdFromMap = scheduleToBackupMap[scheduleId];
-    const backupEntry =
-      backups.find((b) => b.schedules?.some((s) => s.id === scheduleId)) ||
-      null;
-    const backupId = backupIdFromMap || backupEntry?.id || null;
-
-    if (backupId) {
-      setState((s) => ({ ...s, cancelingId: backupId }));
+    const backupId = scheduleToBackupMap[scheduleId]
+      ?? backups.find((backup) =>
+        backup.schedules.some((schedule) => schedule.id === scheduleId),
+      )?.id;
+    if (!backupId) {
+      return;
     }
 
-    try {
+    await executeAction(backupId, canceling.run, async () => {
       await schedulesApi.cancel(scheduleId);
-    } finally {
-      if (backupId) {
-        setState((s) => ({ ...s, cancelingId: null }));
-      }
-    }
+      await reloadBackups();
+    });
   };
 
   const handleDelete = async (backupId: string) => {
-    setState((s) => ({ ...s, deletingId: backupId }));
-    try {
+    await executeAction(backupId, deleting.run, async () => {
       await backupsApi.delete(backupId);
-      updateBackups((prev) => prev.filter((x) => x.id !== backupId));
+      updateBackups((previous) =>
+        previous.filter((backup) => backup.id !== backupId),
+      );
       await queryClient.invalidateQueries({ queryKey: queryKeys.schedules });
-    } finally {
-      setState((s) => ({ ...s, deletingId: null }));
-    }
-  };
-
-  const totalStats = useMemo(() => {
-    let totalFiles = 0;
-    let totalSize = 0;
-
-    const filteredBackups = selectedStorageId
-      ? backups.filter((b) => b.storageId === selectedStorageId)
-      : backups;
-
-    filteredBackups.forEach((backup) => {
-      const lastSnapshot = backup.snapshots
-        ?.filter((s) => s.completedAt)
-        .sort(
-          (a, b) =>
-            new Date(b.completedAt!).getTime() -
-            new Date(a.completedAt!).getTime(),
-        )[0];
-
-      if (lastSnapshot) {
-        totalFiles += lastSnapshot.filesCount;
-        totalSize += lastSnapshot.totalSize;
-      }
     });
-
-    return { totalFiles, totalSize };
-  }, [backups, selectedStorageId]);
+  };
 
   const uniqueStorages = useMemo(() => {
     const storageMap = new Map<string, { id: string; tag: string }>();
@@ -256,11 +209,37 @@ export default function BackupsPage() {
     );
   }, [backups]);
 
-  const filteredBackups = useMemo(() => {
-    return selectedStorageId
-      ? backups.filter((b) => b.storageId === selectedStorageId)
-      : backups;
-  }, [backups, selectedStorageId]);
+  const filteredBackups = useMemo(
+    () => filterBackups(backups, selectedStorageId, search),
+    [backups, search, selectedStorageId],
+  );
+  const visibleBackups = useMemo(
+    () =>
+      sortBackups(filteredBackups, sort, (backup) =>
+        getBackupOverallStatus(backup, scheduleToBackupMap, scheduleReports),
+      ),
+    [filteredBackups, scheduleReports, scheduleToBackupMap, sort],
+  );
+  const summary = useMemo(() => {
+    let logicalSize = 0;
+    let runningCount = 0;
+    let issueCount = 0;
+    filteredBackups.forEach((backup) => {
+      logicalSize += getLatestCompletedSnapshot(backup)?.totalSize ?? 0;
+      const status = getBackupOverallStatus(
+        backup,
+        scheduleToBackupMap,
+        scheduleReports,
+      );
+      if (status === "running") {
+        runningCount++;
+      }
+      if (status === "failed" || status === "warning") {
+        issueCount++;
+      }
+    });
+    return { logicalSize, runningCount, issueCount };
+  }, [filteredBackups, scheduleReports, scheduleToBackupMap]);
 
   if (backupsQuery.isPending && backups.length === 0) {
     return (
@@ -271,51 +250,36 @@ export default function BackupsPage() {
   }
 
   return (
-    <Stack spacing={3}>
-      <Box display="flex" alignItems="center" justifyContent="space-between">
-        <Box display="flex" alignItems="center" gap={2}>
-          <Typography variant="h5">{t("backups.title")}</Typography>
-          <Divider orientation="vertical" flexItem />
-          <Typography variant="body2" color="text.secondary">
-            {t("backups.totalFiles", {
-              count: totalStats.totalFiles,
-            })}
-          </Typography>
-          <Divider orientation="vertical" flexItem />
-          <Typography variant="body2" color="text.secondary">
-            {t("backups.totalSize", {
-              size: formatSize(totalStats.totalSize),
-            })}
-          </Typography>
-        </Box>
-        <Box display="flex" alignItems="center" gap={2}>
-          <FormControl size="small" sx={{ minWidth: 150 }}>
-            <Select
-              value={selectedStorageId || "all"}
-              onChange={(e) =>
-                setSelectedStorageId(
-                  e.target.value === "all" ? null : e.target.value,
-                )
-              }
-              displayEmpty
-            >
-              <MenuItem value="all">{t("backups.allStorages")}</MenuItem>
-              {uniqueStorages.map((storage) => (
-                <MenuItem key={storage.id} value={storage.id}>
-                  {storage.tag}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <Button
-            variant="contained"
-            startIcon={<AddCircleOutline />}
-            onClick={() => navigate("/backups/new")}
-          >
-            {t("backups.newBackup")}
-          </Button>
-        </Box>
-      </Box>
+    <Stack spacing={1.5}>
+      <BackupListToolbar
+        backupCount={filteredBackups.length}
+        issueCount={summary.issueCount}
+        logicalSize={summary.logicalSize}
+        runningCount={summary.runningCount}
+        search={search}
+        selectedStorageId={selectedStorageId}
+        sort={sort}
+        storages={uniqueStorages}
+        onCreate={() => navigate("/backups/new")}
+        onSearchChange={(value) => updateSearchParameter("search", value)}
+        onSortChange={(value) =>
+          updateSearchParameter(
+            "sort",
+            value === BackupSortOption.Smart ? null : value,
+          )
+        }
+        onStorageChange={(value) => updateSearchParameter("storage", value)}
+      />
+      {backupsQuery.error && (
+        <Alert severity="error">
+          {getApiErrorMessage(backupsQuery.error, t("backups.loadFailed"))}
+        </Alert>
+      )}
+      {actionError && (
+        <Alert severity="error" onClose={() => setActionError(null)}>
+          {actionError}
+        </Alert>
+      )}
       {backups.length === 0 ? (
         <Card>
           <CardContent>
@@ -324,57 +288,32 @@ export default function BackupsPage() {
             </Typography>
           </CardContent>
         </Card>
+      ) : visibleBackups.length === 0 ? (
+        <Card>
+          <CardContent>
+            <Typography color="text.secondary">
+              {t("backups.noMatches")}
+            </Typography>
+          </CardContent>
+        </Card>
       ) : (
         <Stack spacing={1}>
-          {filteredBackups
-            .slice()
-            .sort((a, b) => {
-              const statusA = getBackupOverallStatus(
-                a,
-                scheduleToBackupMap,
-                scheduleReports,
-              );
-              const statusB = getBackupOverallStatus(
-                b,
-                scheduleToBackupMap,
-                scheduleReports,
-              );
-
-              const priorityMap: Record<string, number> = {
-                running: 1,
-                failed: 2,
-                warning: 3,
-                scheduled: 4,
-                created: 5,
-                success: 6,
-                idle: 7,
-              };
-
-              const priorityA = priorityMap[statusA] || 999;
-              const priorityB = priorityMap[statusB] || 999;
-
-              if (priorityA !== priorityB) {
-                return priorityA - priorityB;
-              }
-
-              return (
-                new Date(b.createdAt || 0).getTime() -
-                new Date(a.createdAt || 0).getTime()
-              );
-            })
-            .map((b) => (
+          {visibleBackups.map((backup) => (
               <BackupCard
-                key={b.id}
-                backup={b}
+                key={backup.id}
+                backup={backup}
                 scheduleToBackupMap={scheduleToBackupMap}
                 scheduleReports={scheduleReports}
-                runningId={state.runningId}
-                cancelingId={state.cancelingId}
-                deletingId={state.deletingId}
-                savingIgnoredPathsId={savingIgnoredPathsId}
+                isCanceling={canceling.has(backup.id)}
+                isDeleting={deleting.has(backup.id)}
+                isSavingIgnoredPaths={savingIgnoredPaths.has(backup.id)}
+                isScheduling={scheduling.has(backup.id)}
+                isStarting={starting.has(backup.id)}
                 onRename={handleRename}
                 onEditIgnoredPaths={setEditingIgnoredPathsId}
                 onRunOnce={handleRunOnce}
+                onSetSchedule={handleSetSchedule}
+                onDisableSchedule={handleDisableSchedule}
                 onCancel={handleCancel}
                 onDelete={handleDelete}
               />
@@ -394,7 +333,7 @@ export default function BackupsPage() {
               onSave={(paths) =>
                 handleSaveIgnoredPaths(editingIgnoredPathsId, paths)
               }
-              loading={savingIgnoredPathsId === editingIgnoredPathsId}
+              loading={savingIgnoredPaths.has(editingIgnoredPathsId)}
             />
           );
         })()}
