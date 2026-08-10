@@ -171,153 +171,26 @@ namespace Octockup.Server.Modules
             ArgumentNullException.ThrowIfNull(_s3);
             ArgumentException.ThrowIfNullOrEmpty(_bucket);
 
-            var basePrefix = GetBasePrefix();
-            var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            string basePrefix = GetBasePrefix();
+            HashSet<string> result = new(StringComparer.OrdinalIgnoreCase);
+            string? delimiter = recursive ? null : PathSeparator.ToString();
 
-            if (!recursive)
+            foreach (ListObjectsV2Response response in ListObjectPages(
+                basePrefix,
+                delimiter,
+                cancellationToken))
             {
-                string? continuationToken = null;
-
-                do
+                if (recursive)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var request = new ListObjectsV2Request
-                    {
-                        BucketName = _bucket,
-                        Prefix = basePrefix,
-                        Delimiter = PathSeparator.ToString(),
-                        ContinuationToken = continuationToken
-                    };
-
-                    ListObjectsV2Response? response;
-                    try
-                    {
-                        response = _s3.ListObjectsV2Async(request, cancellationToken).GetAwaiter().GetResult();
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogDebug(ex, "S3 list request failed for prefix {Prefix}", basePrefix);
-                        break;
-                    }
-
-                    if (response == null)
-                    {
-                        break;
-                    }
-
-                    var prefixes = response.CommonPrefixes ?? Enumerable.Empty<string>();
-
-                    foreach (var prefix in prefixes)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        if (string.IsNullOrEmpty(prefix))
-                        {
-                            continue;
-                        }
-
-                        var relative = ToRelativeKey(prefix, basePrefix);
-                        if (!string.IsNullOrEmpty(relative))
-                        {
-                            // Check if directory is ignored
-                            if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + relative, null, _ignoredPaths))
-                            {
-                                _logger.LogDebug("Skipping ignored S3 directory: {Name}", relative);
-                                continue;
-                            }
-                            result.Add(relative);
-                        }
-                    }
-
-                    continuationToken = response.IsTruncated == true
-                        ? response.NextContinuationToken
-                        : null;
+                    AddRecursiveDirectories(response, basePrefix, result, cancellationToken);
                 }
-                while (continuationToken != null);
-                return result;
+                else
+                {
+                    AddDirectDirectories(response, basePrefix, result, cancellationToken);
+                }
             }
 
-            {
-                string? continuationToken = null;
-
-                do
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var request = new ListObjectsV2Request
-                    {
-                        BucketName = _bucket,
-                        Prefix = basePrefix,
-                        ContinuationToken = continuationToken
-                    };
-
-                    ListObjectsV2Response? response;
-                    try
-                    {
-                        response = _s3.ListObjectsV2Async(request, cancellationToken).GetAwaiter().GetResult();
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogDebug(ex, "S3 list request failed for prefix {Prefix}", basePrefix);
-                        break;
-                    }
-
-                    if (response == null)
-                    {
-                        break;
-                    }
-
-                    var objects = response.S3Objects ?? Enumerable.Empty<S3Object>();
-
-                    foreach (var obj in objects)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        if (obj == null || string.IsNullOrEmpty(obj.Key))
-                        {
-                            continue;
-                        }
-
-                        var relativeKey = ToRelativeKey(obj.Key, basePrefix);
-                        if (string.IsNullOrEmpty(relativeKey))
-                        {
-                            continue;
-                        }
-
-                        var segments = relativeKey.Split(PathSeparator, StringSplitOptions.RemoveEmptyEntries);
-                        if (segments.Length <= 1)
-                        {
-                            continue;
-                        }
-
-                        var current = segments[0];
-
-                        // Check each directory segment
-                        if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + current, null, _ignoredPaths))
-                        {
-                            continue;
-                        }
-
-                        result.Add(current);
-
-                        for (int i = 1; i < segments.Length - 1; i++)
-                        {
-                            cancellationToken.ThrowIfCancellationRequested();
-                            current = current + PathSeparator + segments[i];
-
-                            if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + current, null, _ignoredPaths))
-                            {
-                                break;
-                            }
-
-                            result.Add(current);
-                        }
-                    }
-
-                    continuationToken = response.IsTruncated == true
-                        ? response.NextContinuationToken
-                        : null;
-                }
-                while (continuationToken != null);
-                return result;
-            }
+            return result;
         }
 
         public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false, CancellationToken cancellationToken = default)
@@ -325,90 +198,189 @@ namespace Octockup.Server.Modules
             ArgumentNullException.ThrowIfNull(_s3);
             ArgumentException.ThrowIfNullOrEmpty(_bucket);
 
-            var basePrefix = GetBasePrefix();
-            var files = new List<BackupFileInfo>();
+            string basePrefix = GetBasePrefix();
+            List<BackupFileInfo> files = [];
+
+            foreach (ListObjectsV2Response response in ListObjectPages(
+                basePrefix,
+                delimiter: null,
+                cancellationToken))
+            {
+                IEnumerable<S3Object> objects = response.S3Objects ?? Enumerable.Empty<S3Object>();
+                foreach (S3Object s3Object in objects)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    BackupFileInfo? file = CreateFileInfo(s3Object, basePrefix, recursive);
+                    if (file is not null)
+                    {
+                        files.Add(file);
+                    }
+                }
+            }
+
+            return files;
+        }
+
+        private IEnumerable<ListObjectsV2Response> ListObjectPages(
+            string prefix,
+            string? delimiter,
+            CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(_s3);
             string? continuationToken = null;
 
             do
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var request = new ListObjectsV2Request
+                ListObjectsV2Request request = new()
                 {
                     BucketName = _bucket,
-                    Prefix = basePrefix,
-                    ContinuationToken = continuationToken
+                    Prefix = prefix,
+                    Delimiter = delimiter,
+                    ContinuationToken = continuationToken,
                 };
 
                 ListObjectsV2Response? response;
                 try
                 {
-                    response = _s3.ListObjectsV2Async(request, cancellationToken).GetAwaiter().GetResult();
+                    response = _s3.ListObjectsV2Async(request, cancellationToken)
+                        .GetAwaiter()
+                        .GetResult();
                 }
-                catch (Exception ex)
+                catch (Exception exception)
                 {
-                    _logger.LogDebug(ex, "S3 list request failed for prefix {Prefix}", basePrefix);
-                    break;
+                    _logger.LogDebug(exception, "S3 list request failed for prefix {Prefix}", prefix);
+                    yield break;
                 }
 
-                if (response == null)
+                if (response is null)
                 {
-                    break;
+                    yield break;
                 }
 
-                var objects = response.S3Objects ?? Enumerable.Empty<S3Object>();
-
-                foreach (var obj in objects)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (obj == null || string.IsNullOrEmpty(obj.Key))
-                    {
-                        continue;
-                    }
-
-                    if (obj.Key.EndsWith(PathSeparator))
-                    {
-                        continue;
-                    }
-
-                    var relativeKey = ToRelativeKey(obj.Key, basePrefix);
-                    if (string.IsNullOrEmpty(relativeKey))
-                    {
-                        continue;
-                    }
-
-                    if (!recursive && relativeKey.Contains(PathSeparator))
-                    {
-                        continue;
-                    }
-
-                    // Check if file or its parent directories are ignored
-                    if (_ignoredPaths != null)
-                    {
-                        var fileName = Path.GetFileName(relativeKey);
-                        if (ScheduleHelpers.IsPathIgnored(PathSeparator + relativeKey, fileName, _ignoredPaths))
-                        {
-                            _logger.LogDebug("Skipping ignored S3 file: {Name}", relativeKey);
-                            continue;
-                        }
-                    }
-
-                    var info = new BackupFileInfo
-                    {
-                        Size = obj.Size,
-                        Path = relativeKey,
-                        Name = Path.GetFileName(relativeKey),
-                        LastModified = obj.LastModified?.ToUniversalTime()
-                    };
-
-                    files.Add(info);
-                }
-
+                yield return response;
                 continuationToken = response.IsTruncated == true
                     ? response.NextContinuationToken
                     : null;
             }
-            while (continuationToken != null);
-            return files;
+            while (continuationToken is not null);
+        }
+
+        private void AddDirectDirectories(
+            ListObjectsV2Response response,
+            string basePrefix,
+            ISet<string> result,
+            CancellationToken cancellationToken)
+        {
+            IEnumerable<string> prefixes = response.CommonPrefixes ?? Enumerable.Empty<string>();
+            foreach (string prefix in prefixes)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (string.IsNullOrEmpty(prefix))
+                {
+                    continue;
+                }
+
+                string relative = ToRelativeKey(prefix, basePrefix);
+                if (string.IsNullOrEmpty(relative) || IsIgnored(relative, fileName: null))
+                {
+                    continue;
+                }
+
+                result.Add(relative);
+            }
+        }
+
+        private void AddRecursiveDirectories(
+            ListObjectsV2Response response,
+            string basePrefix,
+            ISet<string> result,
+            CancellationToken cancellationToken)
+        {
+            IEnumerable<S3Object> objects = response.S3Objects ?? Enumerable.Empty<S3Object>();
+            foreach (S3Object s3Object in objects)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                AddObjectDirectories(s3Object, basePrefix, result, cancellationToken);
+            }
+        }
+
+        private void AddObjectDirectories(
+            S3Object s3Object,
+            string basePrefix,
+            ISet<string> result,
+            CancellationToken cancellationToken)
+        {
+            if (s3Object is null || string.IsNullOrEmpty(s3Object.Key))
+            {
+                return;
+            }
+
+            string relativeKey = ToRelativeKey(s3Object.Key, basePrefix);
+            string[] segments = relativeKey.Split(PathSeparator, StringSplitOptions.RemoveEmptyEntries);
+            if (segments.Length <= 1)
+            {
+                return;
+            }
+
+            string current = segments[0];
+            for (int index = 1; index < segments.Length; index++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (IsIgnored(current, fileName: null))
+                {
+                    return;
+                }
+
+                result.Add(current);
+                current += PathSeparator + segments[index];
+            }
+        }
+
+        private BackupFileInfo? CreateFileInfo(
+            S3Object s3Object,
+            string basePrefix,
+            bool recursive)
+        {
+            if (s3Object is null
+                || string.IsNullOrEmpty(s3Object.Key)
+                || s3Object.Key.EndsWith(PathSeparator))
+            {
+                return null;
+            }
+
+            string relativeKey = ToRelativeKey(s3Object.Key, basePrefix);
+            if (string.IsNullOrEmpty(relativeKey)
+                || (!recursive && relativeKey.Contains(PathSeparator)))
+            {
+                return null;
+            }
+
+            string fileName = Path.GetFileName(relativeKey);
+            if (IsIgnored(relativeKey, fileName))
+            {
+                return null;
+            }
+
+            return new BackupFileInfo
+            {
+                Size = s3Object.Size,
+                Path = relativeKey,
+                Name = fileName,
+                LastModified = s3Object.LastModified?.ToUniversalTime(),
+            };
+        }
+
+        private bool IsIgnored(string relativePath, string? fileName)
+        {
+            if (_ignoredPaths is null
+                || !ScheduleHelpers.IsPathIgnored(PathSeparator + relativePath, fileName, _ignoredPaths))
+            {
+                return false;
+            }
+
+            _logger.LogDebug("Skipping ignored S3 path: {Name}", relativePath);
+            return true;
         }
 
         public Task UploadAsync(string path, Stream data, CancellationToken cancellationToken = default)

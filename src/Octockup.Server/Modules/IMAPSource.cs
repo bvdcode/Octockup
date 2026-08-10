@@ -163,64 +163,36 @@ namespace Octockup.Server.Modules
         public IEnumerable<BackupFileInfo> GetFiles(bool recursive = false, CancellationToken cancellationToken = default)
         {
             EnsureConnectedAsync(cancellationToken).GetAwaiter().GetResult();
-            if (_client == null)
+            if (_client is null)
             {
                 yield break;
             }
 
-            var visitedFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var root = GetRootFolder(cancellationToken);
+            HashSet<string> visitedFolders = new(StringComparer.OrdinalIgnoreCase);
+            IMailFolder root = GetRootFolder(cancellationToken);
 
             if (!string.IsNullOrWhiteSpace(_rootPath) && _rootPath != "/")
             {
-                if (recursive)
-                {
-                    foreach (var folder in GetAllFoldersRecursive(root, cancellationToken))
-                    {
-                        if (!visitedFolders.Add(folder.FullName))
-                        {
-                            continue;
-                        }
-
-                        foreach (var file in EnumerateFolderFiles(folder, cancellationToken))
-                        {
-                            yield return file;
-                        }
-                    }
-                }
-                else
-                {
-                    foreach (var file in EnumerateFolderFiles(root, cancellationToken))
-                    {
-                        yield return file;
-                    }
-                }
-
-                yield break;
-            }
-
-            string inboxFullName;
-            IMailFolder inboxFolder;
-            _imapLock.Wait(cancellationToken);
-            try
-            {
-                var client = _client ?? throw new InvalidOperationException("IMAP client is not connected.");
-                inboxFolder = client.Inbox ?? throw new InvalidOperationException("IMAP server did not provide an Inbox folder.");
-                inboxFullName = inboxFolder.FullName;
-            }
-            finally
-            {
-                _imapLock.Release();
-            }
-
-            if (!visitedFolders.Contains(inboxFullName))
-            {
-                foreach (var file in EnumerateFolderFiles(inboxFolder, cancellationToken))
+                IEnumerable<IMailFolder> folders = recursive
+                    ? GetAllFoldersRecursive(root, cancellationToken)
+                    : [root];
+                foreach (BackupFileInfo file in EnumerateUniqueFolderFiles(
+                    folders,
+                    visitedFolders,
+                    excludedFolderName: null,
+                    cancellationToken))
                 {
                     yield return file;
                 }
+                yield break;
+            }
 
-                visitedFolders.Add(inboxFullName);
+            IMailFolder inboxFolder = GetInboxFolder(cancellationToken);
+            string inboxFullName = inboxFolder.FullName;
+            visitedFolders.Add(inboxFullName);
+            foreach (BackupFileInfo file in EnumerateFolderFiles(inboxFolder, cancellationToken))
+            {
+                yield return file;
             }
 
             if (!recursive)
@@ -228,20 +200,50 @@ namespace Octockup.Server.Modules
                 yield break;
             }
 
-            foreach (var folder in GetAllFoldersRecursive(root, cancellationToken))
+            foreach (BackupFileInfo file in EnumerateUniqueFolderFiles(
+                GetAllFoldersRecursive(root, cancellationToken),
+                visitedFolders,
+                inboxFullName,
+                cancellationToken))
             {
-                if (!visitedFolders.Add(folder.FullName))
+                yield return file;
+            }
+        }
+
+        private IMailFolder GetInboxFolder(CancellationToken cancellationToken)
+        {
+            _imapLock.Wait(cancellationToken);
+            try
+            {
+                ImapClient client = _client
+                    ?? throw new InvalidOperationException("IMAP client is not connected.");
+                return client.Inbox
+                    ?? throw new InvalidOperationException("IMAP server did not provide an Inbox folder.");
+            }
+            finally
+            {
+                _imapLock.Release();
+            }
+        }
+
+        private IEnumerable<BackupFileInfo> EnumerateUniqueFolderFiles(
+            IEnumerable<IMailFolder> folders,
+            ISet<string> visitedFolders,
+            string? excludedFolderName,
+            CancellationToken cancellationToken)
+        {
+            foreach (IMailFolder folder in folders)
+            {
+                if (!visitedFolders.Add(folder.FullName)
+                    || string.Equals(
+                        folder.FullName,
+                        excludedFolderName,
+                        StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }
 
-                if (string.Equals(folder.FullName, inboxFullName, StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                foreach (var file in EnumerateFolderFiles(folder, cancellationToken)
-                )
+                foreach (BackupFileInfo file in EnumerateFolderFiles(folder, cancellationToken))
                 {
                     yield return file;
                 }
@@ -250,179 +252,239 @@ namespace Octockup.Server.Modules
 
         private IEnumerable<BackupFileInfo> EnumerateFolderFiles(IMailFolder folder, CancellationToken cancellationToken = default)
         {
-            var folderPath = "/" + folder.FullName;
             cancellationToken.ThrowIfCancellationRequested();
-
-            if (_ignoredPaths != null &&
-                ScheduleHelpers.IsPathIgnored(folderPath, folder.Name, _ignoredPaths))
+            if (ShouldSkipFolder(folder))
             {
-                _logger.LogDebug("Skipping ignored IMAP folder during file enumeration: {Folder}", folderPath);
                 yield break;
             }
 
-            // Skip folders with empty names
+            using IEnumerator<BackupFileInfo> enumerator = ProcessFolderFiles(
+                folder,
+                cancellationToken).GetEnumerator();
+            while (TryMoveNext(enumerator, folder))
+            {
+                yield return enumerator.Current;
+            }
+        }
+
+        private bool ShouldSkipFolder(IMailFolder folder)
+        {
+            string folderPath = "/" + folder.FullName;
+            if (_ignoredPaths is not null
+                && ScheduleHelpers.IsPathIgnored(folderPath, folder.Name, _ignoredPaths))
+            {
+                _logger.LogDebug(
+                    "Skipping ignored IMAP folder during file enumeration: {Folder}",
+                    folderPath);
+                return true;
+            }
+
             if (string.IsNullOrWhiteSpace(folder.FullName))
             {
                 _logger.LogDebug("Skipping folder with empty name");
-                yield break;
+                return true;
             }
 
-            // Skip folders that cannot be opened (NoSelect folders - namespace containers)
-            if ((folder.Attributes & FolderAttributes.NoSelect) != 0)
+            if ((folder.Attributes & FolderAttributes.NoSelect) == 0)
             {
-                _logger.LogDebug("Skipping NoSelect folder (namespace container): {Folder}", folder.FullName);
-                yield break;
+                return false;
             }
 
+            _logger.LogDebug(
+                "Skipping NoSelect folder (namespace container): {Folder}",
+                folder.FullName);
+            return true;
+        }
+
+        private IEnumerable<BackupFileInfo> ProcessFolderFiles(
+            IMailFolder folder,
+            CancellationToken cancellationToken)
+        {
             IMailFolder? openedFolder = null;
-
-            IEnumerable<BackupFileInfo> ProcessFolder()
+            _imapLock.Wait(cancellationToken);
+            try
             {
-                _imapLock.Wait(cancellationToken);
-                try
+                openedFolder = OpenFolder(folder, cancellationToken);
+                if (openedFolder is null)
                 {
-                    // Get a fresh reference to the folder to avoid stale references
-                    var client = _client ?? throw new InvalidOperationException("IMAP client is not connected.");
-                    openedFolder = string.IsNullOrEmpty(folder.FullName)
-                        ? client.Inbox
-                        : client.GetFolder(folder.FullName, cancellationToken);
+                    yield break;
+                }
 
-                    if (openedFolder == null)
+                int total = openedFolder.Count;
+                _logger.LogInformation(
+                    "Enumerating {Total} emails in folder {Folder} in batches of {Batch}",
+                    total,
+                    openedFolder.FullName,
+                    _batchSize);
+
+                for (int start = 0; start < total; start += _batchSize)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    int end = Math.Min(start + _batchSize - 1, total - 1);
+                    IReadOnlyList<IMessageSummary>? summaries = FetchSummaries(
+                        openedFolder,
+                        start,
+                        end,
+                        cancellationToken);
+                    if (summaries is null)
                     {
-                        _logger.LogDebug("Skipping unavailable IMAP folder: {Folder}", folder.FullName);
                         yield break;
                     }
 
-                    // Re-check NoSelect after getting fresh reference
-                    if ((openedFolder.Attributes & FolderAttributes.NoSelect) != 0)
-                    {
-                        _logger.LogDebug("Skipping NoSelect folder after fresh reference (namespace container): {Folder}", openedFolder.FullName);
-                        yield break;
-                    }
-
-                    if (!openedFolder.IsOpen)
-                    {
-                        openedFolder.Open(FolderAccess.ReadOnly, cancellationToken);
-                    }
-
-                    var total = openedFolder.Count;
-                    _logger.LogInformation(
-                        "Enumerating {Total} emails in folder {Folder} in batches of {Batch}",
-                        total,
-                        openedFolder.FullName,
-                        _batchSize);
-
-                    for (var start = 0; start < total; start += _batchSize)
+                    foreach (IMessageSummary summary in summaries)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
-                        var end = Math.Min(start + _batchSize - 1, total - 1);
-
-                        IReadOnlyList<IMessageSummary> summaries;
-                        try
+                        BackupFileInfo? file = CreateFileInfo(openedFolder, summary);
+                        if (file is not null)
                         {
-                            var fetched = openedFolder.Fetch(start, end, MessageSummaryItems.UniqueId |
-                                MessageSummaryItems.InternalDate |
-                                MessageSummaryItems.Size, cancellationToken: cancellationToken);
-
-                            summaries = fetched is IReadOnlyList<IMessageSummary> ro
-                                ? ro
-                                : [.. fetched];
+                            yield return file;
                         }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(
-                                ex,
-                                "Failed to fetch summaries for {Folder} range {Start}-{End}",
-                                openedFolder.FullName,
-                                start,
-                                end);
-                            break;
-                        }
-
-                        foreach (var summary in summaries)
-                        {
-                            cancellationToken.ThrowIfCancellationRequested();
-                            var uid = summary.UniqueId;
-                            if (uid.IsValid == false)
-                            {
-                                continue;
-                            }
-
-                            var fileName = $"{uid.Id}.eml";
-
-                            // Normalize folder path to always use '/' separator, regardless of server's separator
-                            var normalizedFolderPath = string.IsNullOrEmpty(openedFolder.FullName)
-                                ? string.Empty
-                                : (_serverDirectorySeparator.HasValue && _serverDirectorySeparator.Value != '/')
-                                    ? openedFolder.FullName.Replace(_serverDirectorySeparator.Value, '/')
-                                    : openedFolder.FullName;
-
-                            var filePath = string.IsNullOrEmpty(normalizedFolderPath)
-                                ? fileName
-                                : $"{normalizedFolderPath}/{fileName}";
-
-                            if (_ignoredPaths != null &&
-                                ScheduleHelpers.IsPathIgnored("/" + filePath, fileName, _ignoredPaths))
-                            {
-                                _logger.LogDebug("Skipping ignored email: {File}", filePath);
-                                continue;
-                            }
-
-                            yield return new BackupFileInfo
-                            {
-                                Path = filePath,
-                                Name = fileName,
-                                Size = summary.Size,
-                                LastModified = summary.InternalDate?.UtcDateTime
-                            };
-                        }
-                    }
-                }
-                finally
-                {
-                    try
-                    {
-                        if (openedFolder != null && openedFolder.IsOpen)
-                        {
-                            openedFolder.Close(cancellationToken: cancellationToken);
-                        }
-                    }
-                    catch
-                    {
-                        // ignore
-                    }
-                    finally
-                    {
-                        _imapLock.Release();
                     }
                 }
             }
-
-            using var enumerator = ProcessFolder().GetEnumerator();
-            while (true)
+            finally
             {
-                bool moveNext;
-                try
-                {
-                    moveNext = enumerator.MoveNext();
-                }
-                catch (ImapCommandException ex) when (ex.Message.Contains("Unknown Mailbox"))
-                {
-                    _logger.LogWarning("Folder {Folder} does not exist or is not accessible, skipping", folder.FullName);
-                    yield break;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error enumerating folder {Folder}", folder.FullName);
-                    yield break;
-                }
+                CloseFolder(openedFolder, cancellationToken);
+                _imapLock.Release();
+            }
+        }
 
-                if (!moveNext)
-                {
-                    break;
-                }
+        private IMailFolder? OpenFolder(IMailFolder folder, CancellationToken cancellationToken)
+        {
+            ImapClient client = _client
+                ?? throw new InvalidOperationException("IMAP client is not connected.");
+            IMailFolder? openedFolder = string.IsNullOrEmpty(folder.FullName)
+                ? client.Inbox
+                : client.GetFolder(folder.FullName, cancellationToken);
 
-                yield return enumerator.Current;
+            if (openedFolder is null)
+            {
+                _logger.LogDebug("Skipping unavailable IMAP folder: {Folder}", folder.FullName);
+                return null;
+            }
+
+            if ((openedFolder.Attributes & FolderAttributes.NoSelect) != 0)
+            {
+                _logger.LogDebug(
+                    "Skipping NoSelect folder after fresh reference (namespace container): {Folder}",
+                    openedFolder.FullName);
+                return null;
+            }
+
+            if (!openedFolder.IsOpen)
+            {
+                openedFolder.Open(FolderAccess.ReadOnly, cancellationToken);
+            }
+
+            return openedFolder;
+        }
+
+        private IReadOnlyList<IMessageSummary>? FetchSummaries(
+            IMailFolder folder,
+            int start,
+            int end,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                IList<IMessageSummary> fetched = folder.Fetch(
+                    start,
+                    end,
+                    MessageSummaryItems.UniqueId
+                        | MessageSummaryItems.InternalDate
+                        | MessageSummaryItems.Size,
+                    cancellationToken: cancellationToken);
+                return fetched is IReadOnlyList<IMessageSummary> summaries
+                    ? summaries
+                    : [.. fetched];
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning(
+                    exception,
+                    "Failed to fetch summaries for {Folder} range {Start}-{End}",
+                    folder.FullName,
+                    start,
+                    end);
+                return null;
+            }
+        }
+
+        private BackupFileInfo? CreateFileInfo(IMailFolder folder, IMessageSummary summary)
+        {
+            UniqueId uniqueId = summary.UniqueId;
+            if (!uniqueId.IsValid)
+            {
+                return null;
+            }
+
+            string fileName = $"{uniqueId.Id}.eml";
+            string normalizedFolderPath = NormalizeFolderPath(folder.FullName);
+            string filePath = string.IsNullOrEmpty(normalizedFolderPath)
+                ? fileName
+                : $"{normalizedFolderPath}/{fileName}";
+            if (_ignoredPaths is not null
+                && ScheduleHelpers.IsPathIgnored("/" + filePath, fileName, _ignoredPaths))
+            {
+                _logger.LogDebug("Skipping ignored email: {File}", filePath);
+                return null;
+            }
+
+            return new BackupFileInfo
+            {
+                Path = filePath,
+                Name = fileName,
+                Size = summary.Size,
+                LastModified = summary.InternalDate?.UtcDateTime,
+            };
+        }
+
+        private string NormalizeFolderPath(string folderPath)
+        {
+            if (string.IsNullOrEmpty(folderPath)
+                || !_serverDirectorySeparator.HasValue
+                || _serverDirectorySeparator.Value == '/')
+            {
+                return folderPath;
+            }
+
+            return folderPath.Replace(_serverDirectorySeparator.Value, '/');
+        }
+
+        private void CloseFolder(IMailFolder? folder, CancellationToken cancellationToken)
+        {
+            if (folder is null || !folder.IsOpen)
+            {
+                return;
+            }
+
+            try
+            {
+                folder.Close(cancellationToken: cancellationToken);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogDebug(exception, "Failed to close IMAP folder {Folder}", folder.FullName);
+            }
+        }
+
+        private bool TryMoveNext(IEnumerator<BackupFileInfo> enumerator, IMailFolder folder)
+        {
+            try
+            {
+                return enumerator.MoveNext();
+            }
+            catch (ImapCommandException exception) when (exception.Message.Contains("Unknown Mailbox"))
+            {
+                _logger.LogWarning(
+                    "Folder {Folder} does not exist or is not accessible, skipping",
+                    folder.FullName);
+                return false;
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Error enumerating folder {Folder}", folder.FullName);
+                return false;
             }
         }
 

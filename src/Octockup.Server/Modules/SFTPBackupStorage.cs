@@ -193,81 +193,15 @@ namespace Octockup.Server.Modules
             EnsureConnected();
             ArgumentNullException.ThrowIfNull(_sftp);
 
-            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            IEnumerable<string> Walk(string currentRelative)
-            {
-                string full = NormalizeRemotePath(GetRemotePath(currentRelative));
-
-                // Check if current path is ignored before listing (use full absolute path)
-                if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(full, null, _ignoredPaths))
-                {
-                    _logger.LogDebug("Skipping ignored directory: {Path}", full);
-                    yield break;
-                }
-
-                IEnumerable<ISftpFile> entries;
-                try
-                {
-                    entries = _sftp.ListDirectory(full);
-                }
-                catch (SftpPermissionDeniedException) when (_skipPermissionDenied)
-                {
-                    _logger.LogWarning("Permission denied when accessing SFTP directory: {Path}", full);
-                    yield break;
-                }
-
-                foreach (var entry in entries)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (entry.Name == "." || entry.Name == "..")
-                    {
-                        continue;
-                    }
-
-                    if (entry.IsSymbolicLink)
-                    {
-                        continue;
-                    }
-
-                    if (!entry.IsDirectory)
-                    {
-                        continue;
-                    }
-
-                    var rel = string.IsNullOrEmpty(currentRelative)
-                        ? entry.Name
-                        : currentRelative + PathSeparator + entry.Name;
-
-                    var fullEntryPath = full.TrimEnd(PathSeparator) + PathSeparator + entry.Name;
-
-                    // Check if this subdirectory is ignored (use full absolute path)
-                    if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(fullEntryPath, null, _ignoredPaths))
-                    {
-                        _logger.LogDebug("Skipping ignored subdirectory: {Name}", fullEntryPath);
-                        continue;
-                    }
-
-                    if (seen.Add(rel))
-                    {
-                        yield return rel;
-                    }
-
-                    if (recursive)
-                    {
-                        foreach (var sub in Walk(rel))
-                        {
-                            cancellationToken.ThrowIfCancellationRequested();
-                            yield return sub;
-                        }
-                    }
-                }
-            }
-
-            foreach (var d in Walk(string.Empty))
+            HashSet<string> seen = new(StringComparer.OrdinalIgnoreCase);
+            foreach (string directory in EnumerateDirectories(
+                string.Empty,
+                recursive,
+                seen,
+                cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                yield return d;
+                yield return directory;
             }
         }
 
@@ -276,100 +210,232 @@ namespace Octockup.Server.Modules
             EnsureConnected();
             ArgumentNullException.ThrowIfNull(_sftp);
 
-            var queue = new Queue<string>();
+            Queue<string> queue = new();
             queue.Enqueue(string.Empty);
 
-            var seenDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            HashSet<string> seenDirectories = new(StringComparer.OrdinalIgnoreCase);
 
             while (queue.Count > 0)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var currentRelative = queue.Dequeue();
-                var full = NormalizeRemotePath(GetRemotePath(currentRelative));
-
-                // Check if current directory is ignored before listing
-                // Use FULL path for ignore check, not relative to _path
-                if (!string.IsNullOrEmpty(full) && _ignoredPaths != null &&
-                    ScheduleHelpers.IsPathIgnored(full, null, _ignoredPaths))
+                string currentRelative = queue.Dequeue();
+                string full = NormalizeRemotePath(GetRemotePath(currentRelative));
+                if (IsIgnoredDirectory(full))
                 {
-                    _logger.LogDebug("Skipping ignored directory during file enumeration: {Path}", full);
                     continue;
                 }
 
-                IEnumerable<ISftpFile> entries;
-                try
+                IEnumerable<ISftpFile>? entries = GetDirectoryEntries(full);
+                if (entries is null)
                 {
-                    entries = _sftp.ListDirectory(full);
-                }
-                catch (SftpPermissionDeniedException) when (_skipPermissionDenied)
-                {
-                    _logger.LogWarning("Permission denied when accessing SFTP directory: {Path}", full);
                     continue;
                 }
 
-                foreach (var entry in entries)
+                foreach (ISftpFile entry in entries)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (entry.Name == "." || entry.Name == "..")
+                    BackupFileInfo? file = ProcessEntry(
+                        entry,
+                        currentRelative,
+                        full,
+                        recursive,
+                        seenDirectories,
+                        queue);
+                    if (file is not null)
                     {
-                        continue;
+                        yield return file;
                     }
-
-                    if (entry.IsSymbolicLink)
-                    {
-                        continue;
-                    }
-
-                    var rel = string.IsNullOrEmpty(currentRelative)
-                        ? entry.Name
-                        : currentRelative + PathSeparator + entry.Name;
-
-                    var fullEntryPath = full.TrimEnd(PathSeparator) + PathSeparator + entry.Name;
-
-                    if (entry.IsDirectory)
-                    {
-                        // Check if subdirectory is ignored before recursing (use full path)
-                        if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(fullEntryPath, null, _ignoredPaths))
-                        {
-                            _logger.LogDebug("Skipping ignored subdirectory during file enumeration: {Name}", fullEntryPath);
-                            continue;
-                        }
-
-                        if (recursive && seenDirs.Add(rel))
-                        {
-                            queue.Enqueue(rel);
-                        }
-
-                        continue;
-                    }
-
-                    if (_skipPermissionDenied && IsClearlyInaccessible(entry))
-                    {
-                        _logger.LogDebug("Skipping likely inaccessible file: {Name}", entry.FullName);
-                        continue;
-                    }
-
-                    if (!recursive && rel.Contains(PathSeparator))
-                    {
-                        continue;
-                    }
-
-                    // Check if file itself is ignored (use full path)
-                    if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(fullEntryPath, entry.Name, _ignoredPaths))
-                    {
-                        _logger.LogDebug("Skipping ignored file: {Name}", fullEntryPath);
-                        continue;
-                    }
-
-                    yield return new BackupFileInfo
-                    {
-                        Path = rel,
-                        Name = entry.Name,
-                        Size = entry.Attributes.Size,
-                        LastModified = entry.LastWriteTime.ToUniversalTime()
-                    };
                 }
             }
+        }
+
+        private IEnumerable<string> EnumerateDirectories(
+            string currentRelative,
+            bool recursive,
+            ISet<string> seen,
+            CancellationToken cancellationToken)
+        {
+            string full = NormalizeRemotePath(GetRemotePath(currentRelative));
+            if (IsIgnoredDirectory(full))
+            {
+                yield break;
+            }
+
+            IEnumerable<ISftpFile>? entries = GetDirectoryEntries(full);
+            if (entries is null)
+            {
+                yield break;
+            }
+
+            foreach (ISftpFile entry in entries)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                string? relativePath = GetDirectoryRelativePath(entry, currentRelative, full);
+                if (relativePath is null)
+                {
+                    continue;
+                }
+
+                if (seen.Add(relativePath))
+                {
+                    yield return relativePath;
+                }
+
+                if (!recursive)
+                {
+                    continue;
+                }
+
+                foreach (string child in EnumerateDirectories(
+                    relativePath,
+                    recursive: true,
+                    seen,
+                    cancellationToken))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    yield return child;
+                }
+            }
+        }
+
+        private IEnumerable<ISftpFile>? GetDirectoryEntries(string fullPath)
+        {
+            ArgumentNullException.ThrowIfNull(_sftp);
+            try
+            {
+                return _sftp.ListDirectory(fullPath);
+            }
+            catch (SftpPermissionDeniedException exception) when (_skipPermissionDenied)
+            {
+                _logger.LogWarning(
+                    exception,
+                    "Permission denied when accessing SFTP directory: {Path}",
+                    fullPath);
+                return null;
+            }
+        }
+
+        private string? GetDirectoryRelativePath(
+            ISftpFile entry,
+            string currentRelative,
+            string currentFullPath)
+        {
+            if (ShouldSkipEntry(entry) || !entry.IsDirectory)
+            {
+                return null;
+            }
+
+            string fullPath = GetEntryFullPath(currentFullPath, entry.Name);
+            if (IsIgnoredDirectory(fullPath))
+            {
+                return null;
+            }
+
+            return GetEntryRelativePath(currentRelative, entry.Name);
+        }
+
+        private BackupFileInfo? ProcessEntry(
+            ISftpFile entry,
+            string currentRelative,
+            string currentFullPath,
+            bool recursive,
+            ISet<string> seenDirectories,
+            Queue<string> queue)
+        {
+            if (ShouldSkipEntry(entry))
+            {
+                return null;
+            }
+
+            string relativePath = GetEntryRelativePath(currentRelative, entry.Name);
+            string fullPath = GetEntryFullPath(currentFullPath, entry.Name);
+            if (entry.IsDirectory)
+            {
+                QueueDirectory(relativePath, fullPath, recursive, seenDirectories, queue);
+                return null;
+            }
+
+            return CreateFileInfo(entry, relativePath, fullPath, recursive);
+        }
+
+        private void QueueDirectory(
+            string relativePath,
+            string fullPath,
+            bool recursive,
+            ISet<string> seenDirectories,
+            Queue<string> queue)
+        {
+            if (IsIgnoredDirectory(fullPath))
+            {
+                return;
+            }
+
+            if (recursive && seenDirectories.Add(relativePath))
+            {
+                queue.Enqueue(relativePath);
+            }
+        }
+
+        private BackupFileInfo? CreateFileInfo(
+            ISftpFile entry,
+            string relativePath,
+            string fullPath,
+            bool recursive)
+        {
+            if (_skipPermissionDenied && IsClearlyInaccessible(entry))
+            {
+                _logger.LogDebug("Skipping likely inaccessible file: {Name}", entry.FullName);
+                return null;
+            }
+
+            if (!recursive && relativePath.Contains(PathSeparator))
+            {
+                return null;
+            }
+
+            if (_ignoredPaths is not null
+                && ScheduleHelpers.IsPathIgnored(fullPath, entry.Name, _ignoredPaths))
+            {
+                _logger.LogDebug("Skipping ignored file: {Name}", fullPath);
+                return null;
+            }
+
+            return new BackupFileInfo
+            {
+                Path = relativePath,
+                Name = entry.Name,
+                Size = entry.Attributes.Size,
+                LastModified = entry.LastWriteTime.ToUniversalTime(),
+            };
+        }
+
+        private bool IsIgnoredDirectory(string fullPath)
+        {
+            if (_ignoredPaths is null
+                || !ScheduleHelpers.IsPathIgnored(fullPath, fileName: null, _ignoredPaths))
+            {
+                return false;
+            }
+
+            _logger.LogDebug("Skipping ignored SFTP directory: {Path}", fullPath);
+            return true;
+        }
+
+        private static bool ShouldSkipEntry(ISftpFile entry)
+        {
+            return entry.Name is "." or ".." || entry.IsSymbolicLink;
+        }
+
+        private string GetEntryRelativePath(string currentRelative, string entryName)
+        {
+            return string.IsNullOrEmpty(currentRelative)
+                ? entryName
+                : currentRelative + PathSeparator + entryName;
+        }
+
+        private string GetEntryFullPath(string currentFullPath, string entryName)
+        {
+            return currentFullPath.TrimEnd(PathSeparator) + PathSeparator + entryName;
         }
 
         public async Task<Stream> GetFileStreamAsync(BackupFileInfo file, CancellationToken cancellationToken = default)
