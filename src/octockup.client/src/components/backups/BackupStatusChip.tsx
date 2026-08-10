@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { BackupItem, ScheduleReport } from "../../types/api";
 import { BackupStatus } from "../../types/api";
 import { getBackupOverallStatus } from "../../utils/backupUtils";
+import { getStatusChipColors } from "../../utils/themeColors";
 
 interface BackupStatusChipProps {
   backup: BackupItem;
@@ -53,7 +54,17 @@ export function BackupStatusChip({
       label={t(`backupStatus.${status}`)}
       size="small"
       color={statusColors[status]}
-      sx={{ height: 20, fontSize: "0.7rem" }}
+      sx={(theme) => {
+        const accessibleStyle = getStatusChipColors(status, theme);
+        const baseStyle = { height: 20, fontSize: "0.7rem" };
+        if (accessibleStyle === null) {
+          return baseStyle;
+        }
+        return {
+          ...baseStyle,
+          ...accessibleStyle,
+        };
+      }}
     />
   );
 

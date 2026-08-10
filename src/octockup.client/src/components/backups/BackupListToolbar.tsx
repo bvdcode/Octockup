@@ -2,16 +2,22 @@ import { AddCircleOutline, Search } from "@mui/icons-material";
 import {
   Box,
   Button,
+  IconButton,
   InputAdornment,
   MenuItem,
   Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import { BackupSortOption } from "../../types/backupList";
 import { formatSize } from "../../utils/formatUtils";
+import {
+  getInfoTextColor,
+  getWarningTextColor,
+} from "../../utils/themeColors";
 
 interface StorageOption {
   id: string;
@@ -66,7 +72,7 @@ export function BackupListToolbar({
           gap={1}
           sx={{
             gridTemplateColumns: {
-              xs: "1fr 1fr",
+              xs: "minmax(0, 1fr) minmax(0, 1fr) auto",
               sm: "minmax(160px, 1fr) 150px 190px auto",
             },
           }}
@@ -77,7 +83,10 @@ export function BackupListToolbar({
             placeholder={t("backups.searchPlaceholder")}
             aria-label={t("backups.searchPlaceholder")}
             onChange={(event) => onSearchChange(event.target.value)}
-            sx={{ gridColumn: { xs: "1 / -1", sm: "auto" } }}
+            sx={{
+              gridColumn: { xs: "1 / 3", sm: "auto" },
+              gridRow: { xs: 1, sm: "auto" },
+            }}
             slotProps={{
               input: {
                 startAdornment: (
@@ -96,6 +105,10 @@ export function BackupListToolbar({
             onChange={(event) =>
               onStorageChange(event.target.value === "all" ? null : event.target.value)
             }
+            sx={{
+              gridColumn: { xs: "1 / 2", sm: "auto" },
+              gridRow: { xs: 2, sm: "auto" },
+            }}
           >
             <MenuItem value="all">{t("backups.allStorages")}</MenuItem>
             {storages.map((storage) => (
@@ -112,6 +125,10 @@ export function BackupListToolbar({
             onChange={(event) =>
               onSortChange(event.target.value as BackupSortOption)
             }
+            sx={{
+              gridColumn: { xs: "2 / -1", sm: "auto" },
+              gridRow: { xs: 2, sm: "auto" },
+            }}
           >
             {Object.values(BackupSortOption).map((option) => (
               <MenuItem key={option} value={option}>
@@ -125,28 +142,69 @@ export function BackupListToolbar({
             onClick={onCreate}
             sx={{
               gridColumn: { xs: "1 / -1", sm: "auto" },
+              display: { xs: "none", sm: "inline-flex" },
               whiteSpace: "nowrap",
             }}
           >
             {t("backups.newBackup")}
           </Button>
+          <Tooltip title={t("backups.newBackup")}>
+            <IconButton
+              color="primary"
+              aria-label={t("backups.newBackup")}
+              onClick={onCreate}
+              sx={{
+                display: { xs: "inline-flex", sm: "none" },
+                gridColumn: 3,
+                gridRow: 1,
+              }}
+            >
+              <AddCircleOutline />
+            </IconButton>
+          </Tooltip>
         </Box>
-        <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
-          <Typography variant="caption" color="text.secondary">
+        <Stack
+          direction="row"
+          spacing={{ xs: 1.25, sm: 2 }}
+          flexWrap={{ xs: "nowrap", sm: "wrap" }}
+          overflow="auto"
+          useFlexGap
+        >
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            display={{ xs: "none", sm: "block" }}
+          >
             {t("backups.summary.backups", { count: backupCount })}
           </Typography>
-          <Typography variant="caption" color="text.secondary">
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            whiteSpace="nowrap"
+          >
             {t("backups.summary.logicalSize", {
               size: formatSize(logicalSize),
             })}
           </Typography>
           {runningCount > 0 && (
-            <Typography variant="caption" color="info.main">
+            <Typography
+              variant="caption"
+              sx={{
+                color: getInfoTextColor,
+                whiteSpace: "nowrap",
+              }}
+            >
               {t("backups.summary.running", { count: runningCount })}
             </Typography>
           )}
           {issueCount > 0 && (
-            <Typography variant="caption" color="warning.main">
+            <Typography
+              variant="caption"
+              sx={{
+                color: getWarningTextColor,
+                whiteSpace: "nowrap",
+              }}
+            >
               {t("backups.summary.issues", { count: issueCount })}
             </Typography>
           )}

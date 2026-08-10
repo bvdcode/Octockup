@@ -5,6 +5,7 @@ import { formatSize } from "../../utils/formatUtils";
 import { formatRelativeTime, parseUtcDate } from "../../utils/dateUtils";
 import { getLatestCompletedSnapshot } from "../../utils/backupListUtils";
 import { formatInterval } from "../../utils/scheduleUtils";
+import { getWarningTextColor } from "../../utils/themeColors";
 
 interface BackupMetadataProps {
   backup: BackupItem;
@@ -75,7 +76,12 @@ export function BackupMetadata({ backup }: BackupMetadataProps) {
       {recurringSchedule?.interval && (
         <>
           <Divider orientation="vertical" flexItem />
-          <Typography variant="caption" color="warning.main">
+          <Typography
+            variant="caption"
+            sx={{
+              color: getWarningTextColor,
+            }}
+          >
             {formatInterval(recurringSchedule.interval, t)}
           </Typography>
         </>

@@ -116,6 +116,7 @@ export function BackupRunMenu({
         >
           <Button
             size="small"
+            color="inherit"
             startIcon={<PlayArrow />}
             onClick={() => void runAndClose(onRunNow)}
           >
@@ -130,6 +131,9 @@ export function BackupRunMenu({
             <Button
               key={interval.minutes}
               size="small"
+              color={
+                intervalMinutes === interval.minutes ? "primary" : "inherit"
+              }
               variant={
                 intervalMinutes === interval.minutes ? "contained" : "text"
               }
