@@ -50,10 +50,7 @@ namespace Octockup.Server.Collections
         public IEnumerable<T[]> GetBatches(int maxBatchSize, TimeSpan flushAfterIdle)
         {
             ArgumentOutOfRangeException.ThrowIfLessThan(maxBatchSize, 1);
-            if (flushAfterIdle <= TimeSpan.Zero)
-            {
-                throw new ArgumentOutOfRangeException(nameof(flushAfterIdle));
-            }
+            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(flushAfterIdle, TimeSpan.Zero);
 
             StartBackgroundLoadingIfNeeded();
 

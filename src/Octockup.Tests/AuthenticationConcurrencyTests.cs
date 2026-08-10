@@ -470,6 +470,5 @@ namespace Octockup.Tests
                 ((AuthApiException)failure!).StatusCode,
                 Is.EqualTo(StatusCodes.Status409Conflict));
         }
-
     }
 }

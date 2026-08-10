@@ -135,7 +135,6 @@ namespace Octockup.Server.Controllers
             return new EmptyResult();
         }
 
-
         [Authorize]
         [HttpPatch("/api/v1/backups/{backupId:guid}/ignored-paths")]
         public async Task<IActionResult> UpdateIgnoredPaths([FromRoute] Guid backupId, [FromBody] List<string> ignoredPaths)

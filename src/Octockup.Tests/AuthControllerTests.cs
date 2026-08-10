@@ -238,6 +238,5 @@ namespace Octockup.Tests
                 .Options;
             return new PostgresDbContext(options);
         }
-
     }
 }

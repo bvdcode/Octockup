@@ -122,6 +122,5 @@ namespace Octockup.Server.Helpers
                 return moduleController.ApiBadRequest("Failed to connect to backup source with provided parameters: " + ex.Message);
             }
         }
-
     }
 }

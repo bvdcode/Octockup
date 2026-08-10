@@ -114,7 +114,6 @@ namespace Octockup.Server.Services
             HttpResponse response,
             CancellationToken cancellationToken)
         {
-
             _dbContext.OidcLoginStates.Remove(loginState);
             await _dbContext.SaveChangesAsync(cancellationToken);
 
