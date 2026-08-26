@@ -31,13 +31,13 @@ namespace Octockup.Server.Modules
         public void SetParameters(IReadOnlyDictionary<string, string> parameters)
         {
             string host = parameters["host"];
-            int port = int.TryParse(parameters["port"], out var p) ? p : 22;
+            int port = int.TryParse(parameters["port"], out int p) ? p : 22;
             string username = parameters["username"];
             string credential = parameters["password"];
 
             _path = parameters["path"].Trim().Trim('/');
-            _skipPermissionDenied = parameters.TryGetValue("skipPermissionDenied", out var skipStr) &&
-                                    bool.TryParse(skipStr, out var skip) && skip;
+            _skipPermissionDenied = parameters.TryGetValue("skipPermissionDenied", out string? skipStr) &&
+                                    bool.TryParse(skipStr, out bool skip) && skip;
             SftpClient sftp = CreateSftpClient(
                 host,
                 port,
@@ -124,7 +124,7 @@ namespace Octockup.Server.Modules
 
         private string GetRemotePath(string? relative)
         {
-            var basePath = _path?.Trim('/');
+            string? basePath = _path?.Trim('/');
 
             if (string.IsNullOrWhiteSpace(basePath))
             {
@@ -152,7 +152,7 @@ namespace Octockup.Server.Modules
             EnsureConnected();
             ArgumentNullException.ThrowIfNull(_sftp);
 
-            var remote = NormalizeRemotePath(GetRemotePath(path));
+            string remote = NormalizeRemotePath(GetRemotePath(path));
 
             try
             {
@@ -176,11 +176,11 @@ namespace Octockup.Server.Modules
             ArgumentException.ThrowIfNullOrEmpty(path);
             EnsureConnected();
 
-            var remote = NormalizeRemotePath(GetRemotePath(path));
+            string remote = NormalizeRemotePath(GetRemotePath(path));
 
             try
             {
-                var exists = await _sftp.ExistsAsync(remote, cancellationToken);
+                bool exists = await _sftp.ExistsAsync(remote, cancellationToken);
                 return exists;
             }
             catch
@@ -444,12 +444,12 @@ namespace Octockup.Server.Modules
             ArgumentNullException.ThrowIfNull(file);
             ArgumentException.ThrowIfNullOrEmpty(file.Path);
             EnsureConnected();
-            var remote = NormalizeRemotePath(GetRemotePath(file.Path));
+            string remote = NormalizeRemotePath(GetRemotePath(file.Path));
 
             try
             {
                 // Return a streaming reader to avoid buffering whole file in memory
-                var stream = _sftp.OpenRead(remote);
+                SftpFileStream stream = _sftp.OpenRead(remote);
                 return stream ?? Stream.Null;
             }
             catch (SftpPathNotFoundException ex)
@@ -471,8 +471,8 @@ namespace Octockup.Server.Modules
             ArgumentException.ThrowIfNullOrEmpty(path);
             EnsureConnected();
 
-            var remote = NormalizeRemotePath(GetRemotePath(path));
-            var dir = Path.GetDirectoryName(remote)?.Replace("\\", "/") ?? "/";
+            string remote = NormalizeRemotePath(GetRemotePath(path));
+            string dir = Path.GetDirectoryName(remote)?.Replace("\\", "/") ?? "/";
 
             EnsureDirectory(dir);
 
@@ -483,14 +483,14 @@ namespace Octockup.Server.Modules
         {
             ArgumentNullException.ThrowIfNull(_sftp);
 
-            var parts = remoteDir.Trim('/').Split(
+            string[] parts = remoteDir.Trim('/').Split(
                 PathSeparator,
                 StringSplitOptions.RemoveEmptyEntries
             );
 
             string current = "/";
 
-            foreach (var part in parts)
+            foreach (string part in parts)
             {
                 current = (current.EndsWith('/') ? current : current + "/") + part;
 
@@ -507,7 +507,7 @@ namespace Octockup.Server.Modules
             EnsureConnected();
             ArgumentNullException.ThrowIfNull(_sftp);
 
-            var remote = NormalizeRemotePath(GetRemotePath(path));
+            string remote = NormalizeRemotePath(GetRemotePath(path));
 
             try
             {
@@ -516,14 +516,14 @@ namespace Octockup.Server.Modules
                     return null;
                 }
 
-                var attrs = await _sftp.GetAttributesAsync(remote, cancellationToken);
+                SftpFileAttributes attrs = await _sftp.GetAttributesAsync(remote, cancellationToken);
 
                 if (attrs == null || attrs.IsDirectory)
                 {
                     return null;
                 }
 
-                var fileName = Path.GetFileName(path);
+                string fileName = Path.GetFileName(path);
 
                 return new BackupFileInfo
                 {

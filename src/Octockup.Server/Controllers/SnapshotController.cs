@@ -35,7 +35,7 @@ namespace Octockup.Server.Controllers
         {
             Guid userId = User.GetUserId();
 
-            var snapshot = await _dbContext.Snapshots
+            Snapshot? snapshot = await _dbContext.Snapshots
                 .AsNoTracking()
                 .Include(s => s.Backup)
                     .ThenInclude(b => b.Source)
@@ -55,7 +55,7 @@ namespace Octockup.Server.Controllers
                 return BadRequest("Snapshot is not completed.");
             }
 
-            var provider = _providers
+            IBackupProvider? provider = _providers
                 .FirstOrDefault(p => p.Id == snapshot.Backup.Storage.BackupModuleId);
 
             if (provider == null)
@@ -69,7 +69,7 @@ namespace Octockup.Server.Controllers
                 return BadRequest("Storage provider is not a backup storage");
             }
 
-            var snapshotFiles = await _dbContext.SnapshotFiles
+            List<SnapshotFile> snapshotFiles = await _dbContext.SnapshotFiles
                 .AsNoTracking()
                 .Where(sf => sf.SnapshotId == snapshotId)
                 .OrderBy(sf => sf.Path)
@@ -90,7 +90,7 @@ namespace Octockup.Server.Controllers
                 return BadRequest("Unsupported chunk metadata.");
             }
 
-            var entries = snapshotFiles
+            List<StoredZipArchiveEntry> entries = snapshotFiles
                 .Select(snapshotFile => CreateArchiveEntry(
                     snapshotFile,
                     chunksByFile[snapshotFile.Id],
@@ -142,7 +142,7 @@ namespace Octockup.Server.Controllers
                 return NotFound();
             }
 
-            var provider = _providers
+            IBackupProvider? provider = _providers
                 .FirstOrDefault(p => p.Id == snapshotFile.Snapshot.Backup.Storage.BackupModuleId);
 
             if (provider == null)
@@ -156,16 +156,16 @@ namespace Octockup.Server.Controllers
                 return BadRequest("Storage provider is not a backup storage");
             }
 
-            var chunkKeys = snapshotFile.ChunkHashes?.ToList() ?? [];
-            var uploadedHashes = await _dbContext.UploadedHashes
+            List<string> chunkKeys = snapshotFile.ChunkHashes?.ToList() ?? [];
+            Dictionary<string, UploadedHash> uploadedHashes = await _dbContext.UploadedHashes
                 .AsNoTracking()
                 .Where(x => x.ModuleId == snapshotFile.Snapshot.Backup.StorageId && chunkKeys.Contains(x.Hash))
                 .ToDictionaryAsync(x => x.Hash);
 
             List<ChunkStorageDescriptor> chunks = [];
-            foreach (var chunkKey in chunkKeys)
+            foreach (string chunkKey in chunkKeys)
             {
-                if (uploadedHashes.TryGetValue(chunkKey, out var found))
+                if (uploadedHashes.TryGetValue(chunkKey, out UploadedHash? found))
                 {
                     chunks.Add(ChunkStorageHelpers.Parse(found.Hash, found.CompressionAlgorithm, found.OriginalSize));
                     continue;
@@ -184,7 +184,7 @@ namespace Octockup.Server.Controllers
             }
 
             long restoredSize = GetRestoredFileSize(snapshotFile, chunks);
-            var stream = new SnapshotConcatStream(
+            SnapshotConcatStream stream = new SnapshotConcatStream(
                 _logger,
                 storage,
                 chunks,
@@ -196,7 +196,7 @@ namespace Octockup.Server.Controllers
             );
 
             string contentType = MimeTypes.GetMimeType(snapshotFile.Name) ?? "application/octet-stream";
-            var result = new FileStreamResult(stream, contentType)
+            FileStreamResult result = new FileStreamResult(stream, contentType)
             {
                 FileDownloadName = snapshotFile.Name,
                 EnableRangeProcessing = false,
@@ -269,9 +269,9 @@ namespace Octockup.Server.Controllers
                 .ToList();
 
             List<SnapshotDto> result = [];
-            foreach (var snapshot in snapshots)
+            foreach (Snapshot snapshot in snapshots)
             {
-                var dto = snapshot.Adapt<SnapshotDto>();
+                SnapshotDto dto = snapshot.Adapt<SnapshotDto>();
                 dto.FilesCount = _dbContext.SnapshotFiles
                     .Count(sf => sf.SnapshotId == snapshot.Id);
                 dto.TotalSize = _dbContext.SnapshotFiles
@@ -299,7 +299,7 @@ namespace Octockup.Server.Controllers
                 snapshotFile.LastModified,
                 cancellationToken =>
                 {
-                    var stream = new SnapshotConcatStream(
+                    SnapshotConcatStream stream = new SnapshotConcatStream(
                         _logger,
                         storage,
                         chunks,
@@ -330,33 +330,33 @@ namespace Octockup.Server.Controllers
             IReadOnlyList<SnapshotFile> snapshotFiles,
             CancellationToken cancellationToken)
         {
-            var chunkKeys = snapshotFiles
+            List<string> chunkKeys = snapshotFiles
                 .SelectMany(x => x.ChunkHashes ?? [])
                 .Distinct(StringComparer.Ordinal)
                 .ToList();
 
-            var uploadedHashes = new Dictionary<string, UploadedHash>(StringComparer.Ordinal);
-            foreach (var batch in chunkKeys.Chunk(500))
+            Dictionary<string, UploadedHash> uploadedHashes = new Dictionary<string, UploadedHash>(StringComparer.Ordinal);
+            foreach (string[] batch in chunkKeys.Chunk(500))
             {
-                var found = await _dbContext.UploadedHashes
+                List<UploadedHash> found = await _dbContext.UploadedHashes
                     .AsNoTracking()
                     .Where(x => x.ModuleId == storageId && batch.Contains(x.Hash))
                     .ToListAsync(cancellationToken);
 
-                foreach (var item in found)
+                foreach (UploadedHash? item in found)
                 {
                     uploadedHashes[item.Hash] = item;
                 }
             }
 
-            var result = new Dictionary<Guid, IReadOnlyList<ChunkStorageDescriptor>>();
-            foreach (var snapshotFile in snapshotFiles)
+            Dictionary<Guid, IReadOnlyList<ChunkStorageDescriptor>> result = new Dictionary<Guid, IReadOnlyList<ChunkStorageDescriptor>>();
+            foreach (SnapshotFile snapshotFile in snapshotFiles)
             {
-                var chunkDescriptors = new List<ChunkStorageDescriptor>();
+                List<ChunkStorageDescriptor> chunkDescriptors = new List<ChunkStorageDescriptor>();
 
                 foreach (string chunkKey in snapshotFile.ChunkHashes ?? [])
                 {
-                    if (uploadedHashes.TryGetValue(chunkKey, out var found))
+                    if (uploadedHashes.TryGetValue(chunkKey, out UploadedHash? found))
                     {
                         chunkDescriptors.Add(ChunkStorageHelpers.Parse(found.Hash, found.CompressionAlgorithm, found.OriginalSize));
                         continue;

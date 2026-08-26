@@ -5,13 +5,6 @@ using EasyExtensions.Models.Enums;
 
 namespace Octockup.Server.Helpers
 {
-    public readonly record struct ChunkStorageDescriptor(
-        string Key,
-        string ContentHash,
-        CompressionAlgorithm CompressionAlgorithm,
-        bool IsEncrypted,
-        long? OriginalSize = null);
-
     public static class ChunkStorageHelpers
     {
         private const string Version = "v2";
@@ -66,7 +59,7 @@ namespace Octockup.Server.Helpers
 
         public static string GetStoragePath(string key, char pathSeparator)
         {
-            var descriptor = Parse(key);
+            ChunkStorageDescriptor descriptor = Parse(key);
             if (descriptor.Key == descriptor.ContentHash)
             {
                 return ScheduleHelpers.SplitPlainHash(descriptor.ContentHash, pathSeparator);

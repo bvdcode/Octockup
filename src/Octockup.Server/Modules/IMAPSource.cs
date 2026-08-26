@@ -3,6 +3,7 @@
 
 using MailKit;
 using MailKit.Net.Imap;
+using MimeKit;
 using Octockup.Server.Abstractions;
 using Octockup.Server.Helpers;
 using Octockup.Server.Models;
@@ -32,19 +33,19 @@ namespace Octockup.Server.Modules
         public void SetParameters(IReadOnlyDictionary<string, string> parameters)
         {
             _host = parameters["host"];
-            _port = int.TryParse(parameters["port"], out var p) ? p : 993;
+            _port = int.TryParse(parameters["port"], out int p) ? p : 993;
             _username = parameters["username"];
             _password = parameters["password"];
-            _useSsl = parameters.TryGetValue("useSsl", out var sslStr) &&
-                      bool.TryParse(sslStr, out var ssl) && ssl;
+            _useSsl = parameters.TryGetValue("useSsl", out string? sslStr) &&
+                      bool.TryParse(sslStr, out bool ssl) && ssl;
 
             if (!parameters.ContainsKey("useSsl"))
             {
                 _useSsl = true;
             }
 
-            if (parameters.TryGetValue("batchSize", out var batchStr) &&
-                int.TryParse(batchStr, out var bs) &&
+            if (parameters.TryGetValue("batchSize", out string? batchStr) &&
+                int.TryParse(batchStr, out int bs) &&
                 bs > 0)
             {
                 _batchSize = bs;
@@ -85,7 +86,7 @@ namespace Octockup.Server.Modules
                     _logger.LogInformation("Successfully connected to IMAP server {Host}:{Port}", host, _port);
 
                     // Cache the directory separator from the server
-                    var personalNamespace = _client.GetFolder(_client.PersonalNamespaces[0]);
+                    IMailFolder personalNamespace = _client.GetFolder(_client.PersonalNamespaces[0]);
                     _serverDirectorySeparator = personalNamespace.DirectorySeparator;
                 }
                 catch (Exception ex)
@@ -114,12 +115,12 @@ namespace Octockup.Server.Modules
 
             if (recursive)
             {
-                var root = GetRootFolder(cancellationToken);
+                IMailFolder root = GetRootFolder(cancellationToken);
                 folders = GetAllFoldersRecursive(root, cancellationToken);
             }
             else
             {
-                var root = GetRootFolder(cancellationToken);
+                IMailFolder root = GetRootFolder(cancellationToken);
 
                 IReadOnlyList<IMailFolder> subfolders;
                 try
@@ -127,7 +128,7 @@ namespace Octockup.Server.Modules
                     _imapLock.Wait(cancellationToken);
                     try
                     {
-                        var fetched = root.GetSubfolders(cancellationToken: cancellationToken);
+                        IList<IMailFolder> fetched = root.GetSubfolders(cancellationToken: cancellationToken);
                         subfolders = fetched is IReadOnlyList<IMailFolder> ro
                             ? ro
                             : [.. fetched];
@@ -146,9 +147,9 @@ namespace Octockup.Server.Modules
                 folders = subfolders;
             }
 
-            foreach (var folder in folders)
+            foreach (IMailFolder folder in folders)
             {
-                var folderPath = "/" + folder.FullName;
+                string folderPath = "/" + folder.FullName;
                 if (_ignoredPaths != null &&
                     ScheduleHelpers.IsPathIgnored(folderPath, folder.Name, _ignoredPaths))
                 {
@@ -490,13 +491,13 @@ namespace Octockup.Server.Modules
 
         private IEnumerable<IMailFolder> GetAllFoldersRecursive(IMailFolder rootFolder, CancellationToken cancellationToken = default)
         {
-            var queue = new Queue<IMailFolder>();
+            Queue<IMailFolder> queue = new Queue<IMailFolder>();
             queue.Enqueue(rootFolder);
 
             while (queue.Count > 0)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var folder = queue.Dequeue();
+                IMailFolder folder = queue.Dequeue();
                 yield return folder;
 
                 IReadOnlyList<IMailFolder> subfolders;
@@ -505,7 +506,7 @@ namespace Octockup.Server.Modules
                     _imapLock.Wait(cancellationToken);
                     try
                     {
-                        var fetched = folder.GetSubfolders(cancellationToken: cancellationToken);
+                        IList<IMailFolder> fetched = folder.GetSubfolders(cancellationToken: cancellationToken);
                         subfolders = fetched is IReadOnlyList<IMailFolder> ro
                             ? ro
                             : [.. fetched];
@@ -521,7 +522,7 @@ namespace Octockup.Server.Modules
                     continue;
                 }
 
-                foreach (var subfolder in subfolders)
+                foreach (IMailFolder subfolder in subfolders)
                 {
                     queue.Enqueue(subfolder);
                 }
@@ -538,25 +539,25 @@ namespace Octockup.Server.Modules
 
             try
             {
-                var parts = file.Path.Split('/');
-                var fileName = parts[^1];
-                var folderPath = parts.Length > 1
+                string[] parts = file.Path.Split('/');
+                string fileName = parts[^1];
+                string folderPath = parts.Length > 1
                     ? string.Join("/", parts[..^1])
                     : string.Empty;
 
-                var uidStr = fileName.Replace(".eml", "");
-                if (!uint.TryParse(uidStr, out var uidValue))
+                string uidStr = fileName.Replace(".eml", "");
+                if (!uint.TryParse(uidStr, out uint uidValue))
                 {
                     _logger.LogError("Invalid email UID in filename: {FileName}", fileName);
                     return Stream.Null;
                 }
 
-                var uid = new UniqueId(uidValue);
+                UniqueId uid = new UniqueId(uidValue);
 
                 await _imapLock.WaitAsync(cancellationToken);
                 try
                 {
-                    var client = _client;
+                    ImapClient client = _client;
                     if (client == null)
                     {
                         return Stream.Null;
@@ -570,7 +571,7 @@ namespace Octockup.Server.Modules
                     else
                     {
                         // Convert normalized '/' path back to server's directory separator
-                        var serverFolderPath = (_serverDirectorySeparator.HasValue && _serverDirectorySeparator.Value != '/')
+                        string serverFolderPath = (_serverDirectorySeparator.HasValue && _serverDirectorySeparator.Value != '/')
                             ? folderPath.Replace('/', _serverDirectorySeparator.Value)
                             : folderPath;
                         folder = await client.GetFolderAsync(serverFolderPath, cancellationToken);
@@ -583,15 +584,15 @@ namespace Octockup.Server.Modules
                     }
 
                     await folder.OpenAsync(FolderAccess.ReadOnly, cancellationToken);
-                    var message = await folder.GetMessageAsync(uid, cancellationToken);
+                    MimeMessage message = await folder.GetMessageAsync(uid, cancellationToken);
                     await folder.CloseAsync(cancellationToken: cancellationToken);
 
                     // Pre-allocate MemoryStream with known size to avoid resizing
                     int initialCapacity = file.Size.HasValue && file.Size.Value > 0 && file.Size.Value < int.MaxValue
                         ? (int)file.Size.Value
                         : 64 * 1024; // 64KB default
-                    
-                    var ms = new MemoryStream(initialCapacity);
+
+                    MemoryStream ms = new MemoryStream(initialCapacity);
                     await message.WriteToAsync(ms, cancellationToken);
                     ms.Position = 0;
 
@@ -627,7 +628,7 @@ namespace Octockup.Server.Modules
                 }
 
                 // User-configured rootPath uses '/', convert to server separator if needed
-                var serverRoot = (_serverDirectorySeparator.HasValue && _serverDirectorySeparator.Value != '/')
+                string serverRoot = (_serverDirectorySeparator.HasValue && _serverDirectorySeparator.Value != '/')
                     ? _rootPath.TrimStart('/').Replace('/', _serverDirectorySeparator.Value)
                     : _rootPath.TrimStart('/');
                 return _client!.GetFolder(serverRoot, cancellationToken);
@@ -648,25 +649,25 @@ namespace Octockup.Server.Modules
 
             try
             {
-                var parts = path.Split('/');
-                var fileName = parts[^1];
-                var folderPath = parts.Length > 1
+                string[] parts = path.Split('/');
+                string fileName = parts[^1];
+                string folderPath = parts.Length > 1
                     ? string.Join("/", parts[..^1])
                     : string.Empty;
 
-                var uidStr = fileName.Replace(".eml", "");
-                if (!uint.TryParse(uidStr, out var uidValue))
+                string uidStr = fileName.Replace(".eml", "");
+                if (!uint.TryParse(uidStr, out uint uidValue))
                 {
                     _logger.LogError("Invalid email UID in filename: {FileName}", fileName);
                     return null;
                 }
 
-                var uid = new UniqueId(uidValue);
+                UniqueId uid = new UniqueId(uidValue);
 
                 await _imapLock.WaitAsync(cancellationToken);
                 try
                 {
-                    var client = _client;
+                    ImapClient client = _client;
                     if (client == null)
                     {
                         return null;
@@ -679,7 +680,7 @@ namespace Octockup.Server.Modules
                     }
                     else
                     {
-                        var serverFolderPath = (_serverDirectorySeparator.HasValue && _serverDirectorySeparator.Value != '/')
+                        string serverFolderPath = (_serverDirectorySeparator.HasValue && _serverDirectorySeparator.Value != '/')
                             ? folderPath.Replace('/', _serverDirectorySeparator.Value)
                             : folderPath;
                         folder = await client.GetFolderAsync(serverFolderPath, cancellationToken);
@@ -693,13 +694,13 @@ namespace Octockup.Server.Modules
 
                     await folder.OpenAsync(FolderAccess.ReadOnly, cancellationToken);
 
-                    var summaries = await folder.FetchAsync([uid], MessageSummaryItems.UniqueId |
+                    IList<IMessageSummary> summaries = await folder.FetchAsync([uid], MessageSummaryItems.UniqueId |
                         MessageSummaryItems.InternalDate |
                         MessageSummaryItems.Size, cancellationToken: cancellationToken);
 
                     await folder.CloseAsync(cancellationToken: cancellationToken);
 
-                    var summary = summaries.FirstOrDefault();
+                    IMessageSummary? summary = summaries.FirstOrDefault();
                     if (summary == null || !summary.UniqueId.IsValid)
                     {
                         return null;

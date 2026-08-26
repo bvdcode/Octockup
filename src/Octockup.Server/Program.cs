@@ -23,7 +23,7 @@ namespace Octockup.Server
     {
         public static void Main(string[] args)
         {
-            var builder = WebApplication.CreateBuilder(args);
+            WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
             builder.SetupDatabaseAndKeys();
 
             // Configure Kestrel for large requests
@@ -61,7 +61,7 @@ namespace Octockup.Server
             string[] corsOrigins = builder.Configuration.GetSection("CorsOrigins").Get<string[]>() ?? [];
             builder.Services.AddDefaultCorsWithOrigins(corsOrigins);
 
-            var app = builder.Build();
+            WebApplication app = builder.Build();
             app.UseMiddleware<AuthApiExceptionMiddleware>();
             app.UseCors().UseDefaultFiles();
             app.MapStaticAssets();

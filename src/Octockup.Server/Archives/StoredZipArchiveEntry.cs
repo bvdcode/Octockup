@@ -3,7 +3,7 @@
 
 namespace Octockup.Server.Archives
 {
-    public sealed record StoredZipArchiveEntry(
+    public record StoredZipArchiveEntry(
         string Name,
         long Size,
         DateTime? LastModified,

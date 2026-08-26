@@ -82,13 +82,13 @@ namespace Octockup.Server.Controllers
         [HttpPost("/api/v1/modules/providers/{backupProviderId:required}")]
         public async Task<IActionResult> CreateBackupModule([FromRoute] string backupProviderId, [FromBody] CreateModuleRequest request)
         {
-            var foundProvider = _providers.FirstOrDefault(x => x.Id == backupProviderId);
+            IBackupProvider? foundProvider = _providers.FirstOrDefault(x => x.Id == backupProviderId);
             if (foundProvider == null)
             {
                 return this.ApiNotFound("Backup provider not found: " + backupProviderId);
             }
 
-            var user = await _dbContext.Users.FindAsync(User.GetUserId()) ?? throw new InvalidOperationException("User not found");
+            User user = await _dbContext.Users.FindAsync(User.GetUserId()) ?? throw new InvalidOperationException("User not found");
             Module newStorage = new()
             {
                 UserId = user.Id,
@@ -96,7 +96,7 @@ namespace Octockup.Server.Controllers
                 Destination = request.Destination,
                 BackupModuleId = request.BackupModuleId,
             };
-            foreach (var item in request.Parameters)
+            foreach (KeyValuePair<string, string> item in request.Parameters)
             {
                 newStorage.Params(_crypto)[item.Key] = item.Value;
             }
@@ -109,7 +109,7 @@ namespace Octockup.Server.Controllers
         [HttpPost("/api/v1/modules/providers/{backupProviderId:required}/directories")]
         public IActionResult GetBackupProviderDirectories([FromRoute] string backupProviderId, [FromBody] CreateModuleRequest request)
         {
-            var foundProvider = _providers.FirstOrDefault(x => x.Id == backupProviderId);
+            IBackupProvider? foundProvider = _providers.FirstOrDefault(x => x.Id == backupProviderId);
             if (foundProvider == null)
             {
                 return this.ApiNotFound("Backup provider not found: " + backupProviderId);
@@ -122,7 +122,7 @@ namespace Octockup.Server.Controllers
             }
             try
             {
-                var result = source.GetDirectories(recursive: false);
+                IEnumerable<string> result = source.GetDirectories(recursive: false);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -137,7 +137,7 @@ namespace Octockup.Server.Controllers
             [FromRoute] string backupProviderId,
             [FromBody] CreateModuleRequest request)
         {
-            var foundProvider = _providers.FirstOrDefault(x => x.Id == backupProviderId);
+            IBackupProvider? foundProvider = _providers.FirstOrDefault(x => x.Id == backupProviderId);
             if (foundProvider == null)
             {
                 return this.ApiNotFound("Backup provider not found: " + backupProviderId);

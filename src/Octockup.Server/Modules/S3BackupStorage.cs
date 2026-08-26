@@ -33,7 +33,7 @@ namespace Octockup.Server.Modules
 
         public void SetParameters(IReadOnlyDictionary<string, string> parameters)
         {
-            var config = new AmazonS3Config
+            AmazonS3Config config = new AmazonS3Config
             {
                 UseHttp = false,
                 MaxErrorRetry = 5,
@@ -48,8 +48,8 @@ namespace Octockup.Server.Modules
                     : Amazon.Runtime.ResponseChecksumValidation.WHEN_REQUIRED
             };
 
-            _validateChecksums = parameters.TryGetValue("validateChecksums", out var validateStr) &&
-                                 bool.TryParse(validateStr, out var validateBool) &&
+            _validateChecksums = parameters.TryGetValue("validateChecksums", out string? validateStr) &&
+                                 bool.TryParse(validateStr, out bool validateBool) &&
                                  validateBool;
             _path = parameters["path"].Trim().Trim('/');
             _bucket = parameters["bucket"];
@@ -57,10 +57,10 @@ namespace Octockup.Server.Modules
             string accessKey = parameters["accessKey"];
             string secretKey = parameters["secretKey"];
 
-            bool hasChunkEncodingParam = parameters.TryGetValue("useChunkEncoding", out var chunkEncodingStr);
+            bool hasChunkEncodingParam = parameters.TryGetValue("useChunkEncoding", out string? chunkEncodingStr);
             if (hasChunkEncodingParam)
             {
-                bool parsed = bool.TryParse(chunkEncodingStr, out var chunkEncodingBool);
+                bool parsed = bool.TryParse(chunkEncodingStr, out bool chunkEncodingBool);
                 _useChunkEncoding = parsed && chunkEncodingBool;
             }
 
@@ -81,7 +81,7 @@ namespace Octockup.Server.Modules
 
         private string GetFullKey(string relativePath)
         {
-            var basePrefix = GetBasePrefix();
+            string basePrefix = GetBasePrefix();
             return string.IsNullOrEmpty(basePrefix)
                 ? relativePath.Trim(PathSeparator)
                 : basePrefix + relativePath.Trim(PathSeparator);
@@ -108,11 +108,11 @@ namespace Octockup.Server.Modules
             ArgumentException.ThrowIfNullOrEmpty(path);
             ArgumentNullException.ThrowIfNull(_s3);
 
-            var key = GetFullKey(path);
+            string key = GetFullKey(path);
 
             try
             {
-                var result = await _s3.GetObjectAsync(new GetObjectRequest
+                GetObjectResponse result = await _s3.GetObjectAsync(new GetObjectRequest
                 {
                     Key = key,
                     BucketName = _bucket,
@@ -132,8 +132,8 @@ namespace Octockup.Server.Modules
                         BucketName = _bucket,
                         Expires = DateTime.UtcNow.AddHours(1)
                     });
-                    var httpClient = new HttpClient();
-                    var response = await httpClient.GetAsync(presignedUrl, cancellationToken);
+                    HttpClient httpClient = new HttpClient();
+                    HttpResponseMessage response = await httpClient.GetAsync(presignedUrl, cancellationToken);
                     response.EnsureSuccessStatusCode();
                     return await response.Content.ReadAsStreamAsync(cancellationToken);
                 }
@@ -146,9 +146,9 @@ namespace Octockup.Server.Modules
             ArgumentException.ThrowIfNullOrEmpty(path);
             ArgumentNullException.ThrowIfNull(_s3);
 
-            var key = GetFullKey(path);
+            string key = GetFullKey(path);
 
-            var req = new GetObjectMetadataRequest
+            GetObjectMetadataRequest req = new GetObjectMetadataRequest
             {
                 Key = key,
                 BucketName = _bucket,
@@ -156,7 +156,7 @@ namespace Octockup.Server.Modules
 
             try
             {
-                var res = await _s3.GetObjectMetadataAsync(req, cancellationToken);
+                GetObjectMetadataResponse res = await _s3.GetObjectMetadataAsync(req, cancellationToken);
                 bool? result = res.HttpStatusCode == HttpStatusCode.OK;
                 return result;
             }
@@ -388,7 +388,7 @@ namespace Octockup.Server.Modules
             ArgumentException.ThrowIfNullOrEmpty(path);
             ArgumentNullException.ThrowIfNull(_s3);
 
-            var key = GetFullKey(path);
+            string key = GetFullKey(path);
 
             PutObjectRequest req = new()
             {
@@ -407,8 +407,8 @@ namespace Octockup.Server.Modules
             ArgumentException.ThrowIfNullOrEmpty(path);
             ArgumentNullException.ThrowIfNull(_s3);
 
-            var key = GetFullKey(path);
-            var result = await _s3.DeleteObjectAsync(_bucket, key, cancellationToken);
+            string key = GetFullKey(path);
+            DeleteObjectResponse result = await _s3.DeleteObjectAsync(_bucket, key, cancellationToken);
             return result.HttpStatusCode == System.Net.HttpStatusCode.NoContent;
         }
 
@@ -417,25 +417,25 @@ namespace Octockup.Server.Modules
             ArgumentException.ThrowIfNullOrEmpty(path);
             ArgumentNullException.ThrowIfNull(_s3);
 
-            var key = GetFullKey(path);
+            string key = GetFullKey(path);
 
             try
             {
-                var request = new GetObjectMetadataRequest
+                GetObjectMetadataRequest request = new GetObjectMetadataRequest
                 {
                     Key = key,
                     BucketName = _bucket,
                 };
 
-                var response = await _s3.GetObjectMetadataAsync(request, cancellationToken);
+                GetObjectMetadataResponse response = await _s3.GetObjectMetadataAsync(request, cancellationToken);
 
                 if (response.HttpStatusCode != HttpStatusCode.OK)
                 {
                     return null;
                 }
 
-                var fileName = Path.GetFileName(path);
-                var relativePath = ToRelativeKey(key, GetBasePrefix());
+                string fileName = Path.GetFileName(path);
+                string relativePath = ToRelativeKey(key, GetBasePrefix());
 
                 return new BackupFileInfo
                 {

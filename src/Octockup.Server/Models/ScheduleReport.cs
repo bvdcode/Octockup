@@ -76,7 +76,7 @@ namespace Octockup.Server.Models
 
         private void UpdateSpeed(long processedBytes, bool forceSample)
         {
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
             if (processedBytes > 0)
             {
                 ProcessedBytes += processedBytes;
@@ -96,10 +96,10 @@ namespace Octockup.Server.Models
 
                 if (_speedSamples.Count >= 2)
                 {
-                    var first = _speedSamples.Peek();
-                    var last = _speedSamples.Last();
-                    var deltaBytes = last.Bytes - first.Bytes;
-                    var deltaSeconds = (last.Timestamp - first.Timestamp).TotalSeconds;
+                    (DateTime Timestamp, long Bytes) first = _speedSamples.Peek();
+                    (DateTime Timestamp, long Bytes) last = _speedSamples.Last();
+                    long deltaBytes = last.Bytes - first.Bytes;
+                    double deltaSeconds = (last.Timestamp - first.Timestamp).TotalSeconds;
                     Speed = deltaSeconds > 0 ? deltaBytes / deltaSeconds : 0;
                 }
                 else

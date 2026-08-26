@@ -26,7 +26,7 @@ namespace Octockup.Server.Controllers
         [HttpGet("/api/v1/schedules")]
         public async Task<IEnumerable<ScheduleDto>> GetUserSchedules()
         {
-            var userId = User.GetUserId();
+            Guid userId = User.GetUserId();
             return await _dbContext.Schedules
                 .AsNoTracking()
                 .Include(s => s.Backup)
@@ -42,8 +42,8 @@ namespace Octockup.Server.Controllers
         [HttpPost("/api/v1/schedules/{scheduleId:guid}/reset-error")]
         public async Task<IActionResult> Reschedule(Guid scheduleId)
         {
-            var userId = User.GetUserId();
-            var schedule = await _dbContext.Schedules
+            Guid userId = User.GetUserId();
+            Schedule? schedule = await _dbContext.Schedules
                 .Include(s => s.Backup)
                     .ThenInclude(b => b.Source)
                 .FirstOrDefaultAsync(s => s.Id == scheduleId && s.Backup.Source.UserId == userId);
@@ -85,8 +85,8 @@ namespace Octockup.Server.Controllers
         [HttpPost("/api/v1/schedules")]
         public async Task<IActionResult> CreateSchedule([FromBody] CreateScheduleRequest request)
         {
-            var userId = User.GetUserId();
-            var backup = await _dbContext.Backups
+            Guid userId = User.GetUserId();
+            Backup? backup = await _dbContext.Backups
                 .Include(b => b.Source)
                 .FirstOrDefaultAsync(b => b.Id == request.BackupId && b.Source.UserId == userId);
             if (backup == null)
@@ -116,8 +116,8 @@ namespace Octockup.Server.Controllers
         [HttpDelete("/api/v1/schedules/{scheduleId}")]
         public async Task<IActionResult> DeleteSchedule(Guid scheduleId)
         {
-            var userId = User.GetUserId();
-            var schedule = await _dbContext.Schedules
+            Guid userId = User.GetUserId();
+            Schedule? schedule = await _dbContext.Schedules
                 .Include(s => s.Backup)
                     .ThenInclude(b => b.Source)
                 .FirstOrDefaultAsync(s => s.Id == scheduleId && s.Backup.Source.UserId == userId);

@@ -85,7 +85,7 @@ namespace Octockup.Server.Controllers
             string? refreshToken = request.RefreshToken;
             if (string.IsNullOrEmpty(refreshToken))
             {
-                if (Request.Cookies.TryGetValue("refresh_token", out var cookieToken))
+                if (Request.Cookies.TryGetValue("refresh_token", out string? cookieToken))
                 {
                     refreshToken = cookieToken;
                 }

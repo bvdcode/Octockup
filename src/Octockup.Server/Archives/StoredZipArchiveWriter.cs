@@ -31,9 +31,9 @@ namespace Octockup.Server.Archives
                 long total = 0;
                 long centralDirectorySize = 0;
 
-                foreach (var entry in entries)
+                foreach (StoredZipArchiveEntry entry in entries)
                 {
-                    var nameBytes = GetNameBytes(entry.Name);
+                    byte[] nameBytes = GetNameBytes(entry.Name);
                     ValidateEntrySize(entry);
 
                     total += LocalHeaderSize + nameBytes.Length + LocalZip64ExtraSize;
@@ -52,8 +52,8 @@ namespace Octockup.Server.Archives
 
         public static string NormalizeEntryName(string path, string fallbackName)
         {
-            var source = string.IsNullOrWhiteSpace(path) ? fallbackName : path;
-            var segments = source
+            string source = string.IsNullOrWhiteSpace(path) ? fallbackName : path;
+            string[] segments = source
                 .Replace('\\', '/')
                 .Split('/', StringSplitOptions.RemoveEmptyEntries)
                 .Select(NormalizeSegment)
@@ -76,13 +76,13 @@ namespace Octockup.Server.Archives
             ArgumentNullException.ThrowIfNull(output);
             ArgumentNullException.ThrowIfNull(entries);
 
-            var records = entries
+            List<ArchiveRecord> records = entries
                 .Select(CreateRecord)
                 .ToList();
 
             long written = 0;
 
-            foreach (var record in records)
+            foreach (ArchiveRecord? record in records)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -90,7 +90,7 @@ namespace Octockup.Server.Archives
                 await WriteLocalHeaderAsync(output, record, cancellationToken).ConfigureAwait(false);
                 written += LocalHeaderSize + record.NameBytes.Length + LocalZip64ExtraSize;
 
-                var crc = new Crc32();
+                Crc32 crc = new Crc32();
                 long copied = await CopyEntryAsync(output, record, crc, cancellationToken).ConfigureAwait(false);
                 if (copied != record.Entry.Size)
                 {
@@ -106,7 +106,7 @@ namespace Octockup.Server.Archives
             }
 
             long centralDirectoryOffset = written;
-            foreach (var record in records)
+            foreach (ArchiveRecord? record in records)
             {
                 await WriteCentralDirectoryHeaderAsync(output, record, cancellationToken).ConfigureAwait(false);
                 written += CentralDirectoryHeaderSize + record.NameBytes.Length + CentralDirectoryZip64ExtraSize;
@@ -142,8 +142,8 @@ namespace Octockup.Server.Archives
         private static ArchiveRecord CreateRecord(StoredZipArchiveEntry entry)
         {
             ValidateEntrySize(entry);
-            var nameBytes = GetNameBytes(entry.Name);
-            var timestamp = ToDosTimestamp(entry.LastModified);
+            byte[] nameBytes = GetNameBytes(entry.Name);
+            (ushort Time, ushort Date) timestamp = ToDosTimestamp(entry.LastModified);
             return new ArchiveRecord(entry, nameBytes, timestamp.Time, timestamp.Date);
         }
 
@@ -153,7 +153,7 @@ namespace Octockup.Server.Archives
             Crc32 crc,
             CancellationToken cancellationToken)
         {
-            await using var input = await record.Entry
+            await using Stream input = await record.Entry
                 .OpenStreamAsync(cancellationToken)
                 .ConfigureAwait(false);
 
@@ -332,7 +332,7 @@ namespace Octockup.Server.Archives
 
         private static string NormalizeSegment(string segment)
         {
-            var normalized = segment
+            string normalized = segment
                 .Replace('\0', '_');
 
             if (normalized is "" or ".")
@@ -355,7 +355,7 @@ namespace Octockup.Server.Archives
 
         private static (ushort Time, ushort Date) ToDosTimestamp(DateTime? lastModified)
         {
-            var value = lastModified ?? new DateTime(1980, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            DateTime value = lastModified ?? new DateTime(1980, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             value = value.Kind == DateTimeKind.Unspecified ? value : value.ToUniversalTime();
 
             if (value.Year < 1980)
@@ -372,7 +372,7 @@ namespace Octockup.Server.Archives
             return (time, date);
         }
 
-        private sealed class ArchiveRecord(
+        private class ArchiveRecord(
             StoredZipArchiveEntry entry,
             byte[] nameBytes,
             ushort dosTime,
@@ -386,7 +386,7 @@ namespace Octockup.Server.Archives
             public uint Crc32 { get; set; }
         }
 
-        private sealed class Crc32
+        private class Crc32
         {
             private static readonly uint[] Table = CreateTable();
             private uint _value = uint.MaxValue;
@@ -403,7 +403,7 @@ namespace Octockup.Server.Archives
 
             private static uint[] CreateTable()
             {
-                var table = new uint[256];
+                uint[] table = new uint[256];
                 for (uint i = 0; i < table.Length; i++)
                 {
                     uint value = i;

@@ -21,29 +21,29 @@ namespace Octockup.Server.Controllers
         {
             int totalUsers = _dbContext.Users.Count();
             Guid userId = User.GetUserId();
-            var storages = _dbContext.Modules.Where(m => m.UserId == userId && m.Destination == ModuleDestination.Target);
+            IQueryable<Module> storages = _dbContext.Modules.Where(m => m.UserId == userId && m.Destination == ModuleDestination.Target);
             HashSet<string> chunkHashes = [];
             List<StorageStatsDto> storageStats = [];
-            foreach (var storage in storages)
+            foreach (Module? storage in storages)
             {
                 StorageStatsDto stats = storage.Adapt<StorageStatsDto>();
-                var backups = _dbContext.Backups.Where(b => b.StorageId == storage.Id);
-                var chunks = _dbContext.UploadedHashes.Where(c => c.ModuleId == storage.Id);
+                IQueryable<Backup> backups = _dbContext.Backups.Where(b => b.StorageId == storage.Id);
+                IQueryable<UploadedHash> chunks = _dbContext.UploadedHashes.Where(c => c.ModuleId == storage.Id);
                 stats.TotalBackups = backups.Count();
                 stats.TotalOriginalSize = chunks.Sum(c => c.OriginalSize);
                 stats.TotalStoredSize = chunks.Sum(c => c.StoredSize);
 
-                foreach (var backup in backups)
+                foreach (Backup? backup in backups)
                 {
-                    var snapshots = _dbContext.Snapshots
+                    IQueryable<Snapshot> snapshots = _dbContext.Snapshots
                         .Include(x => x.Files)
                         .OrderBy(x => x.CreatedAt)
                         .Where(s => s.BackupId == backup.Id);
-                    foreach (var snapshot in snapshots)
+                    foreach (Snapshot? snapshot in snapshots)
                     {
-                        foreach (var file in snapshot.Files)
+                        foreach (SnapshotFile file in snapshot.Files)
                         {
-                            foreach (var chunkHash in file.ChunkHashes)
+                            foreach (string chunkHash in file.ChunkHashes)
                             {
                                 bool added = chunkHashes.Add(chunkHash);
                                 if (!added)

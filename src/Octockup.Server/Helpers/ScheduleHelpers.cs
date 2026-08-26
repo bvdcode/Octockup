@@ -13,7 +13,7 @@ namespace Octockup.Server.Helpers
         {
             DateTime now = DateTime.UtcNow;
 
-            var schedules = await _schedules
+            List<Schedule> schedules = await _schedules
                 .Include(x => x.Backup)
                 .ThenInclude(b => b.Source)
                 .Include(x => x.Backup)
@@ -23,7 +23,7 @@ namespace Octockup.Server.Helpers
             Schedule? best = null;
             DateTime? bestTime = null;
 
-            foreach (var sch in schedules)
+            foreach (Schedule? sch in schedules)
             {
                 if (sch.Status == ScheduleStatus.Running)
                 {
@@ -120,16 +120,16 @@ namespace Octockup.Server.Helpers
         public static bool IsDirectoryIgnored(string relativePath, ICollection<string> ignoredPaths, char pathSeparator)
         {
             // Normalize path to use forward slashes for pattern matching
-            var normalizedPath = "/" + relativePath.Replace(pathSeparator, '/').Trim('/');
+            string normalizedPath = "/" + relativePath.Replace(pathSeparator, '/').Trim('/');
 
-            foreach (var pattern in ignoredPaths)
+            foreach (string pattern in ignoredPaths)
             {
                 if (string.IsNullOrWhiteSpace(pattern))
                 {
                     continue;
                 }
 
-                var trimmedPattern = pattern.Trim().Replace('\\', '/').TrimEnd('/');
+                string trimmedPattern = pattern.Trim().Replace('\\', '/').TrimEnd('/');
 
                 if (trimmedPattern.StartsWith('/'))
                 {
@@ -162,20 +162,20 @@ namespace Octockup.Server.Helpers
         public static bool IsPathIgnored(string path, string? fileName, ICollection<string> ignoredPaths)
         {
             // Normalize path to use forward slashes
-            var normalizedPath = path.Replace('\\', '/');
+            string normalizedPath = path.Replace('\\', '/');
             if (!normalizedPath.StartsWith('/'))
             {
                 normalizedPath = "/" + normalizedPath;
             }
 
-            foreach (var pattern in ignoredPaths)
+            foreach (string pattern in ignoredPaths)
             {
                 if (string.IsNullOrWhiteSpace(pattern))
                 {
                     continue;
                 }
 
-                var trimmedPattern = pattern.Trim().Replace('\\', '/').TrimEnd('/');
+                string trimmedPattern = pattern.Trim().Replace('\\', '/').TrimEnd('/');
 
                 // Check if filename matches exactly (for patterns like "swap.img")
                 if (fileName != null && !trimmedPattern.Contains('/') && MatchesPattern(fileName, trimmedPattern))
@@ -273,12 +273,12 @@ namespace Octockup.Server.Helpers
             }
 
             // For wildcard patterns, we need to check each possible starting position
-            var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
-            var patternSegments = patternWithSlash.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            string[] segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            string[] patternSegments = patternWithSlash.Split('/', StringSplitOptions.RemoveEmptyEntries);
 
             for (int startIdx = 0; startIdx <= segments.Length - patternSegments.Length; startIdx++)
             {
-                var subPath = "/" + string.Join("/", segments.Skip(startIdx));
+                string subPath = "/" + string.Join("/", segments.Skip(startIdx));
                 if (MatchesPattern(subPath, patternWithSlash))
                 {
                     return true;
@@ -302,12 +302,12 @@ namespace Octockup.Server.Helpers
             }
 
             // Split pattern by '*' and check each part exists in order
-            var parts = pattern.Split('*', StringSplitOptions.None);
+            string[] parts = pattern.Split('*', StringSplitOptions.None);
             int currentIndex = 0;
 
             for (int i = 0; i < parts.Length; i++)
             {
-                var part = parts[i];
+                string part = parts[i];
                 if (string.IsNullOrEmpty(part))
                 {
                     continue;
@@ -331,7 +331,7 @@ namespace Octockup.Server.Helpers
             // Last part must match at the end (unless pattern ends with *)
             if (parts.Length > 0 && !pattern.EndsWith('*'))
             {
-                var lastPart = parts[^1];
+                string lastPart = parts[^1];
                 if (!string.IsNullOrEmpty(lastPart) && !path.EndsWith(lastPart, StringComparison.OrdinalIgnoreCase))
                 {
                     return false;

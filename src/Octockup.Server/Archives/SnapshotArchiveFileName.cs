@@ -57,7 +57,7 @@ namespace Octockup.Server.Archives
                 return string.Empty;
             }
 
-            var builder = new StringBuilder(value.Length);
+            StringBuilder builder = new StringBuilder(value.Length);
             bool previousSeparator = false;
 
             foreach (char character in value.Normalize(NormalizationForm.FormC))
@@ -79,7 +79,7 @@ namespace Octockup.Server.Archives
 
         private static string CreateAsciiFallback(string fileName)
         {
-            var builder = new StringBuilder(fileName.Length);
+            StringBuilder builder = new StringBuilder(fileName.Length);
             bool previousSeparator = false;
 
             foreach (char character in fileName)

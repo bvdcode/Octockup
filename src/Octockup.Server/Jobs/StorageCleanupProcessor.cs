@@ -93,7 +93,7 @@ namespace Octockup.Server.Jobs
         {
             string upperBoundHash = cleanup.ScanUpperBoundHash!;
             string? cursorHash = cleanup.CursorHash;
-            var query = dbContext.UploadedHashes
+            IQueryable<UploadedHash> query = dbContext.UploadedHashes
                 .AsNoTracking()
                 .Where(x =>
                     x.ModuleId == cleanup.ModuleId &&

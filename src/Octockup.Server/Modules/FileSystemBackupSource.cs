@@ -25,7 +25,7 @@ namespace Octockup.Server.Modules
 
         public void SetParameters(IReadOnlyDictionary<string, string> parameters)
         {
-            if (!parameters.TryGetValue("path", out var path))
+            if (!parameters.TryGetValue("path", out string? path))
             {
                 throw new ArgumentException("Missing required parameter: path");
             }
@@ -44,13 +44,13 @@ namespace Octockup.Server.Modules
                 path = path.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             }
 
-            var combined = Path.GetFullPath(Path.Combine(_rootDirectory, path));
+            string combined = Path.GetFullPath(Path.Combine(_rootDirectory, path));
 
             if (!IsSubPathOf(combined, _rootDirectory))
             {
                 throw new ArgumentException($"Path '{path}' escapes the base directory.");
             }
-            if (parameters.TryGetValue("password", out var password))
+            if (parameters.TryGetValue("password", out string? password))
             {
                 _password = password;
             }
@@ -78,7 +78,7 @@ namespace Octockup.Server.Modules
             if (recursive)
             {
                 // Use manual traversal to skip ignored directories entirely
-                foreach (var file in EnumerateFilesRecursive(_baseDirectory, cancellationToken))
+                foreach (BackupFileInfo file in EnumerateFilesRecursive(_baseDirectory, cancellationToken))
                 {
                     yield return file;
                 }
@@ -86,11 +86,11 @@ namespace Octockup.Server.Modules
             else
             {
                 // Non-recursive: just enumerate files in base directory
-                foreach (var file in Directory.EnumerateFiles(_baseDirectory, "*", SearchOption.TopDirectoryOnly))
+                foreach (string file in Directory.EnumerateFiles(_baseDirectory, "*", SearchOption.TopDirectoryOnly))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    var fileInfo = new FileInfo(file);
-                    var relativePath = Path.GetRelativePath(_baseDirectory, file);
+                    FileInfo fileInfo = new FileInfo(file);
+                    string relativePath = Path.GetRelativePath(_baseDirectory, file);
 
                     // Check if file is ignored
                     if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + relativePath, fileInfo.Name, _ignoredPaths))
@@ -128,11 +128,11 @@ namespace Octockup.Server.Modules
                 yield break;
             }
 
-            foreach (var file in files)
+            foreach (string file in files)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var fileInfo = new FileInfo(file);
-                var relativePath = Path.GetRelativePath(_baseDirectory, file);
+                FileInfo fileInfo = new FileInfo(file);
+                string relativePath = Path.GetRelativePath(_baseDirectory, file);
 
                 // Check if file is ignored
                 if (_ignoredPaths != null && ScheduleHelpers.IsPathIgnored(PathSeparator + relativePath, fileInfo.Name, _ignoredPaths))
@@ -166,10 +166,10 @@ namespace Octockup.Server.Modules
                 yield break;
             }
 
-            foreach (var subdir in subdirs)
+            foreach (string subdir in subdirs)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var relativePath = Path.GetRelativePath(_baseDirectory, subdir);
+                string relativePath = Path.GetRelativePath(_baseDirectory, subdir);
 
                 // Check if directory is ignored - skip entire subtree if so
                 if (_ignoredPaths != null && ScheduleHelpers.IsDirectoryIgnored(relativePath, _ignoredPaths, PathSeparator))
@@ -179,7 +179,7 @@ namespace Octockup.Server.Modules
                 }
 
                 // Recurse into non-ignored directories
-                foreach (var file in EnumerateFilesRecursive(subdir, cancellationToken))
+                foreach (BackupFileInfo file in EnumerateFilesRecursive(subdir, cancellationToken))
                 {
                     yield return file;
                 }
@@ -200,7 +200,7 @@ namespace Octockup.Server.Modules
             if (recursive)
             {
                 // Use manual traversal to skip ignored directories entirely
-                foreach (var dir in EnumerateDirectoriesRecursive(_baseDirectory, cancellationToken))
+                foreach (string dir in EnumerateDirectoriesRecursive(_baseDirectory, cancellationToken))
                 {
                     yield return dir;
                 }
@@ -208,10 +208,10 @@ namespace Octockup.Server.Modules
             else
             {
                 // Non-recursive: just enumerate directories in base directory
-                foreach (var dir in Directory.EnumerateDirectories(_baseDirectory, "*", SearchOption.TopDirectoryOnly))
+                foreach (string dir in Directory.EnumerateDirectories(_baseDirectory, "*", SearchOption.TopDirectoryOnly))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    var relativePath = Path.GetRelativePath(_baseDirectory, dir);
+                    string relativePath = Path.GetRelativePath(_baseDirectory, dir);
 
                     // Check if directory is ignored
                     if (_ignoredPaths != null && ScheduleHelpers.IsDirectoryIgnored(relativePath, _ignoredPaths, PathSeparator))
@@ -242,10 +242,10 @@ namespace Octockup.Server.Modules
                 yield break;
             }
 
-            foreach (var subdir in subdirs)
+            foreach (string subdir in subdirs)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var relativePath = Path.GetRelativePath(_baseDirectory, subdir);
+                string relativePath = Path.GetRelativePath(_baseDirectory, subdir);
 
                 // Check if directory is ignored - skip entire subtree if so
                 if (_ignoredPaths != null && ScheduleHelpers.IsDirectoryIgnored(relativePath, _ignoredPaths, PathSeparator))
@@ -258,7 +258,7 @@ namespace Octockup.Server.Modules
                 yield return relativePath;
 
                 // Recurse into non-ignored directories
-                foreach (var nestedDir in EnumerateDirectoriesRecursive(subdir, cancellationToken))
+                foreach (string nestedDir in EnumerateDirectoriesRecursive(subdir, cancellationToken))
                 {
                     yield return nestedDir;
                 }
@@ -267,10 +267,10 @@ namespace Octockup.Server.Modules
 
         private static bool IsSubPathOf(string path, string baseDir)
         {
-            var normalizedPath = Path.GetFullPath(
+            string normalizedPath = Path.GetFullPath(
                 path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
 
-            var normalizedBase = Path.GetFullPath(
+            string normalizedBase = Path.GetFullPath(
                 baseDir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
 
             return normalizedPath.Equals(normalizedBase, StringComparison.OrdinalIgnoreCase)
@@ -282,7 +282,7 @@ namespace Octockup.Server.Modules
         public Task<Stream> GetFileStreamAsync(BackupFileInfo file, CancellationToken cancellationToken = default)
         {
             CheckPassword();
-            var fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, file.Path));
+            string fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, file.Path));
             if (!IsSubPathOf(fullPath, _baseDirectory))
             {
                 throw new ArgumentException($"File path '{file.Path}' escapes the base directory.");
@@ -303,7 +303,7 @@ namespace Octockup.Server.Modules
         public Task<bool?> ExistsAsync(string path, CancellationToken cancellationToken = default)
         {
             CheckPassword();
-            var fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, path));
+            string fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, path));
             if (!IsSubPathOf(fullPath, _baseDirectory))
             {
                 throw new ArgumentException($"File path '{path}' escapes the base directory.");
@@ -315,7 +315,7 @@ namespace Octockup.Server.Modules
         public Task<bool?> DeleteAsync(string path, CancellationToken cancellationToken = default)
         {
             CheckPassword();
-            var fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, path));
+            string fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, path));
             if (!IsSubPathOf(fullPath, _baseDirectory))
             {
                 throw new ArgumentException($"File path '{path}' escapes the base directory.");
@@ -339,14 +339,14 @@ namespace Octockup.Server.Modules
         public async Task UploadAsync(string path, Stream data, CancellationToken cancellationToken = default)
         {
             CheckPassword();
-            var fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, path));
+            string fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, path));
             if (!IsSubPathOf(fullPath, _baseDirectory))
             {
                 throw new ArgumentException($"File path '{path}' escapes the base directory.");
             }
             string tempFile = fullPath + ".tmp";
             Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
-            using (var fileStream = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None))
+            using (FileStream fileStream = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None))
             {
                 await data.CopyToAsync(fileStream, cancellationToken);
             }
@@ -371,7 +371,7 @@ namespace Octockup.Server.Modules
                 // No password file means no password protection
                 return;
             }
-            var storedPassword = File.ReadAllText(pathToPasswordFile).Trim();
+            string storedPassword = File.ReadAllText(pathToPasswordFile).Trim();
             if (string.IsNullOrEmpty(storedPassword))
             {
                 // Empty password file means no password protection
@@ -386,7 +386,7 @@ namespace Octockup.Server.Modules
         public Task<BackupFileInfo?> GetFileInfoAsync(string path, CancellationToken cancellationToken)
         {
             CheckPassword();
-            var fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, path));
+            string fullPath = Path.GetFullPath(Path.Combine(_baseDirectory, path));
             if (!IsSubPathOf(fullPath, _baseDirectory))
             {
                 throw new ArgumentException($"File path '{path}' escapes the base directory.");
@@ -399,10 +399,10 @@ namespace Octockup.Server.Modules
 
             try
             {
-                var fileInfo = new FileInfo(fullPath);
-                var relativePath = Path.GetRelativePath(_baseDirectory, fullPath);
+                FileInfo fileInfo = new FileInfo(fullPath);
+                string relativePath = Path.GetRelativePath(_baseDirectory, fullPath);
 
-                var result = new BackupFileInfo
+                BackupFileInfo result = new BackupFileInfo
                 {
                     Path = relativePath,
                     Name = fileInfo.Name,

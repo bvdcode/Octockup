@@ -23,7 +23,7 @@ namespace Octockup.Server.Jobs
 
         public static void StopRunningBackup(Guid scheduleId)
         {
-            if (!_runningSchedules.TryGetValue(scheduleId, out var cts))
+            if (!_runningSchedules.TryGetValue(scheduleId, out CancellationTokenSource? cts))
             {
                 return;
             }
@@ -41,10 +41,10 @@ namespace Octockup.Server.Jobs
         public async Task Execute(IJobExecutionContext context)
         {
             using IServiceScope scope = _serviceProvider.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            AppDbContext dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-            var runningIds = _runningSchedules.Keys.ToArray();
-            var query = dbContext.Schedules.AsQueryable();
+            Guid[] runningIds = _runningSchedules.Keys.ToArray();
+            IQueryable<Schedule> query = dbContext.Schedules.AsQueryable();
 
             if (runningIds.Length > 0)
             {
@@ -72,8 +72,8 @@ namespace Octockup.Server.Jobs
             try
             {
                 _logger.LogInformation("Starting backup job for schedule {ScheduleId}", next.Id);
-                var runnerLogger = scope.ServiceProvider.GetRequiredService<ILogger<BackupRunner>>();
-                var runner = new BackupRunner(
+                ILogger<BackupRunner> runnerLogger = scope.ServiceProvider.GetRequiredService<ILogger<BackupRunner>>();
+                BackupRunner runner = new BackupRunner(
                     scope.ServiceProvider.GetRequiredService<IStreamCipher>(),
                     dbContext,
                     scope.ServiceProvider,

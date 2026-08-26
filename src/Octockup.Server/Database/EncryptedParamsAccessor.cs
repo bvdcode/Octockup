@@ -16,19 +16,19 @@ namespace Octockup.Server.Database
 
             public IReadOnlyDictionary<string, string> Snapshot() => new Dictionary<string, string>(_module.LoadParams(_cipher));
 
-            public string? Get(string key) => _module.LoadParams(_cipher).TryGetValue(key, out var v) ? v : null;
+            public string? Get(string key) => _module.LoadParams(_cipher).TryGetValue(key, out string? v) ? v : null;
 
             public void Set(string key, string value)
             {
-                var d = _module.LoadParams(_cipher);
+                Dictionary<string, string> d = _module.LoadParams(_cipher);
                 d[key] = value;
                 _module.FlushParams(_cipher, d);
             }
 
             public bool Remove(string key)
             {
-                var d = _module.LoadParams(_cipher);
-                var ok = d.Remove(key);
+                Dictionary<string, string> d = _module.LoadParams(_cipher);
+                bool ok = d.Remove(key);
                 if (ok) _module.FlushParams(_cipher, d);
                 return ok;
             }
@@ -38,7 +38,7 @@ namespace Octockup.Server.Database
                 get => _module.LoadParams(_cipher)[key];
                 set
                 {
-                    var d = _module.LoadParams(_cipher);
+                    Dictionary<string, string> d = _module.LoadParams(_cipher);
                     d[key] = value;
                     _module.FlushParams(_cipher, d);
                 }

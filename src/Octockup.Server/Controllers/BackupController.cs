@@ -9,6 +9,7 @@ using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Octockup.Server.Database;
 using Octockup.Server.Helpers;
 using Octockup.Server.Jobs;
@@ -35,7 +36,7 @@ namespace Octockup.Server.Controllers
         {
             Guid userId = User.GetUserId();
 
-            var user = await _dbContext.Users
+            User? user = await _dbContext.Users
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Id == userId, ct);
 
@@ -46,14 +47,14 @@ namespace Octockup.Server.Controllers
 
             _logger.LogInformation("User {UserId} requested server backup data.", userId);
 
-            var modules = await _dbContext.Modules
+            List<Module> modules = await _dbContext.Modules
                 .AsNoTracking()
                 .Where(m => m.UserId == userId)
                 .ToListAsync(ct);
-            foreach (var item in modules)
+            foreach (Module? item in modules)
             {
-                var paramsDict = item.Params(_streamCipher).Snapshot();
-                foreach (var param in paramsDict)
+                IReadOnlyDictionary<string, string> paramsDict = item.Params(_streamCipher).Snapshot();
+                foreach (KeyValuePair<string, string> param in paramsDict)
                 {
 #pragma warning disable CS0618 // Type or member is obsolete
                     item.Parameters[param.Key] = param.Value;
@@ -63,32 +64,32 @@ namespace Octockup.Server.Controllers
 
             _logger.LogInformation("Exported {ModuleCount} modules for user {UserId}.", modules.Count, userId);
 
-            var moduleIds = modules.Select(m => m.Id).ToList();
+            List<Guid> moduleIds = modules.Select(m => m.Id).ToList();
 
-            var backups = await _dbContext.Backups
+            List<Backup> backups = await _dbContext.Backups
                 .AsNoTracking()
                 .Where(b => moduleIds.Contains(b.SourceId))
                 .ToListAsync(ct);
 
             _logger.LogInformation("Exported {BackupCount} backups for user {UserId}.", backups.Count, userId);
 
-            var backupIds = backups.Select(b => b.Id).ToList();
+            List<Guid> backupIds = backups.Select(b => b.Id).ToList();
 
-            var schedules = await _dbContext.Schedules
+            List<Schedule> schedules = await _dbContext.Schedules
                 .AsNoTracking()
                 .Where(s => backupIds.Contains(s.BackupId))
                 .ToListAsync(ct);
 
             _logger.LogInformation("Exported {ScheduleCount} schedules for user {UserId}.", schedules.Count, userId);
 
-            var snapshots = await _dbContext.Snapshots
+            List<Snapshot> snapshots = await _dbContext.Snapshots
                 .AsNoTracking()
                 .Where(s => backupIds.Contains(s.BackupId))
                 .ToListAsync(ct);
 
             _logger.LogInformation("Exported {SnapshotCount} snapshots for user {UserId}.", snapshots.Count, userId);
 
-            var snapshotIds = includeFiles ? snapshots.Select(s => s.Id).ToList() : [];
+            List<Guid> snapshotIds = includeFiles ? snapshots.Select(s => s.Id).ToList() : [];
             List<SnapshotFile> snapshotFiles = includeFiles ? await _dbContext.SnapshotFiles
                 .AsNoTracking()
                 .Where(sf => snapshotIds.Contains(sf.SnapshotId))
@@ -100,22 +101,22 @@ namespace Octockup.Server.Controllers
             Response.Headers.ContentDisposition =
                 $"attachment; filename=\"server-backup-{userId}.{CompressionHelpers.Extension}\"";
 
-            await using var compressedStream = CompressionHelpers.CreateCompressionStream(Response.Body);
+            await using Stream compressedStream = CompressionHelpers.CreateCompressionStream(Response.Body);
 
             // Stream JSON through a Pipe to the encryptor to avoid buffering everything in memory.
-            var pipe = new Pipe();
-            var writer = pipe.Writer;
-            var reader = pipe.Reader;
+            Pipe pipe = new Pipe();
+            PipeWriter writer = pipe.Writer;
+            PipeReader reader = pipe.Reader;
 
-            var encryptTask = Task.Run(async () =>
+            Task encryptTask = Task.Run(async () =>
             {
-                await using var inputStream = reader.AsStream(leaveOpen: false);
+                await using Stream inputStream = reader.AsStream(leaveOpen: false);
                 await _streamCipher.EncryptAsync(inputStream, compressedStream, ct: ct);
             }, ct);
 
-            var serializeTask = Task.Run(async () =>
+            Task serializeTask = Task.Run(async () =>
             {
-                await using var outputStream = writer.AsStream(leaveOpen: false);
+                await using Stream outputStream = writer.AsStream(leaveOpen: false);
                 await JsonSerializer.SerializeAsync(
                     outputStream,
                     new
@@ -149,12 +150,12 @@ namespace Octockup.Server.Controllers
             {
                 return this.ApiNotFound("Backup not found: " + backupId);
             }
-            var source = await _dbContext.Modules.FirstOrDefaultAsync(m => m.Id == backup.SourceId && m.UserId == userId && m.Destination == ModuleDestination.Source);
+            Module? source = await _dbContext.Modules.FirstOrDefaultAsync(m => m.Id == backup.SourceId && m.UserId == userId && m.Destination == ModuleDestination.Source);
             if (source == null)
             {
                 return this.ApiNotFound("Source module not found for backup: " + backupId);
             }
-            var storage = await _dbContext.Modules.FirstOrDefaultAsync(m => m.Id == backup.StorageId && m.UserId == userId && m.Destination == ModuleDestination.Target);
+            Module? storage = await _dbContext.Modules.FirstOrDefaultAsync(m => m.Id == backup.StorageId && m.UserId == userId && m.Destination == ModuleDestination.Target);
             if (storage == null)
             {
                 return this.ApiNotFound("Storage module not found for backup: " + backupId);
@@ -179,17 +180,17 @@ namespace Octockup.Server.Controllers
             {
                 return this.ApiNotFound("Backup not found: " + backupId);
             }
-            var source = await _dbContext.Modules.FirstOrDefaultAsync(m => m.Id == backup.SourceId && m.UserId == userId && m.Destination == ModuleDestination.Source);
+            Module? source = await _dbContext.Modules.FirstOrDefaultAsync(m => m.Id == backup.SourceId && m.UserId == userId && m.Destination == ModuleDestination.Source);
             if (source == null)
             {
                 return this.ApiNotFound("Source module not found for backup: " + backupId);
             }
-            var storage = await _dbContext.Modules.FirstOrDefaultAsync(m => m.Id == backup.StorageId && m.UserId == userId && m.Destination == ModuleDestination.Target);
+            Module? storage = await _dbContext.Modules.FirstOrDefaultAsync(m => m.Id == backup.StorageId && m.UserId == userId && m.Destination == ModuleDestination.Target);
             if (storage == null)
             {
                 return this.ApiNotFound("Storage module not found for backup: " + backupId);
             }
-            var existsTag = await _dbContext.Backups.AnyAsync(b => b.Tag == request.NewTag && b.Id != backupId);
+            bool existsTag = await _dbContext.Backups.AnyAsync(b => b.Tag == request.NewTag && b.Id != backupId);
             if (existsTag)
             {
                 return this.ApiBadRequest("Tag already exists: " + request.NewTag);
@@ -204,7 +205,7 @@ namespace Octockup.Server.Controllers
         [HttpGet("/api/v1/backups")]
         public async Task<IEnumerable<BackupDto>> GetUserBackups()
         {
-            var userId = User.GetUserId();
+            Guid userId = User.GetUserId();
             return await _dbContext.Backups
                 .AsNoTracking()
                 .Include(x => x.Source)
@@ -220,18 +221,18 @@ namespace Octockup.Server.Controllers
         [HttpPost("/api/v1/backups")]
         public async Task<IActionResult> CreateBackup([FromBody] CreateBackupRequest request)
         {
-            var userId = User.GetUserId();
-            var source = await _dbContext.Modules.FirstOrDefaultAsync(m => m.Id == request.SourceId && m.UserId == userId && m.Destination == ModuleDestination.Source);
+            Guid userId = User.GetUserId();
+            Module? source = await _dbContext.Modules.FirstOrDefaultAsync(m => m.Id == request.SourceId && m.UserId == userId && m.Destination == ModuleDestination.Source);
             if (source == null)
             {
                 return this.ApiNotFound("Source module not found: " + request.SourceId);
             }
-            var storage = await _dbContext.Modules.FirstOrDefaultAsync(m => m.Id == request.StorageId && m.UserId == userId && m.Destination == ModuleDestination.Target);
+            Module? storage = await _dbContext.Modules.FirstOrDefaultAsync(m => m.Id == request.StorageId && m.UserId == userId && m.Destination == ModuleDestination.Target);
             if (storage == null)
             {
                 return this.ApiNotFound("Storage module not found: " + request.StorageId);
             }
-            var existsTag = await _dbContext.Backups.AnyAsync(b => b.Tag == request.Tag);
+            bool existsTag = await _dbContext.Backups.AnyAsync(b => b.Tag == request.Tag);
             if (existsTag)
             {
                 return this.ApiBadRequest("Tag already exists: " + request.Tag);
@@ -280,7 +281,7 @@ namespace Octockup.Server.Controllers
                 ExecuteBackupJob.StopRunningBackup(scheduleId);
             }
 
-            await using var transaction = await _dbContext.Database
+            await using IDbContextTransaction transaction = await _dbContext.Database
                 .BeginTransactionAsync(cancellationToken);
 
             if (snapshotIds.Count > 0)
@@ -314,7 +315,7 @@ namespace Octockup.Server.Controllers
             }
 
             Guid userId = User.GetUserId();
-            var user = await _dbContext.Users
+            User? user = await _dbContext.Users
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Id == userId, ct);
 
@@ -334,7 +335,7 @@ namespace Octockup.Server.Controllers
             string filePath = Path.Combine(importDir, fileName);
 
             _logger.LogInformation("Saving import file for user {UserId} to {FilePath}", userId, filePath);
-            await using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
+            await using (FileStream fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
             {
                 await file.CopyToAsync(fileStream, ct);
             }

@@ -5,6 +5,7 @@ using EasyExtensions.AspNetCore.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Octockup.Server.Abstractions;
 using Octockup.Server.Controllers;
+using Octockup.Server.Models;
 
 namespace Octockup.Server.Helpers
 {
@@ -16,7 +17,7 @@ namespace Octockup.Server.Helpers
             {
                 const string testFileName = "path_test_connection.txt";
                 await storage.UploadAsync(testFileName, Stream.Null);
-                var result = storage.GetFiles(recursive: false);
+                IEnumerable<BackupFileInfo> result = storage.GetFiles(recursive: false);
                 if (!result.Any(x => x.Name == testFileName))
                 {
                     logger.LogWarning("Test file was not found in the storage after upload.");
@@ -41,7 +42,7 @@ namespace Octockup.Server.Helpers
                 const int maxEnumeratedFiles = 100;
                 const int maxTestedFiles = 10;
 
-                var candidates = source
+                List<BackupFileInfo> candidates = source
                     .GetFiles(recursive: true)
                     .Take(maxEnumeratedFiles)
                     .ToList();
@@ -53,9 +54,9 @@ namespace Octockup.Server.Helpers
                 }
 
                 int tested = 0;
-                var errors = new List<string>();
+                List<string> errors = new List<string>();
 
-                foreach (var file in candidates)
+                foreach (BackupFileInfo? file in candidates)
                 {
                     if (tested >= maxTestedFiles)
                     {
@@ -75,7 +76,7 @@ namespace Octockup.Server.Helpers
                             continue;
                         }
 
-                        var buffer = new byte[1024];
+                        byte[] buffer = new byte[1024];
                         int read = 0;
 
                         if (testStream.CanRead)
@@ -110,7 +111,7 @@ namespace Octockup.Server.Helpers
                     tested++;
                 }
 
-                var errorMessage = errors.Count > 0
+                string errorMessage = errors.Count > 0
                     ? string.Join("; ", errors.Take(3))
                     : "no files could be read";
 

@@ -48,14 +48,14 @@ namespace Octockup.Server.Jobs
 
             try
             {
-                var sourceProvider = CreateSourceProvider(schedule);
+                IBackupSource? sourceProvider = CreateSourceProvider(schedule);
                 if (sourceProvider is null)
                 {
                     await report.SendAsync(0, schedule.ErrorMessage ?? "Source provider not found.", cancellationToken: cancellationToken);
                     return;
                 }
 
-                var storageProvider = CreateStorageProvider(schedule);
+                IBackupStorage? storageProvider = CreateStorageProvider(schedule);
                 if (storageProvider is null)
                 {
                     await report.SendAsync(0, schedule.ErrorMessage ?? "Storage provider not found.", cancellationToken: cancellationToken);
@@ -75,7 +75,7 @@ namespace Octockup.Server.Jobs
                 // Set ignored paths before enumerating files
                 sourceProvider.SetIgnoredPaths(schedule.Backup.IgnoredPaths);
 
-                var filesToBackup = sourceProvider.GetFiles(recursive: true, cancellationToken: cancellationToken);
+                IEnumerable<BackupFileInfo> filesToBackup = sourceProvider.GetFiles(recursive: true, cancellationToken: cancellationToken);
                 await BackupAsync(schedule, sourceProvider, storageProvider, report, filesToBackup, cancellationToken);
 
                 schedule.Status = ScheduleStatus.Completed;
@@ -274,7 +274,7 @@ namespace Octockup.Server.Jobs
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            previousFiles.TryGetValue(file.Path, out var previousFile);
+            previousFiles.TryGetValue(file.Path, out SnapshotFile? previousFile);
 
             if (previousFile != null && CanReusePreviousFile(previousFile, file, out bool datesMatch))
             {
@@ -325,14 +325,14 @@ namespace Octockup.Server.Jobs
                         : -1);
             }
 
-            using var stream = await source.GetFileStreamAsync(file, cancellationToken);
+            using Stream stream = await source.GetFileStreamAsync(file, cancellationToken);
             if (stream == Stream.Null)
             {
                 logger.LogWarning("Unable to get stream for file {FileName}, skipping", file.Name);
                 return counter;
             }
 
-            var (fileHash, chunkHashes) = await ProcessChunksAsync(
+            (string? fileHash, List<string>? chunkHashes) = await ProcessChunksAsync(
                 schedule,
                 file,
                 storage,
@@ -375,11 +375,11 @@ namespace Octockup.Server.Jobs
             int counter,
             CancellationToken cancellationToken)
         {
-            using var chunker = new ChunkedStream(stream, ChunkSize);
+            using ChunkedStream chunker = new ChunkedStream(stream, ChunkSize);
             byte[] buffer = ArrayPool<byte>.Shared.Rent(ChunkSize);
             try
             {
-                using var fileHasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+                using IncrementalHash fileHasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
                 List<string> chunkHashes = [];
 
                 foreach (Stream chunk in chunker.GetChunks())
@@ -387,7 +387,7 @@ namespace Octockup.Server.Jobs
                     cancellationToken.ThrowIfCancellationRequested();
 
                     chunk.Seek(0, SeekOrigin.Begin);
-                    using var chunkHasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+                    using IncrementalHash chunkHasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
                     int read;
                     long chunkLength = 0L;
                     while ((read = await chunk.ReadAsync(buffer.AsMemory(0, Math.Min(buffer.Length, ChunkSize)), cancellationToken)) > 0)
@@ -430,7 +430,7 @@ namespace Octockup.Server.Jobs
                     if (algorithm != CompressionAlgorithm.None)
                     {
                         compressedStream = new MemoryStream();
-                        await using (var compressed = CompressionHelpers.CreateCompressionStream(compressedStream))
+                        await using (Stream compressed = CompressionHelpers.CreateCompressionStream(compressedStream))
                         {
                             int r;
                             while ((r = await chunk.ReadAsync(buffer.AsMemory(0, Math.Min(buffer.Length, ChunkSize)), cancellationToken)) > 0)
@@ -459,7 +459,7 @@ namespace Octockup.Server.Jobs
 
                         if (encryptChunk)
                         {
-                            using var encryptedStream = new MemoryStream();
+                            using MemoryStream encryptedStream = new MemoryStream();
                             await crypto.EncryptAsync(src, encryptedStream, ct: cancellationToken);
                             encryptedStream.Seek(0, SeekOrigin.Begin);
                             storedSize = encryptedStream.Length;
@@ -523,7 +523,7 @@ namespace Octockup.Server.Jobs
                 return;
             }
 
-            var uploadedHash = new UploadedHash
+            UploadedHash uploadedHash = new UploadedHash
             {
                 Hash = chunkKey,
                 StoredSize = storedSize,
@@ -695,7 +695,7 @@ namespace Octockup.Server.Jobs
             Guid storageId,
             CancellationToken cancellationToken)
         {
-            var query = dbContext.UploadedHashes
+            IQueryable<string> query = dbContext.UploadedHashes
                 .AsNoTracking()
                 .Where(x => x.ModuleId == storageId)
                 .Select(x => x.Hash);

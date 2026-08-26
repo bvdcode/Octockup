@@ -12,7 +12,7 @@ using System.Security.Cryptography;
 
 namespace Octockup.Server.Streams
 {
-    public sealed class SnapshotConcatStream(
+    public class SnapshotConcatStream(
         ILogger _logger,
         IBackupStorage _storage,
         IReadOnlyList<ChunkStorageDescriptor> _chunks,
@@ -59,7 +59,7 @@ namespace Octockup.Server.Streams
                 return false;
             }
 
-            var chunk = _chunks[_currentIndex];
+            ChunkStorageDescriptor chunk = _chunks[_currentIndex];
             _logger.LogInformation(
                 "Loading chunk {Index}/{Total} with key {Key}",
                 _currentIndex + 1,
@@ -74,7 +74,7 @@ namespace Octockup.Server.Streams
                 throw new IOException($"Chunk '{chunk.Key}' not found in storage.");
             }
 
-            var fileInfo = new BackupFileInfo
+            BackupFileInfo fileInfo = new BackupFileInfo
             {
                 Path = path,
                 Name = chunk.Key,
@@ -82,7 +82,7 @@ namespace Octockup.Server.Streams
                 LastModified = _snapshotFile.LastModified,
             };
 
-            var storedChunkStream = await _storage
+            Stream storedChunkStream = await _storage
                 .GetFileStreamAsync(fileInfo)
                 .ConfigureAwait(false);
 
@@ -90,7 +90,7 @@ namespace Octockup.Server.Streams
                 ? await _crypto.DecryptAsync(storedChunkStream).ConfigureAwait(false)
                 : storedChunkStream;
 
-            var (source, compressionAlgorithm) = await ResolveLegacyCompressionAsync(restored, chunk).ConfigureAwait(false);
+            (Stream? source, CompressionAlgorithm compressionAlgorithm) = await ResolveLegacyCompressionAsync(restored, chunk).ConfigureAwait(false);
 
             Stream decompressed = compressionAlgorithm switch
             {
@@ -127,7 +127,7 @@ namespace Octockup.Server.Streams
                 read += current;
             }
 
-            var source = new PrefixStream(prefix, read, restored);
+            PrefixStream source = new PrefixStream(prefix, read, restored);
             if (IsZstdFrame(prefix.AsSpan(0, read)))
             {
                 return (source, chunk.CompressionAlgorithm);
@@ -222,11 +222,11 @@ namespace Octockup.Server.Streams
 
             int totalRead = 0;
 
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+            using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
                 _cancellationToken,
                 cancellationToken
             );
-            var ct = linkedCts.Token;
+            CancellationToken ct = linkedCts.Token;
 
             try
             {
@@ -427,69 +427,5 @@ namespace Octockup.Server.Streams
             }
         }
 
-        private sealed class PrefixStream(byte[] prefix, int prefixLength, Stream inner) : Stream
-        {
-            private int _prefixPosition;
-
-            public override bool CanRead => true;
-            public override bool CanSeek => false;
-            public override bool CanWrite => false;
-            public override long Length => throw new NotSupportedException();
-
-            public override long Position
-            {
-                get => throw new NotSupportedException();
-                set => throw new NotSupportedException();
-            }
-
-            public override int Read(byte[] buffer, int offset, int count)
-            {
-                if (_prefixPosition < prefixLength)
-                {
-                    int read = Math.Min(count, prefixLength - _prefixPosition);
-                    prefix.AsSpan(_prefixPosition, read).CopyTo(buffer.AsSpan(offset, read));
-                    _prefixPosition += read;
-                    return read;
-                }
-
-                return inner.Read(buffer, offset, count);
-            }
-
-            public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
-            {
-                if (_prefixPosition < prefixLength)
-                {
-                    int read = Math.Min(buffer.Length, prefixLength - _prefixPosition);
-                    prefix.AsMemory(_prefixPosition, read).CopyTo(buffer);
-                    _prefixPosition += read;
-                    return read;
-                }
-
-                return await inner.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
-            }
-
-            protected override void Dispose(bool disposing)
-            {
-                if (disposing)
-                {
-                    inner.Dispose();
-                }
-
-                base.Dispose(disposing);
-            }
-
-            public override async ValueTask DisposeAsync()
-            {
-                await inner.DisposeAsync().ConfigureAwait(false);
-                await base.DisposeAsync().ConfigureAwait(false);
-            }
-
-            public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
-            public override void SetLength(long value) => throw new NotSupportedException();
-            public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
-            public override void Flush()
-            {
-            }
-        }
     }
 }

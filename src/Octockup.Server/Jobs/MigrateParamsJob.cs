@@ -17,8 +17,8 @@ namespace Octockup.Server.Jobs
     {
         public async Task Execute(IJobExecutionContext context)
         {
-            var modules = await _dbContext.Modules.ToListAsync();
-            foreach (var module in modules)
+            List<Module> modules = await _dbContext.Modules.ToListAsync();
+            foreach (Module? module in modules)
             {
 #pragma warning disable CS0618 // Type or member is obsolete
                 if (module.Parameters.Count == 0)
@@ -26,7 +26,7 @@ namespace Octockup.Server.Jobs
                     continue;
                 }
 
-                foreach (var item in module.Parameters)
+                foreach (KeyValuePair<string, string> item in module.Parameters)
                 {
                     module.Params(_crypto)[item.Key] = item.Value;
                     _logger.LogInformation("Migrated parameter '{ParamKey}' for Module {ModuleId}.", item.Key, module.Id);
