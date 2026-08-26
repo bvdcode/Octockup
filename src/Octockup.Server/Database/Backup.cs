@@ -9,7 +9,7 @@ namespace Octockup.Server.Database
 {
     [Table("backups")]
     [Index(nameof(Tag), IsUnique = true)]
-    public class Backup : BaseEntity<Guid>
+    public class Backup : BaseEntity<Guid>, IImportableEntity
     {
         [Column("source_id")]
         public Guid SourceId { get; set; }
@@ -37,5 +37,10 @@ namespace Octockup.Server.Database
 
         public virtual ICollection<Snapshot> Snapshots { get; set; } = [];
         public virtual ICollection<Schedule> Schedules { get; set; } = [];
+
+        void IImportableEntity.RestoreId(Guid id)
+        {
+            Id = id;
+        }
     }
 }

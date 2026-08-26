@@ -8,7 +8,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace Octockup.Server.Database
 {
     [Table("snapshots")]
-    public class Snapshot : BaseEntity<Guid>
+    public class Snapshot : BaseEntity<Guid>, IImportableEntity
     {
         [Column("backup_id")]
         public Guid BackupId { get; set; }
@@ -25,6 +25,14 @@ namespace Octockup.Server.Database
         [DeleteBehavior(DeleteBehavior.Restrict)]
         public virtual Backup Backup { get; set; } = null!;
 
+        [DeleteBehavior(DeleteBehavior.Restrict)]
+        public virtual Schedule? Schedule { get; set; }
+
         public virtual ICollection<SnapshotFile> Files { get; set; } = [];
+
+        void IImportableEntity.RestoreId(Guid id)
+        {
+            Id = id;
+        }
     }
 }

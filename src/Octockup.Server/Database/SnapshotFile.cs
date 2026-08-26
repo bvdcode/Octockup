@@ -9,7 +9,7 @@ namespace Octockup.Server.Database
 {
     [Table("snapshot_files")]
     [Index(nameof(SnapshotId), nameof(Path), IsUnique = true)]
-    public class SnapshotFile : BaseEntity<Guid>
+    public class SnapshotFile : BaseEntity<Guid>, IImportableEntity
     {
         [Column("size")]
         public long Size { get; set; }
@@ -34,5 +34,10 @@ namespace Octockup.Server.Database
 
         [DeleteBehavior(DeleteBehavior.Restrict)]
         public virtual Snapshot Snapshot { get; set; } = null!;
+
+        void IImportableEntity.RestoreId(Guid id)
+        {
+            Id = id;
+        }
     }
 }

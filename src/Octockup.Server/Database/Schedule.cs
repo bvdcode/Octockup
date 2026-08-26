@@ -9,7 +9,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace Octockup.Server.Database
 {
     [Table("schedules")]
-    public class Schedule : BaseEntity<Guid>
+    public class Schedule : BaseEntity<Guid>, IImportableEntity
     {
         [Column("backup_id")]
         public Guid BackupId { get; set; }
@@ -33,5 +33,10 @@ namespace Octockup.Server.Database
         public virtual Backup Backup { get; set; } = null!;
 
         public virtual ICollection<Snapshot> Snapshots { get; set; } = [];
+
+        void IImportableEntity.RestoreId(Guid id)
+        {
+            Id = id;
+        }
     }
 }

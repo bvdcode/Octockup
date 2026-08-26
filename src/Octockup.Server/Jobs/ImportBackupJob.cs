@@ -4,10 +4,10 @@
 using EasyExtensions.Abstractions;
 using EasyExtensions.Quartz.Attributes;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Octockup.Server.Database;
 using Octockup.Server.Helpers;
 using Quartz;
-using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
@@ -21,12 +21,11 @@ namespace Octockup.Server.Jobs
         ILogger<ImportBackupJob> _logger) : IJob
     {
         private const int BATCH_SIZE = 500;
-        private static readonly ConcurrentDictionary<Type, Action<object, Guid>?> _idSetterCache = new();
         private static readonly Lazy<JsonSerializerOptions> _jsonOptions = new(CreateOptions);
 
         public static JsonSerializerOptions CreateOptions()
         {
-            var resolver = new DefaultJsonTypeInfoResolver();
+            DefaultJsonTypeInfoResolver resolver = new DefaultJsonTypeInfoResolver();
             resolver.Modifiers.Add(static ti =>
             {
                 if (ti.Kind != JsonTypeInfoKind.Object)
@@ -34,7 +33,7 @@ namespace Octockup.Server.Jobs
                     return;
                 }
 
-                var jsonProp = ti.Properties.FirstOrDefault(p =>
+                JsonPropertyInfo? jsonProp = ti.Properties.FirstOrDefault(p =>
                     string.Equals(p.Name, "Id", StringComparison.Ordinal) &&
                     p.PropertyType == typeof(Guid));
 
@@ -48,23 +47,12 @@ namespace Octockup.Server.Jobs
                     return;
                 }
 
-                var idPropInfo = ti.Type.GetProperty("Id",
-                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-
-                var setMethod = idPropInfo?.GetSetMethod(nonPublic: true);
-                if (setMethod is null)
-                {
-                    return;
-                }
-
-                var setter = _idSetterCache.GetOrAdd(ti.Type, _ =>
-                {
-                    return (obj, value) => setMethod.Invoke(obj, [value]);
-                });
-
                 jsonProp.Set = (obj, value) =>
                 {
-                    setter?.Invoke(obj!, (Guid)value!);
+                    if (obj is IImportableEntity entity && value is Guid id)
+                    {
+                        entity.RestoreId(id);
+                    }
                 };
             });
 
@@ -86,7 +74,7 @@ namespace Octockup.Server.Jobs
                 return;
             }
 
-            foreach (var userDir in Directory.GetDirectories(importBaseDir))
+            foreach (string userDir in Directory.GetDirectories(importBaseDir))
             {
                 if (!Guid.TryParse(Path.GetFileName(userDir), out Guid userId))
                 {
@@ -100,7 +88,7 @@ namespace Octockup.Server.Jobs
 
         private async Task ProcessUserDirectoryAsync(Guid userId, string userDir, CancellationToken cancellationToken)
         {
-            foreach (var importFile in Directory.GetFiles(userDir, "*." + CompressionHelpers.Extension))
+            foreach (string importFile in Directory.GetFiles(userDir, "*." + CompressionHelpers.Extension))
             {
                 await ProcessSingleFileWithFailureHandlingAsync(userId, importFile, cancellationToken);
             }
@@ -142,21 +130,21 @@ namespace Octockup.Server.Jobs
         {
             _logger.LogInformation("Starting import for user {UserId} from file {FilePath}", userId, filePath);
 
-            var user = await ResolveTargetUserAsync(userId, cancellationToken);
+            User? user = await ResolveTargetUserAsync(userId, cancellationToken);
             if (user is null)
             {
                 _logger.LogWarning("User {UserId} not found, skipping import", userId);
                 return;
             }
 
-            await using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-            await using var decompressedStream = CompressionHelpers.CreateDecompressionStream(fileStream);
-            using var decryptedStream = new MemoryStream();
+            await using FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+            await using Stream decompressedStream = CompressionHelpers.CreateDecompressionStream(fileStream);
+            using MemoryStream decryptedStream = new MemoryStream();
 
             await _crypto.DecryptAsync(decompressedStream, decryptedStream, ct: cancellationToken);
             decryptedStream.Seek(0, SeekOrigin.Begin);
 
-            var importData = await JsonSerializer.DeserializeAsync<ImportData>(
+            ImportData? importData = await JsonSerializer.DeserializeAsync<ImportData>(
                 decryptedStream,
                 options: _jsonOptions.Value,
                 cancellationToken: cancellationToken);
@@ -176,14 +164,14 @@ namespace Octockup.Server.Jobs
                 importData.SnapshotFiles.Count);
 
             // Simply update UserId WITHOUT restoring navigations
-            foreach (var item in importData.Modules)
+            foreach (Module item in importData.Modules)
             {
                 item.UserId = user.Id;
             }
 
             _logger.LogInformation("Saving imported data to the database for user {UserId} in batches...", userId);
 
-            await using var tx = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+            await using IDbContextTransaction tx = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
 
             try
             {
@@ -227,7 +215,7 @@ namespace Octockup.Server.Jobs
 
         private async Task<User?> ResolveTargetUserAsync(Guid userId, CancellationToken cancellationToken)
         {
-            var user = await _dbContext.Users
+            User? user = await _dbContext.Users
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
 
@@ -245,10 +233,10 @@ namespace Octockup.Server.Jobs
 
         private void RestoreModuleParameters(ImportData importData)
         {
-            foreach (var module in importData.Modules)
+            foreach (Module module in importData.Modules)
             {
 #pragma warning disable CS0618 // Type or member is obsolete
-                foreach (var item in module.Parameters)
+                foreach (KeyValuePair<string, string> item in module.Parameters)
                 {
                     module.Params(_crypto)[item.Key] = item.Value;
                     _logger.LogInformation("Restored parameter '{ParamKey}' for Module {ModuleId}.", item.Key, module.Id);
@@ -267,7 +255,7 @@ namespace Octockup.Server.Jobs
             int totalBatches = (items.Count + BATCH_SIZE - 1) / BATCH_SIZE;
             for (int i = 0; i < items.Count; i += BATCH_SIZE)
             {
-                var batch = items.Skip(i).Take(BATCH_SIZE).ToList();
+                List<T> batch = items.Skip(i).Take(BATCH_SIZE).ToList();
                 dbSet.AddRange(batch);
                 await _dbContext.SaveChangesAsync(ct);
 

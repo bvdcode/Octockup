@@ -14,7 +14,7 @@ namespace Octockup.Server.Database
 {
     [Table("modules")]
     [Index(nameof(Tag), IsUnique = true)]
-    public partial class Module : BaseEntity<Guid>
+    public partial class Module : BaseEntity<Guid>, IImportableEntity
     {
         [Column("user_id")]
         public Guid UserId { get; set; }
@@ -55,23 +55,28 @@ namespace Octockup.Server.Database
                 return _paramsCache = [];
             }
 
-            var bytes = Convert.FromBase64String(EncryptedParameters);
-            var json = cipher.DecryptString(bytes);
+            byte[] bytes = Convert.FromBase64String(EncryptedParameters);
+            string json = cipher.DecryptString(bytes);
             _paramsCache = JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? new(StringComparer.Ordinal);
             return _paramsCache;
         }
 
         private void FlushParams(IStreamCipher cipher, Dictionary<string, string> dict)
         {
-            var normalized = dict
+            Dictionary<string, string> normalized = dict
                 .OrderBy(x => x.Key, StringComparer.Ordinal)
                 .ToDictionary(x => x.Key, x => x.Value, StringComparer.Ordinal);
 
-            var json = JsonSerializer.Serialize(normalized);
-            var bytes = cipher.EncryptString(json);
+            string json = JsonSerializer.Serialize(normalized);
+            byte[] bytes = cipher.EncryptString(json);
 
             EncryptedParameters = Convert.ToBase64String(bytes);
             _paramsCache = normalized;
+        }
+
+        void IImportableEntity.RestoreId(Guid id)
+        {
+            Id = id;
         }
     }
 }
