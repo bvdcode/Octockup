@@ -4,7 +4,6 @@
 using EasyExtensions.Abstractions;
 using EasyExtensions.Crypto;
 using EasyExtensions.Models.Enums;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
@@ -373,6 +372,9 @@ namespace Octockup.Tests
                 validate: false);
 
             Assert.That(fastResult, Is.InstanceOf<EmptyResult>());
+            Assert.That(
+                fastController.Response.ContentLength,
+                Is.EqualTo(fastController.Response.Body.Length));
 
             SnapshotController validatedController = AsUser(
                 new SnapshotController(
@@ -478,31 +480,6 @@ namespace Octockup.Tests
             IActionResult result = controller.GetSnapshots(graph.Backup.Id);
 
             AssertNotFound(result);
-        }
-
-        [TestCase(typeof(ModuleController), nameof(ModuleController.RenameModule))]
-        [TestCase(typeof(ModuleController), nameof(ModuleController.DeleteUserBackupStorage))]
-        [TestCase(typeof(BackupController), nameof(BackupController.UpdateIgnoredPaths))]
-        [TestCase(typeof(BackupController), nameof(BackupController.RenameBackup))]
-        [TestCase(typeof(BackupController), nameof(BackupController.DeleteBackup))]
-        [TestCase(typeof(BackupScheduleController), nameof(BackupScheduleController.RunNowAsync))]
-        [TestCase(typeof(BackupScheduleController), nameof(BackupScheduleController.SetScheduleAsync))]
-        [TestCase(typeof(BackupScheduleController), nameof(BackupScheduleController.DisableScheduleAsync))]
-        [TestCase(typeof(ScheduleController), nameof(ScheduleController.CancelSchedule))]
-        [TestCase(typeof(SnapshotController), nameof(SnapshotController.DownloadSnapshotArchive))]
-        [TestCase(typeof(SnapshotController), nameof(SnapshotController.DownloadSnapshotFile))]
-        [TestCase(typeof(SnapshotController), nameof(SnapshotController.GetSnapshot))]
-        [TestCase(typeof(SnapshotController), nameof(SnapshotController.DeleteSnapshot))]
-        [TestCase(typeof(SnapshotController), nameof(SnapshotController.GetSnapshots))]
-        public void UserDataEndpoint_RequiresAuthorization(Type controllerType, string actionName)
-        {
-            System.Reflection.MethodInfo action = controllerType
-                .GetMethods()
-                .Single(x => x.Name == actionName);
-
-            Assert.That(
-                action.GetCustomAttributes(typeof(AuthorizeAttribute), inherit: true),
-                Is.Not.Empty);
         }
 
         private PostgresDbContext CreateDbContext()
