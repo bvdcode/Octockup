@@ -68,7 +68,10 @@ export default function SnapshotsPage() {
   };
 
   const handleDownload = (snapshotId: string, validate: boolean) => {
-    window.open(createSnapshotDownloadUrl(snapshotId, validate), "_blank");
+    const link = document.createElement("a");
+    link.href = createSnapshotDownloadUrl(snapshotId, validate);
+    link.download = "";
+    link.click();
   };
 
   const handleCopyDownloadLink = async (

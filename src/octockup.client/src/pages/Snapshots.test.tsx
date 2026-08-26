@@ -145,4 +145,33 @@ describe("SnapshotsPage", () => {
       ).not.toBeInTheDocument();
     });
   });
+
+  it("starts a direct browser download without opening a new window", async () => {
+    let clickedHref = "";
+    let clickedDownload = "missing";
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(function (this: HTMLAnchorElement) {
+        clickedHref = this.href;
+        clickedDownload = this.download;
+      });
+    const user = userEvent.setup();
+
+    renderWithQueryClient(<SnapshotsPage />, createTestQueryClient());
+
+    const options = await screen.findAllByRole("button", {
+      name: "snapshots.downloadOptions",
+    });
+    await user.click(options[0]);
+    await user.click(
+      screen.getByRole("button", { name: "snapshots.download" }),
+    );
+
+    expect(click).toHaveBeenCalledOnce();
+    expect(clickedHref).toBe(
+      "http://localhost:3000/api/v1/snapshots/first-snapshot/download?access_token=access-token&validate=false",
+    );
+    expect(clickedDownload).toBe("");
+    click.mockRestore();
+  });
 });
