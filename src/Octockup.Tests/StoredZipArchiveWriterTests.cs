@@ -21,14 +21,14 @@ namespace Octockup.Tests
             ];
 
             long expectedLength = StoredZipArchiveWriter.CalculateContentLength(entries);
-            using var archive = new MemoryStream();
+            using MemoryStream archive = new MemoryStream();
 
             await StoredZipArchiveWriter.WriteAsync(archive, entries);
 
             Assert.That(archive.Length, Is.EqualTo(expectedLength));
 
             archive.Position = 0;
-            using var zip = new ZipArchive(archive, ZipArchiveMode.Read, leaveOpen: true);
+            using ZipArchive zip = new ZipArchive(archive, ZipArchiveMode.Read, leaveOpen: true);
 
             Assert.That(zip.Entries.Select(x => x.FullName), Is.EquivalentTo(new[]
             {
@@ -43,7 +43,7 @@ namespace Octockup.Tests
         public void CalculateContentLength_LargeEntry_UsesZip64SizedHeaders()
         {
             const long largeSize = (long)uint.MaxValue + 1;
-            var entry = new StoredZipArchiveEntry(
+            StoredZipArchiveEntry entry = new StoredZipArchiveEntry(
                 "large.bin",
                 largeSize,
                 null,
@@ -73,10 +73,10 @@ namespace Octockup.Tests
 
         private static async Task<string> ReadEntryAsync(ZipArchive zip, string name)
         {
-            var entry = zip.GetEntry(name);
+            ZipArchiveEntry? entry = zip.GetEntry(name);
             Assert.That(entry, Is.Not.Null);
 
-            using var reader = new StreamReader(entry!.Open(), Encoding.UTF8);
+            using StreamReader reader = new StreamReader(entry!.Open(), Encoding.UTF8);
             return await reader.ReadToEndAsync();
         }
     }

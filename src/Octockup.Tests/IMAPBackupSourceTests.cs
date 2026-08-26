@@ -2,6 +2,7 @@
 // Copyright (c) 2025 Vadim Belov <https://belov.us>
 
 using Microsoft.Extensions.Logging;
+using Octockup.Server.Models;
 using Octockup.Server.Modules;
 
 namespace Octockup.Tests
@@ -42,24 +43,24 @@ namespace Octockup.Tests
         [Test]
         public void IMAPSource_GetDirectories_Root_NotEmpty()
         {
-            var directories = _imap.GetDirectories(recursive: true);
+            IEnumerable<string> directories = _imap.GetDirectories(recursive: true);
             Assert.That(directories.Any());
         }
 
         [Test]
         public async Task IMAPSource_GetFiles_Root_NotEmpty()
         {
-            var files = _imap.GetFiles(recursive: true);
+            IEnumerable<BackupFileInfo> files = _imap.GetFiles(recursive: true);
             Assert.That(files.Any());
         }
 
         [Test]
         public async Task IMAPSource_GetFileStream_Success()
         {
-            var files = _imap.GetFiles(recursive: true);
+            IEnumerable<BackupFileInfo> files = _imap.GetFiles(recursive: true);
             Assert.That(files.Any());
-            var firstFile = files.First();
-            using var stream = await _imap.GetFileStreamAsync(firstFile);
+            BackupFileInfo firstFile = files.First();
+            using Stream stream = await _imap.GetFileStreamAsync(firstFile);
             Assert.That(stream.Length, Is.GreaterThan(0));
         }
 
@@ -73,9 +74,9 @@ namespace Octockup.Tests
             {
                 try
                 {
-                    var message = formatter(state, exception);
-                    var timestamp = DateTime.UtcNow.ToString("o");
-                    var combined = $"{timestamp} [{logLevel}] {message}" + (exception != null ? $"\n{exception}" : string.Empty);
+                    string message = formatter(state, exception);
+                    string timestamp = DateTime.UtcNow.ToString("o");
+                    string combined = $"{timestamp} [{logLevel}] {message}" + (exception != null ? $"\n{exception}" : string.Empty);
 
                     // Write to multiple outputs because different NUnit runners capture different streams
                     NUnit.Framework.TestContext.Progress.WriteLine(combined);

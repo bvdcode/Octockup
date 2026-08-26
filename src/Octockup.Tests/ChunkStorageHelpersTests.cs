@@ -18,7 +18,7 @@ namespace Octockup.Tests
                 CompressionHelpers.Algorithm,
                 isEncrypted: true);
 
-            var descriptor = ChunkStorageHelpers.Parse(key);
+            ChunkStorageDescriptor descriptor = ChunkStorageHelpers.Parse(key);
 
             Assert.Multiple(() =>
             {
@@ -37,7 +37,7 @@ namespace Octockup.Tests
                 CompressionAlgorithm.None,
                 isEncrypted: false);
 
-            var descriptor = ChunkStorageHelpers.Parse(key);
+            ChunkStorageDescriptor descriptor = ChunkStorageHelpers.Parse(key);
             string path = ChunkStorageHelpers.GetStoragePath(key, '/');
 
             Assert.Multiple(() =>

@@ -21,21 +21,21 @@ namespace Octockup.Tests
         public async Task ReadAsync_WhenFileLengthIsReached_DrainsCurrentChunkBeforeDisposing()
         {
             byte[] content = [1, 2, 3, 4, 5];
-            var storageStream = new EofRequiredStream(content);
-            var storage = new InMemoryStorage(storageStream);
-            var snapshotFile = new SnapshotFile
+            EofRequiredStream storageStream = new EofRequiredStream(content);
+            InMemoryStorage storage = new InMemoryStorage(storageStream);
+            SnapshotFile snapshotFile = new SnapshotFile
             {
                 Path = "Bundles/Bundles",
                 Name = "Bundles",
                 Size = content.Length
             };
-            var chunk = new ChunkStorageDescriptor(
+            ChunkStorageDescriptor chunk = new ChunkStorageDescriptor(
                 Hash,
                 Hash,
                 CompressionAlgorithm.None,
                 IsEncrypted: false);
 
-            await using var stream = new SnapshotConcatStream(
+            await using SnapshotConcatStream stream = new SnapshotConcatStream(
                 NullLogger.Instance,
                 storage,
                 [chunk],
@@ -60,20 +60,20 @@ namespace Octockup.Tests
         public async Task ReadAsync_WhenLegacyChunkMetadataSaysZstdButPayloadIsPlain_ReadsPlainPayload()
         {
             byte[] content = [9, 8, 7, 6];
-            var storage = new InMemoryStorage(new MemoryStream(content));
-            var snapshotFile = new SnapshotFile
+            InMemoryStorage storage = new InMemoryStorage(new MemoryStream(content));
+            SnapshotFile snapshotFile = new SnapshotFile
             {
                 Path = "Bundles/Bundles",
                 Name = "Bundles",
                 Size = content.Length
             };
-            var legacyChunkWithWrongMetadata = new ChunkStorageDescriptor(
+            ChunkStorageDescriptor legacyChunkWithWrongMetadata = new ChunkStorageDescriptor(
                 Hash,
                 Hash,
                 CompressionHelpers.Algorithm,
                 IsEncrypted: true);
 
-            await using var stream = new SnapshotConcatStream(
+            await using SnapshotConcatStream stream = new SnapshotConcatStream(
                 NullLogger.Instance,
                 storage,
                 [legacyChunkWithWrongMetadata],
@@ -94,21 +94,21 @@ namespace Octockup.Tests
         public async Task ReadAsync_WhenSnapshotSizeIsSmallerThanChunkOriginalSize_UsesChunkOriginalSize()
         {
             byte[] content = [1, 1, 2, 3, 5, 8];
-            var storage = new InMemoryStorage(new MemoryStream(content));
-            var snapshotFile = new SnapshotFile
+            InMemoryStorage storage = new InMemoryStorage(new MemoryStream(content));
+            SnapshotFile snapshotFile = new SnapshotFile
             {
                 Path = "oxide/data/Boxlooters/box_data.json",
                 Name = "box_data.json",
                 Size = 3
             };
-            var chunk = new ChunkStorageDescriptor(
+            ChunkStorageDescriptor chunk = new ChunkStorageDescriptor(
                 Hash,
                 Hash,
                 CompressionAlgorithm.None,
                 IsEncrypted: false,
                 OriginalSize: content.Length);
 
-            await using var stream = new SnapshotConcatStream(
+            await using SnapshotConcatStream stream = new SnapshotConcatStream(
                 NullLogger.Instance,
                 storage,
                 [chunk],
@@ -404,7 +404,7 @@ namespace Octockup.Tests
             }
         }
 
-        private sealed class EofRequiredStream(byte[] content) : Stream
+        private class EofRequiredStream(byte[] content) : Stream
         {
             private int _position;
 
@@ -480,7 +480,7 @@ namespace Octockup.Tests
             }
         }
 
-        private sealed class PassThroughCipher : IStreamCipher
+        private class PassThroughCipher : IStreamCipher
         {
             public async Task EncryptAsync(
                 Stream input,

@@ -158,7 +158,7 @@ namespace Octockup.Tests
             });
         }
 
-        private sealed class PreviousFileLookupInterceptor : DbCommandInterceptor
+        private class PreviousFileLookupInterceptor : DbCommandInterceptor
         {
             private readonly ConcurrentQueue<int> _pathBatchSizes = new();
 

@@ -2,6 +2,7 @@
 // Copyright (c) 2025 Vadim Belov <https://belov.us>
 
 using Microsoft.Extensions.Logging.Abstractions;
+using Octockup.Server.Models;
 using Octockup.Server.Modules;
 
 namespace Octockup.Tests
@@ -40,17 +41,17 @@ namespace Octockup.Tests
         [Test]
         public void SftpStorage_GetFiles_Root_NotEmpty()
         {
-            var files = _storage.GetFiles(recursive: true);
+            IEnumerable<BackupFileInfo> files = _storage.GetFiles(recursive: true);
             Assert.That(files.Any());
         }
 
         [Test]
         public async Task SftpStorage_GetFileStream_Success()
         {
-            var files = _storage.GetFiles(recursive: true);
+            IEnumerable<BackupFileInfo> files = _storage.GetFiles(recursive: true);
             Assert.That(files.Any());
-            var firstFile = files.First();
-            using var stream = await _storage.GetFileStreamAsync(firstFile);
+            BackupFileInfo firstFile = files.First();
+            using Stream stream = await _storage.GetFileStreamAsync(firstFile);
             Assert.That(stream.Length, Is.GreaterThan(0));
         }
     }
