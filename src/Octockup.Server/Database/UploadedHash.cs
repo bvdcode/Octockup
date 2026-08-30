@@ -17,7 +17,7 @@ namespace Octockup.Server.Database
         public Guid ModuleId { get; set; }
 
         [Column("hash")]
-        public string Hash { get; set; } = string.Empty;
+        public string Hash { get; set; } = null!;
 
         [Column("stored_size")]
         public long StoredSize { get; set; }

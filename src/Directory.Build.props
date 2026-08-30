@@ -1,5 +1,5 @@
 <Project>
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
-    <PackageReference Include="EasyExtensions.Analyzers" Version="3.0.74" PrivateAssets="all" />
+    <PackageReference Include="EasyExtensions.Analyzers" Version="3.0.80" PrivateAssets="all" />
   </ItemGroup>
 </Project>

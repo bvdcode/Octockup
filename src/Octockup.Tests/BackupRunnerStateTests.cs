@@ -77,7 +77,7 @@ namespace Octockup.Tests
         public async Task RunAsync_WhenCancellationIsRequested_ReportsCancellation()
         {
             using CancellationTokenSource cancellation = new();
-            cancellation.Cancel();
+            await cancellation.CancelAsync();
 
             Schedule result = await RunBackupAsync(
                 TestBackupStorage.EmptyMode,

@@ -111,7 +111,7 @@ namespace Octockup.Server.Models
 
         public async ValueTask DisposeAsync()
         {
-            _backgroundTaskCts.Cancel();
+            await _backgroundTaskCts.CancelAsync();
             if (_backgroundTask != null)
             {
                 try

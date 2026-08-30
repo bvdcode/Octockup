@@ -14,7 +14,7 @@ namespace Octockup.Server.Database
         public Guid UserId { get; set; }
 
         [Column("message")]
-        public string Message { get; set; } = string.Empty;
+        public string Message { get; set; } = null!;
 
         [Column("details")]
         public string? Details { get; set; }

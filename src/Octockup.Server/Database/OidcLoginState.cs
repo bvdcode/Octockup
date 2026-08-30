@@ -18,17 +18,17 @@ namespace Octockup.Server.Database
 
         [Column("state_hash")]
         [MaxLength(64)]
-        public string StateHash { get; set; } = string.Empty;
+        public string StateHash { get; set; } = null!;
 
         [Column("code_verifier_encrypted")]
-        public string CodeVerifierEncrypted { get; set; } = string.Empty;
+        public string CodeVerifierEncrypted { get; set; } = null!;
 
         [Column("nonce_encrypted")]
-        public string NonceEncrypted { get; set; } = string.Empty;
+        public string NonceEncrypted { get; set; } = null!;
 
         [Column("return_url")]
         [MaxLength(1024)]
-        public string ReturnUrl { get; set; } = string.Empty;
+        public string ReturnUrl { get; set; } = null!;
 
         [Column("link_user_id")]
         public Guid? LinkUserId { get; set; }

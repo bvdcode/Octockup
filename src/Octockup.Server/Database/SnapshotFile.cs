@@ -21,13 +21,13 @@ namespace Octockup.Server.Database
         public DateTime? LastModified { get; set; }
 
         [Column("name")]
-        public string Name { get; set; } = string.Empty;
+        public string Name { get; set; } = null!;
 
         [Column("path")]
-        public string Path { get; set; } = string.Empty;
+        public string Path { get; set; } = null!;
 
         [Column("hashsum")]
-        public string Hashsum { get; set; } = string.Empty;
+        public string Hashsum { get; set; } = null!;
 
         [Column("chunk_hashes")]
         public ICollection<string> ChunkHashes { get; set; } = [];

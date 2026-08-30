@@ -33,6 +33,10 @@ namespace Octockup.Tests
             return token == "access-token";
         }
 
+        public void RotateKey()
+        {
+        }
+
         private string CreateToken()
         {
             if (FailCreation)

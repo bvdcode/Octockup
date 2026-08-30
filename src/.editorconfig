@@ -4,7 +4,6 @@
 dotnet_diagnostic.CA1873.severity = none
 
 # EasyExtensions.Analyzers
-dotnet_code_quality.EEX0001.max_lines = 700
 dotnet_diagnostic.EEX0001.severity = error
 dotnet_diagnostic.EEX0002.severity = error
 dotnet_diagnostic.EEX0003.severity = error

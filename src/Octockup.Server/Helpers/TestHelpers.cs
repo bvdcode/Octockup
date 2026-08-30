@@ -105,7 +105,10 @@ namespace Octockup.Server.Helpers
                     }
                     finally
                     {
-                        testStream?.Dispose();
+                        if (testStream is not null)
+                        {
+                            await testStream.DisposeAsync();
+                        }
                     }
 
                     tested++;

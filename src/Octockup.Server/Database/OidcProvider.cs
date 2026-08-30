@@ -14,23 +14,23 @@ namespace Octockup.Server.Database
     {
         [Column("name")]
         [MaxLength(80)]
-        public string Name { get; set; } = string.Empty;
+        public string Name { get; set; } = null!;
 
         [Column("slug")]
         [MaxLength(64)]
-        public string Slug { get; set; } = string.Empty;
+        public string Slug { get; set; } = null!;
 
         [Column("issuer")]
         [MaxLength(512)]
-        public string Issuer { get; set; } = string.Empty;
+        public string Issuer { get; set; } = null!;
 
         [Column("public_base_url")]
         [MaxLength(512)]
-        public string PublicBaseUrl { get; set; } = string.Empty;
+        public string PublicBaseUrl { get; set; } = null!;
 
         [Column("client_id")]
         [MaxLength(256)]
-        public string ClientId { get; set; } = string.Empty;
+        public string ClientId { get; set; } = null!;
 
         [Column("client_secret_encrypted")]
         public string? ClientSecretEncrypted { get; set; }

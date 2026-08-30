@@ -76,7 +76,8 @@ namespace Octockup.Tests
             ZipArchiveEntry? entry = zip.GetEntry(name);
             Assert.That(entry, Is.Not.Null);
 
-            using StreamReader reader = new StreamReader(entry!.Open(), Encoding.UTF8);
+            await using Stream stream = await entry!.OpenAsync();
+            using StreamReader reader = new(stream, Encoding.UTF8);
             return await reader.ReadToEndAsync();
         }
     }

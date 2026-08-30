@@ -16,7 +16,7 @@ namespace Octockup.Server.Database
 
         [Column("name")]
         [MaxLength(32)]
-        public string Name { get; set; } = string.Empty;
+        public string Name { get; set; } = null!;
 
         [Column("password_login_enabled")]
         public bool PasswordLoginEnabled { get; set; }

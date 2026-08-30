@@ -21,11 +21,11 @@ namespace Octockup.Server.Database
 
         [Column("issuer")]
         [MaxLength(512)]
-        public string Issuer { get; set; } = string.Empty;
+        public string Issuer { get; set; } = null!;
 
         [Column("subject")]
         [MaxLength(256)]
-        public string Subject { get; set; } = string.Empty;
+        public string Subject { get; set; } = null!;
 
         [Column("email")]
         [MaxLength(320)]

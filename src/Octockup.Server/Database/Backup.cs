@@ -18,7 +18,7 @@ namespace Octockup.Server.Database
         public Guid StorageId { get; set; }
 
         [Column("tag")]
-        public string Tag { get; set; } = string.Empty;
+        public string Tag { get; set; } = null!;
 
         [Column("ignored_paths")]
         public ICollection<string> IgnoredPaths { get; set; } = [];

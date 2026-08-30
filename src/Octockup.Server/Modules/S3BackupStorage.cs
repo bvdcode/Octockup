@@ -126,7 +126,7 @@ namespace Octockup.Server.Modules
                 if (ex.Message.Contains("hex") && !_validateChecksums)
                 {
                     _logger.LogWarning("Checksum error detected while downloading file {FilePath}. Bypassing checksum validation through presigned URL.", path);
-                    string presignedUrl = _s3.GetPreSignedURL(new GetPreSignedUrlRequest
+                    string presignedUrl = await _s3.GetPreSignedURLAsync(new GetPreSignedUrlRequest
                     {
                         Key = key,
                         BucketName = _bucket,

@@ -16,17 +16,22 @@ namespace Octockup.Server.Database
     [Index(nameof(Tag), IsUnique = true)]
     public partial class Module : BaseEntity<Guid>, IImportableEntity
     {
+        public Module()
+        {
+            EncryptedParameters = string.Empty;
+        }
+
         [Column("user_id")]
         public Guid UserId { get; set; }
 
         [Column("tag")]
-        public string Tag { get; set; } = string.Empty;
+        public string Tag { get; set; } = null!;
 
         [Column("destination")]
         public ModuleDestination Destination { get; set; }
 
         [Column("backup_module_id")]
-        public string BackupModuleId { get; set; } = string.Empty;
+        public string BackupModuleId { get; set; } = null!;
 
         [JsonInclude]
         [Column("parameters")]
@@ -35,7 +40,7 @@ namespace Octockup.Server.Database
 
         [JsonInclude]
         [Column("encrypted_parameters")]
-        public string EncryptedParameters { get; private set; } = string.Empty;
+        public string EncryptedParameters { get; private set; } = null!;
 
         [DeleteBehavior(DeleteBehavior.Restrict)]
         public virtual User User { get; set; } = null!;

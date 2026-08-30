@@ -12,10 +12,10 @@ namespace Octockup.Server.Database
     public class User : BaseEntity<Guid>
     {
         [Column("username")]
-        public string Username { get; set; } = string.Empty;
+        public string Username { get; set; } = null!;
 
         [Column("password_phc")]
-        public string PasswordPhc { get; set; } = string.Empty;
+        public string PasswordPhc { get; set; } = null!;
 
         [Column("is_admin")]
         public bool IsAdmin { get; set; }
