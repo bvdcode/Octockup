@@ -3,7 +3,7 @@ WORKDIR /app
 EXPOSE 8080
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS with-node
-RUN curl -sL https://deb.nodesource.com/setup_25.x | bash \
+RUN curl -sL https://deb.nodesource.com/setup_24.x | bash \
  && apt-get update \
  && apt-get --yes install nodejs \
  && apt-get clean \
