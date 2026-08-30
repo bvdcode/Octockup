@@ -8,7 +8,7 @@ import {
   TextField,
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { getIgnoredPathsPreset } from "../constants/ignoredPathsPresets";
 
 interface EditIgnoredPathsDialogProps {
@@ -29,15 +29,10 @@ export function EditIgnoredPathsDialog({
   loading = false,
 }: EditIgnoredPathsDialogProps) {
   const { t } = useTranslation();
-  const [ignoredPathsInput, setIgnoredPathsInput] = useState<string>("");
+  const [ignoredPathsInput, setIgnoredPathsInput] = useState<string>(() =>
+    initialPaths.join("\n"),
+  );
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      setIgnoredPathsInput(initialPaths.join("\n"));
-      setSaving(false);
-    }
-  }, [open, initialPaths]);
 
   const preset = useMemo(
     () => getIgnoredPathsPreset(backupModuleId),

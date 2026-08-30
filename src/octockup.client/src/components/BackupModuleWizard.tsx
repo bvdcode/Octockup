@@ -117,10 +117,10 @@ export default function BackupModuleWizard({
         updateParam("password", password);
         setPrivateKeyPassphrase("");
         return { ...parameters, password };
-      } catch (error: unknown) {
+      } catch (error) {
         const key =
           error instanceof PuttyKeyError ? error.code : "sftpKeyInvalid";
-        throw new Error(t(`wizard.${key}`));
+        throw new Error(t(`wizard.${key}`), { cause: error });
       }
     },
     [privateKeyPassphrase, providerId, t, updateParam],

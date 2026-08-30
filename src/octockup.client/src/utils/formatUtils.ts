@@ -8,66 +8,69 @@ export function formatSpeed(bytesPerSecond: number): string {
 }
 
 export function formatElapsed(elapsed?: string): string {
-  if (!elapsed) return "";
-
-  const parts = elapsed.split(":");
-  if (parts.length < 3) return elapsed;
-
-  let hours = 0;
-  let minutes = 0;
-  let seconds = 0;
-
-  if (parts[0].includes(".")) {
-    // Format: DD.HH:MM:SS.mmmmmmm
-    const dayHour = parts[0].split(".");
-    const days = parseInt(dayHour[0]);
-    hours = parseInt(dayHour[1]) + days * 24;
-    minutes = parseInt(parts[1]);
-    seconds = Math.floor(parseFloat(parts[2]));
-  } else {
-    // Format: HH:MM:SS.mmmmmmm
-    hours = parseInt(parts[0]);
-    minutes = parseInt(parts[1]);
-    seconds = Math.floor(parseFloat(parts[2]));
+  if (!elapsed) {
+    return "";
   }
+  const parsed = parseElapsedParts(elapsed);
+  if (parsed === null) {
+    return elapsed;
+  }
+  const { hours, minutes, seconds } = parsed;
 
   if (hours > 0) {
     return `${hours}h ${minutes}m ${seconds}s`;
-  } else if (minutes > 0) {
-    return `${minutes}m ${seconds}s`;
-  } else {
-    return `${seconds}s`;
   }
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+  return `${seconds}s`;
 }
 
 export function parseElapsedToSeconds(elapsed?: string): number | null {
-  if (!elapsed) return null;
+  if (!elapsed) {
+    return null;
+  }
+  const parsed = parseElapsedParts(elapsed);
+  return parsed === null
+    ? null
+    : parsed.hours * 3600 + parsed.minutes * 60 + parsed.seconds;
+}
+
+interface ElapsedParts {
+  hours: number;
+  minutes: number;
+  seconds: number;
+}
+
+function parseElapsedParts(elapsed: string): ElapsedParts | null {
   const parts = elapsed.split(":");
-  if (parts.length < 3) return null;
+  if (parts.length < 3) {
+    return null;
+  }
 
-  let hours = 0;
-  let minutes = 0;
-  let seconds = 0;
-
+  let hours: number;
   if (parts[0].includes(".")) {
     const dayHour = parts[0].split(".");
-    const days = parseInt(dayHour[0]);
-    if (Number.isNaN(days)) return null;
-    const hh = parseInt(dayHour[1]);
-    if (Number.isNaN(hh)) return null;
+    const days = Number.parseInt(dayHour[0]);
+    const hh = Number.parseInt(dayHour[1]);
+    if (Number.isNaN(days) || Number.isNaN(hh)) {
+      return null;
+    }
     hours = hh + days * 24;
   } else {
-    const hh = parseInt(parts[0]);
-    if (Number.isNaN(hh)) return null;
+    const hh = Number.parseInt(parts[0]);
+    if (Number.isNaN(hh)) {
+      return null;
+    }
     hours = hh;
   }
 
-  minutes = parseInt(parts[1]);
-  if (Number.isNaN(minutes)) return null;
-  seconds = Math.floor(parseFloat(parts[2]));
-  if (Number.isNaN(seconds)) return null;
-
-  return hours * 3600 + minutes * 60 + seconds;
+  const minutes = Number.parseInt(parts[1]);
+  const seconds = Math.floor(Number.parseFloat(parts[2]));
+  if (Number.isNaN(minutes) || Number.isNaN(seconds)) {
+    return null;
+  }
+  return { hours, minutes, seconds };
 }
 
 export function formatDurationShort(totalSeconds: number): string {
