@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:17-alpine
+        image: postgres:18-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -38,17 +38,17 @@ jobs:
           --health-retries 10
     steps:
       - name: Check repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           lfs: "true"
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: "10.0.x"
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: "npm"
@@ -86,18 +86,18 @@ jobs:
       packages: write
     steps:
       - name: Check repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           lfs: "true"
           fetch-depth: 0
 
       - name: Install GitVersion
-        uses: gittools/actions/gitversion/setup@v3.1.11
+        uses: gittools/actions/gitversion/setup@v4.7.0
         with:
-          versionSpec: 5.x
+          versionSpec: 6.x
 
       - name: Determine Version
-        uses: gittools/actions/gitversion/execute@v3.1.11
+        uses: gittools/actions/gitversion/execute@v4.7.0
         id: gitversion # step id used as reference for output values
       - name: Display GitVersion outputs
         run: |
@@ -105,13 +105,13 @@ jobs:
           echo "CommitsSinceVersionSource: ${{ steps.gitversion.outputs.CommitsSinceVersionSource }}"
 
       - name: login to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{secrets.DOCKERHUB_USERNAME}}
           password: ${{secrets.DOCKERHUB_TOKEN}}
 
       - name: Build and push docker image to Docker Hub
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: ${{ env.CONTEXT_PATH }}
           push: true
@@ -121,14 +121,14 @@ jobs:
           file: ${{ env.CONTEXT_PATH }}/${{ env.SOURCES_PATH }}/Dockerfile
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push docker image to GitHub Container Registry
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: ${{ env.CONTEXT_PATH }}
           push: true
@@ -145,7 +145,7 @@ jobs:
     steps:
       - name: Create Release
         if: needs.build.outputs.CommitsSinceVersionSource > 0
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@v1.21.0
         with:
           tag: ${{ needs.build.outputs.Version }}
           name: Release ${{ needs.build.outputs.Version }}
